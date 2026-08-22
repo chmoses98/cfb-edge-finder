@@ -1,0 +1,70 @@
+"""Mechanically proves GameDistribution/price_market() cannot be mistaken
+for a validated betting engine (mission audit section 4): no recommendation,
+staking, or real-money-eligibility surface exists anywhere in the packages
+that could plausibly host one. This is deliberately a structural check, not
+a docstring-reading exercise -- docstrings can drift, `dir()` cannot.
+
+Note: `cfb_edge_finder.schemas` legitimately defines
+`RecommendationReadiness` (WATCH/EARLY_VALUE/ACTIONABLE/PASS) as a
+*vocabulary* for a future milestone (see schemas/common.py) -- that is a
+closed enum with no behavior, not an implementation, so it is intentionally
+excluded from this scan. What's checked here is the set of packages where
+actual staking/execution *logic* would show up if someone added it.
+"""
+
+from __future__ import annotations
+
+import importlib
+import pkgutil
+
+import cfb_edge_finder.betting
+import cfb_edge_finder.projections
+import cfb_edge_finder.research
+
+FORBIDDEN_SUBSTRINGS = (
+    "stake",
+    "bankroll",
+    "kelly",
+    "place_order",
+    "place_bet",
+    "execute_trade",
+    "execute_order",
+    "real_money",
+    "tier_a",
+    "tier_b",
+    "tier_c",
+    "qualification_bar",
+)
+
+_SCANNED_PACKAGES = (cfb_edge_finder.betting, cfb_edge_finder.projections, cfb_edge_finder.research)
+
+
+def _iter_public_names(package):
+    yield package.__name__, [n for n in dir(package) if not n.startswith("_")]
+    if hasattr(package, "__path__"):
+        for _finder, name, _is_pkg in pkgutil.iter_modules(package.__path__, prefix=f"{package.__name__}."):
+            module = importlib.import_module(name)
+            yield name, [n for n in dir(module) if not n.startswith("_")]
+
+
+def test_betting_package_has_no_public_surface_yet():
+    # betting/__init__.py is documented as an intentional empty stub
+    # (Milestones G-H). If this test ever fails, it means something was
+    # added to betting/ -- which is fine, but it means this mission's
+    # explicit "do not build a recommendation layer yet" boundary has been
+    # crossed and that should be a conscious, reviewed decision, not a
+    # silent one.
+    public_names = [n for n in dir(cfb_edge_finder.betting) if not n.startswith("_")]
+    assert public_names == [], f"betting package unexpectedly has public surface: {public_names}"
+
+
+def test_no_staking_or_recommendation_execution_surface_in_scanned_packages():
+    violations = []
+    for package in _SCANNED_PACKAGES:
+        for module_name, names in _iter_public_names(package):
+            for name in names:
+                lowered = name.lower()
+                for forbidden in FORBIDDEN_SUBSTRINGS:
+                    if forbidden in lowered:
+                        violations.append(f"{module_name}.{name} (matched {forbidden!r})")
+    assert violations == [], f"found staking/recommendation-execution surface: {violations}"
