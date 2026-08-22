@@ -11,10 +11,9 @@ docs/STORAGE_STRATEGY.md).
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 from cfb_edge_finder.schemas.common import MarketFamily
 from cfb_edge_finder.schemas.projection import UncertaintyProfile
@@ -26,8 +25,8 @@ class ProspectiveSnapshot(BaseModel):
     sport: Literal["cfb"] = "cfb"
     game_id: str
     model_version: ModelVersion
-    projection_timestamp: datetime
-    data_timestamp: datetime
+    projection_timestamp: AwareDatetime
+    data_timestamp: AwareDatetime
     provenance: DataProvenance
     market_snapshot_id: str = Field(..., description="Identifies the Kalshi price-sweep this was captured against")
     market_ticker: str
@@ -37,4 +36,4 @@ class ProspectiveSnapshot(BaseModel):
         default=None, ge=0.0, le=1.0, description="Price as a probability (cents/100)"
     )
     uncertainty: UncertaintyProfile
-    captured_at: datetime
+    captured_at: AwareDatetime

@@ -10,15 +10,26 @@ never has to know about Kalshi market shapes.
 
 from __future__ import annotations
 
-from datetime import datetime
+from math import isfinite
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion
 
 
 class GameDistribution(BaseModel):
     """A coherent, correlated bivariate projection of (home_score, away_score).
+
+    *** PROVISIONAL / RESEARCH-ONLY. NOT A VALIDATED BETTING MODEL. ***
+    This is a placeholder parametric approximation (see the modeling
+    assumptions below), not a backtested or calibrated projection engine.
+    No recommendation, qualification tier, staking, or real-money
+    eligibility may be derived from this class or from
+    `cfb_edge_finder.projections.distribution.price_market()` -- no such
+    logic exists anywhere in this codebase yet (see `betting/__init__.py`
+    and docs/ROADMAP.md Milestone H), and this docstring is the contract
+    that it must not be added by routing around GameDistribution's
+    provisional status.
 
     Modeling assumption (V1, explicit -- see docs/ARCHITECTURE.md
     "Uncertainty & modeling assumptions"): each team's score is treated as
@@ -33,8 +44,8 @@ class GameDistribution(BaseModel):
     phase.
     """
 
-    home_mean: float = Field(..., description="Projected mean home team score")
-    away_mean: float = Field(..., description="Projected mean away team score")
+    home_mean: float = Field(..., ge=0.0, description="Projected mean home team score")
+    away_mean: float = Field(..., ge=0.0, description="Projected mean away team score")
     home_sd: float = Field(..., gt=0, description="Standard deviation of home team score")
     away_sd: float = Field(..., gt=0, description="Standard deviation of away team score")
     correlation: float = Field(
@@ -44,6 +55,14 @@ class GameDistribution(BaseModel):
         description="Correlation between home and away score. Default 0.0 (independence) is a "
         "documented placeholder assumption, not an empirical finding -- see ARCHITECTURE.md.",
     )
+
+    @model_validator(mode="after")
+    def _all_values_finite(self) -> GameDistribution:
+        for field_name in ("home_mean", "away_mean", "home_sd", "away_sd", "correlation"):
+            value = getattr(self, field_name)
+            if not isfinite(value):
+                raise ValueError(f"{field_name} must be a finite number, got {value!r}")
+        return self
 
 
 class UncertaintyProfile(BaseModel):
@@ -70,7 +89,7 @@ class ProjectionRecord(BaseModel):
     game_id: str
     model_version: ModelVersion
     provenance: DataProvenance
-    projection_timestamp: datetime
+    projection_timestamp: AwareDatetime
     distribution: GameDistribution
     uncertainty: UncertaintyProfile
 

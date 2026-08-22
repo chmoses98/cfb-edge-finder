@@ -1,7 +1,8 @@
 from cfb_edge_finder.schemas.common import (
-    TERMINAL_MARKET_STATUSES,
+    TERMINAL_COVERAGE_OUTCOMES,
+    CoverageOutcome,
     MarketFamily,
-    MarketStatus,
+    RecommendationReadiness,
     SeasonType,
     Side,
 )
@@ -18,10 +19,11 @@ from cfb_edge_finder.schemas.snapshot import ProspectiveSnapshot
 
 __all__ = [
     "MarketFamily",
-    "MarketStatus",
+    "CoverageOutcome",
+    "RecommendationReadiness",
     "SeasonType",
     "Side",
-    "TERMINAL_MARKET_STATUSES",
+    "TERMINAL_COVERAGE_OUTCOMES",
     "CoverageLedgerEntry",
     "StatusTransition",
     "GameRecord",

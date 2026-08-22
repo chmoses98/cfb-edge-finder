@@ -42,53 +42,90 @@ class Side(StrEnum):
     NO = "no"
 
 
-class MarketStatus(StrEnum):
+class CoverageOutcome(StrEnum):
     """Every discovered Kalshi market must resolve to exactly one of these.
+
+    This enum answers ONE question only: "did the pipeline manage to
+    produce a fair-value evaluation for this market, and if not, why not?"
+    It deliberately does NOT answer "is this market worth betting" -- that
+    is a separate, orthogonal question, answered by RecommendationReadiness
+    below. Mixing the two into one flat vocabulary was an earlier design
+    (a merged MarketStatus enum) that risked a market being miscounted as
+    "not yet evaluated" by a future coverage report simply because it
+    landed at a middling recommendation tier -- see the pre-merge audit
+    note in docs/ARCHITECTURE.md section 4. Splitting them means coverage
+    completeness ("every discovered market is accounted for") can be
+    proven without any reference to recommendation-worthiness at all.
 
     Non-terminal (open pipeline states):
       DISCOVERED         -- seen in a raw market sweep, nothing else known yet
-      TICKER_UNRESOLVED   -- ticker could not be parsed into game/family/line
       MAPPED              -- parsed and matched to a known game, not yet evaluated
-      WATCH                -- evaluated, below qualification bar but worth monitoring
 
     Terminal (pipeline is done with this market for this evaluation cycle):
-      MISSING_INPUT        -- game matched, but required model inputs are absent
-      EVALUATION_FAILED    -- an unexpected error occurred while pricing it
-      UNSUPPORTED_MARKET   -- market family/period not yet supported by the pricer
-      GAME_STARTED          -- game began before evaluation completed; excluded
-      REJECTED              -- evaluated, fair-priced, but no qualifying edge
-      EARLY_VALUE            -- edge detected but data completeness/confidence too
-                                 low to promote to ACCEPTED yet
-      ACCEPTED               -- qualifies as a recommendable edge
+      EVALUATED             -- successfully produced a fair_probability. Says
+                                nothing about whether it's a good bet -- see
+                                RecommendationReadiness for that.
+      TICKER_UNRESOLVED     -- ticker could not be parsed into game/family/line
+      MISSING_INPUT          -- game matched, but required model inputs are absent
+      EVALUATION_FAILED      -- an unexpected error occurred while pricing it
+      UNSUPPORTED_MARKET     -- market family/period not yet supported by the pricer
+      GAME_STARTED            -- game began before evaluation completed; excluded
 
     Silent disappearance from this vocabulary is a bug, not a valid outcome
     -- see cfb_edge_finder.kalshi.coverage_ledger.CoverageLedger.
     """
 
     DISCOVERED = "discovered"
-    TICKER_UNRESOLVED = "ticker_unresolved"
     MAPPED = "mapped"
+    EVALUATED = "evaluated"
+    TICKER_UNRESOLVED = "ticker_unresolved"
     MISSING_INPUT = "missing_input"
     EVALUATION_FAILED = "evaluation_failed"
     UNSUPPORTED_MARKET = "unsupported_market"
     GAME_STARTED = "game_started"
-    REJECTED = "rejected"
-    WATCH = "watch"
-    EARLY_VALUE = "early_value"
-    ACCEPTED = "accepted"
 
 
-TERMINAL_MARKET_STATUSES = frozenset(
+TERMINAL_COVERAGE_OUTCOMES = frozenset(
     {
-        MarketStatus.MISSING_INPUT,
-        MarketStatus.EVALUATION_FAILED,
-        MarketStatus.UNSUPPORTED_MARKET,
-        MarketStatus.GAME_STARTED,
-        MarketStatus.REJECTED,
-        MarketStatus.ACCEPTED,
+        CoverageOutcome.EVALUATED,
+        CoverageOutcome.TICKER_UNRESOLVED,
+        CoverageOutcome.MISSING_INPUT,
+        CoverageOutcome.EVALUATION_FAILED,
+        CoverageOutcome.UNSUPPORTED_MARKET,
+        CoverageOutcome.GAME_STARTED,
     }
 )
-"""Statuses after which no further automatic transition is expected this
-cycle. WATCH and EARLY_VALUE are deliberately non-terminal: they are
-expected to be re-evaluated on the next pricing pass as market price or
-model inputs change."""
+"""Outcomes after which no further automatic transition is expected this
+evaluation cycle. DISCOVERED and MAPPED are the only non-terminal states."""
+
+
+class RecommendationReadiness(StrEnum):
+    """A business-value judgment, ONLY meaningful once a market's
+    CoverageOutcome is EVALUATED (a market that is MISSING_INPUT or
+    UNSUPPORTED_MARKET has no fair probability to judge and has no
+    RecommendationReadiness at all -- it stays None).
+
+    This is deliberately a separate field/enum from CoverageOutcome, not a
+    finer-grained set of "terminal states" bolted onto it, so that a
+    market sitting at WATCH or EARLY_VALUE can never be miscounted as
+    incomplete or dropped by coverage accounting -- it is fully EVALUATED
+    (CoverageOutcome) and separately WATCH (RecommendationReadiness); both
+    facts are tracked, neither shadows the other.
+
+      PASS          -- evaluated, no qualifying edge found
+      WATCH          -- evaluated, below the qualification bar but worth
+                         monitoring as price/inputs change
+      EARLY_VALUE     -- edge detected but data completeness/confidence too
+                          low to promote to ACTIONABLE yet
+      ACTIONABLE       -- qualifies as a recommendable edge
+
+    No code in this codebase currently sets ACTIONABLE or computes a
+    qualification bar -- that is Milestone G/H, not this schema. This enum
+    exists now purely so the *shape* of that future distinction doesn't
+    require a breaking schema change later.
+    """
+
+    PASS = "pass"
+    WATCH = "watch"
+    EARLY_VALUE = "early_value"
+    ACTIONABLE = "actionable"

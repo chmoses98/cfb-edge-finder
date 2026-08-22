@@ -1,5 +1,15 @@
 """GameDistribution -> market probability math.
 
+*** PROVISIONAL / RESEARCH-ONLY. NOT A VALIDATED BETTING MODEL. ***
+Every probability this module returns is a raw mathematical consequence of
+whatever GameDistribution it was given -- see that class's docstring. A
+number coming back from `price_market()` for a deep alternate line is
+computed with exactly the same code path and the exact same (unvalidated)
+confidence as one for a near-even-money line; nothing in this module scores
+or flags plausibility, and nothing here is fit for staking, tiering, or
+real-money eligibility decisions. `tests/test_no_recommendation_surface.py`
+mechanically checks that no such surface has crept into this package.
+
 This is the core of the "one game-level distribution prices many contracts"
 pattern (mission spec section 3). Every function here is closed-form and
 cheap -- pricing a new market from an existing GameDistribution never
@@ -26,8 +36,8 @@ docs/ARCHITECTURE.md):
   full-game score parameters cannot be decomposed into a first-half
   distribution without additional modeling. Attempting to price a
   first-half MarketFamily here raises UnsupportedMarketFamilyError so the
-  caller can record MarketStatus.UNSUPPORTED_MARKET rather than silently
-  mispricing it.
+  caller can record CoverageOutcome.UNSUPPORTED_MARKET rather than
+  silently mispricing it.
 """
 
 from __future__ import annotations

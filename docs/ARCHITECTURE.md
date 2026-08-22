@@ -124,43 +124,63 @@ structural, not just a convention.
 ## 4. Kalshi flow and the coverage ledger
 
 Per mission section 4, every discovered Kalshi market must terminate in a
-known state -- silent omission is forbidden. `MarketStatus`
-(`schemas/common.py`) is the closed vocabulary:
+known state -- silent omission is forbidden. This is deliberately split
+into TWO orthogonal enums (`schemas/common.py`), not one flat vocabulary
+-- an earlier single-enum `MarketStatus` design was found in a pre-merge
+audit to conflate "did the pipeline manage to evaluate this market"
+(coverage/completeness) with "is it worth betting"
+(recommendation/readiness), which risked a market at a middling
+recommendation tier being miscounted by a future coverage report as
+incomplete or dropped:
 
-- Non-terminal: `DISCOVERED`, `TICKER_UNRESOLVED`, `MAPPED`, `WATCH`,
-  `EARLY_VALUE`
-- Terminal: `MISSING_INPUT`, `EVALUATION_FAILED`, `UNSUPPORTED_MARKET`,
-  `GAME_STARTED`, `REJECTED`, `ACCEPTED`
+- `CoverageOutcome` (pipeline mechanics -- "did evaluation succeed?"):
+  - Non-terminal: `DISCOVERED`, `MAPPED`
+  - Terminal: `EVALUATED`, `TICKER_UNRESOLVED`, `MISSING_INPUT`,
+    `EVALUATION_FAILED`, `UNSUPPORTED_MARKET`, `GAME_STARTED`
+- `RecommendationReadiness` (business-value judgment -- only meaningful
+  once `CoverageOutcome` is `EVALUATED`): `PASS`, `WATCH`, `EARLY_VALUE`,
+  `ACTIONABLE`. No code computes a qualification bar yet (Milestone G/H);
+  this enum exists now purely so its future shape doesn't force a breaking
+  schema change later.
 
-`CoverageLedger` (`kalshi/coverage_ledger.py`) enforces two invariants,
+`CoverageLedger` (`kalshi/coverage_ledger.py`) enforces the invariants,
 directly reproducing edge-finder-api's dual-denominator coverage pattern
-(see `docs/MLB_ARCHITECTURE_AUDIT.md` section 2):
+(see `docs/MLB_ARCHITECTURE_AUDIT.md` section 2), and keeps the two axes
+independently mutable and independently accounted for:
 
-- Every `CoverageLedgerEntry.current_status` must equal the last entry in
-  its own `history` (schema-level, enforced by pydantic).
+- Every `CoverageLedgerEntry.current_outcome` must equal the last entry in
+  its own `history` (schema-level, enforced by pydantic on every mutation
+  -- both `transition()` and `set_recommendation_readiness()` reconstruct
+  through the full validated constructor rather than `model_copy(update=)`,
+  since pydantic v2 does not re-run validators on that path).
 - `CoverageLedger.assert_no_missing(discovered_tickers)` takes a set of
   tickers derived **independently** of the ledger's own
   `record_discovered()` calls (e.g. straight from a raw Kalshi sweep
   response) and raises `CoverageInvariantError` if any are absent --
   catching a bug that drops a market before it ever reaches the ledger,
   not just one that mishandles it afterward.
+- `summary()` counts by `CoverageOutcome` alone; `readiness_summary()`
+  counts by `RecommendationReadiness` alone. A market at `WATCH` or
+  `EARLY_VALUE` is exactly as "accounted for" in `summary()` as one that
+  is `ACTIONABLE` or `PASS` -- see `tests/test_coverage_ledger.py::test_market_at_watch_or_early_value_still_counts_as_evaluated_in_coverage_summary`.
 
 This means the system can prove, at any point, the exact breakdown of
 "games discovered / contracts discovered / contracts mapped / contracts
 evaluated / contracts unresolved / contracts unsupported / qualified tiers
 / rejected count" that mission section 4 requires -- `CoverageLedger.summary()`
-returns counts per status today.
+and `readiness_summary()` return exact counts per outcome/readiness today.
 
 ## 5. Uncertainty and modeling assumptions (mission section 7)
 
-`GameDistribution` treats each team's score as approximately Normal, and
-derives margin/total analytically from the two marginals and their
-correlation (default `0.0`, an explicit placeholder, not an empirical
-finding). This is a deliberately simple parametric form chosen specifically
-so many market probabilities can be derived cheaply from one small set of
-numbers -- see the extensive docstring in
-`src/cfb_edge_finder/projections/distribution.py` for the exact
-assumptions, including:
+`GameDistribution` is explicitly marked, in its own docstring, as
+**PROVISIONAL / RESEARCH-ONLY -- NOT A VALIDATED BETTING MODEL**. It
+treats each team's score as approximately Normal, and derives margin/total
+analytically from the two marginals and their correlation (default `0.0`,
+an explicit placeholder, not an empirical finding). This is a deliberately
+simple parametric form chosen specifically so many market probabilities
+can be derived cheaply from one small set of numbers -- see the extensive
+docstring in `src/cfb_edge_finder/projections/distribution.py` for the
+exact assumptions, including:
 
 - A 0.5-point continuity correction for evaluating `P(X > threshold)` on
   what's really an integer-valued score.
@@ -171,6 +191,19 @@ assumptions, including:
   (`UnsupportedMarketFamilyError`) because they need a separate first-half
   `GameDistribution`, not a decomposition of the full-game one.
 
+All five `GameDistribution` parameters are validated as finite
+(`math.isfinite`, rejecting NaN/+-inf) and non-negative for the two means,
+so a bad upstream computation (a divide-by-zero, an unclamped log, etc.)
+fails loudly at construction instead of silently propagating a `nan`
+through every downstream probability. `price_market()` itself carries no
+plausibility or confidence signal for the line it's asked to price --
+`tests/test_no_recommendation_surface.py` mechanically checks that no
+staking/recommendation-execution surface has crept into `projections/`,
+`betting/`, or `research/` to compensate for that; a deep alternate line
+and a near-even-money line are priced with identical, equally-unvalidated
+confidence, which is exactly why nothing downstream may treat either
+output as ready for a wager.
+
 Uncertainty is first-class, not folded into generic variance:
 `UncertaintyProfile` (`schemas/projection.py`) carries `data_completeness`,
 `qb_status_confirmed`, and `early_season_prior_weight` alongside every
@@ -180,6 +213,21 @@ market quality x uncertainty penalty" formula is a Milestone H concern, and
 building it before there is real backtest data to calibrate its weights
 would just be guessing thresholds, which the mission explicitly says not
 to do.
+
+Neutral-site games get the same "explicit, not silent" treatment:
+`GameRecord.neutral_site` is required, and
+`cfb_edge_finder.ratings.home_field_advantage_points(base_hfa, neutral_site)`
+is the single enforced choke point any future rating code must route a
+home-field adjustment through -- it returns `0.0` unconditionally when
+`neutral_site` is `True`, so a neutral-site game can never silently
+receive ordinary home-field advantage just because
+`GameRecord.home_team_id` is still populated (it always is, even at a
+neutral site -- that field is bookkeeping, not evidence of a real edge).
+The canonical `game_id` for a neutral-site game is also built differently
+(alphabetically-sorted team slugs, `-vs-` instead of `-at-`) specifically
+so it cannot fork into two different IDs depending on which team a given
+vendor happened to label "home" -- see `cfb_edge_finder.ids.canonical_game_id`'s
+docstring and `docs/SCHEMAS.md`.
 
 ## 6. Storage
 

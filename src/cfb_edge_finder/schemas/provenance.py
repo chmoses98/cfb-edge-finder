@@ -10,9 +10,7 @@ retrofitting that gap later.
 
 from __future__ import annotations
 
-from datetime import datetime
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class ModelVersion(BaseModel):
@@ -49,5 +47,7 @@ class DataProvenance(BaseModel):
     roster_snapshot_version: str | None = None
     injury_snapshot_version: str | None = None
     schedule_source: str = Field(..., description="e.g. 'cfbd', 'espn'")
-    data_timestamp: datetime = Field(..., description="Timestamp of the underlying input data, not of this record")
+    data_timestamp: AwareDatetime = Field(
+        ..., description="Timestamp of the underlying input data, not of this record"
+    )
     completeness_flags: dict[str, bool] = Field(default_factory=dict)
