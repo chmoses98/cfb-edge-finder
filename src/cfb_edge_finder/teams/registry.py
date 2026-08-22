@@ -2,11 +2,22 @@
 
 *** DATA PROVENANCE WARNING (read before trusting `REGISTRY`) ***
 The team list and conference assignments below are populated from general
-knowledge, not a live fetch -- this session's network egress to CFBD/ESPN
-was blocked (see docs/DATA_SOURCES.md and docs/MILESTONE_B.md). They are a
-best-effort seed, NOT independently verified for the 2026 season. Conference
-realignment has been unusually active in recent years; the Pac-12
-membership list in particular is flagged as high-uncertainty below.
+knowledge, not a live CFBD fetch -- this session's network egress to
+CFBD/ESPN was blocked (see docs/DATA_SOURCES.md and docs/MILESTONE_B.md).
+They are a best-effort seed, NOT independently verified against CFBD
+itself for the 2026 season. Conference realignment has been unusually
+active in recent years; the Pac-12 membership list in particular is
+flagged as high-uncertainty below.
+
+One specific gap WAS found and corrected via genuine (non-CFBD) research:
+web search against multiple independent, dated sources confirmed CFBD
+currently reports 138 FBS teams for 2026, not the 134 originally seeded
+here -- see `_transitional_seed` below for the four FCS-to-FBS additions
+(Delaware, Missouri State, North Dakota State, Sacramento State) that
+close that gap. This was cross-checked against several independent
+outlets, not a single source, but it is still not a CFBD API response and
+should be reconciled against a live `/teams/fbs` fetch when one becomes
+possible.
 `vendor_ids` is deliberately left EMPTY for every team in this seed --
 fabricating specific numeric CFBD/ESPN team IDs from memory would be
 exactly the kind of unverified-but-authoritative-looking data this project
@@ -151,9 +162,29 @@ _seed: tuple[tuple[str, str], ...] = (
     ("Notre Dame", "FBS Independents"), ("UConn", "FBS Independents"), ("UMass", "FBS Independents"),
 )
 
+# FCS-to-FBS transitional additions, verified via web search against
+# multiple independent sources (Deseret News, CBS Sports, ESPN, Wikipedia)
+# during the Milestone B validation follow-up -- NOT a live CFBD fetch, but
+# real, cross-checked, dated reporting rather than a from-memory guess.
+# These four are exactly what closed the gap between this registry's
+# original 134-team count and CFBD's currently-reported 138 FBS teams for
+# the 2026 season. `season_start` reflects each program's first season
+# playing a full FBS schedule as reported by those sources.
+_transitional_seed: tuple[tuple[str, str, int], ...] = (
+    ("Delaware", "Conference USA", 2025),
+    ("Missouri State", "Conference USA", 2025),
+    ("North Dakota State", "Mountain West", 2026),
+    ("Sacramento State", "MAC", 2026),
+)
+
 REGISTRY: tuple[TeamRecord, ...] = tuple(
     TeamRecord(team_id=slugify_team(display_name), display_name=display_name, conference=conference)
     for display_name, conference in _seed
+) + tuple(
+    TeamRecord(
+        team_id=slugify_team(display_name), display_name=display_name, conference=conference, season_start=season_start
+    )
+    for display_name, conference, season_start in _transitional_seed
 )
 
 _BY_ID: dict[str, TeamRecord] = {team.team_id: team for team in REGISTRY}

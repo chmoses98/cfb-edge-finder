@@ -19,16 +19,19 @@ def test_fixture_mode_end_to_end_matches_hand_verified_counts():
     games, summary = ingest_schedule.run_ingestion(2026, "fixture", ingest_schedule.DEFAULT_FIXTURE_PATH)
     # These exact counts were hand-verified against
     # src/cfb_edge_finder/data/fixtures/cfbd_games_2026_sample.json's 15
-    # synthetic rows: 1 FCS-opponent game filtered, 2 unresolved team
-    # aliases (bare "Miami" and an unregistered program name).
+    # synthetic rows. The FBS-vs-FCS game (Ole Miss vs Furman) is now
+    # RETAINED (not filtered) per the FBS-vs-FCS inclusion policy fix --
+    # Furman resolves to a generated slug rather than dropping the game.
+    # 2 unresolved team aliases remain: bare "Miami" (ambiguous) and an
+    # unregistered *FBS* program name (still fails loud, unlike the FCS case).
     assert summary.source_games_fetched == 15
-    assert summary.non_fbs_filtered == 1
-    assert summary.fbs_games_retained == 12
+    assert summary.non_fbs_filtered == 0
+    assert summary.fbs_games_retained == 13
     assert len(summary.unresolved_team_aliases) == 2
     assert summary.neutral_site_games == 6
     assert summary.postseason_games == 6
     assert summary.validation_failures == []
-    assert len(games) == 12
+    assert len(games) == 13
 
 
 def test_fixture_mode_produces_no_duplicate_game_ids():
@@ -48,6 +51,16 @@ def test_write_artifact_round_trips():
     assert len(data["games"]) == len(games)
     # sorted deterministically by game_id
     assert [g["game_id"] for g in data["games"]] == sorted(g["game_id"] for g in data["games"])
+
+
+def test_fbs_vs_fcs_game_retained_end_to_end_through_the_script():
+    # The exact scenario the mission flagged: an FBS team's game against
+    # an FCS opponent (Ole Miss vs Furman in the fixture) must survive the
+    # full fetch -> normalize -> filter pipeline, not be silently dropped.
+    games, summary = ingest_schedule.run_ingestion(2026, "fixture", ingest_schedule.DEFAULT_FIXTURE_PATH)
+    ole_miss_game = next(g for g in games if g.home_team_id == "ole-miss")
+    assert ole_miss_game.away_team_id == "furman"
+    assert summary.non_fbs_filtered == 0
 
 
 def test_reschedule_detected_across_two_runs():

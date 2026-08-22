@@ -105,3 +105,66 @@ def test_unrecognized_descriptor_fails_loud_rather_than_guessing():
 def test_unrecognized_season_type_fails_loud():
     with pytest.raises(ValueError, match="unrecognized season_type_raw"):
         derive_week_metadata(season_type_raw="preseason", week_raw=1)
+
+
+# --- Structured playoff field (preferred mechanism -- mission audit follow-up) ---
+
+
+@pytest.mark.parametrize(
+    ("raw_round", "expected"),
+    [
+        ("first_round", CFPRound.FIRST_ROUND),
+        ("quarterfinal", CFPRound.QUARTERFINAL),
+        ("semifinal", CFPRound.SEMIFINAL),
+        ("championship", CFPRound.NATIONAL_CHAMPIONSHIP),
+    ],
+)
+def test_structured_playoff_round_mapping(raw_round, expected):
+    meta = derive_week_metadata(
+        season_type_raw="postseason", week_raw=None, playoff={"competition": "cfp", "round": raw_round}
+    )
+    assert meta.cfp_round == expected
+    assert meta.season_type == SeasonType.CFP
+    validate_week_label(meta.week_label)
+
+
+def test_structured_playoff_uses_bowl_name_in_slug():
+    meta = derive_week_metadata(
+        season_type_raw="postseason",
+        week_raw=None,
+        playoff={"competition": "cfp", "round": "semifinal", "bowl_name": "Cotton Bowl"},
+    )
+    assert meta.week_label == "cfp-semifinal-cotton-bowl"
+
+
+def test_structured_playoff_without_bowl_name_omits_remainder():
+    meta = derive_week_metadata(
+        season_type_raw="postseason", week_raw=None, playoff={"competition": "cfp", "round": "first_round"}
+    )
+    assert meta.week_label == "cfp-first-round"
+
+
+def test_structured_playoff_takes_priority_over_notes_heuristic():
+    # Even a notes descriptor that would fail the heuristic entirely must
+    # not matter when a valid structured playoff object is present.
+    meta = derive_week_metadata(
+        season_type_raw="postseason",
+        week_raw=None,
+        postseason_descriptor="totally unparseable free text",
+        playoff={"competition": "cfp", "round": "quarterfinal"},
+    )
+    assert meta.cfp_round == CFPRound.QUARTERFINAL
+
+
+def test_structured_playoff_unrecognized_round_fails_loud():
+    with pytest.raises(UnclassifiablePostseasonError, match="not a recognized PlayoffRound"):
+        derive_week_metadata(
+            season_type_raw="postseason", week_raw=None, playoff={"competition": "cfp", "round": "octofinal"}
+        )
+
+
+def test_empty_playoff_dict_falls_back_to_heuristic():
+    meta = derive_week_metadata(
+        season_type_raw="postseason", week_raw=None, postseason_descriptor="SEC Championship", playoff={}
+    )
+    assert meta.season_type == SeasonType.CONFERENCE_CHAMPIONSHIP

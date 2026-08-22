@@ -31,7 +31,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from cfb_edge_finder.config import Settings  # noqa: E402
 from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: E402
 from cfb_edge_finder.ids import assert_unique_game_ids  # noqa: E402
-from cfb_edge_finder.ingestion.game_normalization import GameNormalizationError, normalize_cfbd_game  # noqa: E402
+from cfb_edge_finder.ingestion.game_normalization import (  # noqa: E402
+    GameNormalizationError,
+    away_classification,
+    home_classification,
+    normalize_cfbd_game,
+)
 from cfb_edge_finder.ingestion.reconciliation import detect_reschedule  # noqa: E402
 from cfb_edge_finder.ingestion.summary import IngestionSummary  # noqa: E402
 from cfb_edge_finder.ingestion.team_matching import TeamResolutionError  # noqa: E402
@@ -63,8 +68,15 @@ def _load_previous_artifact(season: int) -> dict[str, str]:
     return mapping
 
 
-def _is_fbs_vs_fbs(raw: dict[str, Any]) -> bool:
-    return raw.get("homeClassification") == "fbs" and raw.get("awayClassification") == "fbs"
+def _is_fbs_involved(raw: dict[str, Any]) -> bool:
+    """At least one side must be FBS -- an FBS team's game against an FCS
+    opponent (a common Week 0/1 buy game) is part of that FBS team's real
+    schedule and must not be silently discarded just because the opponent
+    isn't FBS. Only a game with NO FBS team on either side (which CFBD's
+    own division=fbs query parameter should already exclude, but this
+    stays defensive rather than assuming that) is filtered here.
+    """
+    return home_classification(raw) == "fbs" or away_classification(raw) == "fbs"
 
 
 def run_ingestion(season: int, mode: str, fixture_path: Path) -> tuple[list[GameRecord], IngestionSummary]:
@@ -98,7 +110,7 @@ def run_ingestion(season: int, mode: str, fixture_path: Path) -> tuple[list[Game
     observed_at = datetime.now(UTC)
 
     for raw in raw_games:
-        if not _is_fbs_vs_fbs(raw):
+        if not _is_fbs_involved(raw):
             summary.non_fbs_filtered += 1
             continue
         try:

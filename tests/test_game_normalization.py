@@ -140,11 +140,124 @@ def test_deterministic_serialization_of_normalized_game():
 
 
 def test_normalize_does_not_itself_filter_by_classification():
-    # Filtering FBS-vs-FBS-only happens at the ingestion-script layer
-    # (scripts/ingest_schedule.py's _is_fbs_vs_fbs), not inside
-    # normalize_cfbd_game -- an FCS opponent fails here only because
-    # Furman isn't in the (FBS-only) team registry, not because of its
-    # classification field, which normalize_cfbd_game never inspects.
+    # Filtering "no FBS team involved at all" happens at the
+    # ingestion-script layer (scripts/ingest_schedule.py's
+    # _is_fbs_involved), not inside normalize_cfbd_game.
+    game = normalize_cfbd_game(base_raw(awayTeam="Furman", awayClassification="fcs"), observed_at=NOW)
+    assert game.home_team_id == "ohio-state"
+    assert game.away_team_id == "furman"
+
+
+# --- FBS-vs-FCS inclusion policy ---
+
+
+def test_fcs_opponent_gets_a_deterministic_slug_not_dropped():
+    game = normalize_cfbd_game(base_raw(awayTeam="Furman", awayClassification="fcs"), observed_at=NOW)
+    assert game.away_team_id == "furman"
+    game_again = normalize_cfbd_game(base_raw(awayTeam="Furman", awayClassification="fcs"), observed_at=NOW)
+    assert game_again.away_team_id == game.away_team_id  # deterministic, not random
+
+
+def test_unresolved_fbs_team_still_fails_loud_even_with_classification_present():
+    # An unrecognized name with classification == "fbs" must NOT be
+    # silently slugged -- that's exactly the "unrecognized FBS program"
+    # case this project wants surfaced.
     with pytest.raises(GameNormalizationError) as exc_info:
-        normalize_cfbd_game(base_raw(awayTeam="Furman", awayClassification="fcs"), observed_at=NOW)
+        normalize_cfbd_game(
+            base_raw(homeTeam="Some Newly Formed Program", homeClassification="fbs"), observed_at=NOW
+        )
     assert isinstance(exc_info.value.cause, TeamResolutionError)
+
+
+def test_ambiguous_alias_still_fails_loud_regardless_of_classification():
+    # Ambiguity (bare "Miami") must never be downgraded to a generated
+    # slug just because classification says non-FBS -- it's a genuine
+    # identity risk independent of subdivision.
+    with pytest.raises(GameNormalizationError) as exc_info:
+        normalize_cfbd_game(base_raw(awayTeam="Miami", awayClassification="fcs"), observed_at=NOW)
+    assert isinstance(exc_info.value.cause, TeamResolutionError)
+    from cfb_edge_finder.teams import AmbiguousTeamAliasError
+
+    assert isinstance(exc_info.value.cause.cause, AmbiguousTeamAliasError)
+
+
+def test_missing_classification_on_unresolved_team_still_fails_loud():
+    # No classification info at all (key absent) must default to the
+    # strict/fail-loud path, not the lenient FCS-slugging path.
+    raw = base_raw(homeTeam="Some Newly Formed Program")
+    del raw["homeClassification"]
+    with pytest.raises(GameNormalizationError):
+        normalize_cfbd_game(raw, observed_at=NOW)
+
+
+# --- Defensive schema field-name lookups (genuine CFBD schema verification found disagreement) ---
+
+
+def test_home_division_key_accepted_as_classification_fallback():
+    raw = base_raw()
+    del raw["homeClassification"]
+    raw["homeDivision"] = "fbs"
+    game = normalize_cfbd_game(raw, observed_at=NOW)
+    assert game.home_team_id == "ohio-state"
+
+
+def test_start_time_tbd_lowercase_variant_accepted():
+    raw = base_raw()
+    del raw["startTimeTBD"]
+    raw["startTimeTbd"] = True
+    game = normalize_cfbd_game(raw, observed_at=NOW)
+    assert game.kickoff_utc is None
+
+
+# --- Structured playoff field (preferred over notes heuristic) ---
+
+
+def test_structured_playoff_object_preferred_over_notes_heuristic():
+    game = normalize_cfbd_game(
+        base_raw(
+            week=None,
+            seasonType="postseason",
+            neutralSite=True,
+            homeTeam="Alabama",
+            awayTeam="Oregon",
+            notes="some irrelevant free text that would fail the heuristic",
+            playoff={"competition": "cfp", "round": "quarterfinal", "bowl_name": "Orange Bowl"},
+        ),
+        observed_at=NOW,
+    )
+    assert game.season_type == SeasonType.CFP
+    assert game.cfp_round == CFPRound.QUARTERFINAL
+    assert game.game_id == "cfb-2026-cfp-quarterfinal-orange-bowl-alabama-vs-oregon"
+
+
+def test_structured_playoff_championship_maps_to_national_championship():
+    game = normalize_cfbd_game(
+        base_raw(
+            week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
+            playoff={"competition": "cfp", "round": "championship"},
+        ),
+        observed_at=NOW,
+    )
+    assert game.cfp_round == CFPRound.NATIONAL_CHAMPIONSHIP
+
+
+def test_playoff_object_absent_falls_back_to_notes_heuristic():
+    game = normalize_cfbd_game(
+        base_raw(
+            week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
+            notes="CFP Quarterfinal - Orange Bowl",
+        ),
+        observed_at=NOW,
+    )
+    assert game.cfp_round == CFPRound.QUARTERFINAL
+
+
+def test_playoff_object_with_unrecognized_round_fails_loud():
+    with pytest.raises(GameNormalizationError):
+        normalize_cfbd_game(
+            base_raw(
+                week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
+                playoff={"competition": "cfp", "round": "some_future_round_format"},
+            ),
+            observed_at=NOW,
+        )

@@ -14,13 +14,25 @@ established on GameRecord:
   plus optional display names" without changing the already-tested ID
   format from Milestone A.
 
-Classification of postseason games is heuristic (keyword matching on a
-free-text descriptor from the source), because CFBD's raw schema does not
-expose a first-class "is this a CFP quarterfinal" boolean as far as could
-be verified this session (network egress blocked -- see
-docs/DATA_SOURCES.md). This is intentionally fail-loud: an unrecognized
-postseason descriptor raises rather than guesses, so an ingestion run
-surfaces it for manual review instead of silently misclassifying a game.
+Postseason classification now has two mechanisms, tried in order:
+
+1. **Structured (preferred):** CFBD's Game model exposes a nested
+   `playoff` object (`GamePlayoff`: `competition`, `round`, `round_name`,
+   `bowl_name`, etc.) for CFP-bracket games. This was verified against
+   CFBD's own officially-generated `cfbd-python` client library
+   documentation on GitHub (github.com was reachable this session even
+   though CFBD's own domains were blocked -- see docs/MILESTONE_B.md for
+   the exact fetch and the field list it returned). When `raw["playoff"]`
+   is present and non-null, `derive_week_metadata` uses its `round` field
+   directly (`_CFBD_ROUND_TO_CFP_ROUND`) instead of guessing from text.
+2. **Heuristic (fallback):** conference championships and non-CFP bowls
+   have no `playoff` object in CFBD's schema (`PlayoffCompetition` only
+   defines `"cfp"` as a value) -- for those, and as a fallback if a CFP
+   game is ever missing its `playoff` object, this module keyword-matches
+   a free-text descriptor as before. This is intentionally fail-loud: an
+   unrecognized descriptor raises rather than guesses, so an ingestion
+   run surfaces it for manual review instead of silently misclassifying
+   a game.
 """
 
 from __future__ import annotations
@@ -60,15 +72,53 @@ _KNOWN_CONFERENCES_FOR_CHAMPIONSHIP = (
     "conference usa", "sun belt", "mac", "pac-12",
 )
 
+# CFBD's PlayoffRound enum value -> this project's CFPRound. Verified
+# against cfbd-python's PlayoffRound.md on GitHub (see module docstring);
+# note CFBD's own enum member name is "CHAMPIONSHIP" (value "championship"),
+# renamed here to NATIONAL_CHAMPIONSHIP for clarity within this project.
+_CFBD_ROUND_TO_CFP_ROUND: dict[str, CFPRound] = {
+    "first_round": CFPRound.FIRST_ROUND,
+    "quarterfinal": CFPRound.QUARTERFINAL,
+    "semifinal": CFPRound.SEMIFINAL,
+    "championship": CFPRound.NATIONAL_CHAMPIONSHIP,
+}
+
+
+def _week_metadata_from_structured_playoff(playoff: dict) -> WeekMetadata:
+    raw_round = playoff.get("round")
+    cfp_round = _CFBD_ROUND_TO_CFP_ROUND.get(raw_round) if isinstance(raw_round, str) else None
+    if cfp_round is None:
+        raise UnclassifiablePostseasonError(
+            f"playoff object present but round {raw_round!r} is not a recognized PlayoffRound value "
+            f"(expected one of {sorted(_CFBD_ROUND_TO_CFP_ROUND)})"
+        )
+    round_slug = cfp_round.value.replace("_", "-")
+    bowl_name = playoff.get("bowl_name")
+    label = f"cfp-{round_slug}" if not bowl_name else f"cfp-{round_slug}-{slugify_text(bowl_name)}"
+    validate_week_label(label)
+    return WeekMetadata(
+        week_label=label,
+        season_type=SeasonType.CFP,
+        week_number=None,
+        cfp_round=cfp_round,
+        bowl_display_name=None,
+    )
+
 
 def derive_week_metadata(
-    *, season_type_raw: str, week_raw: int | str | None, postseason_descriptor: str | None = None
+    *,
+    season_type_raw: str,
+    week_raw: int | str | None,
+    postseason_descriptor: str | None = None,
+    playoff: dict | None = None,
 ) -> WeekMetadata:
     """season_type_raw: source's own season-type string, e.g. 'regular' or
     'postseason' (CFBD's convention). week_raw: source's own week number
-    (regular season). postseason_descriptor: free-text game name/notes
-    field, REQUIRED for postseason games, used to classify CFP round vs
-    conference championship vs bowl.
+    (regular season). playoff: CFBD's structured GamePlayoff object
+    (raw["playoff"]), when present -- PREFERRED over postseason_descriptor
+    for CFP games, see module docstring. postseason_descriptor: free-text
+    game name/notes field, used as the fallback classifier when playoff is
+    absent (conference championships, non-CFP bowls).
     """
     normalized_season_type = season_type_raw.strip().lower()
 
@@ -93,6 +143,9 @@ def derive_week_metadata(
 
     if normalized_season_type != "postseason":
         raise ValueError(f"unrecognized season_type_raw {season_type_raw!r}; expected 'regular' or 'postseason'")
+
+    if playoff:
+        return _week_metadata_from_structured_playoff(playoff)
 
     if not postseason_descriptor or not postseason_descriptor.strip():
         raise UnclassifiablePostseasonError("postseason game has no descriptor to classify it from")

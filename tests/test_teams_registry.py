@@ -15,11 +15,30 @@ def test_registry_has_no_duplicate_team_ids():
     assert len(ids) == len(set(ids))
 
 
-def test_registry_is_non_trivially_sized():
-    # Not asserting an exact FBS count (subject to realignment/verification
-    # -- see registry.py's provenance warning), just that this is a real
-    # attempt at full coverage, not a token handful of teams.
-    assert len(REGISTRY) > 120
+def test_registry_matches_cfbd_reported_fbs_count():
+    # 138, verified via web search against multiple independent, dated
+    # sources during the Milestone B validation follow-up (Deseret News,
+    # CBS Sports, ESPN, Wikipedia) -- see registry.py's provenance
+    # warning for what "verified" does and doesn't mean here (not a live
+    # CFBD fetch). Was 134 before the four FCS-to-FBS transitional
+    # additions below were reconciled in.
+    assert len(REGISTRY) == 138
+
+
+@pytest.mark.parametrize(
+    ("team_id", "conference", "season_start"),
+    [
+        ("delaware", "Conference USA", 2025),
+        ("missouri-state", "Conference USA", 2025),
+        ("north-dakota-state", "Mountain West", 2026),
+        ("sacramento-state", "MAC", 2026),
+    ],
+)
+def test_fcs_to_fbs_transitional_additions_present(team_id, conference, season_start):
+    team = get_team(team_id)
+    assert team is not None
+    assert team.conference == conference
+    assert team.season_start == season_start
 
 
 @pytest.mark.parametrize(
