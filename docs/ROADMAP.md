@@ -15,18 +15,23 @@ registry, tests, CI, and this documentation set.
 
 ## Milestone B — Data ingestion
 
-Schedule/team/game ingestion against CFBD (primary) with ESPN as a
-cross-check fallback, producing validated `GameRecord`s with real
-`source_game_ids` and `DataProvenance`. Establishes the actual team-slug
-master table referenced but not built in Milestone A (`ids.py` assumes a
-normalized slug; Milestone B needs to guarantee that normalization is
-collision-free across the real FBS+FCS team set, not just assert it by
-construction).
+Schedule/team ingestion against CFBD (primary), with an ESPN client built
+and unit-tested as the cross-check fallback (not yet wired into the
+default CLI run). Establishes the team registry/alias-resolution
+mechanism referenced but not built in Milestone A. See
+`docs/MILESTONE_B.md` for the full design (week/postseason semantics,
+neutral-site handling, duplicate/reschedule reconciliation, storage,
+known limitations).
 
-**Critical path item:** stand up a real `Settings`-driven CFBD client and
-confirm actual free/paid tier limits directly (see
-`docs/DATA_SOURCES.md` "Unresolved data risks" #2) before assuming a call
-budget for the rest of the roadmap.
+**Status: done, with real limitations documented.** `scripts/ingest_schedule.py --season 2026`
+runs end-to-end today, but only in fixture mode -- this environment's
+network egress to CFBD/ESPN is blocked, so no live 2026 data has been
+fetched or is claimed anywhere in this repo. The CFBD client, team
+registry, and normalization/reconciliation logic are real and tested
+against deterministic fixtures; a live run (and a live cross-check of the
+team registry's conference assignments, particularly the rebuilt Pac-12)
+is the concrete unblocking step for whoever next has network access to
+`api.collegefootballdata.com`.
 
 ## Milestone C — Baseline game model
 
@@ -97,7 +102,10 @@ Kalshi connection to build correctly.
 ## Critical path to a live Week 0/Week 1 capture
 
 1. Milestone B: a working CFBD client producing real `GameRecord`s for the
-   target week (blocked only on confirming CFBD's actual rate limits).
+   target week. **Built and tested, blocked only on live network access**
+   -- `scripts/ingest_schedule.py` runs today against fixtures; pointing
+   it at a real `CFBD_API_KEY` from an environment with network access is
+   the remaining step, not new code.
 2. Milestone C: even a minimal opponent-adjusted rating system -- it does
    not need to be good yet, it needs to produce a `GameDistribution` per
    game so the rest of the pipeline has real input instead of synthetic
@@ -115,7 +123,13 @@ prospective capture online," not H.
 
 ## What should be built next (immediately after this PR)
 
-Milestone B, specifically the CFBD client and the real team-slug master
-table -- every later milestone depends on `GameRecord`s that are actually
-populated from live data rather than test fixtures, and Milestone B has no
-dependency on anything else in this roadmap.
+Milestone C, the baseline game model -- Milestone B's ingestion pipeline
+(CFBD client, team registry, week/postseason normalization, duplicate and
+reschedule reconciliation) is built and tested end-to-end against
+fixtures; what it's still missing is a live network path to actually run
+it for real, which is an infrastructure/access question, not a design
+question. Milestone C can proceed against the same fixture-derived
+`GameRecord`s in the meantime. See `docs/MILESTONE_B.md` "Known
+limitations" for the specific items (live schema/rate-limit verification,
+team-registry conference cross-check, ESPN cross-check wiring) worth
+resolving whenever network access is available.

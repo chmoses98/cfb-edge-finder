@@ -18,8 +18,11 @@ import importlib
 import pkgutil
 
 import cfb_edge_finder.betting
+import cfb_edge_finder.data
+import cfb_edge_finder.ingestion
 import cfb_edge_finder.projections
 import cfb_edge_finder.research
+import cfb_edge_finder.teams
 
 FORBIDDEN_SUBSTRINGS = (
     "stake",
@@ -36,7 +39,22 @@ FORBIDDEN_SUBSTRINGS = (
     "qualification_bar",
 )
 
+# Mission spec Milestone B section 13: no projection/rating/pricing logic
+# belongs in ingestion/teams/data yet either -- that's Milestone C+.
+_FORBIDDEN_PROJECTION_SUBSTRINGS = (
+    "epa",
+    "sp_plus",
+    "elo",
+    "power_rating",
+    "opponent_adjusted",
+    "win_probability",
+    "spread_probability",
+    "score_distribution",
+    "net_edge",
+)
+
 _SCANNED_PACKAGES = (cfb_edge_finder.betting, cfb_edge_finder.projections, cfb_edge_finder.research)
+_MILESTONE_B_PACKAGES = (cfb_edge_finder.ingestion, cfb_edge_finder.teams, cfb_edge_finder.data)
 
 
 def _iter_public_names(package):
@@ -68,3 +86,17 @@ def test_no_staking_or_recommendation_execution_surface_in_scanned_packages():
                     if forbidden in lowered:
                         violations.append(f"{module_name}.{name} (matched {forbidden!r})")
     assert violations == [], f"found staking/recommendation-execution surface: {violations}"
+
+
+def test_no_projection_or_rating_logic_in_milestone_b_packages():
+    # Milestone B (data/teams/ingestion) is schedule/team identity only --
+    # this proves no EPA/SP+/ratings/probability-pricing logic leaked in.
+    violations = []
+    for package in _MILESTONE_B_PACKAGES:
+        for module_name, names in _iter_public_names(package):
+            for name in names:
+                lowered = name.lower()
+                for forbidden in _FORBIDDEN_PROJECTION_SUBSTRINGS:
+                    if forbidden in lowered:
+                        violations.append(f"{module_name}.{name} (matched {forbidden!r})")
+    assert violations == [], f"found projection/rating surface in a Milestone B package: {violations}"

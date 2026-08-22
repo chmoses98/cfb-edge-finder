@@ -13,3 +13,11 @@ build/
 # Only compact, curated files should ever be added under data/ with -f.
 data/raw/
 data/archive/
+
+# scripts/ingest_schedule.py writes here at runtime. Not committed by
+# default: a fixture-mode run's output is synthetic test data, not a real
+# schedule, and committing it would misleadingly look like one. A genuine
+# live-fetched artifact worth keeping should be added explicitly with -f
+# once CFBD_API_KEY is configured and a real run has been verified.
+data/schedules/
+data/ingestion_reports/

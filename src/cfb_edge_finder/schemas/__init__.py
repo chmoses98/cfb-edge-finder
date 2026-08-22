@@ -1,5 +1,6 @@
 from cfb_edge_finder.schemas.common import (
     TERMINAL_COVERAGE_OUTCOMES,
+    CFPRound,
     CoverageOutcome,
     MarketFamily,
     RecommendationReadiness,
@@ -9,6 +10,7 @@ from cfb_edge_finder.schemas.common import (
 from cfb_edge_finder.schemas.coverage import CoverageLedgerEntry, StatusTransition
 from cfb_edge_finder.schemas.game import GameRecord
 from cfb_edge_finder.schemas.market import MarketRecord
+from cfb_edge_finder.schemas.observation import ConflictRecord, FieldConflict, RawGameObservation
 from cfb_edge_finder.schemas.projection import (
     GameDistribution,
     ProjectionRecord,
@@ -19,6 +21,7 @@ from cfb_edge_finder.schemas.snapshot import ProspectiveSnapshot
 
 __all__ = [
     "MarketFamily",
+    "CFPRound",
     "CoverageOutcome",
     "RecommendationReadiness",
     "SeasonType",
@@ -28,6 +31,9 @@ __all__ = [
     "StatusTransition",
     "GameRecord",
     "MarketRecord",
+    "RawGameObservation",
+    "FieldConflict",
+    "ConflictRecord",
     "GameDistribution",
     "ProjectionRecord",
     "UncertaintyProfile",
