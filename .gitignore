@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+.env
+dist/
+build/
+
+# Large/raw data artifacts do not belong in git (see docs/STORAGE_STRATEGY.md).
+# Only compact, curated files should ever be added under data/ with -f.
+data/raw/
+data/archive/
