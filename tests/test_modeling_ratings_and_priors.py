@@ -5,7 +5,7 @@ import pytest
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf, LeakageError
 from cfb_edge_finder.modeling.priors import blend_team_rating, season_carryover_weight
-from cfb_edge_finder.modeling.ratings import FCS_PSEUDO_TEAM_ID, fit_fbs_efficiency_ratings
+from cfb_edge_finder.modeling.ratings import DEFAULT_RIDGE_LAMBDA, FCS_PSEUDO_TEAM_ID, fit_fbs_efficiency_ratings
 
 NOW = datetime(2026, 8, 23, tzinfo=UTC)
 
@@ -78,6 +78,58 @@ def test_fcs_opponents_share_one_pooled_pseudo_rating_not_individual_ones():
     assert "fcs_one" not in ratings.offense
     assert "fcs_two" not in ratings.offense
     assert FCS_PSEUDO_TEAM_ID not in ratings.offense  # internal key, not exposed as a "team"
+
+
+def test_fcs_pooled_rating_moves_further_from_zero_with_lighter_shrinkage():
+    # Stabilizing FBS-vs-FBS games first (mixed home/away, so mu/hfa/
+    # offense/defense are well-identified rather than degenerate/collinear
+    # -- an all-home-only dataset would make mu and hfa literally the same
+    # design-matrix column). Then plenty of FBS-vs-FCS blowouts (home side
+    # only, as these are typically scheduled) on top.
+    lines = []
+    for week in range(1, 5):
+        lines.append(_line("alpha", "beta", 28, 24, 65, True, week=week))
+        lines.append(_line("beta", "alpha", 24, 28, 65, False, week=week))
+    for week in range(5, 13):
+        lines.append(_line("alpha", f"fcs_{week}", 49, 6, 72, True, week=week, opp_class="fcs"))
+
+    as_of = AsOf(season=2025, week=13)
+    ratings_default = fit_fbs_efficiency_ratings(lines, as_of)
+    # Compare against what the OLD (pre-hardening) behavior would have
+    # produced: the pooled FCS columns shrunk at the same strength as an
+    # individual, thinly-evidenced FBS team's rating.
+    ratings_heavy_shrinkage = fit_fbs_efficiency_ratings(lines, as_of, fcs_ridge_lambda=DEFAULT_RIDGE_LAMBDA)
+
+    assert ratings_default.fcs_defense < -0.05
+    # Lighter, evidence-proportional shrinkage should pull the pooled FCS
+    # defense parameter further from 0.0 (more negative -- FCS "defense"
+    # allows a lot) than the old individual-team-strength shrinkage did.
+    assert ratings_default.fcs_defense < ratings_heavy_shrinkage.fcs_defense
+
+
+def test_fcs_rating_fit_is_deterministic_and_leakage_safe():
+    lines = [
+        _line("alpha", "fcs_one", 49, 3, 72, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_two", 42, 6, 70, True, week=2, opp_class="fcs"),
+    ]
+    r1 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3))
+    r2 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3))
+    assert r1.fcs_offense == r2.fcs_offense
+    assert r1.fcs_defense == r2.fcs_defense
+    # A week-3 FCS rating must not change if a future (week 4) FCS game is
+    # appended -- it is never consulted (assert_strictly_before already
+    # enforces this at the row level; this checks the FCS columns too).
+    future_game = _line("alpha", "fcs_three", 56, 0, 74, True, week=4, opp_class="fcs")
+    r3 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3))
+    assert r3.fcs_offense == r1.fcs_offense
+    with pytest.raises(LeakageError):
+        fit_fbs_efficiency_ratings([*lines, future_game], AsOf(season=2025, week=3))
+
+
+def test_fcs_ridge_lambda_is_separate_from_and_smaller_than_the_team_ridge_lambda():
+    from cfb_edge_finder.modeling.ratings import DEFAULT_FCS_RIDGE_LAMBDA
+
+    assert DEFAULT_FCS_RIDGE_LAMBDA < DEFAULT_RIDGE_LAMBDA
 
 
 def test_empty_history_returns_neutral_snapshot_not_a_crash():

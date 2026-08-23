@@ -29,7 +29,7 @@ from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: 
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines  # noqa: E402
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
 from cfb_edge_finder.modeling.ratings import fit_fbs_efficiency_ratings  # noqa: E402
-from cfb_edge_finder.modeling.score_model import build_residual_pool, project_game  # noqa: E402
+from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool, project_game  # noqa: E402
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -94,7 +94,7 @@ def main() -> int:
         return 3
 
     ratings = fit_fbs_efficiency_ratings(history, as_of)
-    residual_pool = build_residual_pool(history, ratings)
+    residual_pool = build_expanding_residual_pool(history, as_of)
 
     projection = project_game(
         home_id=args.home,

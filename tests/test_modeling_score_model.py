@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from cfb_edge_finder.modeling.corpus import TeamGameLine
-from cfb_edge_finder.modeling.leakage import AsOf
+from cfb_edge_finder.modeling.leakage import AsOf, LeakageError
 from cfb_edge_finder.modeling.qb_continuity import QBContinuityState, classify_continuity, uncertainty_multiplier
 from cfb_edge_finder.modeling.ratings import fit_fbs_efficiency_ratings
-from cfb_edge_finder.modeling.score_model import build_residual_pool, project_game
+from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool, project_game
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion
 
 NOW = datetime(2026, 8, 23, tzinfo=UTC)
@@ -54,7 +54,7 @@ def fitted_ratings_and_pool():
     lines = _synthetic_history()
     as_of = AsOf(season=2025, week=7)
     ratings = fit_fbs_efficiency_ratings(lines, as_of)
-    pool = build_residual_pool(lines, ratings)
+    pool = build_expanding_residual_pool(lines, as_of, min_pool_size=1)
     return ratings, pool
 
 
@@ -195,6 +195,63 @@ def test_fbs_vs_fcs_projection_uses_pseudo_rating_not_individual_fcs_rating(fitt
     )
     assert proj.expected_home_points > 0
     assert 0.0 <= proj.prob_home_win() <= 1.0
+
+
+def test_fbs_vs_fcs_game_gets_inflated_uncertainty_vs_fbs_vs_fbs(fitted_ratings_and_pool):
+    ratings, pool = fitted_ratings_and_pool
+    kwargs = dict(
+        home_id="t0", is_neutral_site=False, ratings=ratings, prior_season_ratings=None,
+        residual_pool=pool, home_percent_passing_ppa=None, away_percent_passing_ppa=None,
+        n_simulations=20000, seed=42,
+    )
+    proj_fbs = project_game(away_id="t1", home_classification="fbs", away_classification="fbs", **kwargs)
+    proj_fcs = project_game(
+        away_id="some_fcs_team", home_classification="fbs", away_classification="fcs", **kwargs
+    )
+    assert np.std(proj_fcs.home_scores) > np.std(proj_fbs.home_scores)
+
+
+# --- expanding walk-forward residual pool (Milestone C hardening) ---
+
+
+def test_expanding_residual_pool_is_out_of_sample_not_in_sample():
+    from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool
+
+    lines = _synthetic_history(n_teams=16, n_weeks=6)
+    as_of = AsOf(season=2025, week=7)
+    pool = build_expanding_residual_pool(lines, as_of, min_pool_size=1)
+    # One residual pair per FBS-vs-FBS game across weeks 1-6 for 16 teams
+    # (8 games/week * 6 weeks = 48) minus week 1 (no prior-week ratings
+    # exist yet to score it out-of-sample against) -- week 1 is skipped
+    # by min_week_for_first_step default of 1, since there's no history
+    # strictly before week 1 to fit ratings from.
+    assert len(pool) == 8 * 5
+
+
+def test_expanding_residual_pool_is_deterministic():
+    from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool
+
+    lines = _synthetic_history(n_teams=16, n_weeks=6)
+    as_of = AsOf(season=2025, week=7)
+    pool_a = build_expanding_residual_pool(lines, as_of, min_pool_size=1)
+    pool_b = build_expanding_residual_pool(lines, as_of, min_pool_size=1)
+    assert np.array_equal(pool_a, pool_b)
+
+
+def test_expanding_residual_pool_rejects_future_rows():
+    from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool
+
+    lines = _synthetic_history(n_teams=16, n_weeks=6)
+    with pytest.raises(LeakageError):
+        build_expanding_residual_pool(lines, AsOf(season=2025, week=4))
+
+
+def test_expanding_residual_pool_falls_back_when_too_thin():
+    from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool
+
+    lines = _synthetic_history(n_teams=4, n_weeks=1)
+    pool = build_expanding_residual_pool(lines, AsOf(season=2025, week=3), min_pool_size=1000)
+    assert len(pool) == 5000  # the documented wide fallback pool size
 
 
 # --- provenance ---

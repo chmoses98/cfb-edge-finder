@@ -67,8 +67,10 @@ def _print_segment(label: str, subset: list) -> None:
     if not subset:
         return
     print(f"\n=== Segment: {label} ===")
-    metrics = compute_metrics(subset, prob_attr="model_prob_home_win")
-    print(_metrics_summary(f"Milestone C model -- {label}", metrics))
+    raw_metrics = compute_metrics(subset, prob_attr="model_prob_home_win")
+    cal_metrics = compute_metrics(subset, prob_attr="calibrated_prob_home_win")
+    print(_metrics_summary(f"Milestone C model (raw) -- {label}", raw_metrics))
+    print(_metrics_summary(f"Milestone C model (calibrated) -- {label}", cal_metrics))
 
 
 def _metrics_summary(label: str, metrics: BacktestMetrics) -> str:
@@ -97,6 +99,13 @@ def main() -> int:
     parser.add_argument("--min-week-for-first-prediction", type=int, default=2)
     parser.add_argument("--n-simulations", type=int, default=4000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--calibration-method",
+        choices=["platt", "isotonic", "none"],
+        default="platt",
+        help="Leakage-safe win-probability recalibration method (modeling/calibration.py). "
+        "'none' disables recalibration entirely (calibrated == raw).",
+    )
     args = parser.parse_args()
 
     settings = Settings.from_env()
@@ -128,14 +137,19 @@ def main() -> int:
         min_week_for_first_prediction=args.min_week_for_first_prediction,
         n_simulations=args.n_simulations,
         seed=args.seed,
+        calibration_method=args.calibration_method,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)
         return 3
 
     print(f"\n=== Overall ({len(outcomes)} predicted games) ===")
-    print(_metrics_summary("Naive benchmark", compute_metrics(outcomes, prob_attr="naive_prob_home_win")))
-    print(_metrics_summary("Milestone C model", compute_metrics(outcomes, prob_attr="model_prob_home_win")))
+    naive_metrics = compute_metrics(outcomes, prob_attr="naive_prob_home_win")
+    raw_metrics = compute_metrics(outcomes, prob_attr="model_prob_home_win")
+    cal_metrics = compute_metrics(outcomes, prob_attr="calibrated_prob_home_win")
+    print(_metrics_summary("Naive benchmark", naive_metrics))
+    print(_metrics_summary("Milestone C model (raw, uncalibrated)", raw_metrics))
+    print(_metrics_summary(f"Milestone C model (calibrated, method={args.calibration_method})", cal_metrics))
 
     fbs_vs_fbs = segment(outcomes, lambda o: o.is_fbs_vs_fbs)
     fbs_vs_fcs = segment(outcomes, lambda o: not o.is_fbs_vs_fbs)

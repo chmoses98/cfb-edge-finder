@@ -40,6 +40,27 @@ projectable (see score_model.py) -- just with a coarser, documented,
 higher-uncertainty opponent model, and evaluated as a SEPARATE backtest
 segment (see backtest.py), never pooled into FBS-vs-FBS calibration
 numbers.
+
+*** MILESTONE C HARDENING: THE POOLED FCS PARAMETER WAS OVER-SHRUNK ***
+The first live backtest found a large (~+14.8 point) FBS-vs-FCS margin
+bias: the model was systematically under-predicting how badly FBS teams
+beat FCS teams. Root cause, confirmed by inspection rather than assumed:
+`fcs_offense`/`fcs_defense` were ridge-penalized with the SAME
+`DEFAULT_RIDGE_LAMBDA` used for an individual FBS team that might have as
+few as 1-2 games of evidence. But the pooled FCS parameter is fit from
+EVERY FBS-vs-FCS game leaguewide in a season (typically several dozen to
+~100+ rows, far more evidence than any single team gets) -- applying
+individual-team-strength shrinkage to a parameter with that much pooled
+evidence needlessly pulls it toward 0.0 (league-average FBS strength),
+which is a genuinely wrong prior for "the typical FCS team that gets
+scheduled by an FBS opponent." `DEFAULT_FCS_RIDGE_LAMBDA` is a separate,
+smaller constant so the pooled FCS parameter is regularized in proportion
+to its OWN (much larger) evidence volume instead of borrowing an
+individual team's shrinkage strength. This is a standard shrinkage-vs-n
+correction, not a hindsight-fit "FCS tier": it uses exactly the same
+strictly-prior training rows as before, just penalizes them correctly.
+See docs/MILESTONE_C.md "FBS-vs-FCS margin bias" for the before/after
+backtest numbers.
 """
 
 from __future__ import annotations
@@ -65,6 +86,15 @@ DEFAULT_PACE_SHRINKAGE_K = 4.0
 """Games of evidence at which a team's trailing pace is weighted 50/50
 against the league-average pace -- same shrinkage FORM as the early-season
 rating prior in priors.py, applied here to pace specifically."""
+
+DEFAULT_FCS_RIDGE_LAMBDA = 4.0
+"""Separate, much smaller ridge penalty for the POOLED fcs_offense/
+fcs_defense parameters -- see module docstring's "MILESTONE C HARDENING"
+note. Chosen to sit near DEFAULT_PACE_SHRINKAGE_K's order of magnitude
+(a "trust the pooled evidence fairly quickly" strength) rather than
+DEFAULT_RIDGE_LAMBDA's "distrust a single team's thin evidence" strength
+-- still a documented, provisional constant (not cross-validated), but
+now scaled to the right kind of parameter."""
 
 
 @dataclass(frozen=True)
@@ -126,6 +156,7 @@ def fit_fbs_efficiency_ratings(
     as_of: AsOf,
     *,
     ridge_lambda: float = DEFAULT_RIDGE_LAMBDA,
+    fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
 ) -> RatingsSnapshot:
     """Fits offense/defense/HFA ratings and trailing pace from every
@@ -202,6 +233,12 @@ def fit_fbs_efficiency_ratings(
     NUMERICAL_STABILITY_EPSILON = 1e-6
     penalty = np.full(n_params, NUMERICAL_STABILITY_EPSILON)
     penalty[off_offset:] = ridge_lambda
+    # The pooled FCS columns get their own, much smaller penalty -- see
+    # DEFAULT_FCS_RIDGE_LAMBDA's docstring: they are fit from far more
+    # pooled evidence than an individual FBS team's columns, so shrinking
+    # them at the individual-team strength is a bug, not a feature.
+    penalty[fcs_off_col] = fcs_ridge_lambda
+    penalty[fcs_def_col] = fcs_ridge_lambda
     ridge_matrix = np.diag(penalty)
 
     XtX = X.T @ X

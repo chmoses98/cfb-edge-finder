@@ -113,3 +113,84 @@ def test_backtest_naive_and_model_use_the_same_held_out_games():
     naive_metrics = compute_metrics(outcomes, prob_attr="naive_prob_home_win")
     model_metrics = compute_metrics(outcomes, prob_attr="model_prob_home_win")
     assert naive_metrics.n_games == model_metrics.n_games
+
+
+# --- Milestone C hardening: expanding residual pool + calibration ---
+
+
+def test_calibrated_prob_home_win_is_present_and_valid():
+    lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
+    outcomes = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=0)
+    for o in outcomes:
+        assert 0.0 <= o.calibrated_prob_home_win <= 1.0
+
+
+def test_calibration_method_none_makes_calibrated_identical_to_raw():
+    lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
+    outcomes = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, calibration_method="none"
+    )
+    for o in outcomes:
+        assert o.calibrated_prob_home_win == pytest.approx(o.model_prob_home_win)
+
+
+def test_changing_a_weeks_own_outcome_does_not_leak_into_that_weeks_own_predictions():
+    """The expanding residual pool and the calibration model must both be
+    built ONLY from games strictly before the week being predicted.
+    Mutating a week-3 game's own final score must not change that same
+    week's OWN predictions (raw or calibrated) -- but it must propagate
+    forward into later weeks (which fit ratings/residual pool/calibration
+    from a history that now includes the mutated week 3), proving the
+    accumulator is doing real, forward-only work rather than being an
+    inert no-op.
+    """
+    lines_a = _synthetic_corpus(n_teams=8, n_weeks=6, seasons=(2025,), seed=5)
+    target_gid = next(ln.source_game_id for ln in lines_a if ln.week == 3)
+
+    lines_b = []
+    for ln in lines_a:
+        if ln.source_game_id == target_gid and ln.week == 3:
+            if ln.is_home:
+                lines_b.append(ln.model_copy(update={"team_points": ln.team_points + 30, "opponent_points": 0}))
+            else:
+                lines_b.append(ln.model_copy(update={"team_points": 0, "opponent_points": ln.opponent_points + 30}))
+        else:
+            lines_b.append(ln)
+
+    outcomes_a = run_walk_forward_backtest(lines_a, min_week_for_first_prediction=2, n_simulations=800, seed=0)
+    outcomes_b = run_walk_forward_backtest(lines_b, min_week_for_first_prediction=2, n_simulations=800, seed=0)
+
+    week3_a = {o.source_game_id: o for o in outcomes_a if o.week == 3}
+    week3_b = {o.source_game_id: o for o in outcomes_b if o.week == 3}
+    assert week3_a.keys() == week3_b.keys()
+    for gid in week3_a:
+        assert week3_a[gid].model_margin_mean == pytest.approx(week3_b[gid].model_margin_mean, abs=1e-9)
+        assert week3_a[gid].model_prob_home_win == pytest.approx(week3_b[gid].model_prob_home_win, abs=1e-9)
+        assert week3_a[gid].calibrated_prob_home_win == pytest.approx(
+            week3_b[gid].calibrated_prob_home_win, abs=1e-9
+        )
+
+    week5_a = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_a if o.week == 5)
+    week5_b = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_b if o.week == 5)
+    assert week5_a  # sanity: week 5 exists in both
+    assert any(abs(a[1] - b[1]) > 1e-6 for a, b in zip(week5_a, week5_b, strict=True))
+
+
+def test_backtest_reproducible_with_same_seed_including_calibration():
+    lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
+    outcomes_1 = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=7)
+    outcomes_2 = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=7)
+    for o1, o2 in zip(outcomes_1, outcomes_2, strict=True):
+        assert o1.model_prob_home_win == pytest.approx(o2.model_prob_home_win, abs=1e-12)
+        assert o1.calibrated_prob_home_win == pytest.approx(o2.calibrated_prob_home_win, abs=1e-12)
+
+
+def test_compute_metrics_calibrated_prob_attr_uses_model_margin_not_naive():
+    lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
+    outcomes = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=0)
+    calibrated_metrics = compute_metrics(outcomes, prob_attr="calibrated_prob_home_win")
+    model_metrics = compute_metrics(outcomes, prob_attr="model_prob_home_win")
+    # Margin/total metrics are identical between raw and calibrated views --
+    # calibration only touches the win-probability, never margin/total.
+    assert calibrated_metrics.margin_mae == pytest.approx(model_metrics.margin_mae)
+    assert calibrated_metrics.total_mae == pytest.approx(model_metrics.total_mae)

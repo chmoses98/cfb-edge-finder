@@ -15,6 +15,24 @@ Both the naive benchmark (naive_benchmark.py) and the full model
 on the EXACT SAME walk-forward schedule and the exact same held-out games,
 so `compare_benchmark_vs_model` is a genuine apples-to-apples comparison,
 not two differently-evaluated numbers.
+
+*** MILESTONE C HARDENING: EXPANDING RESIDUAL POOL + CALIBRATION ***
+This engine now maintains two additional pieces of state as it walks
+forward, both strictly built from games completed before the week being
+predicted:
+  1. An EXPANDING residual-pool accumulator (score_model.py's
+     `_residuals_for_pairs`/`_fallback_residual_pool`) -- each week's
+     FBS-vs-FBS games are scored against THAT week's out-of-sample ratings
+     (fit from only strictly-prior weeks) to produce genuine out-of-sample
+     residuals, which are then added to the pool used for FUTURE weeks'
+     simulations. This replaces the original V1's in-sample residual pool
+     (see score_model.py's module docstring) -- no week's own outcome
+     ever informs its own uncertainty band, and the residual SHAPE is now
+     a true predictive-error estimate, not a fitted-residual one.
+  2. A calibration model (calibration.py) refit at every step from the
+     ACCUMULATED (raw model probability, actual outcome) history so far,
+     applied only to the current week's raw probabilities -- see
+     `GameOutcome.calibrated_prob_home_win`.
 """
 
 from __future__ import annotations
@@ -24,11 +42,23 @@ from statistics import NormalDist
 
 import numpy as np
 
+from cfb_edge_finder.modeling.calibration import calibrate
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf
 from cfb_edge_finder.modeling.naive_benchmark import fit_naive_benchmark, naive_expected_scores
 from cfb_edge_finder.modeling.ratings import fit_fbs_efficiency_ratings
-from cfb_edge_finder.modeling.score_model import build_residual_pool, project_game
+from cfb_edge_finder.modeling.score_model import (
+    DEFAULT_MIN_RESIDUAL_POOL_SIZE,
+    _fallback_residual_pool,
+    _paired_fbs_games,
+    _residuals_for_pairs,
+    project_game,
+)
+
+DEFAULT_CALIBRATION_METHOD = "platt"
+"""See docs/MILESTONE_C.md "Calibration" for the genuine held-out
+comparison against "isotonic" and "none" that this default was chosen
+from."""
 
 NAIVE_MARGIN_SD = 17.0
 """A single, fixed, empirically-plausible CFB margin standard deviation
@@ -59,6 +89,7 @@ class GameOutcome:
     naive_margin: float
     naive_total: float
     model_prob_home_win: float
+    calibrated_prob_home_win: float
     model_margin_mean: float
     model_total_mean: float
     model_margin_p05: float
@@ -85,6 +116,8 @@ def run_walk_forward_backtest(
     min_week_for_first_prediction: int = 1,
     n_simulations: int = 4_000,
     seed: int = 0,
+    calibration_method: str = DEFAULT_CALIBRATION_METHOD,
+    min_residual_pool_size: int = DEFAULT_MIN_RESIDUAL_POOL_SIZE,
 ) -> list[GameOutcome]:
     """Walks every (season, week) that has completed games, strictly in
     chronological order, fitting fresh ratings/naive-benchmark snapshots
@@ -93,12 +126,21 @@ def run_walk_forward_backtest(
     (which has zero leakage-safe history and would otherwise only be
     predictable from the pure league-average prior) -- see
     docs/MILESTONE_C.md "Backtest methodology."
+
+    Also maintains, strictly incrementally as it walks forward: an
+    expanding out-of-sample residual pool (see module docstring's
+    "MILESTONE C HARDENING" note) and a calibration model refit each step
+    from the (raw probability, outcome) history accumulated so far
+    (calibration.py) -- `calibration_method` of "none" disables the
+    latter (calibrated_prob_home_win becomes an identity copy of the raw
+    probability).
     """
     by_game = _group_lines_by_game(lines)
     as_of_points = sorted({(g.season, g.week) for g in lines})
 
     outcomes: list[GameOutcome] = []
     rng_counter = 0
+    residual_accumulator: list[tuple[float, float]] = []
 
     for season, week in as_of_points:
         if week < min_week_for_first_prediction:
@@ -110,11 +152,26 @@ def run_walk_forward_backtest(
 
         ratings = fit_fbs_efficiency_ratings(history, as_of)
         naive = fit_naive_benchmark(history, as_of)
-        residual_pool = build_residual_pool(history, ratings)
+        residual_pool = (
+            np.array(residual_accumulator)
+            if len(residual_accumulator) >= min_residual_pool_size
+            else _fallback_residual_pool()
+        )
+
+        # Calibration model for THIS week uses only outcomes already
+        # accumulated from strictly-prior weeks -- `outcomes` at this
+        # point in the loop contains exactly that (see module docstring).
+        history_raw = np.array([o.model_prob_home_win for o in outcomes])
+        history_y = np.array(
+            [1.0 if o.actual_home_points > o.actual_away_points else 0.0 for o in outcomes]
+        )
 
         games_this_week = {
             gid: pair for gid, pair in by_game.items() if pair.get("home", pair.get("away")).as_of == as_of
         }
+
+        week_raw_probs: list[float] = []
+        week_pending: list[dict] = []
 
         for game_id, pair in games_this_week.items():
             home = pair.get("home")
@@ -148,30 +205,49 @@ def run_walk_forward_backtest(
 
             margins = projection.home_scores - projection.away_scores
             totals = projection.home_scores + projection.away_scores
+            raw_prob = projection.prob_home_win()
+            week_raw_probs.append(raw_prob)
 
-            outcomes.append(
-                GameOutcome(
-                    source_game_id=game_id,
-                    season=season,
-                    week=week,
-                    home_id=home.team_id,
-                    away_id=home.opponent_id,
-                    is_neutral_site=home.is_neutral_site,
-                    is_fbs_vs_fbs=(home.team_classification == "fbs" and home.opponent_classification == "fbs"),
-                    actual_home_points=home.team_points,
-                    actual_away_points=home.opponent_points,
-                    naive_prob_home_win=naive_prob_home_win,
-                    naive_margin=naive_margin,
-                    naive_total=naive_home_pts + naive_away_pts,
-                    model_prob_home_win=projection.prob_home_win(),
-                    model_margin_mean=float(np.mean(margins)),
-                    model_total_mean=float(np.mean(totals)),
-                    model_margin_p05=float(np.percentile(margins, 5)),
-                    model_margin_p95=float(np.percentile(margins, 95)),
-                    model_total_p05=float(np.percentile(totals, 5)),
-                    model_total_p95=float(np.percentile(totals, 95)),
-                )
+            week_pending.append(
+                {
+                    "source_game_id": game_id,
+                    "season": season,
+                    "week": week,
+                    "home_id": home.team_id,
+                    "away_id": home.opponent_id,
+                    "is_neutral_site": home.is_neutral_site,
+                    "is_fbs_vs_fbs": (home.team_classification == "fbs" and home.opponent_classification == "fbs"),
+                    "actual_home_points": home.team_points,
+                    "actual_away_points": home.opponent_points,
+                    "naive_prob_home_win": naive_prob_home_win,
+                    "naive_margin": naive_margin,
+                    "naive_total": naive_home_pts + naive_away_pts,
+                    "model_prob_home_win": raw_prob,
+                    "model_margin_mean": float(np.mean(margins)),
+                    "model_total_mean": float(np.mean(totals)),
+                    "model_margin_p05": float(np.percentile(margins, 5)),
+                    "model_margin_p95": float(np.percentile(margins, 95)),
+                    "model_total_p05": float(np.percentile(totals, 5)),
+                    "model_total_p95": float(np.percentile(totals, 95)),
+                }
             )
+
+        if week_pending:
+            calibrated = calibrate(
+                method=calibration_method,
+                history_raw_probs=history_raw,
+                history_outcomes=history_y,
+                target_raw_probs=np.array(week_raw_probs),
+            )
+            for kwargs, cal_p in zip(week_pending, calibrated, strict=True):
+                outcomes.append(GameOutcome(calibrated_prob_home_win=float(cal_p), **kwargs))
+
+            # Advance the expanding residual accumulator with THIS week's
+            # genuine out-of-sample residuals (scored against `ratings`,
+            # which is out-of-sample for these games), for use starting
+            # next week -- never for this week's own projections above.
+            week_lines = [ln for pair in games_this_week.values() for ln in pair.values()]
+            residual_accumulator.extend(_residuals_for_pairs(_paired_fbs_games(week_lines), ratings))
 
     return outcomes
 
@@ -226,7 +302,11 @@ def compute_metrics(outcomes: list[GameOutcome], *, prob_attr: str = "model_prob
     actual_margin = np.array([o.actual_home_points - o.actual_away_points for o in outcomes])
     actual_total = np.array([o.actual_home_points + o.actual_away_points for o in outcomes])
 
-    if prob_attr == "model_prob_home_win":
+    if prob_attr in ("model_prob_home_win", "calibrated_prob_home_win"):
+        # Calibration (calibration.py) only recalibrates the WIN
+        # probability -- it has no margin/total counterpart, so the
+        # calibrated view reuses the model's own margin/total prediction
+        # unchanged, exactly like the raw view.
         pred_margin = np.array([o.model_margin_mean for o in outcomes])
         pred_total = np.array([o.model_total_mean for o in outcomes])
         margin_lo = np.array([o.model_margin_p05 for o in outcomes])
