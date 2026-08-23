@@ -1,13 +1,16 @@
 """CollegeFootballData.com (CFBD) REST API v2 client -- primary schedule/team source.
 
-STATUS: this client's request-building/response-shape assumptions were
-NOT independently live-verified this session -- this environment's network
-egress to api.collegefootballdata.com and collegefootballdata.com is
-blocked (see docs/DATA_SOURCES.md, docs/MILESTONE_B.md). They are built
-from CFBD's well-documented, community-standard REST v2 schema (the same
-one cfbfastR/cfbd Python clients target), not fabricated. `tests/` cover
-this module with recorded/fixture responses only -- there is no live
-integration test, and none of this module's docstrings claim one.
+STATUS: `fetch_games`/`fetch_teams` were live-verified twice against real,
+authenticated CFBD responses via a GitHub Actions runner in Milestone B
+(this dev environment's own network egress to api.collegefootballdata.com
+stays blocked -- see docs/MILESTONE_B.md's "Live validation" section for
+the diagnostic output). The three methods added in Milestone C
+(`fetch_advanced_team_game_stats`, `fetch_returning_production`,
+`fetch_lines`) are built from genuine primary-source documentation
+(github.com/CFBD/cfbd-python, reachable from this environment even though
+CFBD's own domains are not -- see docs/MILESTONE_C.md's data audit) but
+have NOT yet been live-verified the same way; that is called out
+explicitly wherever this repo reports results derived from them.
 
 Auth: Bearer token via CFBD_API_KEY (see cfb_edge_finder.config.Settings).
 Free tier reported ~1,000 calls/month (see docs/DATA_SOURCES.md).
@@ -71,3 +74,47 @@ class CFBDClient:
         conference, classification, and similar metadata fields.
         """
         return self._get("/teams/fbs", {"year": season})
+
+    def fetch_advanced_team_game_stats(
+        self, season: int, week: int | None = None, team: str | None = None, exclude_garbage_time: bool = False
+    ) -> list[dict]:
+        """Raw CFBD GET /stats/game/advanced response -- per-team-per-game
+        advanced metrics, confirmed via genuine primary-source docs
+        (github.com/CFBD/cfbd-python, since CFBD's own domains are blocked
+        from this environment -- see docs/MILESTONE_C.md's data audit).
+        Shape: game_id, season, week, team, opponent, and nested
+        offense/defense objects each carrying ppa, success_rate,
+        explosiveness, plays, drives, and situational-down splits. This is
+        Milestone C's only source for `plays` (the pace signal) -- the
+        plain (non-advanced) /games/teams endpoint does not expose it.
+        """
+        return self._get(
+            "/stats/game/advanced",
+            {"year": season, "week": week, "team": team, "excludeGarbageTime": exclude_garbage_time},
+        )
+
+    def fetch_returning_production(self, season: int, team: str | None = None) -> list[dict]:
+        """Raw CFBD GET /player/returning response -- team-level returning-
+        production metrics, published before the season starts (a genuine
+        preseason-available signal, not leakage). Shape: season, team,
+        conference, total_ppa/percent_ppa and passing/receiving/rushing
+        splits, usage/passing_usage/etc. No field directly identifies
+        "is the starting QB returning" -- percent_passing_ppa and
+        passing_usage are used as a documented PROXY for passing-game
+        (and by extension, likely QB) continuity, not a direct QB-identity
+        signal. See docs/MILESTONE_C.md "QB continuity."
+        """
+        return self._get("/player/returning", {"year": season, "team": team})
+
+    def fetch_lines(self, season: int, week: int | None = None, season_type: str | None = None) -> list[dict]:
+        """Raw CFBD GET /lines response -- historical closing betting lines
+        by provider. EVALUATION-ONLY in this codebase: used to compare the
+        model's own independently-derived probabilities against a real
+        historical market baseline, never as a model input feature (using
+        a closing line to predict its own game's outcome would not be an
+        independent forecast). Shape: id, season, week, season_type,
+        home/away team+score, and a nested `lines` list of
+        {provider, spread, spread_open, over_under, over_under_open,
+        home_moneyline, away_moneyline}.
+        """
+        return self._get("/lines", {"year": season, "week": week, "seasonType": season_type})
