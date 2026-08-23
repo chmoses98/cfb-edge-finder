@@ -50,6 +50,96 @@ own domains stayed blocked). What changed, and how each was verified:
    membership) rather than raising -- see "FBS-vs-FCS inclusion policy"
    below.
 
+## Live validation (2026-08-23)
+
+The gap flagged throughout the section above -- no genuine, authenticated
+CFBD payload had actually been fetched -- is now closed. This Claude
+execution environment's own network egress to CFBD is blocked
+(`EGRESS_BLOCKED`), so live validation ran on a GitHub-hosted Actions
+runner instead, via a new manual-only workflow:
+`.github/workflows/validate-cfbd-live.yml` (`workflow_dispatch` only, no
+schedule/cron, `permissions: contents: read`, no commit/push steps), which
+runs `scripts/validate_cfbd_live.py` against the `CFBD_API_KEY` repository
+secret. That script calls this repo's actual production code
+(`cfbd_client`, `game_normalization`, `team_matching`, `teams.registry`) --
+not a separate throwaway parser -- and prints only safe aggregate
+diagnostics; it never printed the API key or an Authorization header.
+Workflow run: https://github.com/chmoses98/cfb-edge-finder/actions/runs/32610126557
+(captured 2026-08-23T01:20:52Z UTC).
+
+Note on how this workflow got triggerable at all: GitHub's `workflow_dispatch`
+REST API only dispatches workflows indexed from the *default branch's*
+workflow catalog -- a workflow file that exists only on a feature branch
+can't be dispatched by filename. So the workflow *definition* (this single
+file, read-only permissions, manual-trigger-only, no application code) was
+pushed directly to `main` in commit `08d7662`; the `ref` parameter on the
+dispatch call then pointed at this feature branch, so the actual validation
+script and Milestone B code that ran came entirely from here, not from
+`main`. PR #2 itself was not touched or merged by this.
+
+**Team universe.** `/teams/fbs?year=2026` returned exactly 138 teams,
+confirming the 134->138 reconciliation above via an independent,
+authoritative source. Three alias gaps surfaced and were closed in
+`ALIASES`: CFBD reports `"App State"` (not "Appalachian State"),
+`"Florida International"` (not "FIU"), and `"San José State"` (accented,
+not "San Jose State") on live game records. 31 conference-string
+differences were found between the registry and the live response; 26 were
+naming-only (this registry had used the shorthand `"MAC"` and `"American"`
+where CFBD reports the full `"Mid-American"` and `"American Athletic"`
+strings) and 5 were genuine realignment the registry hadn't caught:
+Louisiana Tech (Conference USA -> Sun Belt), UMass (FBS Independents ->
+Mid-American, no longer independent), Northern Illinois (MAC -> Mountain
+West), Texas State (Sun Belt -> Pac-12), and UTEP (Conference USA ->
+Mountain West). All 31 were corrected in `teams/registry.py`; see that
+module's docstring for full detail. The four known transitional teams
+(Delaware, Missouri State, North Dakota State, Sacramento State) were
+confirmed present with the expected conferences.
+
+**Schema.** The genuine `/games?year=2026` payload's field names matched
+this project's primary defensive-lookup keys exactly: `homeClassification`,
+`awayClassification`, `startTimeTBD`, `neutralSite`, `startDate`, `season`,
+`seasonType`, `week`, `notes`, `playoff` are all present verbatim in
+camelCase. No parser fix was needed; the multi-key fallback support added
+during the earlier non-live validation pass (`homeDivision`,
+`startTimeTbd`, etc.) is retained as harmless dead-path coverage in case a
+different CFBD response variant is encountered later.
+
+**Schedule ingestion.** 3610 games fetched for the 2026 season; 2722 had no
+FBS side at all and were filtered out entirely; of the remaining 888
+FBS-involved games, 761 were FBS-vs-FBS and 127 were FBS-vs-FCS (or a
+non-FBS-classified opponent). 839 games were retained after normalization;
+49 were excluded for an unresolved team alias (all attributable to the
+three alias gaps above, now fixed -- so a re-run should retain all 888);
+0 validation failures; 0 duplicate canonical game IDs; 11 neutral-site
+games; 387 TBD-kickoff games; 232 unique canonical teams encountered. A
+genuine FBS-vs-FCS example was confirmed retained: UAlbany @ Buffalo,
+canonical `game_id=cfb-2026-wk01-ualbany-at-buffalo`.
+
+**Postseason.** 2026's `/games` response had zero games with a populated
+`playoff` object yet (expected -- the playoff bracket doesn't exist this
+early in the season). One additional authenticated historical request
+(`/games?year=2024`, postseason) was made to validate the genuine
+structure: a real CFP first-round game's `playoff` object had keys
+`competition`, `round`, `roundName`, `bowlName`, `bracketSlot`, `homeSeed`,
+`awaySeed`, `format` -- `derive_week_metadata(playoff=...)` correctly
+mapped it to `week_label="cfp-first-round"`,
+`cfp_round=CFPRound.FIRST_ROUND`. The structured-field-preferred design
+from the earlier validation pass is confirmed correct against a genuine
+record; the keyword/notes heuristic remains fallback-only, unchanged.
+
+**Genuine fixture.** Four records copied verbatim from the live `/games`
+response were committed as
+`src/cfb_edge_finder/data/fixtures/cfbd_live_verified_2026_sample.json`,
+with full provenance in the neighboring `.PROVENANCE.md` file: an ordinary
+FBS-vs-FBS game (the one that exposed the "San José State" alias gap), a
+genuine FBS-vs-FCS game (Buffalo/UAlbany), a genuine neutral-site FBS-vs-FBS
+game (TCU/UNC, Dublin), and a genuine Division-II game kept as a negative
+case (must be filtered out, not FBS-involved). All four are run through
+`normalize_cfbd_game()` in `tests/test_game_normalization.py`. A full
+genuine CFP *game* record (not just the `playoff` sub-object above) was
+deliberately not fabricated into this fixture -- see the `.PROVENANCE.md`
+file for why.
+
 ## Data sources
 
 ### Primary: CollegeFootballData.com (CFBD) REST API v2

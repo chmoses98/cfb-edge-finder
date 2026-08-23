@@ -1,23 +1,28 @@
 """Canonical FBS team registry and alias resolution.
 
-*** DATA PROVENANCE WARNING (read before trusting `REGISTRY`) ***
-The team list and conference assignments below are populated from general
-knowledge, not a live CFBD fetch -- this session's network egress to
-CFBD/ESPN was blocked (see docs/DATA_SOURCES.md and docs/MILESTONE_B.md).
-They are a best-effort seed, NOT independently verified against CFBD
-itself for the 2026 season. Conference realignment has been unusually
-active in recent years; the Pac-12 membership list in particular is
-flagged as high-uncertainty below.
+*** DATA PROVENANCE (read before trusting `REGISTRY`) ***
+As of 2026-08-23, this registry's team list and conference assignments have
+been live-verified against a genuine, authenticated CFBD `/teams/fbs?year=2026`
+response (138 teams), fetched from a GitHub Actions runner via
+`.github/workflows/validate-cfbd-live.yml` because this project's own dev
+environment cannot reach CFBD directly. Every conference string below
+(including the "Mid-American"/"American Athletic" full names, and the
+Louisiana Tech / UMass / Northern Illinois / Texas State / UTEP moves) was
+corrected to match that live response, not carried over from an earlier
+best-effort guess. See docs/MILESTONE_B.md's "Live validation" section for
+the full diagnostic output this was reconciled against.
 
-One specific gap WAS found and corrected via genuine (non-CFBD) research:
-web search against multiple independent, dated sources confirmed CFBD
-currently reports 138 FBS teams for 2026, not the 134 originally seeded
-here -- see `_transitional_seed` below for the four FCS-to-FBS additions
-(Delaware, Missouri State, North Dakota State, Sacramento State) that
-close that gap. This was cross-checked against several independent
-outlets, not a single source, but it is still not a CFBD API response and
-should be reconciled against a live `/teams/fbs` fetch when one becomes
-possible.
+Three alias gaps were also found and closed from that same live response:
+CFBD reports "App State" (not "Appalachian State"), "Florida International"
+(not "FIU"), and "San José State" (accented, not "San Jose State") on
+certain game records -- see `ALIASES` below.
+
+The 138-team count itself was first identified via non-CFBD cross-checked
+web research (see `_transitional_seed` below for the four FCS-to-FBS
+additions: Delaware, Missouri State, North Dakota State, Sacramento State)
+and has now been independently confirmed by the live fetch, which also
+reported exactly 138 teams.
+
 `vendor_ids` is deliberately left EMPTY for every team in this seed --
 fabricating specific numeric CFBD/ESPN team IDs from memory would be
 exactly the kind of unverified-but-authoritative-looking data this project
@@ -129,37 +134,50 @@ _seed: tuple[tuple[str, str], ...] = (
     ("Cincinnati", "Big 12"), ("Colorado", "Big 12"), ("Houston", "Big 12"), ("Iowa State", "Big 12"),
     ("Kansas", "Big 12"), ("Kansas State", "Big 12"), ("Oklahoma State", "Big 12"), ("TCU", "Big 12"),
     ("Texas Tech", "Big 12"), ("UCF", "Big 12"), ("Utah", "Big 12"), ("West Virginia", "Big 12"),
-    # Pac-12 (rebuilt) -- HIGH UNCERTAINTY, mid-transition as of training data; verify live.
+    # Pac-12 (rebuilt) -- live-verified 2026-08-23 against genuine
+    # /teams/fbs?year=2026 via the GitHub Actions live-validation workflow;
+    # Texas State's move from Sun Belt is a genuine conference realignment
+    # confirmed by that response, not a guess.
     ("Oregon State", "Pac-12"), ("Washington State", "Pac-12"), ("Boise State", "Pac-12"),
     ("Colorado State", "Pac-12"), ("Fresno State", "Pac-12"), ("San Diego State", "Pac-12"),
-    ("Utah State", "Pac-12"),
-    # American (AAC)
-    ("Army", "American"), ("Charlotte", "American"), ("East Carolina", "American"),
-    ("Florida Atlantic", "American"), ("Memphis", "American"), ("Navy", "American"),
-    ("North Texas", "American"), ("Rice", "American"), ("South Florida", "American"),
-    ("Temple", "American"), ("Tulane", "American"), ("Tulsa", "American"),
-    ("UAB", "American"), ("UTSA", "American"),
-    # Mountain West
+    ("Utah State", "Pac-12"), ("Texas State", "Pac-12"),
+    # American Athletic -- live-verified 2026-08-23; CFBD reports the full
+    # "American Athletic" conference string, not the "American" shorthand.
+    ("Army", "American Athletic"), ("Charlotte", "American Athletic"), ("East Carolina", "American Athletic"),
+    ("Florida Atlantic", "American Athletic"), ("Memphis", "American Athletic"), ("Navy", "American Athletic"),
+    ("North Texas", "American Athletic"), ("Rice", "American Athletic"), ("South Florida", "American Athletic"),
+    ("Temple", "American Athletic"), ("Tulane", "American Athletic"), ("Tulsa", "American Athletic"),
+    ("UAB", "American Athletic"), ("UTSA", "American Athletic"),
+    # Mountain West -- live-verified 2026-08-23; Northern Illinois and UTEP
+    # moved in from the MAC and Conference USA respectively per the genuine
+    # /teams/fbs response.
     ("Air Force", "Mountain West"), ("Hawaii", "Mountain West"), ("Nevada", "Mountain West"),
     ("New Mexico", "Mountain West"), ("San Jose State", "Mountain West"), ("UNLV", "Mountain West"),
-    ("Wyoming", "Mountain West"),
-    # Conference USA
+    ("Wyoming", "Mountain West"), ("Northern Illinois", "Mountain West"), ("UTEP", "Mountain West"),
+    # Conference USA -- live-verified 2026-08-23; Louisiana Tech (-> Sun
+    # Belt) and UTEP (-> Mountain West) left per the genuine response.
     ("FIU", "Conference USA"), ("Jacksonville State", "Conference USA"), ("Kennesaw State", "Conference USA"),
-    ("Liberty", "Conference USA"), ("Louisiana Tech", "Conference USA"), ("Middle Tennessee", "Conference USA"),
-    ("New Mexico State", "Conference USA"), ("Sam Houston", "Conference USA"), ("UTEP", "Conference USA"),
+    ("Liberty", "Conference USA"), ("Middle Tennessee", "Conference USA"),
+    ("New Mexico State", "Conference USA"), ("Sam Houston", "Conference USA"),
     ("Western Kentucky", "Conference USA"),
-    # Sun Belt
+    # Sun Belt -- live-verified 2026-08-23; Texas State left for the
+    # rebuilt Pac-12, Louisiana Tech joined from Conference USA.
     ("Appalachian State", "Sun Belt"), ("Arkansas State", "Sun Belt"), ("Coastal Carolina", "Sun Belt"),
     ("Georgia Southern", "Sun Belt"), ("Georgia State", "Sun Belt"), ("James Madison", "Sun Belt"),
     ("Louisiana", "Sun Belt"), ("Marshall", "Sun Belt"), ("Old Dominion", "Sun Belt"),
-    ("South Alabama", "Sun Belt"), ("Southern Miss", "Sun Belt"), ("Texas State", "Sun Belt"),
+    ("South Alabama", "Sun Belt"), ("Southern Miss", "Sun Belt"), ("Louisiana Tech", "Sun Belt"),
     ("Troy", "Sun Belt"), ("Louisiana-Monroe", "Sun Belt"),
-    # MAC
-    ("Akron", "MAC"), ("Ball State", "MAC"), ("Bowling Green", "MAC"), ("Buffalo", "MAC"),
-    ("Central Michigan", "MAC"), ("Eastern Michigan", "MAC"), ("Kent State", "MAC"), ("Miami (OH)", "MAC"),
-    ("Northern Illinois", "MAC"), ("Ohio", "MAC"), ("Toledo", "MAC"), ("Western Michigan", "MAC"),
-    # Independents
-    ("Notre Dame", "FBS Independents"), ("UConn", "FBS Independents"), ("UMass", "FBS Independents"),
+    # Mid-American -- live-verified 2026-08-23; CFBD reports the full
+    # "Mid-American" conference string, not the "MAC" shorthand. Northern
+    # Illinois left for the Mountain West; UMass joined (no longer an
+    # independent).
+    ("Akron", "Mid-American"), ("Ball State", "Mid-American"), ("Bowling Green", "Mid-American"),
+    ("Buffalo", "Mid-American"), ("Central Michigan", "Mid-American"), ("Eastern Michigan", "Mid-American"),
+    ("Kent State", "Mid-American"), ("Miami (OH)", "Mid-American"), ("Ohio", "Mid-American"),
+    ("Toledo", "Mid-American"), ("Western Michigan", "Mid-American"), ("UMass", "Mid-American"),
+    # Independents -- live-verified 2026-08-23; UMass is no longer
+    # independent (moved to the Mid-American, see above).
+    ("Notre Dame", "FBS Independents"), ("UConn", "FBS Independents"),
 )
 
 # FCS-to-FBS transitional additions, verified via web search against
@@ -174,7 +192,7 @@ _transitional_seed: tuple[tuple[str, str, int], ...] = (
     ("Delaware", "Conference USA", 2025),
     ("Missouri State", "Conference USA", 2025),
     ("North Dakota State", "Mountain West", 2026),
-    ("Sacramento State", "MAC", 2026),
+    ("Sacramento State", "Mid-American", 2026),
 )
 
 REGISTRY: tuple[TeamRecord, ...] = tuple(
@@ -244,6 +262,9 @@ ALIASES: dict[str, str] = {
     "Massachusetts": "umass",
     "San Jose State": "san-jose-state",
     "SJSU": "san-jose-state",
+    "San José State": "san-jose-state",  # accented form observed in the genuine live /games response
+    "App State": "appalachian-state",  # CFBD's shorthand for Appalachian State, observed live
+    "Florida International": "fiu",  # CFBD's full-name form of FIU, observed live
 }
 
 # Genuinely ambiguous short forms -- MUST fail loud, never silently resolved.

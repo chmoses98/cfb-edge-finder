@@ -1,13 +1,25 @@
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
-from cfb_edge_finder.ingestion.game_normalization import GameNormalizationError, normalize_cfbd_game
+from cfb_edge_finder.ingestion.game_normalization import (
+    GameNormalizationError,
+    away_classification,
+    home_classification,
+    normalize_cfbd_game,
+)
 from cfb_edge_finder.ingestion.team_matching import TeamResolutionError
 from cfb_edge_finder.ingestion.week_labels import UnclassifiablePostseasonError
 from cfb_edge_finder.schemas.common import CFPRound, SeasonType
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
+
+LIVE_FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src/cfb_edge_finder/data/fixtures/cfbd_live_verified_2026_sample.json"
+)
 
 
 def base_raw(**overrides) -> dict:
@@ -261,3 +273,61 @@ def test_playoff_object_with_unrecognized_round_fails_loud():
             ),
             observed_at=NOW,
         )
+
+
+# --- Genuine live-verified fixture (records copied verbatim from a real,
+# authenticated CFBD /games?year=2026 response -- see
+# cfbd_live_verified_2026_sample.PROVENANCE.md) run through the actual
+# production normalization path, not a separate throwaway parser.
+
+
+def _load_live_fixture() -> list[dict]:
+    return json.loads(LIVE_FIXTURE_PATH.read_text())
+
+
+def test_live_fixture_file_has_the_four_expected_records():
+    raw_games = _load_live_fixture()
+    assert {g["id"] for g in raw_games} == {401864494, 401866409, 401856766, 401907702}
+
+
+def test_live_fbs_vs_fbs_game_normalizes_once_alias_is_known():
+    raw_games = _load_live_fixture()
+    raw = next(g for g in raw_games if g["id"] == 401864494)
+    # "San José State" (accented) is the exact genuine string CFBD reports;
+    # it must resolve now that the registry alias has been added.
+    assert raw["awayTeam"] == "San José State"
+    game = normalize_cfbd_game(raw, observed_at=NOW)
+    assert game.home_team_id == "usc"
+    assert game.away_team_id == "san-jose-state"
+    assert game.status == "scheduled"
+
+
+def test_live_fbs_vs_fcs_game_retained_not_dropped():
+    raw_games = _load_live_fixture()
+    raw = next(g for g in raw_games if g["id"] == 401866409)
+    assert away_classification(raw) == "fcs"
+    game = normalize_cfbd_game(raw, observed_at=NOW)
+    assert game.home_team_id == "buffalo"
+    assert game.away_team_id == "ualbany"
+
+
+def test_live_neutral_site_fbs_vs_fbs_game_normalizes_correctly():
+    raw_games = _load_live_fixture()
+    raw = next(g for g in raw_games if g["id"] == 401856766)
+    game = normalize_cfbd_game(raw, observed_at=NOW)
+    assert game.neutral_site is True
+    assert {game.home_team_id, game.away_team_id} == {"tcu", "north-carolina"}
+
+
+def test_live_division_ii_game_is_not_fbs_involved_and_would_be_filtered():
+    # This record is a genuine negative case: neither side is FBS
+    # (home is Division II, away has no classification at all), so the
+    # schedule-ingestion layer's _is_fbs_involved() filter must exclude
+    # it entirely -- normalize_cfbd_game() itself doesn't filter (see
+    # test_normalize_does_not_itself_filter_by_classification above), but
+    # the classification helpers it's built from must report this
+    # correctly so that filter can do its job.
+    raw_games = _load_live_fixture()
+    raw = next(g for g in raw_games if g["id"] == 401907702)
+    assert home_classification(raw) != "fbs"
+    assert away_classification(raw) != "fbs"

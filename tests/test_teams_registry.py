@@ -16,12 +16,13 @@ def test_registry_has_no_duplicate_team_ids():
 
 
 def test_registry_matches_cfbd_reported_fbs_count():
-    # 138, verified via web search against multiple independent, dated
-    # sources during the Milestone B validation follow-up (Deseret News,
-    # CBS Sports, ESPN, Wikipedia) -- see registry.py's provenance
-    # warning for what "verified" does and doesn't mean here (not a live
-    # CFBD fetch). Was 134 before the four FCS-to-FBS transitional
-    # additions below were reconciled in.
+    # 138: first identified via web search against multiple independent,
+    # dated sources during the Milestone B validation follow-up, then
+    # independently confirmed against a genuine, authenticated
+    # /teams/fbs?year=2026 response fetched from a GitHub Actions runner
+    # (see registry.py's provenance section and docs/MILESTONE_B.md's
+    # "Live validation" section). Was 134 before the four FCS-to-FBS
+    # transitional additions below were reconciled in.
     assert len(REGISTRY) == 138
 
 
@@ -31,7 +32,7 @@ def test_registry_matches_cfbd_reported_fbs_count():
         ("delaware", "Conference USA", 2025),
         ("missouri-state", "Conference USA", 2025),
         ("north-dakota-state", "Mountain West", 2026),
-        ("sacramento-state", "MAC", 2026),
+        ("sacramento-state", "Mid-American", 2026),
     ],
 )
 def test_fcs_to_fbs_transitional_additions_present(team_id, conference, season_start):
@@ -39,6 +40,31 @@ def test_fcs_to_fbs_transitional_additions_present(team_id, conference, season_s
     assert team is not None
     assert team.conference == conference
     assert team.season_start == season_start
+
+
+@pytest.mark.parametrize(
+    ("team_id", "conference"),
+    [
+        # Live-verified 2026-08-23 against a genuine, authenticated
+        # /teams/fbs?year=2026 response -- see registry.py's provenance
+        # section. These are real conference-realignment corrections, not
+        # naming touch-ups: each of these teams was previously seeded
+        # under a different conference.
+        ("louisiana-tech", "Sun Belt"),
+        ("umass", "Mid-American"),
+        ("northern-illinois", "Mountain West"),
+        ("texas-state", "Pac-12"),
+        ("utep", "Mountain West"),
+        # Full conference-name strings (CFBD reports these, not the
+        # "MAC"/"American" shorthand this registry originally used).
+        ("akron", "Mid-American"),
+        ("army", "American Athletic"),
+    ],
+)
+def test_live_verified_conference_corrections(team_id, conference):
+    team = get_team(team_id)
+    assert team is not None
+    assert team.conference == conference
 
 
 @pytest.mark.parametrize(
@@ -66,6 +92,12 @@ def test_fcs_to_fbs_transitional_additions_present(team_id, conference, season_s
         ("Hawai'i", "hawaii"),
         ("Western Kentucky", "western-kentucky"),
         ("WKU", "western-kentucky"),
+        # Discovered from the genuine live /games?year=2026 response --
+        # these exact strings appeared on real game records and did not
+        # previously resolve (see registry.py's provenance section).
+        ("App State", "appalachian-state"),
+        ("Florida International", "fiu"),
+        ("San José State", "san-jose-state"),
     ],
 )
 def test_known_alias_cases_resolve_correctly(raw_name, expected_team_id):
