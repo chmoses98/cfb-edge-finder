@@ -1,0 +1,42 @@
+name: Backtest CFB Baseline Live (manual)
+
+# Manual-only. No schedule/cron trigger -- this workflow exists to let a
+# human deliberately spend a handful of real, rate-limited CFBD API calls
+# (one /games + one /stats/game/advanced call per season, whole-season
+# pulls, not per-week) to run a genuine walk-forward backtest of the
+# Milestone C baseline model, not to run automatically or repeatedly.
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Space-separated seasons to backtest, e.g. '2022 2023 2024 2025'"
+        required: true
+        default: "2022 2023 2024 2025"
+      n_simulations:
+        description: "Monte Carlo simulations per game projection"
+        required: false
+        default: "6000"
+
+# Read-only: this workflow only calls out to CFBD and prints diagnostics.
+# It never commits, pushes, or writes anything back to this repository.
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live CFB baseline backtest
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        # scripts/backtest_cfb_baseline.py never prints the API key or an
+        # Authorization header, and exits non-zero on auth/HTTP/schema
+        # failure so this step fails loudly (red X) rather than silently
+        # swallowing an error.
+        run: python3 scripts/backtest_cfb_baseline.py --seasons ${{ github.event.inputs.seasons }} --mode live --n-simulations ${{ github.event.inputs.n_simulations }}
