@@ -20,6 +20,23 @@ class SeasonType(StrEnum):
     CFP = "cfp"
 
 
+class CFPRound(StrEnum):
+    """Structured, sponsor-name-independent round identity for a College
+    Football Playoff game. Only meaningful when SeasonType is CFP.
+
+    This is deliberately a separate field from the free-text/slug
+    `GameRecord.week_label` (e.g. "cfp-quarterfinal") used in the canonical
+    game_id -- see docs/MILESTONE_B.md "Week and postseason semantics" for
+    why the two are kept independent rather than merging this enum into
+    the ID format.
+    """
+
+    FIRST_ROUND = "first_round"
+    QUARTERFINAL = "quarterfinal"
+    SEMIFINAL = "semifinal"
+    NATIONAL_CHAMPIONSHIP = "national_championship"
+
+
 class MarketFamily(StrEnum):
     MONEYLINE = "moneyline"
     SPREAD = "spread"

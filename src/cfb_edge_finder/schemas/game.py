@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from cfb_edge_finder.ids import canonical_game_id
-from cfb_edge_finder.schemas.common import SeasonType
+from cfb_edge_finder.schemas.common import CFPRound, SeasonType
 
 GameStatus = Literal["scheduled", "in_progress", "final", "postponed", "canceled"]
 
@@ -50,6 +50,30 @@ class GameRecord(BaseModel):
             "Preserves traceability to any ProjectionRecord/ProspectiveSnapshot captured "
             "against the prior game_id -- see docs/SCHEMAS.md."
         ),
+    )
+    week_number: int | None = Field(
+        default=None,
+        description="Structured regular-season week integer (0-15ish), independent of the week_label slug. "
+        "None for postseason games.",
+    )
+    cfp_round: CFPRound | None = Field(
+        default=None, description="Structured CFP round identity; only meaningful when season_type is CFP"
+    )
+    bowl_display_name: str | None = Field(
+        default=None,
+        description="Human-readable, possibly-sponsor-branded bowl name (e.g. 'Duke's Mayo Bowl'), kept SEPARATE "
+        "from the stable week_label slug used in game_id specifically because sponsor names change year to "
+        "year -- see docs/SCHEMAS.md 'Canonical game ID' bowl-volatility note.",
+    )
+    kickoff_source_raw: str | None = Field(
+        default=None,
+        description="The as-received datetime string from the primary source before UTC normalization, retained "
+        "for auditability of timezone/offset handling -- kickoff_utc itself is always UTC.",
+    )
+    primary_source: str | None = Field(
+        default=None,
+        description="Which key in source_game_ids/vendor is currently treated as authoritative for this record's "
+        "home/away/venue/kickoff designation -- see cfb_edge_finder.ingestion.reconciliation.",
     )
     discovered_at: AwareDatetime
     last_updated_at: AwareDatetime

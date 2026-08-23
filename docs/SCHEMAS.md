@@ -74,6 +74,47 @@ move remains reachable.
 and `"canceled"` as first-class values (not inferred from absence), so a
 game doesn't just quietly stop appearing in a feed.
 
+## Game record (Milestone B additions)
+
+Beyond the identity fields above, `GameRecord` carries: `week_number`
+(structured regular-season integer, independent of the `week_label`
+slug), `cfp_round` (`CFPRound`: `first_round`/`quarterfinal`/`semifinal`/
+`national_championship`, only meaningful when `season_type` is `cfp`),
+`bowl_display_name` (human-readable, possibly sponsor-branded, kept
+separate from the stable slug specifically because sponsor names change
+-- see "Canonical game ID" above), `kickoff_source_raw` (the as-received
+kickoff string before UTC normalization, for auditability), and
+`primary_source` (which vendor's designation is currently authoritative
+for this record). See `docs/MILESTONE_B.md` "Week and postseason
+semantics" for the full rationale on why these are separate,
+non-ID-affecting fields rather than a change to the ID format itself.
+
+## Team registry
+
+`cfb_edge_finder.teams.registry.TeamRecord`: `team_id` (canonical slug,
+never a vendor ID), `display_name`, `conference` (best-effort, not
+live-verified -- see `docs/MILESTONE_B.md`), `subdivision`,
+`primary_vendor`/`vendor_ids` (deliberately empty in the seed data --
+never fabricated from memory, populated only by real ingestion
+observation), `active`, `season_start`/`season_end` (for renamed
+programs). `resolve_team_alias()` is exact-string-match only, with a
+separate `AMBIGUOUS_ALIASES` table that fails loud
+(`AmbiguousTeamAliasError`) rather than guessing -- see
+`docs/MILESTONE_B.md` "Team registry" for the full alias strategy.
+
+## Source observations and conflict records
+
+`RawGameObservation` (`schemas/observation.py`): exactly what one vendor
+reported for one game, before team-alias resolution or any other
+normalization -- kept only long enough to detect and report disagreement,
+never merged silently into a `GameRecord`. `ConflictRecord`/
+`FieldConflict`: one unresolved disagreement between two or more sources
+for what is believed to be the same physical game, produced by
+`cfb_edge_finder.ingestion.reconciliation.cross_check_secondary` and
+never auto-resolved by picking one source arbitrarily -- `resolution`
+stays `None` until something (a human, a later milestone) decides. See
+`docs/MILESTONE_B.md` "Duplicate-source and reschedule reconciliation."
+
 ## Provenance / version scheme
 
 `ModelVersion` (semver `model_version`, separate
