@@ -1,1 +1,31 @@
-bmFtZTogVmFsaWRhdGUgQ0ZCRCBMaXZlIChtYW51YWwpCgojIE1hbnVhbC1vbmx5LiBObyBzY2hlZHVsZS9jcm9uIHRyaWdnZXIgLS0gdGhpcyB3b3JrZmxvdyBleGlzdHMgdG8gbGV0IGEKIyBodW1hbiBkZWxpYmVyYXRlbHkgc3BlbmQgYSByZWFsLCByYXRlLWxpbWl0ZWQgQ0ZCRCBBUEkgY2FsbCB0byB2YWxpZGF0ZQojIHNjaGVtYS90ZWFtLXVuaXZlcnNlIGFzc3VtcHRpb25zLCBub3QgdG8gcnVuIGF1dG9tYXRpY2FsbHkgb3IgcmVwZWF0ZWRseS4Kb246CiAgd29ya2Zsb3dfZGlzcGF0Y2g6CgojIFJlYWQtb25seTogdGhpcyB3b3JrZmxvdyBvbmx5IGNhbGxzIG91dCB0byBDRkJEIGFuZCBwcmludHMgZGlhZ25vc3RpY3MuCiMgSXQgbmV2ZXIgY29tbWl0cywgcHVzaGVzLCBvciB3cml0ZXMgYW55dGhpbmcgYmFjayB0byB0aGlzIHJlcG9zaXRvcnkuCnBlcm1pc3Npb25zOgogIGNvbnRlbnRzOiByZWFkCgpqb2JzOgogIHZhbGlkYXRlOgogICAgcnVucy1vbjogdWJ1bnR1LWxhdGVzdAogICAgc3RlcHM6CiAgICAgIC0gdXNlczogYWN0aW9ucy9jaGVja291dEB2NAogICAgICAtIHVzZXM6IGFjdGlvbnMvc2V0dXAtcHl0aG9uQHY1CiAgICAgICAgd2l0aDoKICAgICAgICAgIHB5dGhvbi12ZXJzaW9uOiAiMy4xMSIKICAgICAgLSBuYW1lOiBJbnN0YWxsIHBhY2thZ2UKICAgICAgICBydW46IHBpcCBpbnN0YWxsIC1lICIuW2Rldl0iCiAgICAgIC0gbmFtZTogUnVuIGxpdmUgQ0ZCRCB2YWxpZGF0aW9uCiAgICAgICAgZW52OgogICAgICAgICAgQ0ZCRF9BUElfS0VZOiAke3sgc2VjcmV0cy5DRkJEX0FQSV9LRVkgfX0KICAgICAgICAjIHNjcmlwdHMvdmFsaWRhdGVfY2ZiZF9saXZlLnB5IG5ldmVyIHByaW50cyB0aGUgQVBJIGtleSBvciBhbgogICAgICAgICMgQXV0aG9yaXphdGlvbiBoZWFkZXIsIGFuZCBleGl0cyBub24temVybyBvbiBhdXRoL0hUVFAvc2NoZW1hCiAgICAgICAgIyBmYWlsdXJlIHNvIHRoaXMgc3RlcCBmYWlscyBsb3VkbHkgKHJlZCBYKSByYXRoZXIgdGhhbiBzaWxlbnRseQogICAgICAgICMgc3dhbGxvd2luZyBhbiBlcnJvci4KICAgICAgICBydW46IHB5dGhvbjMgc2NyaXB0cy92YWxpZGF0ZV9jZmJkX2xpdmUucHkK
+name: Validate CFBD Live (manual)
+
+# Manual-only. No schedule/cron trigger -- this workflow exists to let a
+# human deliberately spend a real, rate-limited CFBD API call to validate
+# schema/team-universe assumptions, not to run automatically or repeatedly.
+on:
+  workflow_dispatch:
+
+# Read-only: this workflow only calls out to CFBD and prints diagnostics.
+# It never commits, pushes, or writes anything back to this repository.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live CFBD validation
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        # scripts/validate_cfbd_live.py never prints the API key or an
+        # Authorization header, and exits non-zero on auth/HTTP/schema
+        # failure so this step fails loudly (red X) rather than silently
+        # swallowing an error.
+        run: python3 scripts/validate_cfbd_live.py
