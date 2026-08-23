@@ -16,6 +16,10 @@ on:
         description: "Monte Carlo simulations per game projection"
         required: false
         default: "6000"
+      calibration_method:
+        description: "Win-probability recalibration method (platt/isotonic/none)"
+        required: false
+        default: "platt"
 
 # Read-only: this workflow only calls out to CFBD and prints diagnostics.
 # It never commits, pushes, or writes anything back to this repository.
@@ -39,4 +43,4 @@ jobs:
         # Authorization header, and exits non-zero on auth/HTTP/schema
         # failure so this step fails loudly (red X) rather than silently
         # swallowing an error.
-        run: python3 scripts/backtest_cfb_baseline.py --seasons ${{ github.event.inputs.seasons }} --mode live --n-simulations ${{ github.event.inputs.n_simulations }}
+        run: python3 scripts/backtest_cfb_baseline.py --seasons ${{ github.event.inputs.seasons }} --mode live --n-simulations ${{ github.event.inputs.n_simulations }} --calibration-method ${{ github.event.inputs.calibration_method }}
