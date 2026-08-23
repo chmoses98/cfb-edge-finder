@@ -110,3 +110,24 @@ def test_neutral_site_flag_carried_onto_both_rows():
     raw = _raw_regular_game(neutralSite=True)
     lines, _ = build_team_game_lines([raw], [], captured_at=NOW)
     assert all(ln.is_neutral_site for ln in lines)
+
+
+def test_game_with_no_fbs_side_is_excluded_not_miscounted_as_fbs_vs_fcs():
+    # CFBD's division=fbs filter does not fully exclude non-FBS-involving
+    # games (a real, independently-observed gap -- see corpus.py's
+    # _is_fbs_involved docstring). A Division-II-vs-FCS game must be
+    # dropped entirely, never retained and miscounted as FBS-vs-FCS.
+    raw = _raw_regular_game(
+        homeTeam="University of Mary", homeClassification="ii", awayTeam="Furman", awayClassification="fcs"
+    )
+    lines, skipped = build_team_game_lines([raw], [], captured_at=NOW)
+    assert lines == []
+    assert len(skipped) == 1
+    assert "no fbs side" in skipped[0]["reason"].lower()
+
+
+def test_genuine_fbs_vs_fcs_game_is_still_retained():
+    raw = _raw_regular_game(awayTeam="Furman", awayClassification="fcs")
+    lines, skipped = build_team_game_lines([raw], [], captured_at=NOW)
+    assert skipped == []
+    assert len(lines) == 2

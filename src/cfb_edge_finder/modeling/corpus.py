@@ -88,6 +88,17 @@ def _points(raw_game: dict[str, Any], *keys: str) -> int | None:
     return None
 
 
+def _is_fbs_involved(home_class: str | None, away_class: str | None) -> bool:
+    """Same policy as Milestone B's scripts/ingest_schedule.py
+    `_is_fbs_involved`: at least one side must be FBS. Excludes the
+    non-FBS-vs-non-FBS games (FCS-vs-FCS, D-II, D-III, NAIA) that CFBD's
+    `division=fbs` filter does not fully exclude from `/games` -- these
+    are not part of Milestone C's modeling population at all, and must not
+    be silently miscounted into the "FBS-vs-FCS" segment.
+    """
+    return (home_class or "").strip().lower() == "fbs" or (away_class or "").strip().lower() == "fbs"
+
+
 def build_team_game_lines(
     raw_games: list[dict[str, Any]],
     raw_advanced_stats: list[dict[str, Any]],
@@ -162,6 +173,19 @@ def build_team_game_lines(
         away_class = away_classification(raw)
         neutral = bool(raw.get("neutralSite") or raw.get("neutral_site"))
         kickoff = _parse_kickoff(raw.get("startDate") or raw.get("start_date"))
+
+        if not _is_fbs_involved(home_class, away_class):
+            # CFBD's own `division=fbs` query parameter does not fully
+            # exclude non-FBS-involving games -- Milestone B independently
+            # found a genuine Division II game slip through it (see
+            # docs/MILESTONE_B.md). Milestone C's corpus is scoped to
+            # "at least one side is FBS" by the same explicit policy
+            # Milestone B's ingest_schedule.py already applies
+            # (`_is_fbs_involved`); this is the modeling-corpus equivalent,
+            # not a new decision. A genuinely-FBS-vs-FCS game still passes
+            # this check -- only games with NO FBS side at all are excluded.
+            skipped.append({"game_id": game_id, "reason": "no FBS side on either team"})
+            continue
 
         try:
             home_id = resolve_team_id_for_game(home_name, CFBD_SOURCE_NAME, home_class)
