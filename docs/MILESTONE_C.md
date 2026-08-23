@@ -6,6 +6,16 @@ filled in from a live run, not fixture data). This is the first
 Milestone that produces real football probabilities; it is explicitly
 NOT a betting/recommendation engine (see "Scope boundary" at the end).**
 
+**Hardening pass (this revision):** a targeted follow-up mission audited
+and addressed three issues the original backtest surfaced: winner-
+probability miscalibration (fixed -- leakage-safe Platt scaling, see
+section 8.1), in-sample residual estimation (fixed -- a genuine expanding
+walk-forward residual pool, see section 8.2), and the FBS-vs-FCS margin
+bias (investigated, partially addressed, NOT fully resolved -- see
+section 11's FBS-vs-FCS subsection and section 15). All numbers below are
+from this hardened code, re-validated against two fresh genuine live
+CFBD runs.
+
 ## 1. Data audit
 
 Every CFBD endpoint below was investigated via genuine primary-source
@@ -148,6 +158,22 @@ ONE pooled `fcs_offense`/`fcs_defense` parameter pair
 opponent still informs that FBS team's OWN rating (real signal); nothing
 FCS-team-specific is claimed. See `tests/test_modeling_ratings_and_priors.py::test_fcs_opponents_share_one_pooled_pseudo_rating_not_individual_ones`.
 
+**Hardening-pass correction to the pooled FCS parameter's shrinkage:**
+the live backtest found this pooled parameter was being ridge-penalized
+at the SAME strength as an individual FBS team with only a game or two of
+evidence (`DEFAULT_RIDGE_LAMBDA`), even though it is fit from every
+FBS-vs-FCS game leaguewide (far more pooled evidence than any single
+team). `DEFAULT_FCS_RIDGE_LAMBDA` (a separate, smaller constant) corrects
+this specific bug. **This did NOT resolve the FBS-vs-FCS margin bias**
+(see section 11) -- isolating its effect from a separate, broader
+out-of-sample residual-estimation fix showed the FCS segment's bias
+RELATIVE TO the FBS-vs-FBS baseline was essentially unchanged, meaning
+population heterogeneity within the pooled parameter (not shrinkage
+strength) is the likely true driver, still unaddressed. Kept because it
+is independently correct statistically, not because it fixed the
+headline problem it was motivated by -- see section 15 for the honest
+next step.
+
 ## 5. Pace
 
 Each team's expected plays for an upcoming game is
@@ -239,6 +265,46 @@ This satisfies the mission's explicit requirement that discreteness and
 arbitrary thresholds be representable, without asserting a Normal (or any
 other single parametric) shape as ground truth.
 
+### 8.1 Calibration (hardening pass)
+
+The original backtest showed a real winner-probability calibration gap in
+the 0.6-0.9 predicted range (observed win rates ran higher than
+predicted -- underconfidence). `modeling/calibration.py` adds a second,
+much simpler recalibration model on top of the raw simulated probability:
+Platt (2-parameter logistic regression on `logit(raw_p)`, via
+Newton-Raphson) or isotonic regression (pool-adjacent-violators),
+selectable, with a documented minimum-history fallback to identity
+(`MIN_CALIBRATION_HISTORY = 200`, `MIN_ISOTONIC_HISTORY = 800`). Fit
+**only** on `(raw_probability, actual_outcome)` pairs from strictly-prior
+walk-forward weeks -- `backtest.run_walk_forward_backtest` refits the
+calibration model at every step from the outcomes already accumulated,
+never the holdout being scored (see section 9's leakage discipline,
+applied identically here). Both methods are monotonic by construction
+(isotonic directly; Platt falls back to identity rather than ever return
+an inverted mapping if its fitted slope is non-positive). **Platt is the
+adopted default** -- see section 11's live comparison against isotonic
+for why.
+
+### 8.2 Expanding residual pool (hardening pass)
+
+The original V1 computed each training game's residual using the SAME
+ratings snapshot that game's own row helped fit -- an in-sample estimate
+that systematically understates true predictive residual variance. This
+is now a genuine EXPANDING WALK-FORWARD residual pool:
+`backtest.run_walk_forward_backtest` maintains a running pool that, at
+each step, is (a) used to simulate that week's projections, using only
+residuals accumulated from strictly-prior weeks, then (b) extended with
+that week's own games' residuals -- computed against the ratings that
+were fit strictly before those games, i.e. a genuine out-of-sample
+prediction error, never a fitted residual on the same rows used to
+estimate the ratings that scored it. `score_model.build_expanding_residual_pool`
+is the same algorithm as a standalone, single-shot call (used by
+`scripts/build_cfb_baseline.py`, which has no backtest loop already
+computing this incrementally). See section 11 for the measured effect --
+this fix WIDENED both raw calibration underconfidence and margin bias
+(see section 11), a real, quantified tradeoff of correcting the
+in-sample estimate, not a free improvement.
+
 ## 9. Backtest methodology
 
 **Genuine chronological walk-forward, never a random split** -- see
@@ -311,156 +377,341 @@ run:
   (e.g. "Florida Memorial University", "Keiser University") correctly
   excluded, not silently guessed.
 
+### 10.1 Hardening-pass live re-validation
+
+Two further live runs, same workflow, same seasons/corpus, against the
+hardened code (commit `4167e7a`), `CFBD_API_KEY` masked throughout:
+
+- **Run 3** (`https://github.com/chmoses98/cfb-edge-finder/actions/runs/32659507853`,
+  `--calibration-method platt`) -- the authoritative source for every
+  "calibrated" number in section 11 below.
+- **Run 4** (`https://github.com/chmoses98/cfb-edge-finder/actions/runs/32659644617`,
+  `--calibration-method isotonic`) -- run purely for the calibration
+  method comparison in section 11; not the adopted configuration.
+
+Both runs used the identical genuine CFBD corpus fetch as before (7,210
+`TeamGameLine` rows, 3,225 predicted games, 11,454 non-FBS-involved games
+correctly excluded) -- the test population was NOT changed to produce
+these results, only the model code.
+
 ## 11. Backtest results
 
-All numbers below are copied verbatim from the corrected live run
-(`32619827949`), never rounded differently or recomputed.
+**All numbers below are from the hardening-pass live runs (32659507853
+for calibrated=platt, 32659644617 for calibrated=isotonic), never rounded
+differently or recomputed.** The pre-hardening numbers (from the original
+live run `32619827949`) are kept alongside every table, labeled
+"pre-hardening", so every change is a visible before/after -- nothing is
+silently replaced.
 
 ### Overall (n=3,225 predicted games)
 
-| | Naive benchmark | Milestone C model |
-|---|---|---|
-| Winner log loss | 0.6141 | **0.5972** |
-| Winner Brier | 0.2133 | **0.2054** |
-| Margin MAE / RMSE / bias | 15.39 / 19.59 / −0.86 | **14.71 / 18.74** / +0.91 |
-| Margin 90% interval coverage | 0.841 | 0.941 |
-| Total MAE / RMSE / bias | **13.17 / 16.41** / −1.43 | 13.36 / 16.66 / −1.31 |
-| Total 90% interval coverage | 0.914 | 0.945 |
+| | Naive (unchanged) | Model, pre-hardening | Model, raw (hardened) | Model, calibrated (platt, adopted) | Model, calibrated (isotonic, comparison) |
+|---|---|---|---|---|---|
+| Winner log loss | 0.6141 | 0.5972 | 0.6163 | **0.5924** | 0.6179 |
+| Winner Brier | 0.2133 | 0.2054 | 0.2134 | **0.2054** | 0.2057 |
+| Margin MAE / RMSE / bias | 15.39 / 19.59 / −0.86 | 14.71 / 18.74 / +0.91 | 14.92 / 19.06 / **+3.27** | (same as raw) | (same as raw) |
+| Margin 90% interval coverage | 0.841 | 0.941 | 0.960 | (same as raw) | (same as raw) |
+| Total MAE / RMSE / bias | 13.17 / 16.41 / −1.43 | 13.36 / 16.66 / −1.31 | 13.37 / 16.70 / −0.54 | (same as raw) | (same as raw) |
+| Total 90% interval coverage | 0.914 | 0.945 | 0.966 | (same as raw) | (same as raw) |
 
-Winner calibration bins (Milestone C model): predicted vs. observed win
-rate, by bin (n = sample count):
+**Read this table honestly, not selectively:**
+- **Calibration (platt) works and is the headline win**: overall winner
+  log loss improves on BOTH the pre-hardening model (0.5972 → 0.5924) and
+  naive (0.6141). Calibration never touches margin/total (see section
+  8.1) -- those columns are identical to "raw" by construction.
+- **Isotonic is worse than platt and worse than naive** on overall log
+  loss (0.6179 > 0.6141) -- this is exactly the genuine out-of-time
+  comparison mission section 3 asked for, and it is why platt, not
+  isotonic, was adopted: NOT because platt looked better in one bin, but
+  because isotonic's extra flexibility overfits the accumulated
+  walk-forward history (see the FBS-vs-FBS and Neutral-site segments
+  below, where isotonic actively makes log loss WORSE than the raw,
+  uncalibrated number). Both are reported here rather than only the
+  winner.
+- **The expanding residual pool (section 8.2) made the RAW margin bias
+  materially worse in absolute terms**: +0.91 → +3.27 overall. This is
+  reported plainly, not hidden, per mission section 5's explicit
+  instruction ("if the corrected uncertainty model degrades materially,
+  report it rather than reverting silently"). The mechanism, confirmed by
+  inspection: the original in-sample residuals summed to ~0 by
+  construction (an artifact of fitting and scoring on the same rows);
+  genuine out-of-sample residuals do not have that property, and reveal a
+  real, previously-hidden tendency of the ridge-shrunk ratings to
+  under-predict margins on new data. This is a genuine, more honest
+  number, not a regression introduced by a bug -- but it is a real cost,
+  and calibration does NOT fix it (calibration only touches win
+  probability). See section 15 for why this is now flagged as a priority
+  item.
+- **Interval coverage moved further from the nominal 90% target** (margin
+  0.941 → 0.960, total 0.945 → 0.966) -- the wider, more honest
+  out-of-sample residual pool is now measurably over-covering. Reported
+  as a real, quantified side effect, not claimed as an improvement just
+  because "more coverage" sounds good.
 
-| Bin | Predicted | Observed | n |
-|---|---|---|---|
-| [0.2,0.3) | 0.270 | 0.059 | 17 |
-| [0.3,0.4) | 0.359 | 0.200 | 115 |
-| [0.4,0.5) | 0.459 | 0.400 | 458 |
-| [0.5,0.6) | 0.556 | 0.503 | 1124 |
-| [0.6,0.7) | 0.639 | 0.721 | 947 |
-| [0.7,0.8) | 0.743 | 0.886 | 405 |
-| [0.8,0.9) | 0.832 | 0.986 | 148 |
-| [0.9,1.0) | 0.919 | 1.000 | 11 |
+Winner calibration bins, overall, raw (hardened) vs. platt-calibrated:
 
-**A real, visible calibration gap**: in the 0.6-0.9 predicted-probability
-range, observed win rates run consistently HIGHER than predicted (e.g.
-0.7-0.8 bin: predicted 0.743, observed 0.886) -- the model correctly
-ranks favorites but is systematically underconfident about them in this
-range. This is flagged honestly here and is the basis for section 15's
-recommendation, not smoothed over.
+| Bin | Raw predicted | Raw observed | Raw n | Calibrated predicted | Calibrated observed | Calibrated n |
+|---|---|---|---|---|---|---|
+| [0.0,0.1) | -- | -- | -- | 0.061 | 0.000 | 4 |
+| [0.1,0.2) | 0.191 | 0.000 | 1 | 0.160 | 0.156 | 45 |
+| [0.2,0.3) | 0.274 | 0.091 | 22 | 0.252 | 0.223 | 103 |
+| [0.3,0.4) | 0.366 | 0.267 | 236 | 0.355 | 0.395 | 248 |
+| [0.4,0.5) | 0.454 | 0.463 | 886 | 0.450 | 0.501 | 383 |
+| [0.5,0.6) | 0.548 | 0.620 | 1168 | 0.557 | 0.504 | 607 |
+| [0.6,0.7) | 0.648 | 0.798 | 640 | 0.651 | 0.612 | 786 |
+| [0.7,0.8) | 0.741 | 0.959 | 242 | 0.749 | 0.756 | 434 |
+| [0.8,0.9) | 0.824 | 0.967 | 30 | 0.848 | 0.820 | 388 |
+| [0.9,1.0) | -- | -- | -- | 0.936 | 0.960 | 227 |
+
+**The raw calibration gap got WORSE after the residual-pool fix** (e.g.
+[0.7,0.8): predicted 0.741 vs. observed 0.959 -- more underconfident than
+the pre-hardening model's 0.743/0.886), for the same reason as the margin
+bias above: wider, genuinely out-of-sample uncertainty pulls the raw
+simulated win probability toward 0.5 more than the (artificially
+narrower) in-sample estimate did. Platt calibration recovers this
+cleanly, and then some: every calibrated bin above sits close to its
+diagonal, and overall log loss beats the pre-hardening number. This is
+the intended, evidenced mechanism -- not a coincidence.
 
 ### Segment: FBS-vs-FBS (n=2,935)
 
-Log loss 0.6258, Brier 0.2180, margin MAE/RMSE/bias 14.20/18.14/−0.46
-(90% coverage 0.947), total MAE/RMSE/bias 13.16/16.40/−0.62 (90% coverage
-0.950). This is the CORE_V1-relevant population and shows the tightest,
-best-calibrated coverage of any segment.
+| | Pre-hardening | Raw (hardened) | Calibrated (platt) | Calibrated (isotonic) |
+|---|---|---|---|---|
+| Log loss | 0.6258 | 0.6358 | **0.6218** | 0.6466 |
+| Brier | 0.2180 | 0.2224 | **0.2175** | 0.2173 |
+| Margin MAE/RMSE/bias | 14.20/18.14/−0.46 | 14.30/18.29/+1.89 | (same) | (same) |
+| Margin 90% coverage | 0.947 | 0.959 | (same) | (same) |
+| Total MAE/RMSE/bias | 13.16/16.40/−0.62 | 13.16/16.45/+0.31 | (same) | (same) |
+| Total 90% coverage | 0.950 | 0.963 | (same) | (same) |
+
+Platt beats the pre-hardening model on this, the CORE_V1-relevant
+population. **Isotonic makes log loss WORSE than even the raw,
+uncalibrated number here (0.6466 > 0.6358)** -- a genuine overfitting
+symptom on real data, reported as direct evidence for the platt-over-
+isotonic decision, not asserted from theory alone.
 
 ### Segment: FBS-vs-FCS (n=290)
 
-Log loss 0.3077, Brier 0.0781 (both much lower/better than FBS-vs-FBS --
-expected, since the favorite is usually overwhelming and the winner call
-is easy). But margin MAE/RMSE/bias: **19.84 / 23.98 / +14.84** -- a large
-positive bias, meaning the model systematically UNDER-predicts how big
-these blowouts actually are. Total MAE/RMSE/bias: 15.37/19.03/−8.29 (the
-model over-predicts total points by ~8 on average). This is a genuine,
-material weakness of the pooled single "generic FCS opponent" rating
-(section 4): it averages across FCS programs of very different strength,
-understating the true margin when an FBS team faces a particularly weak
-one. Margin/total 90% coverage (0.883/0.900) is still reasonable despite
-the bias, because the simulated uncertainty band is wide enough to
-usually contain the true outcome even when centered incorrectly.
+| | Pre-hardening | Raw (hardened) | Calibrated (platt) | Calibrated (isotonic) |
+|---|---|---|---|---|
+| Log loss | 0.3077 | 0.4194 | 0.2949 | 0.3267 |
+| Brier | 0.0781 | 0.1218 | 0.0836 | 0.0886 |
+| Margin MAE/RMSE/bias | 19.84/23.98/**+14.84** | 21.28/25.60/**+17.24** | (same) | (same) |
+| Margin 90% coverage | 0.883 | 0.966 | (same) | (same) |
+| Total MAE/RMSE/bias | 15.37/19.03/−8.29 | 15.51/19.07/−9.10 | (same) | (same) |
+| Total 90% coverage | 0.900 | 0.990 | (same) | (same) |
+
+**The margin bias got WORSE (+14.84 → +17.24), not better.**
+`DEFAULT_FCS_RIDGE_LAMBDA` (see section 4's hardening note) was a real,
+evidence-motivated statistical fix (the pooled FCS parameter WAS being
+over-shrunk relative to its true pooled evidence volume) -- but isolating
+its effect from the global out-of-sample-residual shift above shows it
+did NOT close the FCS-specific gap: comparing the FCS segment's EXCESS
+bias over the FBS-vs-FBS baseline (the natural control group, since both
+moved by roughly the same amount from the residual-pool fix), pre-
+hardening excess was 14.84 − (−0.46) = 15.30; post-hardening excess is
+17.24 − 1.89 = 15.35 -- essentially UNCHANGED. **Conclusion, stated
+plainly rather than claimed as a fix: the ridge-shrinkage-strength
+hypothesis was the wrong primary explanation.** The true driver is very
+likely the pooled parameter's population heterogeneity (FCS programs
+that get scheduled by FBS teams vary enormously in real strength, and one
+shared number cannot capture that spread), which shrinkage strength alone
+cannot fix -- see section 15's honest, mission-compliant fallback: this
+segment remains research-only and is NOT claimed fixed. The added
+`FCS_OPPONENT_UNCERTAINTY_SCALE` uncertainty inflation (section 4) is
+visible in the much wider 90% coverage (0.883 → 0.966, now clearly
+over-covering) -- correctly widening the band around a still-biased
+center, which is honestly not the same as fixing the bias.
+
+Isotonic on this segment: log loss 0.3267, WORSE than platt's 0.2949 and
+worse than the pre-hardening 0.3077 -- consistent with isotonic
+overfitting on a smaller (n=290), less diagnostic population, further
+confirming platt as the safer default.
 
 ### Segment: Neutral site (n=242)
 
-Log loss 0.6602, Brier 0.2341, margin MAE/RMSE/bias 13.25/17.35/+0.52
-(90% coverage 0.946), total MAE/RMSE/bias 14.59/17.52/−2.27 (90% coverage
-0.926) -- no sign of a systematic neutral-site-specific problem.
+| | Pre-hardening | Raw (hardened) | Calibrated (platt) | Calibrated (isotonic) |
+|---|---|---|---|---|
+| Log loss | 0.6602 | 0.6682 | 0.6724 | 0.7668 |
+| Brier | 0.2341 | 0.2381 | 0.2403 | 0.2423 |
+| Margin MAE/RMSE/bias | 13.25/17.35/+0.52 | 13.43/17.45/+2.44 | (same) | (same) |
+| Margin 90% coverage | 0.946 | 0.950 | (same) | (same) |
+| Total MAE/RMSE/bias | 14.59/17.52/−2.27 | 14.51/17.45/−1.45 | (same) | (same) |
+| Total 90% coverage | 0.926 | 0.959 | (same) | (same) |
+
+**Honestly reported, not hidden: on this small (n=242) segment, platt
+calibration makes log loss slightly WORSE than raw (0.6724 vs 0.6682),
+and isotonic makes it much worse (0.7668)** -- a genuine limit of
+calibration fit on the OVERALL population and then applied here: neutral-
+site games are a distinct, thinner-evidenced subset, and this segment is
+too small on its own to expect calibration tuned globally to help every
+subgroup uniformly. This does not reverse the adopted platt default
+(overall and FBS-vs-FBS results are net positive, and isotonic is worse
+here too), but it is a real, quantified example of the "no obvious
+instability" bar mission section 3 asks for being only approximately met,
+not perfectly.
 
 ### Segment: Home/away, non-neutral (n=2,983)
 
-Log loss 0.5921, Brier 0.2031, margin MAE/RMSE/bias 14.83/18.84/+0.95
-(90% coverage 0.941), total MAE/RMSE/bias 13.26/16.59/−1.23 (90% coverage
-0.947).
+| | Pre-hardening | Raw (hardened) | Calibrated (platt) |
+|---|---|---|---|
+| Log loss | 0.5921 | 0.6121 | **0.5860** |
+| Brier | 0.2031 | 0.2114 | **0.2026** |
+| Margin MAE/RMSE/bias | 14.83/18.84/+0.95 | 15.05/19.18/+3.34 | (same) |
+| Margin 90% coverage | 0.941 | 0.961 | (same) |
+| Total MAE/RMSE/bias | 13.26/16.59/−1.23 | 13.28/16.64/−0.46 | (same) |
+| Total 90% coverage | 0.947 | 0.966 | (same) |
 
-### By season
+Calibration beats both raw and pre-hardening on this (the largest)
+segment.
 
-| Season | n | Log loss | Brier | Margin MAE/RMSE/bias | Total MAE/RMSE/bias |
-|---|---|---|---|---|---|
-| 2022 | 791 | 0.6297 | 0.2197 | 15.22/19.59/−0.87 | 13.78/17.08/−1.13 |
-| 2023 | 804 | 0.5871 | 0.2005 | 14.54/18.52/+0.65 | 13.49/16.78/−1.50 |
-| 2024 | 807 | 0.5986 | 0.2064 | 14.46/18.28/+1.45 | 13.12/16.56/−0.99 |
-| 2025 | 823 | 0.5744 | 0.1955 | 14.64/18.54/+2.36 | 13.06/16.21/−1.60 |
+### By season (raw vs. calibrated-platt vs. pre-hardening)
 
-Reasonably consistent season-to-season; a mild improving trend in log
-loss/Brier across seasons is visible but with n≈800/season is not strong
-enough evidence to claim a real trend rather than noise.
+| Season | n | Log loss: pre-hardening | Log loss: raw | Log loss: calibrated |
+|---|---|---|---|---|
+| 2022 | 791 | 0.6297 | 0.6615 | 0.6626 |
+| 2023 | 804 | 0.5871 | 0.6058 | **0.5581** |
+| 2024 | 807 | 0.5986 | 0.6109 | **0.5890** |
+| 2025 | 823 | 0.5744 | 0.5885 | **0.5620** |
+
+**2022 is a genuine, reported exception**: calibrated log loss (0.6626)
+is marginally WORSE than raw (0.6615) for that season specifically. 2022
+is the first season in the corpus -- the calibration model accumulating
+history AT THAT POINT in the walk-forward has the least accumulated
+history of any season (by definition, since seasons before 2022 are not
+in this corpus), so its calibration fit is the least mature. This is
+consistent with the documented `MIN_CALIBRATION_HISTORY` fallback design
+working as intended (thin-history predictions lean more on the
+identity fallback and less on a well-fit correction) rather than a bug.
 
 ### Early season (week ≤ 3, n=600) vs. later season (week > 3, n=2,625)
 
-| | Early (week ≤ 3) | Later (week > 3) |
-|---|---|---|
-| Log loss | 0.5120 | 0.6167 |
-| Brier | 0.1676 | 0.2140 |
-| Margin MAE/RMSE/bias | 17.92/22.42/**+6.10** | 13.98/17.79/−0.27 |
-| Margin 90% coverage | 0.902 | 0.950 |
-| Total MAE/RMSE/bias | 13.41/16.73/−3.79 | 13.35/16.64/−0.74 |
+| | Pre-hardening: early | Raw (hardened): early | Calibrated: early | Pre-hardening: later | Raw (hardened): later | Calibrated: later |
+|---|---|---|---|---|---|---|
+| Log loss | 0.5120 | 0.5702 | **0.5118** | 0.6167 | 0.6269 | **0.6109** |
+| Brier | 0.1676 | 0.1922 | **0.1733** | 0.2140 | 0.2182 | **0.2128** |
+| Margin MAE/RMSE/bias | 17.92/22.42/**+6.10** | 18.75/23.53/**+9.07** | (same as raw) | 13.98/17.79/−0.27 | 14.05/17.88/+1.94 | (same as raw) |
+| Margin 90% coverage | 0.902 | 0.935 | (same) | 0.950 | 0.966 | (same) |
 
-Early-season winner log loss/Brier are actually BETTER than later season
--- plausible given early slates include many lopsided, easy-to-call
-buy games. But the margin bias is real and worth flagging precisely
-because it is NOT visible in the win-probability numbers: **+6.10**,
-meaning the model systematically under-predicts blowout margins in weeks
-1-3, consistent with the season-carryover prior (section 7) correctly
-pulling early-week ratings toward a conservative blend but perhaps too
-conservatively for the games where the true talent gap is large and
-already evident.
+**The early-season margin bias got WORSE, not better, after hardening**
+(+6.10 → +9.07) -- the same global out-of-sample-residual mechanism
+described in the Overall section, compounded early in a season when the
+carryover-prior blend (section 7) is itself still leaning heavily on
+last season's rating, which the ridge fit's shrinkage-toward-average
+tendency affects most. Calibrated winner log loss is essentially
+unchanged for early season (0.5120 → 0.5118, a wash) but improves for
+later season (0.6167 → 0.6109) -- winner-probability calibration and
+margin-bias correction are two DIFFERENT problems, and fixing one
+(calibration) provably does not fix the other (margin bias); see section
+6 below on why this is not coincidental.
+
+### Is the early-season pattern driven by FBS-vs-FCS composition?
+
+A direct check, since early slates disproportionately include FBS-vs-FCS
+"buy games": comparing the FBS-vs-FCS-only margin bias (+17.24 overall,
+this milestone's largest single-segment bias) against the early-season
+overall bias (+9.07) shows early season is NOT simply an artifact of FCS
+composition -- FBS-vs-FBS games ALONE also show a positive margin bias
+post-hardening (+1.89, section 11's FBS-vs-FBS table), so the early-
+season effect is real and additive on top of, not merely explained away
+by, FBS-vs-FCS games appearing more often early. Both a real early-season
+prior-shrinkage effect and a real FCS-pooling effect independently
+contribute to margin bias; neither fully explains the other away.
 
 ## 12. Benchmark comparison
 
-**Honest, mixed-but-net-positive verdict: the Milestone C model beats the
-naive benchmark on winner probability and margin, is roughly a wash on
-total points, out-of-sample, on a genuine 3,225-game walk-forward
-backtest.** Specifically:
+**Honest, mixed-but-net-positive verdict, unchanged in direction by the
+hardening pass: the Milestone C model beats the naive benchmark on
+winner probability and margin, is roughly a wash on total points,
+out-of-sample, on the same genuine 3,225-game walk-forward backtest.**
+The naive benchmark is completely unmodified this pass -- every naive
+number below is identical to the pre-hardening document. Specifically:
 
-- **Winner probability: model wins.** Log loss 0.5972 vs. 0.6141 (2.8%
-  relative improvement), Brier 0.2054 vs. 0.2133 (3.7% relative
-  improvement). Small but consistent and in the expected direction --
-  opponent adjustment provides real, if modest, information beyond raw
-  scoring averages.
-- **Margin: model wins.** MAE 14.71 vs. 15.39, RMSE 18.74 vs. 19.59, both
-  meaningfully lower. Interval coverage is also closer to the nominal 90%
-  target for the model (94.1%) than the naive benchmark (84.1%, a real
-  undercoverage problem for the fixed-SD naive approach).
-- **Total points: essentially a wash, naive marginally ahead.** MAE 13.36
-  (model) vs. 13.17 (naive), RMSE 16.66 vs. 16.41 -- the naive benchmark's
-  simple points-for/against averaging is, on this evidence, about as good
-  at predicting total points as the full opponent-adjusted/pace model.
-  This is reported plainly rather than minimized: the added sophistication
-  of separating pace from efficiency (section 5) has NOT yet demonstrated
-  a measurable total-points advantage over the naive approach on this
-  corpus. Total 90% coverage is closer to nominal for the model (94.5% vs
-  91.4%), so the model's total UNCERTAINTY estimate is arguably better
-  calibrated even where its total POINT estimate is not more accurate.
+- **Winner probability: model wins, and by MORE than before calibration.**
+  Log loss 0.5924 (calibrated) vs. 0.6141 naive (3.5% relative
+  improvement, vs. 2.8% pre-hardening), Brier 0.2054 vs. 0.2133 (same as
+  pre-hardening). The RAW, uncalibrated hardened model is actually
+  slightly WORSE than naive on log loss (0.6163 vs 0.6141) -- calibration
+  is not a cosmetic addition here, it is what makes the net comparison
+  favorable at all post-hardening. This is reported explicitly rather
+  than only citing the calibrated number.
+- **Margin: model still wins on MAE/RMSE, but the bias got worse.** MAE
+  14.92 vs. 15.39 naive, RMSE 19.06 vs. 19.59, both still lower than
+  naive (though less of a margin than pre-hardening's 14.71/18.74).
+  Margin BIAS moved from a modest +0.91 pre-hardening to a real +3.27
+  post-hardening (section 11) -- the model's margin predictions are
+  still more accurate than naive on average error, but are now visibly,
+  measurably biased in one direction, a genuine finding the hardening
+  pass surfaced rather than introduced (see section 11's mechanism
+  explanation).
+- **Total points: still essentially a wash, naive still marginally
+  ahead.** MAE 13.37 (model, hardened) vs. 13.17 (naive), RMSE 16.70 vs.
+  16.41 -- both very close to the pre-hardening numbers (13.36/16.66).
+  This finding is UNCHANGED by the hardening pass, confirming it is not
+  an artifact of the specific bugs that were fixed. Total 90% coverage is
+  now further from nominal for the model (96.6% vs naive's 91.4%) than it
+  was pre-hardening (94.5%) -- the model's total uncertainty band is now
+  measurably too wide, not just "better calibrated than naive" as the
+  pre-hardening document concluded. This is a more honest, less flattering
+  restatement of the same underlying finding.
 
 **Conclusion, not forced either direction:** the added modeling
-complexity is justified for the mission's CORE_V1 winner and spread
-targets (where it demonstrably improves on the naive baseline) but is not
-yet demonstrated to be justified for the total-points target specifically
--- see section 15's recommendation, which is drawn directly from this
-finding rather than treating "model beats naive" as a given.
+complexity, WITH calibration, is justified for the mission's CORE_V1
+winner target (measurably more so than pre-hardening) and for the spread
+target's average error (MAE/RMSE), though margin bias is now a real,
+visible weakness that was previously hidden by an in-sample estimation
+bug. Total-points prediction remains not demonstrated to be worth its
+added complexity over naive -- unchanged from the original finding,
+now confirmed stable across a methodology correction rather than resting
+on a single run.
 
 ## 13. Kalshi CORE_V1 readiness
 
-For each Milestone B.5 CORE_V1 family, whether the underlying FOOTBALL
-probability primitive now exists and is validated (NOT whether Kalshi
-contract settlement mapping is production-ready -- that is a separate,
-unproven question; see "Scope boundary" below):
+For each Milestone B.5 CORE_V1 family, two DISTINCT questions, never
+conflated: **RESEARCH_PRIMITIVE_AVAILABLE** (does a leakage-safe,
+backtested football probability primitive exist for this market
+family?) and **PRODUCTION_PRICING_READY** (is it validated and mature
+enough to price a real Kalshi contract?) -- the second is NO for all
+three, unconditionally, regardless of how the first evaluates.
 
-| Kalshi family | Required primitive | Available in this milestone? | Validated how | Genuine live result |
-|---|---|---|---|---|
-| Game winner | `P(home_score > away_score)` | YES -- `SimulatedGameProjection.prob_home_win()` | Chronological backtest: log loss, Brier, calibration (section 11) | Beats naive benchmark (log loss 0.5972 vs 0.6141, Brier 0.2054 vs 0.2133) on 3,225 held-out games, but a real calibration gap remains in the 0.6-0.9 predicted range (see section 15, item 1) -- validated and directionally sound, NOT yet calibration-clean |
-| Point spread | Margin distribution `P(margin > threshold)` for arbitrary threshold | YES -- `SimulatedGameProjection.prob_margin_greater_than()`, exact at any real threshold including integers | Margin MAE/RMSE/bias/coverage (section 11) | Beats naive on MAE/RMSE and interval coverage overall and within FBS-vs-FBS; a genuine, sizeable bias (+14.84) exists specifically for FBS-vs-FCS games (section 15, item 2) |
-| Game total | Total-score distribution `P(total > threshold)` | YES -- `SimulatedGameProjection.prob_total_greater_than()` | Total MAE/RMSE/bias/coverage (section 11) | Roughly a wash vs. the naive benchmark on point accuracy (MAE 13.36 vs 13.17); the model's uncertainty *coverage* is better calibrated (94.5% vs 91.4% at the 90% target) even where its point estimate is not more accurate -- see section 12's explicit, non-forced conclusion |
+### Game winner
+- RESEARCH_PRIMITIVE_AVAILABLE: **YES** -- `SimulatedGameProjection.prob_home_win()`.
+- Out-of-time validated: **YES** -- genuine chronological walk-forward,
+  3,225 held-out games (section 9, section 11).
+- Calibrated enough for research: **YES, materially improved this pass**
+  -- calibrated log loss 0.5924 beats both naive (0.6141) and the
+  pre-hardening model (0.5972); calibration bins sit close to the
+  diagonal across the full range (section 11). Two real, reported
+  exceptions remain: the Neutral-site segment (n=242) where calibration
+  slightly underperforms raw, and season 2022 (thinnest accumulated
+  calibration history) -- both explained, not hidden, in section 11.
+- Production-ready: **NO** -- unconditionally, per mission instruction;
+  no Kalshi contract/settlement mapping exists in this codebase at all.
+
+### Point spread
+- RESEARCH_PRIMITIVE_AVAILABLE: **YES** -- `SimulatedGameProjection.prob_margin_greater_than()`,
+  exact at any real threshold including integers.
+- Out-of-time validated: **YES** -- margin MAE/RMSE beat naive overall
+  and within FBS-vs-FBS (section 11).
+- FBS-vs-FCS limitation: **YES, a real and NOT fully resolved one.** A
+  +17.24 margin bias (worse than the pre-hardening +14.84) remains in
+  this segment; the hardening pass's targeted fix (`DEFAULT_FCS_RIDGE_LAMBDA`)
+  was evidence-motivated but, isolated from the global residual-pool
+  shift, did NOT close the FCS-relative-to-FBS excess bias (section 11).
+  This segment is explicitly flagged as unsupported for pricing use, per
+  mission section 4's fallback instruction, not smoothed over as fixed.
+- Production-ready: **NO** -- unconditionally.
+
+### Game total
+- RESEARCH_PRIMITIVE_AVAILABLE: **YES** -- `SimulatedGameProjection.prob_total_greater_than()`.
+- Out-of-time validated: **YES**, same backtest.
+- Naive comparison result: **still a wash, confirmed stable across the
+  hardening pass** (MAE 13.37 vs. 13.17 naive, RMSE 16.70 vs. 16.41) --
+  forecast quality has not improved over the simpler baseline, and
+  interval coverage is now further from nominal (96.6% vs naive's
+  91.4%) than pre-hardening's 94.5%, a more honest picture than "better
+  calibrated" alone conveyed before.
+- Production-ready: **NO** -- unconditionally.
 
 **What this does NOT mean:** none of Kalshi's actual push/tie settlement
 mechanics (Milestone B.5's PROBABLE-confidence findings on spread/total
@@ -473,14 +724,34 @@ discrete distribution) is real remaining work, not assumed done.
 
 ## 14. Known limitations
 
-- **In-sample residual estimation** (section 8): the uncertainty band's
-  SHAPE is fit from the same rating snapshot used for the prediction, not
-  from a second walk-forward pass. The point predictions themselves ARE
-  walk-forward/leakage-safe (the backtest refits ratings weekly); only the
-  precision of the uncertainty band around them is affected.
-- **`DEFAULT_RIDGE_LAMBDA` (25.0) and shrinkage constants (k=4.0 in two
-  places) are provisional, round numbers**, not cross-validated against
-  held-out data.
+- **The margin-bias hardening fix was incomplete for FBS-vs-FCS, and this
+  is explicitly not claimed otherwise**: `DEFAULT_FCS_RIDGE_LAMBDA`
+  correctly fixed a real over-shrinkage bug, but the FCS segment's
+  EXCESS bias over FBS-vs-FBS is essentially unchanged (15.30 →
+  15.35, section 11) -- the true driver is very likely FCS population
+  heterogeneity within the single pooled parameter, which was not
+  addressed this pass. **FBS-vs-FCS margin/spread output remains
+  unsupported for pricing use.**
+- **The expanding residual pool (section 8.2) revealed, and did not fix,
+  a genuine margin-underprediction tendency** that was previously masked
+  by an in-sample estimation artifact -- overall margin bias is now +3.27
+  (was +0.91), a real, quantified, and currently unaddressed weakness
+  (see section 15, now the top-priority item).
+- **`DEFAULT_RIDGE_LAMBDA` (25.0) and shrinkage constants (k=4.0 in
+  several places) remain provisional, round numbers**, not
+  cross-validated against held-out data -- and the newly-revealed margin
+  bias is itself evidence this deserves real cross-validation, not just a
+  documented caveat.
+- **Calibration (platt) does not help uniformly**: it slightly
+  underperforms raw on the Neutral-site segment (n=242) and on season
+  2022 specifically (thinnest accumulated history) -- see section 11.
+  Both are explained, not hidden, but both are real limits of a single
+  globally-fit calibration model.
+- **Isotonic regression was tested and rejected as the default**, not
+  merely assumed inferior: it underperforms both naive and platt overall,
+  and actively makes several segments (FBS-vs-FBS, Neutral site)
+  materially worse than the raw uncalibrated number -- a genuine
+  overfitting finding from real data (section 11).
 - **HFA is a single league-wide scalar** -- conference/travel/altitude/
   rivalry variation was not investigated (see section 6).
 - **Talent composite, PPA/success-rate/explosiveness, Elo/SP+/FPI/SRS, and
@@ -498,56 +769,60 @@ discrete distribution) is real remaining work, not assumed done.
   documentation alone -- these were excluded from V1 specifically because
   that ambiguity was found and not resolved (see section 1), not silently
   assumed safe.
-- **A real, measured winner-probability calibration gap** exists in the
-  0.6-0.9 predicted range (observed win rates run higher than predicted --
-  see section 11's calibration table). This is the single highest-value
-  fix identified this milestone (section 15).
-- **A real, measured margin/total bias in the FBS-vs-FCS segment**
-  (+14.84 margin bias, section 11) traces directly to the pooled
-  single-parameter FCS rating (section 4) being too coarse for this
-  population's wide talent spread.
-- **Total-points prediction did not demonstrate an improvement over the
-  naive benchmark** on this corpus (section 12) -- reported plainly, not
-  minimized. The pace/efficiency decomposition (section 5) has not yet
-  proven its value for this specific target.
+- **Total-points prediction still does not demonstrate an improvement
+  over the naive benchmark**, now confirmed stable across the hardening
+  pass rather than resting on a single run (section 12) -- reported
+  plainly, not minimized.
+- **Interval coverage (margin and total) is now further from the nominal
+  90% target than pre-hardening** (over-covering, not under-covering) --
+  a genuine, quantified side effect of the wider, more honest
+  out-of-sample residual pool (section 11).
 
 ## 15. Recommendation for next model improvement
 
-Two genuine findings compete for "highest value"; both are reported, with
-a stated priority order and why.
+The hardening pass changed the priority order from the original document,
+based on genuine new evidence, not a preference -- restated here rather
+than left stale.
 
-**1. (Highest priority) Fix the winner-probability calibration gap in the
-0.6-0.9 predicted range** (section 11's calibration table): observed win
-rates run meaningfully higher than predicted in exactly the range that
-matters most for a game-winner/spread market (moderate-to-strong
-favorites, not toss-ups or near-locks). This directly affects Kalshi
-CORE_V1 readiness (section 13) -- a systematically underconfident
-probability is a systematically mispriced one. The fix is well-understood
-and evidence-directed, not speculative: fit a monotonic recalibration
-(Platt scaling or isotonic regression) on ONLY strictly-prior weeks within
-the same walk-forward scheme already built (`backtest.py`), apply it to
-each week's raw probabilities before scoring. This requires no new data
-source and no architecture change -- it is a genuine next step, not a
-research project.
+**1. (Highest priority, NEW) Investigate and correct the margin-bias
+mechanism the residual-pool fix revealed** (+3.27 overall, section 11):
+this is now the single largest, most broadly-distributed quantified
+weakness in the model (visible in nearly every segment, not just one).
+The evidence points toward ridge-shrinkage systematically under-predicting
+margins out-of-sample -- a natural next step is a genuine cross-validated
+`ridge_lambda` sweep (evaluated via this same walk-forward backtest,
+never in-sample), rather than the current provisional, round-number
+constant. This requires no new data source, reuses the existing backtest
+harness, and directly targets a bias that affects the CORE_V1 point-
+spread family broadly, not just one segment.
 
-**2. Address the FBS-vs-FCS margin bias** (+14.84, section 11): the
-single pooled "generic FCS opponent" rating is too coarse for games where
-the true talent gap is large, which is common in this segment. Since
-FBS-vs-FCS Kalshi coverage is itself UNVERIFIED (Milestone B.5), this is
-lower priority than item 1, but the fix is concrete: at minimum, a
-2-3-tier FCS strength bucket (rather than one pooled rating) using CFBD's
-own FCS-level win/loss record or `/ratings/srs` for FCS teams once its
+**2. Properly resolve the FBS-vs-FCS margin bias with a structural fix,
+not just re-tuned shrinkage** (+17.24, still excess-15.35 over FBS-vs-FBS,
+section 11): this pass's evidence rules out shrinkage strength as the
+primary driver and points to population heterogeneity within the single
+pooled FCS parameter. A concrete, evidence-directed next step: a 2-3-tier
+FCS strength bucket (rather than one pooled rating) using CFBD's own
+FCS-level win/loss record or `/ratings/srs` for FCS teams once its
 pregame-timing safety is independently confirmed (a prerequisite this
-document already flags as unresolved in section 1).
+document already flags as unresolved in section 1). Since FBS-vs-FCS
+Kalshi coverage is itself UNVERIFIED (Milestone B.5), this remains lower
+priority than item 1.
+
+**3. Investigate calibration's segment-level exceptions** (Neutral site,
+season 2022, section 11) -- likely addressable with a
+segment-aware or slower-decaying calibration history window, but this is
+a genuine refinement, not a blocking issue: the overall and CORE_V1-
+relevant (FBS-vs-FBS) numbers are net positive as shipped.
 
 **Explicitly NOT recommended next, despite being tempting:** adding more
-raw features (PPA, success rate, talent composite, Elo) before either of
-the above is fixed. The total-points wash-vs-naive finding (section 12) is
-a signal that the CURRENT feature set's marginal value has not been fully
-extracted yet (via calibration) -- piling on new features without first
-correcting a known, well-diagnosed calibration issue would repeat exactly
-the "add complexity to a weak baseline before understanding why it's
-weak" mistake the mission's stop condition (section 22) warns against.
+raw features (PPA, success rate, talent composite, Elo) before the above
+are addressed. The total-points wash-vs-naive finding (section 12,
+confirmed stable across this hardening pass) is a signal that the CURRENT
+feature set's marginal value has not been fully extracted yet -- piling
+on new features without first correcting a known, well-diagnosed margin
+bias would repeat exactly the "add complexity to a weak baseline before
+understanding why it's weak" mistake the mission's stop condition
+(section 22) warns against.
 
 ## Scope boundary (mission spec section 16, restated explicitly)
 
