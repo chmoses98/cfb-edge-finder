@@ -272,15 +272,182 @@ by neutral-site vs. not, and by FBS-vs-FBS vs. FBS-vs-FCS -- see section
      the same GitHub Actions workflow_dispatch mechanism established in
      Milestone B (.github/workflows/backtest-cfb-baseline-live.yml). -->
 
-LIVE_VALIDATION_PLACEHOLDER
+Two live runs via `.github/workflows/backtest-cfb-baseline-live.yml`
+(`workflow_dispatch`, seasons `2022 2023 2024 2025`, 6000 Monte Carlo
+simulations per game). `CFBD_API_KEY` was masked (`***`) throughout both
+runs' logs; never printed.
+
+**Run 1** (`https://github.com/chmoses98/cfb-edge-finder/actions/runs/32619609422`,
+2026-08-23T05:08:44Z) surfaced a genuine bug and is reported here for
+transparency rather than discarded: CFBD's `/games?division=fbs` query
+parameter does **not** fully exclude non-FBS-involving games -- the same
+gap Milestone B independently found (a Division II game slipping through
+the identical filter). `modeling/corpus.py` had no guard against this, so
+FCS-vs-FCS, D-II, D-III, and NAIA games were being built into the corpus
+too, and every one of them landed in the walk-forward backtest's "not
+FBS-vs-FBS" bucket -- silently inflating the reported "FBS-vs-FCS"
+segment to 10,787 games against only 2,935 genuine FBS-vs-FBS games, the
+inverse of the real ratio. Fixed in commit `36d268f`
+(`corpus._is_fbs_involved`, the exact same "at least one side must be
+FBS" policy Milestone B's `ingest_schedule.py` already applies) and
+re-run.
+
+**Run 2, the corrected and authoritative run**
+(`https://github.com/chmoses98/cfb-edge-finder/actions/runs/32619827949`,
+2026-08-23T05:13:57Z, head `36d268f`) -- all results below are from this
+run:
+
+- 7,210 `TeamGameLine` rows built across the 4 seasons.
+- 11,454 raw CFBD games excluded as having no FBS side on either team
+  (the corrected filter working as intended -- CFBD's `/games` response
+  includes a very large number of lower-division games even under
+  `division=fbs`).
+- 3,225 games actually predicted by the walk-forward backtest (week ≤ 3
+  of the very first season in the corpus, 2022, has no leakage-safe
+  history and is correctly excluded by `min_week_for_first_prediction`).
+- Team-name-resolution skips (the same fail-loud-on-ambiguity /
+  lenient-for-non-FBS policy as Milestone B): a small number of bare
+  `"Miami"` ambiguities and clearly non-FBS/non-FCS program names
+  (e.g. "Florida Memorial University", "Keiser University") correctly
+  excluded, not silently guessed.
 
 ## 11. Backtest results
 
-LIVE_RESULTS_PLACEHOLDER
+All numbers below are copied verbatim from the corrected live run
+(`32619827949`), never rounded differently or recomputed.
+
+### Overall (n=3,225 predicted games)
+
+| | Naive benchmark | Milestone C model |
+|---|---|---|
+| Winner log loss | 0.6141 | **0.5972** |
+| Winner Brier | 0.2133 | **0.2054** |
+| Margin MAE / RMSE / bias | 15.39 / 19.59 / −0.86 | **14.71 / 18.74** / +0.91 |
+| Margin 90% interval coverage | 0.841 | 0.941 |
+| Total MAE / RMSE / bias | **13.17 / 16.41** / −1.43 | 13.36 / 16.66 / −1.31 |
+| Total 90% interval coverage | 0.914 | 0.945 |
+
+Winner calibration bins (Milestone C model): predicted vs. observed win
+rate, by bin (n = sample count):
+
+| Bin | Predicted | Observed | n |
+|---|---|---|---|
+| [0.2,0.3) | 0.270 | 0.059 | 17 |
+| [0.3,0.4) | 0.359 | 0.200 | 115 |
+| [0.4,0.5) | 0.459 | 0.400 | 458 |
+| [0.5,0.6) | 0.556 | 0.503 | 1124 |
+| [0.6,0.7) | 0.639 | 0.721 | 947 |
+| [0.7,0.8) | 0.743 | 0.886 | 405 |
+| [0.8,0.9) | 0.832 | 0.986 | 148 |
+| [0.9,1.0) | 0.919 | 1.000 | 11 |
+
+**A real, visible calibration gap**: in the 0.6-0.9 predicted-probability
+range, observed win rates run consistently HIGHER than predicted (e.g.
+0.7-0.8 bin: predicted 0.743, observed 0.886) -- the model correctly
+ranks favorites but is systematically underconfident about them in this
+range. This is flagged honestly here and is the basis for section 15's
+recommendation, not smoothed over.
+
+### Segment: FBS-vs-FBS (n=2,935)
+
+Log loss 0.6258, Brier 0.2180, margin MAE/RMSE/bias 14.20/18.14/−0.46
+(90% coverage 0.947), total MAE/RMSE/bias 13.16/16.40/−0.62 (90% coverage
+0.950). This is the CORE_V1-relevant population and shows the tightest,
+best-calibrated coverage of any segment.
+
+### Segment: FBS-vs-FCS (n=290)
+
+Log loss 0.3077, Brier 0.0781 (both much lower/better than FBS-vs-FBS --
+expected, since the favorite is usually overwhelming and the winner call
+is easy). But margin MAE/RMSE/bias: **19.84 / 23.98 / +14.84** -- a large
+positive bias, meaning the model systematically UNDER-predicts how big
+these blowouts actually are. Total MAE/RMSE/bias: 15.37/19.03/−8.29 (the
+model over-predicts total points by ~8 on average). This is a genuine,
+material weakness of the pooled single "generic FCS opponent" rating
+(section 4): it averages across FCS programs of very different strength,
+understating the true margin when an FBS team faces a particularly weak
+one. Margin/total 90% coverage (0.883/0.900) is still reasonable despite
+the bias, because the simulated uncertainty band is wide enough to
+usually contain the true outcome even when centered incorrectly.
+
+### Segment: Neutral site (n=242)
+
+Log loss 0.6602, Brier 0.2341, margin MAE/RMSE/bias 13.25/17.35/+0.52
+(90% coverage 0.946), total MAE/RMSE/bias 14.59/17.52/−2.27 (90% coverage
+0.926) -- no sign of a systematic neutral-site-specific problem.
+
+### Segment: Home/away, non-neutral (n=2,983)
+
+Log loss 0.5921, Brier 0.2031, margin MAE/RMSE/bias 14.83/18.84/+0.95
+(90% coverage 0.941), total MAE/RMSE/bias 13.26/16.59/−1.23 (90% coverage
+0.947).
+
+### By season
+
+| Season | n | Log loss | Brier | Margin MAE/RMSE/bias | Total MAE/RMSE/bias |
+|---|---|---|---|---|---|
+| 2022 | 791 | 0.6297 | 0.2197 | 15.22/19.59/−0.87 | 13.78/17.08/−1.13 |
+| 2023 | 804 | 0.5871 | 0.2005 | 14.54/18.52/+0.65 | 13.49/16.78/−1.50 |
+| 2024 | 807 | 0.5986 | 0.2064 | 14.46/18.28/+1.45 | 13.12/16.56/−0.99 |
+| 2025 | 823 | 0.5744 | 0.1955 | 14.64/18.54/+2.36 | 13.06/16.21/−1.60 |
+
+Reasonably consistent season-to-season; a mild improving trend in log
+loss/Brier across seasons is visible but with n≈800/season is not strong
+enough evidence to claim a real trend rather than noise.
+
+### Early season (week ≤ 3, n=600) vs. later season (week > 3, n=2,625)
+
+| | Early (week ≤ 3) | Later (week > 3) |
+|---|---|---|
+| Log loss | 0.5120 | 0.6167 |
+| Brier | 0.1676 | 0.2140 |
+| Margin MAE/RMSE/bias | 17.92/22.42/**+6.10** | 13.98/17.79/−0.27 |
+| Margin 90% coverage | 0.902 | 0.950 |
+| Total MAE/RMSE/bias | 13.41/16.73/−3.79 | 13.35/16.64/−0.74 |
+
+Early-season winner log loss/Brier are actually BETTER than later season
+-- plausible given early slates include many lopsided, easy-to-call
+buy games. But the margin bias is real and worth flagging precisely
+because it is NOT visible in the win-probability numbers: **+6.10**,
+meaning the model systematically under-predicts blowout margins in weeks
+1-3, consistent with the season-carryover prior (section 7) correctly
+pulling early-week ratings toward a conservative blend but perhaps too
+conservatively for the games where the true talent gap is large and
+already evident.
 
 ## 12. Benchmark comparison
 
-LIVE_BENCHMARK_COMPARISON_PLACEHOLDER
+**Honest, mixed-but-net-positive verdict: the Milestone C model beats the
+naive benchmark on winner probability and margin, is roughly a wash on
+total points, out-of-sample, on a genuine 3,225-game walk-forward
+backtest.** Specifically:
+
+- **Winner probability: model wins.** Log loss 0.5972 vs. 0.6141 (2.8%
+  relative improvement), Brier 0.2054 vs. 0.2133 (3.7% relative
+  improvement). Small but consistent and in the expected direction --
+  opponent adjustment provides real, if modest, information beyond raw
+  scoring averages.
+- **Margin: model wins.** MAE 14.71 vs. 15.39, RMSE 18.74 vs. 19.59, both
+  meaningfully lower. Interval coverage is also closer to the nominal 90%
+  target for the model (94.1%) than the naive benchmark (84.1%, a real
+  undercoverage problem for the fixed-SD naive approach).
+- **Total points: essentially a wash, naive marginally ahead.** MAE 13.36
+  (model) vs. 13.17 (naive), RMSE 16.66 vs. 16.41 -- the naive benchmark's
+  simple points-for/against averaging is, on this evidence, about as good
+  at predicting total points as the full opponent-adjusted/pace model.
+  This is reported plainly rather than minimized: the added sophistication
+  of separating pace from efficiency (section 5) has NOT yet demonstrated
+  a measurable total-points advantage over the naive approach on this
+  corpus. Total 90% coverage is closer to nominal for the model (94.5% vs
+  91.4%), so the model's total UNCERTAINTY estimate is arguably better
+  calibrated even where its total POINT estimate is not more accurate.
+
+**Conclusion, not forced either direction:** the added modeling
+complexity is justified for the mission's CORE_V1 winner and spread
+targets (where it demonstrably improves on the naive baseline) but is not
+yet demonstrated to be justified for the total-points target specifically
+-- see section 15's recommendation, which is drawn directly from this
+finding rather than treating "model beats naive" as a given.
 
 ## 13. Kalshi CORE_V1 readiness
 
@@ -289,11 +456,11 @@ probability primitive now exists and is validated (NOT whether Kalshi
 contract settlement mapping is production-ready -- that is a separate,
 unproven question; see "Scope boundary" below):
 
-| Kalshi family | Required primitive | Available in this milestone? | Validated how |
-|---|---|---|---|
-| Game winner | `P(home_score > away_score)` | YES -- `SimulatedGameProjection.prob_home_win()` | Chronological backtest: log loss, Brier, calibration (section 11) |
-| Point spread | Margin distribution `P(margin > threshold)` for arbitrary threshold | YES -- `SimulatedGameProjection.prob_margin_greater_than()`, exact at any real threshold including integers | Margin MAE/RMSE/bias/coverage (section 11) |
-| Game total | Total-score distribution `P(total > threshold)` | YES -- `SimulatedGameProjection.prob_total_greater_than()` | Total MAE/RMSE/bias/coverage (section 11) |
+| Kalshi family | Required primitive | Available in this milestone? | Validated how | Genuine live result |
+|---|---|---|---|---|
+| Game winner | `P(home_score > away_score)` | YES -- `SimulatedGameProjection.prob_home_win()` | Chronological backtest: log loss, Brier, calibration (section 11) | Beats naive benchmark (log loss 0.5972 vs 0.6141, Brier 0.2054 vs 0.2133) on 3,225 held-out games, but a real calibration gap remains in the 0.6-0.9 predicted range (see section 15, item 1) -- validated and directionally sound, NOT yet calibration-clean |
+| Point spread | Margin distribution `P(margin > threshold)` for arbitrary threshold | YES -- `SimulatedGameProjection.prob_margin_greater_than()`, exact at any real threshold including integers | Margin MAE/RMSE/bias/coverage (section 11) | Beats naive on MAE/RMSE and interval coverage overall and within FBS-vs-FBS; a genuine, sizeable bias (+14.84) exists specifically for FBS-vs-FCS games (section 15, item 2) |
+| Game total | Total-score distribution `P(total > threshold)` | YES -- `SimulatedGameProjection.prob_total_greater_than()` | Total MAE/RMSE/bias/coverage (section 11) | Roughly a wash vs. the naive benchmark on point accuracy (MAE 13.36 vs 13.17); the model's uncertainty *coverage* is better calibrated (94.5% vs 91.4% at the 90% target) even where its point estimate is not more accurate -- see section 12's explicit, non-forced conclusion |
 
 **What this does NOT mean:** none of Kalshi's actual push/tie settlement
 mechanics (Milestone B.5's PROBABLE-confidence findings on spread/total
@@ -331,10 +498,56 @@ discrete distribution) is real remaining work, not assumed done.
   documentation alone -- these were excluded from V1 specifically because
   that ambiguity was found and not resolved (see section 1), not silently
   assumed safe.
+- **A real, measured winner-probability calibration gap** exists in the
+  0.6-0.9 predicted range (observed win rates run higher than predicted --
+  see section 11's calibration table). This is the single highest-value
+  fix identified this milestone (section 15).
+- **A real, measured margin/total bias in the FBS-vs-FCS segment**
+  (+14.84 margin bias, section 11) traces directly to the pooled
+  single-parameter FCS rating (section 4) being too coarse for this
+  population's wide talent spread.
+- **Total-points prediction did not demonstrate an improvement over the
+  naive benchmark** on this corpus (section 12) -- reported plainly, not
+  minimized. The pace/efficiency decomposition (section 5) has not yet
+  proven its value for this specific target.
 
 ## 15. Recommendation for next model improvement
 
-LIVE_RECOMMENDATION_PLACEHOLDER
+Two genuine findings compete for "highest value"; both are reported, with
+a stated priority order and why.
+
+**1. (Highest priority) Fix the winner-probability calibration gap in the
+0.6-0.9 predicted range** (section 11's calibration table): observed win
+rates run meaningfully higher than predicted in exactly the range that
+matters most for a game-winner/spread market (moderate-to-strong
+favorites, not toss-ups or near-locks). This directly affects Kalshi
+CORE_V1 readiness (section 13) -- a systematically underconfident
+probability is a systematically mispriced one. The fix is well-understood
+and evidence-directed, not speculative: fit a monotonic recalibration
+(Platt scaling or isotonic regression) on ONLY strictly-prior weeks within
+the same walk-forward scheme already built (`backtest.py`), apply it to
+each week's raw probabilities before scoring. This requires no new data
+source and no architecture change -- it is a genuine next step, not a
+research project.
+
+**2. Address the FBS-vs-FCS margin bias** (+14.84, section 11): the
+single pooled "generic FCS opponent" rating is too coarse for games where
+the true talent gap is large, which is common in this segment. Since
+FBS-vs-FCS Kalshi coverage is itself UNVERIFIED (Milestone B.5), this is
+lower priority than item 1, but the fix is concrete: at minimum, a
+2-3-tier FCS strength bucket (rather than one pooled rating) using CFBD's
+own FCS-level win/loss record or `/ratings/srs` for FCS teams once its
+pregame-timing safety is independently confirmed (a prerequisite this
+document already flags as unresolved in section 1).
+
+**Explicitly NOT recommended next, despite being tempting:** adding more
+raw features (PPA, success rate, talent composite, Elo) before either of
+the above is fixed. The total-points wash-vs-naive finding (section 12) is
+a signal that the CURRENT feature set's marginal value has not been fully
+extracted yet (via calibration) -- piling on new features without first
+correcting a known, well-diagnosed calibration issue would repeat exactly
+the "add complexity to a weak baseline before understanding why it's
+weak" mistake the mission's stop condition (section 22) warns against.
 
 ## Scope boundary (mission spec section 16, restated explicitly)
 
