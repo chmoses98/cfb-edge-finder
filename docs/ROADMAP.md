@@ -23,15 +23,40 @@ mechanism referenced but not built in Milestone A. See
 neutral-site handling, duplicate/reschedule reconciliation, storage,
 known limitations).
 
-**Status: done, with real limitations documented.** `scripts/ingest_schedule.py --season 2026`
-runs end-to-end today, but only in fixture mode -- this environment's
-network egress to CFBD/ESPN is blocked, so no live 2026 data has been
-fetched or is claimed anywhere in this repo. The CFBD client, team
-registry, and normalization/reconciliation logic are real and tested
-against deterministic fixtures; a live run (and a live cross-check of the
-team registry's conference assignments, particularly the rebuilt Pac-12)
-is the concrete unblocking step for whoever next has network access to
-`api.collegefootballdata.com`.
+**Status: done and merged, including a genuine live validation pass.**
+`scripts/validate_cfbd_live.py`, run twice via a GitHub Actions
+`workflow_dispatch` runner (this dev environment's own network egress to
+CFBD stays blocked, same constraint noted throughout this document),
+confirmed the team registry, schema assumptions, and schedule-ingestion
+pipeline against real, authenticated 2026 CFBD data -- see
+`docs/MILESTONE_B.md`'s "Live validation" section for the full diagnostic
+output. `scripts/ingest_schedule.py` still runs in fixture mode inside
+this environment for the same network-access reason; the live-validated
+code path is proven correct, not merely tested against synthetic fixtures.
+
+## Milestone B.5 — Historical Kalshi CFB market audit
+
+Determines, from genuine historical Kalshi evidence (real tickers, CFTC
+self-certification filings, directly-quoted contract templates and live
+prices -- `kalshi.com`/Kalshi's API domains are themselves blocked from
+this environment, so this was done via web search rather than a live
+feed), which CFB market families Kalshi has actually offered, how they're
+structured, and which should be Milestone C's first-class targets. See
+`docs/KALSHI_CFB_MARKET_AUDIT.md` for the full evidence trail and
+`src/cfb_edge_finder/kalshi/cfb_market_family_registry.py` for the
+machine-readable, tested classification.
+
+**Status: done.** CORE_V1 result: game winner, point spread, game total --
+all CONFIRMED via real tickers/self-certification filings, not assumed.
+First-half totals, team totals, touchdown props, and all season/futures
+families (national champion, conference champion, Heisman, AP poll, win
+totals, coach markets, etc.) are explicitly scoped OUT of Milestone C's
+first wave -- see that document's "Scope exclusions" section for why. This
+also means Milestone D's "team_total" family below is UNVERIFIED against
+real Kalshi evidence and should not be assumed a real target without
+further confirmation. Whether FBS-vs-FCS games get individual Kalshi
+listings is UNVERIFIED, not assumed either way; re-check against a live
+Kalshi feed before Milestone C finalizes its default game universe.
 
 ## Milestone C — Baseline game model
 
