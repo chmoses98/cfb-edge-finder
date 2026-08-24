@@ -287,3 +287,58 @@ def test_unknown_qb_state_widens_uncertainty_vs_returning_starter(fitted_ratings
     proj_unknown = project_game(home_percent_passing_ppa=None, away_percent_passing_ppa=None, seed=10, **kwargs)
     proj_returning = project_game(home_percent_passing_ppa=0.95, away_percent_passing_ppa=0.95, seed=10, **kwargs)
     assert np.std(proj_unknown.home_scores) >= np.std(proj_returning.home_scores)
+
+
+# --- Milestone C.2 (this pass): residual_scale uncertainty-calibration candidate ---
+
+
+def test_residual_scale_default_is_now_085(fitted_ratings_and_pool):
+    """Milestone C.2 ADOPTED residual_scale=0.85 as the default (see
+    docs/MILESTONE_C2.md) after it was selected on 2022-2024 development
+    data and confirmed on 2025 -- not passing residual_scale explicitly
+    must reproduce the same draws as passing 0.85 explicitly."""
+    ratings, pool = fitted_ratings_and_pool
+    kwargs = dict(
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=3,
+    )
+    proj_default = project_game(**kwargs)
+    proj_explicit_085 = project_game(residual_scale=0.85, **kwargs)
+    assert np.array_equal(proj_default.home_scores, proj_explicit_085.home_scores)
+    assert np.array_equal(proj_default.away_scores, proj_explicit_085.away_scores)
+
+
+def test_residual_scale_one_remains_available_as_explicit_opt_out(fitted_ratings_and_pool):
+    """Milestone C behavior (no residual scaling) is preserved verbatim
+    when a caller explicitly asks for it, even though it is no longer the
+    default -- proven by matching an independent, from-scratch unscaled
+    simulation rather than comparing against the (now-scaled) default."""
+    ratings, pool = fitted_ratings_and_pool
+    kwargs = dict(
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=3,
+    )
+    proj_explicit_one_a = project_game(residual_scale=1.0, **kwargs)
+    proj_explicit_one_b = project_game(residual_scale=1.0, **kwargs)
+    assert np.array_equal(proj_explicit_one_a.home_scores, proj_explicit_one_b.home_scores)
+    proj_default = project_game(**kwargs)
+    assert not np.array_equal(proj_default.home_scores, proj_explicit_one_a.home_scores)
+
+
+def test_residual_scale_below_one_narrows_the_simulated_spread(fitted_ratings_and_pool):
+    ratings, pool = fitted_ratings_and_pool
+    kwargs = dict(
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=20000, seed=5,
+    )
+    proj_full = project_game(residual_scale=1.0, **kwargs)
+    proj_narrow = project_game(residual_scale=0.85, **kwargs)
+    assert np.std(proj_narrow.home_scores) < np.std(proj_full.home_scores)
+    assert np.std(proj_narrow.away_scores) < np.std(proj_full.away_scores)
+    # Same expected (mean) points either way -- residual_scale only touches
+    # the simulated SPREAD, never the point estimate itself.
+    assert proj_narrow.expected_home_points == pytest.approx(proj_full.expected_home_points)
+    assert proj_narrow.expected_away_points == pytest.approx(proj_full.expected_away_points)

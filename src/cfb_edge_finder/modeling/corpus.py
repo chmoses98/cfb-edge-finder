@@ -51,6 +51,22 @@ class TeamGameLine(BaseModel):
     opponent_id: str
     team_classification: str | None = Field(default=None, description="'fbs'/'fcs'/etc, as reported by CFBD")
     opponent_classification: str | None = None
+    team_conference: str | None = Field(
+        default=None,
+        description="This team's CFBD-reported conference AS OF THIS GAME'S SEASON ('homeConference'/"
+        "'awayConference' on the raw /games row) -- a season-scoped, pregame-known fact (conference "
+        "membership for a season is fixed well before kickoff), NEVER the current/2026 team registry. "
+        "Realignment means a team's current conference can differ from its historical one -- see "
+        "modeling/diagnostics.py's is_conference_game for why this distinction matters.",
+    )
+    opponent_conference: str | None = None
+    is_conference_game: bool | None = Field(
+        default=None,
+        description="CFBD's own per-game 'conferenceGame' flag, as reported for that season -- the "
+        "authoritative historical source for conference-game classification. None only if CFBD/the "
+        "source row didn't report it, in which case a caller should fall back to comparing "
+        "team_conference == opponent_conference.",
+    )
     is_home: bool
     is_neutral_site: bool
     team_points: int = Field(..., ge=0)
@@ -173,6 +189,12 @@ def build_team_game_lines(
         away_class = away_classification(raw)
         neutral = bool(raw.get("neutralSite") or raw.get("neutral_site"))
         kickoff = _parse_kickoff(raw.get("startDate") or raw.get("start_date"))
+        home_conf = raw.get("homeConference") or raw.get("home_conference")
+        away_conf = raw.get("awayConference") or raw.get("away_conference")
+        raw_conference_game = raw.get("conferenceGame")
+        if raw_conference_game is None:
+            raw_conference_game = raw.get("conference_game")
+        conference_game_flag = None if raw_conference_game is None else bool(raw_conference_game)
 
         if not _is_fbs_involved(home_class, away_class):
             # CFBD's own `division=fbs` query parameter does not fully
@@ -211,6 +233,9 @@ def build_team_game_lines(
                 opponent_id=away_id,
                 team_classification=home_class,
                 opponent_classification=away_class,
+                team_conference=home_conf,
+                opponent_conference=away_conf,
+                is_conference_game=conference_game_flag,
                 is_home=True,
                 is_neutral_site=neutral,
                 team_points=home_pts,
@@ -230,6 +255,9 @@ def build_team_game_lines(
                 opponent_id=home_id,
                 team_classification=away_class,
                 opponent_classification=home_class,
+                team_conference=away_conf,
+                opponent_conference=home_conf,
+                is_conference_game=conference_game_flag,
                 is_home=False,
                 is_neutral_site=neutral,
                 team_points=away_pts,

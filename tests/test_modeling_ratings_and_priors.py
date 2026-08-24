@@ -132,6 +132,112 @@ def test_fcs_ridge_lambda_is_separate_from_and_smaller_than_the_team_ridge_lambd
     assert DEFAULT_FCS_RIDGE_LAMBDA < DEFAULT_RIDGE_LAMBDA
 
 
+# --- Milestone C.2: FCS historical-performance tiering ---
+
+
+def test_fcs_tiered_mode_separates_weak_and_strong_fcs_opponents():
+    lines = []
+    for week in range(1, 5):
+        # "weak_fcs" gets blown out every time it plays an FBS team.
+        lines.append(_line("alpha", "weak_fcs", 56, 3, 74, True, week=week, opp_class="fcs"))
+        # "strong_fcs" keeps games close.
+        lines.append(_line("beta", "strong_fcs", 24, 20, 68, True, week=week, opp_class="fcs"))
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=5), fcs_mode="tiered")
+    assert ratings.fcs_team_tier["weak_fcs"] == "weak"
+    assert ratings.fcs_team_tier["strong_fcs"] == "strong"
+    # A weak FCS opponent's defense should allow strictly more (more
+    # negative "defense" rating) than a strong FCS opponent's.
+    assert ratings.fcs_defense_for("weak_fcs") < ratings.fcs_defense_for("strong_fcs")
+
+
+def test_fcs_tier_assignment_is_deterministic():
+    lines = [
+        _line("alpha", "fcs_a", 45, 10, 70, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_a", 42, 7, 70, True, week=2, opp_class="fcs"),
+    ]
+    r1 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), fcs_mode="tiered")
+    r2 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), fcs_mode="tiered")
+    assert r1.fcs_team_tier == r2.fcs_team_tier
+    assert r1.fcs_tier_offense == r2.fcs_tier_offense
+    assert r1.fcs_tier_defense == r2.fcs_tier_defense
+
+
+def test_fcs_tier_assignment_uses_only_strictly_prior_evidence():
+    lines = [
+        _line("alpha", "fcs_a", 45, 10, 70, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_a", 42, 7, 70, True, week=2, opp_class="fcs"),
+    ]
+    future_blowout = _line("alpha", "fcs_a", 70, 0, 70, True, week=5, opp_class="fcs")
+    with pytest.raises(LeakageError):
+        fit_fbs_efficiency_ratings([*lines, future_blowout], AsOf(season=2025, week=3), fcs_mode="tiered")
+
+
+def test_fcs_tier_recomputed_walk_forward_and_unaffected_by_future_games():
+    """Regression test for the historical-integrity audit: proves (1) FCS
+    tiers are genuinely RECOMPUTED walk-forward, not frozen at their
+    first-seen value, and (2) a future FCS result cannot reach back and
+    change a PAST game's already-assigned tier.
+
+    "weak_fcs" is blown out early (weeks 1-2) but plays much closer games
+    later (weeks 6-7) -- modeling a team that genuinely improves over the
+    season. `history_at_each_as_of` is built the exact same way
+    `backtest.run_walk_forward_backtest` builds its own `history` argument
+    (`[ln for ln in lines if ln.as_of.is_strictly_before(as_of)]`), so this
+    test exercises the real walk-forward access pattern, not a shortcut.
+    """
+    early_weeks = [
+        _line("alpha", "weak_fcs", 56, 3, 74, True, week=1, opp_class="fcs"),
+        _line("alpha", "weak_fcs", 52, 6, 74, True, week=2, opp_class="fcs"),
+    ]
+    later_weeks = [
+        _line("beta", "weak_fcs", 24, 21, 68, True, week=6, opp_class="fcs"),
+        _line("beta", "weak_fcs", 27, 24, 68, True, week=7, opp_class="fcs"),
+    ]
+    full_season = early_weeks + later_weeks
+
+    as_of_week3 = AsOf(season=2025, week=3)
+    history_week3 = [ln for ln in full_season if ln.as_of.is_strictly_before(as_of_week3)]
+    ratings_week3 = fit_fbs_efficiency_ratings(history_week3, as_of_week3, fcs_mode="tiered")
+    assert ratings_week3.fcs_team_tier["weak_fcs"] == "weak"
+
+    as_of_week8 = AsOf(season=2025, week=8)
+    history_week8 = [ln for ln in full_season if ln.as_of.is_strictly_before(as_of_week8)]
+    ratings_week8 = fit_fbs_efficiency_ratings(history_week8, as_of_week8, fcs_mode="tiered")
+    # With the two later, closer games now strictly prior, the SAME
+    # opponent's tier legitimately moves away from "weak" -- proving
+    # recomputation is genuinely walk-forward, not a one-time snapshot.
+    assert ratings_week8.fcs_team_tier["weak_fcs"] != "weak"
+
+    # The critical assertion: the week-3 snapshot's tier is EXACTLY what
+    # it would be if the week-6/7 games never existed at all -- a future
+    # FCS result cannot change a past game's assigned tier.
+    ratings_week3_isolated = fit_fbs_efficiency_ratings(early_weeks, as_of_week3, fcs_mode="tiered")
+    assert ratings_week3.fcs_team_tier == ratings_week3_isolated.fcs_team_tier
+    assert ratings_week3.fcs_tier_offense == ratings_week3_isolated.fcs_tier_offense
+    assert ratings_week3.fcs_tier_defense == ratings_week3_isolated.fcs_tier_defense
+
+
+def test_unknown_fcs_opponent_falls_back_to_default_tier_not_an_error():
+    from cfb_edge_finder.modeling.ratings import FCS_DEFAULT_TIER, FCS_TIER_MIN_GAMES
+
+    lines = [_line("alpha", "brand_new_fcs", 40, 10, 70, True, week=1, opp_class="fcs")]
+    assert FCS_TIER_MIN_GAMES > 1  # sanity: a single game must NOT be enough to tier on its own
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), fcs_mode="tiered")
+    assert "brand_new_fcs" not in ratings.fcs_team_tier
+    assert ratings.fcs_offense_for("brand_new_fcs") == ratings.fcs_tier_offense[FCS_DEFAULT_TIER]
+    assert ratings.fcs_defense_for("brand_new_fcs") == ratings.fcs_tier_defense[FCS_DEFAULT_TIER]
+
+
+def test_pooled_mode_fcs_lookup_matches_the_pooled_scalar():
+    lines = [
+        _line("alpha", "fcs_one", 49, 3, 72, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_two", 42, 6, 70, True, week=2, opp_class="fcs"),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3))  # default fcs_mode="pooled"
+    assert ratings.fcs_offense_for("fcs_one") == ratings.fcs_offense
+    assert ratings.fcs_defense_for("anyone_unseen") == ratings.fcs_defense
+
+
 def test_empty_history_returns_neutral_snapshot_not_a_crash():
     ratings = fit_fbs_efficiency_ratings([], AsOf(season=2025, week=1))
     assert ratings.n_training_rows == 0
@@ -200,3 +306,103 @@ def test_blend_moves_toward_current_season_as_games_accumulate():
         ).offense
 
     assert blend_at(0) < blend_at(2) < blend_at(8) < 1.0
+
+
+# --- Milestone C.2 (this pass): matchup-tempo-interaction pace_mode ---
+
+
+def test_pace_matchup_mode_is_now_the_default():
+    """Milestone C.2 ADOPTED `pace_mode="matchup"` as the default (see
+    docs/MILESTONE_C2.md) after it was selected on 2022-2024 development
+    data and confirmed on 2025 -- not passing pace_mode explicitly must
+    reproduce the same result as passing "matchup" explicitly."""
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+    ]
+    default_ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2))
+    explicit_ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="matchup")
+    assert default_ratings.pace_mode == "matchup"
+    assert default_ratings.expected_plays_for("alpha", "beta") == pytest.approx(
+        explicit_ratings.expected_plays_for("alpha", "beta")
+    )
+
+
+def test_pace_symmetric_mode_remains_available_as_explicit_opt_out():
+    """Milestone C behavior (both teams share one expected-plays value) is
+    preserved verbatim when a caller explicitly asks for it, even though
+    it is no longer the default."""
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="symmetric")
+    assert ratings.pace_mode == "symmetric"
+    expected = (ratings.team_pace("alpha") + ratings.team_pace("beta")) / 2
+    assert ratings.expected_plays_for("alpha", "beta") == pytest.approx(expected)
+    assert ratings.expected_plays_for("beta", "alpha") == pytest.approx(expected)
+    assert ratings.expected_plays_for("alpha", "beta") == ratings.expected_plays_for("beta", "alpha")
+
+
+def test_pace_matchup_mode_reflects_opponent_defense_plays_allowed():
+    """A team's expected plays under pace_mode="matchup" must genuinely
+    depend on the OPPONENT's own identity (specifically, how many plays
+    that opponent's defense has trailingly allowed) -- not just a shared
+    per-game average both sides are forced into. "leaky_D" has allowed
+    90 plays/game to three different offenses; "stingy_D" has allowed
+    only 50 plays/game to three others. A fixed third team ("watcher",
+    whose own offensive pace is held constant across both calls below)
+    must get a strictly higher expected-plays estimate against leaky_D
+    than against stingy_D.
+    """
+    lines = []
+    for i, off in enumerate(["off1", "off2", "off3"], start=1):
+        lines.append(_line(off, "leaky_D", 30, 10, 90, True, week=i))
+        lines.append(_line("leaky_D", off, 10, 30, 65, False, week=i))
+    for i, off in enumerate(["off4", "off5", "off6"], start=1):
+        lines.append(_line(off, "stingy_D", 20, 15, 50, True, week=i))
+        lines.append(_line("stingy_D", off, 15, 20, 65, False, week=i))
+    lines.append(_line("watcher", "leaky_D", 20, 20, 68, True, week=7))
+    lines.append(_line("leaky_D", "watcher", 20, 20, 90, False, week=7))
+    lines.append(_line("watcher", "stingy_D", 20, 20, 68, True, week=8))
+    lines.append(_line("stingy_D", "watcher", 20, 20, 50, False, week=8))
+
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=9), pace_mode="matchup")
+
+    assert ratings.expected_plays_for("watcher", "leaky_D") > ratings.expected_plays_for("watcher", "stingy_D")
+
+
+def test_pace_matchup_mode_lets_the_two_sides_of_one_game_differ():
+    # Under "symmetric" mode the two sides of a game always share one
+    # value; under "matchup" mode they are no longer forced to.
+    lines = []
+    for i, off in enumerate(["off1", "off2", "off3"], start=1):
+        lines.append(_line(off, "leaky_D", 30, 10, 90, True, week=i))
+        lines.append(_line("leaky_D", off, 10, 30, 55, False, week=i))
+    lines.append(_line("watcher", "leaky_D", 20, 20, 68, True, week=4))
+    lines.append(_line("leaky_D", "watcher", 20, 20, 72, False, week=4))
+
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=5), pace_mode="matchup")
+    assert ratings.expected_plays_for("watcher", "leaky_D") != ratings.expected_plays_for("leaky_D", "watcher")
+
+
+def test_defense_pace_allowed_excludes_fbs_vs_fcs_games():
+    # Mirrors the residual pool's own FBS-vs-FBS-only population (mission
+    # section 4: FBS-vs-FCS is never blended into main calibration) --
+    # an FCS opponent's plays must not contribute to an FBS team's
+    # defense_pace_allowed.
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+        _line("alpha", "some_fcs", 49, 3, 120, True, week=2, opp_class="fcs"),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), pace_mode="matchup")
+    # "alpha"'s defense_pace_allowed must reflect ONLY the FBS-vs-FBS row
+    # (60 plays from beta), not the 120-play FCS blowout.
+    assert ratings.defense_pace_allowed_for("alpha") != pytest.approx(120.0)
+
+
+def test_pace_mode_rejects_unknown_value():
+    lines = [_line("alpha", "beta", 28, 24, 65, True, week=1)]
+    with pytest.raises(ValueError, match="pace_mode"):
+        fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="bogus")
