@@ -48,6 +48,36 @@ def _synthetic_corpus(n_teams=16, seasons=(2024, 2025), n_weeks=6, seed=21):
     return lines
 
 
+def _synthetic_corpus_with_garbage_time(n_teams=16, seasons=(2022, 2023), n_weeks=20, seed=31):
+    """Same generation pattern as `_synthetic_corpus`, but with a genuine,
+    deliberate coupling between margin size and total suppression baked
+    in (larger blowouts -> lower combined total) -- needed to test the
+    Milestone C.2 Part 3 `total_correction_predictor="margin_magnitude"`
+    candidate, which has nothing to detect against pure home-field noise.
+    Also large enough (n_teams=16 x n_weeks=20 x 2 seasons = 320 FBS-vs-FBS
+    games) to comfortably cross MIN_MARGIN_CALIBRATION_HISTORY (200)
+    partway through the walk-forward.
+    """
+    rng = np.random.default_rng(seed)
+    teams = [f"team{i}" for i in range(n_teams)]
+    strength = {t: rng.normal(0, 0.08) for t in teams}
+    lines = []
+    for season in seasons:
+        for week in range(1, n_weeks + 1):
+            shuffled = teams[:]
+            rng.shuffle(shuffled)
+            for i in range(0, len(shuffled), 2):
+                home, away = shuffled[i], shuffled[i + 1]
+                margin_signal = (strength[home] - strength[away]) * 300 + rng.normal(0, 3)
+                base_total = 50 + rng.normal(0, 4)
+                total = max(base_total - 0.5 * abs(margin_signal), 20)
+                home_pts = max(int((total + margin_signal) / 2), 0)
+                away_pts = max(int((total - margin_signal) / 2), 0)
+                lines.append(_line(home, away, home_pts, away_pts, 68, True, week=week, season=season))
+                lines.append(_line(away, home, away_pts, home_pts, 66, False, week=week, season=season))
+    return lines
+
+
 def test_naive_benchmark_leakage_check_raises_on_future_row():
     from cfb_edge_finder.modeling.leakage import LeakageError
 
@@ -391,7 +421,14 @@ def test_total_correction_method_none_is_the_default_and_a_true_no_op():
 
 @pytest.mark.parametrize("predictor", ["total", "margin_magnitude"])
 def test_total_correction_never_touches_win_probability_or_margin(predictor):
-    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    # margin_magnitude needs a corpus with a genuine margin<->total
+    # relationship to detect -- pure home-field noise (_synthetic_corpus)
+    # gives it nothing to find and would trivially, uninformatively pass.
+    lines = (
+        _synthetic_corpus_with_garbage_time()
+        if predictor == "margin_magnitude"
+        else _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    )
     none_outcomes = run_walk_forward_backtest(
         lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, total_correction_method="none"
     )
@@ -415,7 +452,11 @@ def test_total_correction_never_touches_win_probability_or_margin(predictor):
 
 @pytest.mark.parametrize("predictor", ["total", "margin_magnitude"])
 def test_total_correction_shifts_mean_and_both_interval_bounds_by_the_same_delta(predictor):
-    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    lines = (
+        _synthetic_corpus_with_garbage_time()
+        if predictor == "margin_magnitude"
+        else _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    )
     none_outcomes = run_walk_forward_backtest(
         lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, total_correction_method="none"
     )

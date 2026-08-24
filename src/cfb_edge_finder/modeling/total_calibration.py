@@ -123,6 +123,25 @@ def correct_total_via_margin_residual(
     `|margin|` itself, and applied consistently at both fit and predict
     time, so the correction is exactly correct, just computed in mirrored
     coordinates.
+
+    *** WHY THE IDENTITY-FALLBACK RESIDUAL IS EXPLICITLY ZEROED, NOT
+    `params.apply(...)`'s RAW OUTPUT *** `LinearMarginParams.apply`/
+    `IsotonicMarginModel.apply`'s identity-fallback branch returns their
+    INPUT unchanged -- the correct "no correction" behavior when the
+    input and output are the SAME quantity (margin-to-margin). Here the
+    input is `-|projected margin|` and the output is meant to be a total-
+    points RESIDUAL -- two different quantities in different units. If a
+    bare `.apply()` call were used, an identity fallback (insufficient
+    history, or a genuinely non-monotonic/degenerate fit) would return
+    `-|projected margin|` itself AS IF it were the correct residual --
+    e.g. subtracting 20 points from a 20-point-favorite's projected total
+    for no real reason. This was a genuine bug caught by a live ablation
+    run producing a nonsensical, uniformly-large positive total bias
+    across every segment (not just large-margin games) before this fix;
+    see tests/test_modeling_total_calibration.py's identity-fallback
+    regression tests. The correct "no correction" residual is always 0.0,
+    checked explicitly via `is_identity_fallback` rather than trusted to
+    fall out of reusing the margin-to-margin `.apply()` methods.
     """
     target_projected_total = np.asarray(target_projected_total, dtype=float)
     if method == "none":
@@ -131,10 +150,14 @@ def correct_total_via_margin_residual(
     negated_target_x = -np.asarray(target_margin_magnitude, dtype=float)
     if method == "linear":
         params = fit_linear_margin(negated_history_x, history_total_residual)
-        residual = params.apply(negated_target_x)
+        residual = (
+            np.zeros_like(negated_target_x) if params.is_identity_fallback else params.apply(negated_target_x)
+        )
     elif method == "isotonic":
         model = fit_isotonic_margin(negated_history_x, history_total_residual)
-        residual = model.apply(negated_target_x)
+        residual = (
+            np.zeros_like(negated_target_x) if model.is_identity_fallback else model.apply(negated_target_x)
+        )
     else:
         raise ValueError(f"unknown total correction method: {method!r}")
     return target_projected_total + residual

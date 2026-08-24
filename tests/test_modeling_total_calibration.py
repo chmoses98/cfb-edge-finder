@@ -73,6 +73,54 @@ def test_correct_total_via_margin_residual_none_is_a_true_no_op():
     assert out == pytest.approx(target_total)
 
 
+def test_correct_total_via_margin_residual_identity_fallback_is_zero_not_raw_predictor():
+    """Regression test for a real bug: below MIN_MARGIN_CALIBRATION_HISTORY
+    (insufficient history), the identity-fallback residual must be 0.0
+    (i.e. target_projected_total returned unchanged), NEVER the raw
+    negated |margin| predictor value. A live ablation run hit this exact
+    bug -- with too little history to trust, `params.apply()`'s identity
+    branch was returning `-|margin|` itself as if it were the fitted
+    residual, injecting a large, nonsensical, margin-scaled shift into
+    every game's total instead of applying no correction at all.
+    """
+    # Only 5 points of history -- far below MIN_MARGIN_CALIBRATION_HISTORY
+    # (200), so this must hit the identity-fallback path.
+    history_margin_magnitude = np.array([2.0, 5.0, 10.0, 15.0, 20.0])
+    history_total_residual = np.array([0.5, -1.0, -2.0, -3.0, -4.0])
+    target_margin_magnitude = np.array([25.0])  # a large favorite
+    target_projected_total = np.array([50.0])
+
+    out = correct_total_via_margin_residual(
+        method="linear",
+        history_margin_magnitude=history_margin_magnitude,
+        history_total_residual=history_total_residual,
+        target_margin_magnitude=target_margin_magnitude,
+        target_projected_total=target_projected_total,
+    )
+    # Correct: no correction applied, projected total passed through.
+    assert out[0] == pytest.approx(50.0)
+    # The bug this guards against: the wrong answer would have been
+    # target_projected_total + (-target_margin_magnitude) = 50 - 25 = 25,
+    # a huge, spurious 25-point swing from a fit with only 5 data points.
+    assert out[0] != pytest.approx(25.0)
+
+
+def test_correct_total_via_margin_residual_isotonic_identity_fallback_is_zero():
+    history_margin_magnitude = np.array([2.0, 5.0, 10.0])
+    history_total_residual = np.array([0.5, -1.0, -2.0])
+    target_margin_magnitude = np.array([25.0])
+    target_projected_total = np.array([50.0])
+
+    out = correct_total_via_margin_residual(
+        method="isotonic",
+        history_margin_magnitude=history_margin_magnitude,
+        history_total_residual=history_total_residual,
+        target_margin_magnitude=target_margin_magnitude,
+        target_projected_total=target_projected_total,
+    )
+    assert out[0] == pytest.approx(50.0)
+
+
 def test_correct_total_via_margin_residual_linear_recovers_a_genuinely_negative_relationship():
     """Regression test for the sign-handling bug this module's docstring
     documents: the true garbage-time relationship is NEGATIVE (residual
