@@ -20,6 +20,7 @@ import pkgutil
 import cfb_edge_finder.betting
 import cfb_edge_finder.data
 import cfb_edge_finder.ingestion
+import cfb_edge_finder.modeling
 import cfb_edge_finder.projections
 import cfb_edge_finder.research
 import cfb_edge_finder.teams
@@ -53,7 +54,12 @@ _FORBIDDEN_PROJECTION_SUBSTRINGS = (
     "net_edge",
 )
 
-_SCANNED_PACKAGES = (cfb_edge_finder.betting, cfb_edge_finder.projections, cfb_edge_finder.research)
+_SCANNED_PACKAGES = (
+    cfb_edge_finder.betting,
+    cfb_edge_finder.projections,
+    cfb_edge_finder.research,
+    cfb_edge_finder.modeling,
+)
 _MILESTONE_B_PACKAGES = (cfb_edge_finder.ingestion, cfb_edge_finder.teams, cfb_edge_finder.data)
 
 
