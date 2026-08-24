@@ -155,6 +155,23 @@ def main() -> int:
         "is a true no-op. See modeling/margin_calibration.py.",
     )
     parser.add_argument(
+        "--total-correction-method",
+        choices=["none", "linear", "isotonic"],
+        default="none",
+        help="Milestone C.2 Part 3 totals candidate: a second, walk-forward-fit post-model correction "
+        "of model_total_mean (FBS-vs-FBS games only). 'none' (default) is a true no-op. See "
+        "modeling/total_calibration.py.",
+    )
+    parser.add_argument(
+        "--total-correction-predictor",
+        choices=["total", "margin_magnitude"],
+        default="total",
+        help="Which diagnosed totals mechanism --total-correction-method targets: 'total' (direct fit "
+        "on projected total -- the high-total shootout under-prediction pattern) or 'margin_magnitude' "
+        "(fits the total residual as a function of |projected margin| -- the large-favorite "
+        "garbage-time suppression pattern). Ignored when --total-correction-method=none.",
+    )
+    parser.add_argument(
         "--variant-label",
         default=None,
         help="Free-text label printed with the run, for matching against an ablation table.",
@@ -197,7 +214,10 @@ def main() -> int:
         f"Config: ridge_lambda={args.ridge_lambda} fcs_ridge_lambda={args.fcs_ridge_lambda} "
         f"pace_shrinkage_k={args.pace_shrinkage_k} season_shrinkage_k={args.season_shrinkage_k} "
         f"fcs_mode={args.fcs_mode} pace_mode={args.pace_mode} residual_scale={args.residual_scale} "
-        f"margin_correction_method={args.margin_correction_method} calibration_method={args.calibration_method}"
+        f"margin_correction_method={args.margin_correction_method} "
+        f"total_correction_method={args.total_correction_method} "
+        f"total_correction_predictor={args.total_correction_predictor} "
+        f"calibration_method={args.calibration_method}"
     )
 
     outcomes = run_walk_forward_backtest(
@@ -214,6 +234,8 @@ def main() -> int:
         pace_mode=args.pace_mode,
         residual_scale=args.residual_scale,
         margin_correction_method=args.margin_correction_method,
+        total_correction_method=args.total_correction_method,
+        total_correction_predictor=args.total_correction_predictor,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)

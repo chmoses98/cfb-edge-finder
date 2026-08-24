@@ -52,6 +52,14 @@ on:
         description: "Favorite-tail margin correction: none (default), linear, or isotonic"
         required: false
         default: "none"
+      total_correction_method:
+        description: "Totals correction: none (default), linear, or isotonic"
+        required: false
+        default: "none"
+      total_correction_predictor:
+        description: "Totals correction predictor: total (default) or margin_magnitude"
+        required: false
+        default: "total"
       variant_label:
         description: "Free-text label for this ablation run"
         required: false
@@ -99,5 +107,7 @@ jobs:
             --pace-mode ${{ github.event.inputs.pace_mode }} \
             --residual-scale ${{ github.event.inputs.residual_scale }} \
             --margin-correction-method ${{ github.event.inputs.margin_correction_method }} \
+            --total-correction-method ${{ github.event.inputs.total_correction_method }} \
+            --total-correction-predictor ${{ github.event.inputs.total_correction_predictor }} \
             --variant-label "$VARIANT_LABEL" \
             $DIAGNOSTICS_FLAG
