@@ -230,6 +230,150 @@ def test_development_only_backtest_matches_full_corpus_for_the_shared_seasons():
     assert any(o.season == 2025 for o in full_outcomes)  # sanity: the full run does cover it
 
 
+# --- Milestone C.2 Part 3: favorite-tail margin correction ---
+
+
+def test_margin_correction_method_none_is_the_default_and_a_true_no_op():
+    lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
+    with_default = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=0)
+    with_explicit_none = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="none"
+    )
+    for a, b in zip(with_default, with_explicit_none, strict=True):
+        assert a.model_margin_mean == pytest.approx(b.model_margin_mean, abs=1e-12)
+        assert a.model_margin_p05 == pytest.approx(b.model_margin_p05, abs=1e-12)
+        assert a.model_margin_p95 == pytest.approx(b.model_margin_p95, abs=1e-12)
+
+
+def test_margin_correction_never_touches_win_probability():
+    # margin_calibration.py's whole design point: the correction is a
+    # separate channel from win probability. Proven directly here, not
+    # just asserted in a docstring -- with the SAME seed, only
+    # margin/interval fields may differ between "none" and "linear".
+    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    none_outcomes = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="none"
+    )
+    linear_outcomes = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="linear"
+    )
+    for a, b in zip(none_outcomes, linear_outcomes, strict=True):
+        assert a.model_prob_home_win == pytest.approx(b.model_prob_home_win, abs=1e-12)
+        assert a.calibrated_prob_home_win == pytest.approx(b.calibrated_prob_home_win, abs=1e-12)
+    # Sanity: the correction must have actually engaged for at least some
+    # games (enough history accumulated) -- otherwise this test would
+    # pass trivially without exercising the real code path.
+    assert any(
+        abs(a.model_margin_mean - b.model_margin_mean) > 1e-6
+        for a, b in zip(none_outcomes, linear_outcomes, strict=True)
+    )
+
+
+def test_margin_correction_shifts_mean_and_both_interval_bounds_by_the_same_delta():
+    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    none_outcomes = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="none"
+    )
+    linear_outcomes = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="linear"
+    )
+    engaged = False
+    for a, b in zip(none_outcomes, linear_outcomes, strict=True):
+        delta_mean = b.model_margin_mean - a.model_margin_mean
+        delta_p05 = b.model_margin_p05 - a.model_margin_p05
+        delta_p95 = b.model_margin_p95 - a.model_margin_p95
+        assert delta_p05 == pytest.approx(delta_mean, abs=1e-6)
+        assert delta_p95 == pytest.approx(delta_mean, abs=1e-6)
+        if abs(delta_mean) > 1e-6:
+            engaged = True
+    assert engaged  # the correction must have actually applied somewhere
+
+
+def test_margin_correction_never_touches_fbs_vs_fcs_games():
+    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    # Add a handful of FBS-vs-FCS games each week so both classes coexist.
+    fcs_lines = []
+    for season in (2022, 2023, 2024):
+        for week in range(2, 13):
+            fcs_lines.append(
+                _line("team0", "fcs-visitor", 35, 10, 68, True, week=week, season=season, opp_class="fcs")
+            )
+            fcs_lines.append(
+                _line("fcs-visitor", "team0", 10, 35, 55, False, week=week, season=season, team_class="fcs")
+            )
+    all_lines = lines + fcs_lines
+
+    none_outcomes = run_walk_forward_backtest(
+        all_lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="none"
+    )
+    linear_outcomes = run_walk_forward_backtest(
+        all_lines, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="linear"
+    )
+    none_by_id = {o.source_game_id: o for o in none_outcomes if not o.is_fbs_vs_fbs}
+    linear_by_id = {o.source_game_id: o for o in linear_outcomes if not o.is_fbs_vs_fbs}
+    assert none_by_id  # sanity: FCS games actually predicted
+    for gid in none_by_id:
+        assert none_by_id[gid].model_margin_mean == pytest.approx(linear_by_id[gid].model_margin_mean, abs=1e-9)
+        assert none_by_id[gid].model_margin_p05 == pytest.approx(linear_by_id[gid].model_margin_p05, abs=1e-9)
+        assert none_by_id[gid].model_margin_p95 == pytest.approx(linear_by_id[gid].model_margin_p95, abs=1e-9)
+
+
+def test_margin_correction_does_not_use_a_weeks_own_or_future_outcomes():
+    # Same mutation pattern as the calibration/residual-pool leakage proof
+    # above, now for margin correction specifically: mutating a week-3
+    # game's own final score must not change that week's OWN corrected
+    # margin, but must be free to change a LATER week's correction (once
+    # that mutated game enters the strictly-prior history).
+    lines_a = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024), seed=5)
+    target_gid = next(ln.source_game_id for ln in lines_a if ln.week == 3)
+
+    lines_b = []
+    for ln in lines_a:
+        if ln.source_game_id == target_gid and ln.week == 3:
+            if ln.is_home:
+                lines_b.append(ln.model_copy(update={"team_points": ln.team_points + 30, "opponent_points": 0}))
+            else:
+                lines_b.append(ln.model_copy(update={"team_points": 0, "opponent_points": ln.opponent_points + 30}))
+        else:
+            lines_b.append(ln)
+
+    outcomes_a = run_walk_forward_backtest(
+        lines_a, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="linear"
+    )
+    outcomes_b = run_walk_forward_backtest(
+        lines_b, min_week_for_first_prediction=2, n_simulations=500, seed=0, margin_correction_method="linear"
+    )
+
+    # Week 3 of the SAME season (2022) as the mutated game is the "own
+    # week" check -- week numbers repeat across seasons 2022/2023/2024,
+    # so this must be season-scoped, not just week-scoped.
+    week3_a = {o.source_game_id: o for o in outcomes_a if o.week == 3 and o.season == 2022}
+    week3_b = {o.source_game_id: o for o in outcomes_b if o.week == 3 and o.season == 2022}
+    assert week3_a
+    for gid in week3_a:
+        assert week3_a[gid].model_margin_mean == pytest.approx(week3_b[gid].model_margin_mean, abs=1e-9)
+
+    # A clearly LATER (season, week) -- 2024 week 12 -- must be free to
+    # change, proving the mutation genuinely propagates forward once it
+    # enters strictly-prior history.
+    later_a = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_a if o.week == 12 and o.season == 2024)
+    later_b = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_b if o.week == 12 and o.season == 2024)
+    assert later_a
+    assert any(abs(a[1] - b[1]) > 1e-6 for a, b in zip(later_a, later_b, strict=True))
+
+
+def test_margin_correction_reproducible_with_same_seed():
+    lines = _synthetic_corpus(n_teams=16, n_weeks=12, seasons=(2022, 2023, 2024))
+    outcomes_1 = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=7, margin_correction_method="isotonic"
+    )
+    outcomes_2 = run_walk_forward_backtest(
+        lines, min_week_for_first_prediction=2, n_simulations=500, seed=7, margin_correction_method="isotonic"
+    )
+    for o1, o2 in zip(outcomes_1, outcomes_2, strict=True):
+        assert o1.model_margin_mean == pytest.approx(o2.model_margin_mean, abs=1e-12)
+
+
 def test_compute_metrics_calibrated_prob_attr_uses_model_margin_not_naive():
     lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
     outcomes = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=0)

@@ -48,6 +48,10 @@ on:
         description: "Global multiplier on every simulated residual draw (1.0 = Milestone C default)"
         required: false
         default: "1.0"
+      margin_correction_method:
+        description: "Favorite-tail margin correction: none (default), linear, or isotonic"
+        required: false
+        default: "none"
       variant_label:
         description: "Free-text label for this ablation run"
         required: false
@@ -94,5 +98,6 @@ jobs:
             --fcs-mode ${{ github.event.inputs.fcs_mode }} \
             --pace-mode ${{ github.event.inputs.pace_mode }} \
             --residual-scale ${{ github.event.inputs.residual_scale }} \
+            --margin-correction-method ${{ github.event.inputs.margin_correction_method }} \
             --variant-label "$VARIANT_LABEL" \
             $DIAGNOSTICS_FLAG

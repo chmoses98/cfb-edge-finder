@@ -45,6 +45,7 @@ import numpy as np
 from cfb_edge_finder.modeling.calibration import calibrate
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf
+from cfb_edge_finder.modeling.margin_calibration import correct_margin
 from cfb_edge_finder.modeling.naive_benchmark import fit_naive_benchmark, naive_expected_scores
 from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K
 from cfb_edge_finder.modeling.ratings import (
@@ -160,6 +161,7 @@ def run_walk_forward_backtest(
     fcs_mode: str = "pooled",
     pace_mode: str = "symmetric",
     residual_scale: float = DEFAULT_RESIDUAL_SCALE,
+    margin_correction_method: str = "none",
 ) -> list[GameOutcome]:
     """Walks every (season, week) that has completed games, strictly in
     chronological order, fitting fresh ratings/naive-benchmark snapshots
@@ -176,6 +178,16 @@ def run_walk_forward_backtest(
     (calibration.py) -- `calibration_method` of "none" disables the
     latter (calibrated_prob_home_win becomes an identity copy of the raw
     probability).
+
+    Milestone C.2 Part 3: `margin_correction_method` ("none" default,
+    "linear", or "isotonic") refits a second walk-forward model
+    (margin_calibration.py) at every step from the (projected margin,
+    actual margin) history of FBS-vs-FBS outcomes accumulated so far, and
+    applies it as a uniform location-shift to `model_margin_mean` AND
+    both `model_margin_p05`/`model_margin_p95` (never a rescale -- see
+    margin_calibration.py's module docstring for why). FBS-vs-FCS games
+    are never corrected. `model_prob_home_win`/`calibrated_prob_home_win`
+    are untouched by this correction in every case.
     """
     by_game = _group_lines_by_game(lines)
     as_of_points = sorted({(g.season, g.week) for g in lines})
@@ -214,6 +226,16 @@ def run_walk_forward_backtest(
         history_raw = np.array([o.model_prob_home_win for o in outcomes])
         history_y = np.array(
             [1.0 if o.actual_home_points > o.actual_away_points else 0.0 for o in outcomes]
+        )
+
+        # Milestone C.2 Part 3: margin-correction history, FBS-vs-FBS
+        # outcomes only (see margin_calibration.py's "WHY FBS-vs-FBS
+        # ONLY"), from the same strictly-prior `outcomes` accumulated so
+        # far as the probability-calibration history above.
+        fbs_history = [o for o in outcomes if o.is_fbs_vs_fbs]
+        history_margin_projected = np.array([o.model_margin_mean for o in fbs_history])
+        history_margin_actual = np.array(
+            [o.actual_home_points - o.actual_away_points for o in fbs_history]
         )
 
         games_this_week = {
@@ -302,6 +324,28 @@ def run_walk_forward_backtest(
                 history_outcomes=history_y,
                 target_raw_probs=np.array(week_raw_probs),
             )
+
+            # Milestone C.2 Part 3: margin correction, FBS-vs-FBS games
+            # only, applied as a uniform shift to model_margin_mean AND
+            # both interval bounds so spread/coverage is unaffected (see
+            # margin_calibration.py's "WHY A LOCATION SHIFT" note).
+            # model_prob_home_win/calibrated_prob_home_win above are
+            # computed independently and are never touched here.
+            fbs_indices = [i for i, kw in enumerate(week_pending) if kw["is_fbs_vs_fbs"]]
+            if fbs_indices and margin_correction_method != "none":
+                targets = np.array([week_pending[i]["model_margin_mean"] for i in fbs_indices])
+                corrected = correct_margin(
+                    method=margin_correction_method,
+                    history_projected=history_margin_projected,
+                    history_actual=history_margin_actual,
+                    target_projected=targets,
+                )
+                for idx, corrected_value in zip(fbs_indices, corrected, strict=True):
+                    delta = float(corrected_value) - week_pending[idx]["model_margin_mean"]
+                    week_pending[idx]["model_margin_mean"] += delta
+                    week_pending[idx]["model_margin_p05"] += delta
+                    week_pending[idx]["model_margin_p95"] += delta
+
             for kwargs, cal_p in zip(week_pending, calibrated, strict=True):
                 outcomes.append(GameOutcome(calibrated_prob_home_win=float(cal_p), **kwargs))
 

@@ -146,6 +146,15 @@ def main() -> int:
         "residual draw (1.0 = Milestone C default/no-op). See score_model.py's DEFAULT_RESIDUAL_SCALE.",
     )
     parser.add_argument(
+        "--margin-correction-method",
+        choices=["none", "linear", "isotonic"],
+        default="none",
+        help="Milestone C.2 Part 3 favorite-tail margin-bias candidate: a second, walk-forward-fit "
+        "post-model correction of model_margin_mean (FBS-vs-FBS games only), applied as a uniform "
+        "shift to the mean and both interval bounds. 'none' (default/Milestone C.2 Part 2 behavior) "
+        "is a true no-op. See modeling/margin_calibration.py.",
+    )
+    parser.add_argument(
         "--variant-label",
         default=None,
         help="Free-text label printed with the run, for matching against an ablation table.",
@@ -188,7 +197,7 @@ def main() -> int:
         f"Config: ridge_lambda={args.ridge_lambda} fcs_ridge_lambda={args.fcs_ridge_lambda} "
         f"pace_shrinkage_k={args.pace_shrinkage_k} season_shrinkage_k={args.season_shrinkage_k} "
         f"fcs_mode={args.fcs_mode} pace_mode={args.pace_mode} residual_scale={args.residual_scale} "
-        f"calibration_method={args.calibration_method}"
+        f"margin_correction_method={args.margin_correction_method} calibration_method={args.calibration_method}"
     )
 
     outcomes = run_walk_forward_backtest(
@@ -204,6 +213,7 @@ def main() -> int:
         fcs_mode=args.fcs_mode,
         pace_mode=args.pace_mode,
         residual_scale=args.residual_scale,
+        margin_correction_method=args.margin_correction_method,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)
