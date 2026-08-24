@@ -1543,6 +1543,14 @@ originate) is explicitly the **first item of work for Milestone D**, not
 a blocker to starting it -- Milestone D is precisely where live-pricing
 plumbing gets built, per its own scope statement (section 16/21).
 
+**CLOSED, this pass -- see Part 4 (section 43) below.** A follow-up
+closure/parity mission wired this exact correction into
+`build_cfb_baseline.py`, via a frozen, versioned artifact rather than a
+per-call walk-forward refit (chosen for cost, not correctness -- see
+section 43.1). This paragraph is left in place, unmodified, as the
+accurate historical record of the gap as it stood when Part 3 shipped;
+do not delete it to "clean up" a since-resolved item.
+
 ## 39. Remaining weaknesses (current, complete -- supersedes section 24)
 
 - **Favorite-tail margin bias is reduced but not eliminated.** Dev bias
@@ -1643,3 +1651,170 @@ totals-channel non-improvement, reported as such rather than obscured).
 This assessment does not authorize action: **per this mission's explicit
 instruction, PR #5 was not merged and Milestone D was not begun as part
 of this session.**
+
+# Part 4 -- Live-projection closure/parity pass (this session)
+
+## 43. Scope and starting state
+
+A narrow closure/parity mission, explicitly scoped to ONE remaining
+issue before merge: the validated `margin_correction_method="linear"`
+correction (Part 3) was never wired into
+`scripts/build_cfb_baseline.py` -- the live single-game research CLI --
+even though it was part of "the final selected C.2 model" (section 35).
+Starting head: PR #5 at `207dce1`. No other Part 3 finding, candidate
+decision, or documented number was revisited or re-litigated.
+
+### 43.1 Why a frozen artifact, not a per-call walk-forward refit
+
+`run_walk_forward_backtest` refits the margin correction at every
+walk-forward step from strictly-prior FBS-vs-FBS history. Reproducing
+that exactly inside a single live CLI call would mean re-fitting ratings
+and re-simulating every historical FBS-vs-FBS game (thousands of games)
+from scratch to answer one matchup -- correct, but impractical for a
+per-query research tool. This mission's own brief explicitly sanctions
+the alternative it asks for: "...unless the model artifact is explicitly
+versioned/frozen as a preseason-trained artifact with documented
+cutoff." `modeling/margin_correction_artifact.py` freezes exactly that:
+
+| Field | Value |
+|---|---|
+| Method | `linear` |
+| Artifact version | `c2-margin-linear-v1-2022-2025` |
+| a | `1.3413121461524347` |
+| b | `0.8117267938452581` |
+| Training population | FBS-vs-FBS only, n=2,935 (matches section 34's FBS-vs-FBS confirmation-subset size exactly) |
+| Training seasons | 2022-2025 |
+| Training cutoff | strictly before `AsOf(season=2026, week=0)` |
+| Fit via | `scripts/fit_margin_correction_artifact.py`, live run [32790648892](https://github.com/chmoses98/cfb-edge-finder/actions/runs/32790648892) (job `fit-margin-artifact`, id `97631365517`), captured 2026-08-24 |
+
+`a=1.34 > 1` is the expected sign: the correction must AMPLIFY, not
+shrink, a large |projected margin| to counteract the diagnosed
+compression pattern (section 29) -- consistent with, and a genuine
+sanity check on, that earlier finding. No fitting math was reimplemented
+anywhere: the fitting script reuses `run_walk_forward_backtest` (with
+`margin_correction_method="none"`, so it fits against the model's own
+RAW `model_margin_mean`) and `margin_calibration.fit_linear_margin`
+directly -- the exact function the walk-forward correction itself calls.
+
+### 43.2 Leakage safety
+
+`build_cfb_baseline.py` only applies the frozen artifact when the
+requested `as_of` is NOT strictly before the training cutoff (i.e. the
+projection's own as-of is season >= 2026) -- a historical/backtest-style
+single-game query into an already-training-covered season (e.g.
+`--as-of-season 2024`) correctly skips the correction
+(`correction_skip_reason=as_of_predates_training_cutoff`), verified by a
+dedicated test and by a local fixture-mode run (section 43.5).
+
+### 43.3 How prediction semantics stay coherent
+
+`modeling/score_model.py` adds `CorrectedGameProjection` (wraps a
+`SimulatedGameProjection`) and `apply_margin_correction` (the live-path
+entry point). Design, in brief (full rationale in the module docstring):
+
+- **Home/away split**: expected home points shift by `+margin_delta/2`,
+  expected away points by `-margin_delta/2` -- the unique, symmetric
+  split that moves margin by exactly `margin_delta` while leaving total
+  EXACTLY unchanged. Verified empirically: a fixture-mode CLI run with
+  `--margin-correction-method linear` and the same run with `none` print
+  an IDENTICAL "Expected total" line, while "Expected margin" genuinely
+  differs.
+- **Win probability**: read directly from the wrapped, UNCORRECTED raw
+  projection's own simulated score comparison -- identical to how
+  `run_walk_forward_backtest` computes `model_prob_home_win`, never
+  touched by the correction in either place. Verified: both CLI runs
+  above print an identical `P(home win)` line.
+- **Margin-threshold probabilities / GameDistribution**: computed by
+  adding the scalar delta to raw-array-derived quantities, never
+  mutating `home_scores`/`away_scores` in place -- mathematically exact
+  (not an approximation) and preserves monotonicity and the standard-
+  deviation/correlation invariance a constant shift guarantees.
+- FBS-vs-FCS games are never corrected (`correction_skip_reason=
+  not_fbs_vs_fbs`), matching `margin_calibration.py`'s FBS-vs-FBS-only
+  fit population and `backtest.py`'s identical restriction --
+  FBS-vs-FCS stays `UNSUPPORTED_FOR_PRICING`, printed explicitly by the
+  CLI for every projection.
+
+### 43.4 Model version
+
+`MODEL_VERSION` bumped from `"0.3.0-milestone-c2"` to
+`"0.4.0-milestone-c2-live-margin-correction"` -- a real behavioral
+difference (the prior string described a CLI that never applied this
+correction at all), so the old identifier is never reused for these
+projections. `ModelVersion.ratings_component_version` is now built
+per-run from the actually-resolved `--margin-correction-method` flag
+(a real bug caught and fixed before this pass shipped: the string was
+initially a module-level constant that always claimed
+`margin_correction_method=linear` even when `none` was explicitly
+requested -- see the regression test in section 43.6) -- e.g.
+`...;margin_correction_method=linear;margin_correction_artifact=c2-margin-linear-v1-2022-2025`
+or `...;margin_correction_method=none;margin_correction_artifact=None`.
+
+### 43.5 CLI verification (mission section 6)
+
+A deterministic fixture-mode run (`--seasons 2024 2025 --as-of-season
+2026 --as-of-week 1 --home fixture-team-0 --away fixture-team-1
+--n-simulations 2000`) confirmed every required field is present and
+coherent: model version, data/training cutoff, margin correction method
+and delta, corrected AND raw expected home/away points, corrected
+expected margin, expected total (bit-identical between
+`--margin-correction-method linear` and `none`), win probability
+(bit-identical between the two), FBS-vs-FCS status, and a RESEARCH-ONLY
+status line. Re-run with `--as-of-season 2025 --as-of-week 3` confirmed
+the leakage guard trips (`skip_reason=as_of_predates_training_cutoff`).
+Re-run with an FCS opponent confirmed the FBS-vs-FCS exclusion. No
+Kalshi pricing or betting logic was added anywhere -- verified both by
+the existing package-level `test_no_recommendation_surface.py` scan
+(which already covers `modeling/margin_correction_artifact.py`
+automatically, since it's part of the `modeling` package) and by a new,
+dedicated forbidden-substring scan of every new script/module.
+
+### 43.6 Tests added this Part
+
+27 new tests (411 total, up from Part 3's 384), `ruff check src tests
+scripts` clean:
+
+- `tests/test_modeling_score_model_margin_correction.py` (19 tests):
+  `method="none"` is a bit-for-bit no-op; FBS-vs-FCS games are never
+  corrected; the leakage guard (predates/equals training cutoff);
+  identity-fallback correction models are skipped; the frozen artifact
+  is a genuine `margin_calibration.LinearMarginParams`/
+  `IsotonicMarginModel` instance, not a reimplementation; delta
+  computation matches the closed-form expectation; sign/order coherence
+  across several matchups; total expectation is unchanged; win
+  probability is unchanged; home-away==margin and home+away==total
+  identities hold exactly; probability bounds stay in [0,1]; margin-
+  threshold probabilities remain monotonic AND shift by exactly delta
+  relative to the raw projection; total-threshold probabilities are
+  bit-identical to raw; `GameDistribution` means shift by +-delta/2 while
+  sd/correlation are reused unchanged (shift-invariance, not
+  recomputation); means stay >= 0 under a deliberately extreme
+  correction; `UncertaintyProfile` passes through unchanged;
+  `CorrectedGameProjection` is a frozen dataclass.
+- `tests/test_build_cfb_baseline_cli.py` (8 tests, subprocess-based,
+  fixture mode): the live CLI defaults to `linear`; disabling the
+  correction reproduces pre-correction behavior (identical expected
+  total and win probability between `linear` and `none` runs, while
+  regression-testing the ratings_component_version bug above: a `none`
+  run's own provenance says `margin_correction_method=none`, never
+  `linear`); the two runs' expected margins genuinely differ (proving
+  the parity check above isn't vacuously true); the CLI prints model
+  version/training cutoff/RESEARCH-ONLY status; provenance records
+  correction method and artifact version; an FBS-vs-FCS game is marked
+  `UNSUPPORTED_FOR_PRICING` and never corrected; the leakage guard trips
+  via the real CLI; no forbidden staking/recommendation substring
+  appears in any new script or module.
+
+No test asserting any Part 1, Part 2, or Part 3 fix/finding was modified
+or weakened -- all remain in the suite, verbatim, and passing.
+
+## 44. Merge verdict (current -- supersedes section 42)
+
+The one blocker section 42 did not have (Part 3 was already
+merge-clean, but chose not to merge per that mission's own instruction)
+remains resolved the same way, now with the live-projection gap closed
+too. See the final report delivered alongside this pass for the
+merge decision actually taken and its outcome (CI run id/status, PR
+mergeable state, merge commit SHA, resulting `main` SHA) -- this
+document records the model/code changes; the final report is the
+authoritative record of what was actually merged and when.
