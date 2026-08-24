@@ -65,7 +65,7 @@ backtest numbers.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -96,6 +96,32 @@ DEFAULT_RIDGE_LAMBDA's "distrust a single team's thin evidence" strength
 -- still a documented, provisional constant (not cross-validated), but
 now scaled to the right kind of parameter."""
 
+FCS_TIER_MIN_GAMES = 2
+"""An FCS opponent needs at least this many prior FBS matchups (within
+the strictly-prior `lines` a rating snapshot is fit from) before it is
+tiered individually -- fewer than this, it falls back to the "average"
+tier bucket by default rather than being tiered on 0-1 noisy
+observations. This mirrors DEFAULT_FCS_RIDGE_LAMBDA's underlying logic
+(trust pooled evidence, distrust thin individual evidence) one level
+down."""
+
+FCS_TIER_WEAK_THRESHOLD = -35.0
+FCS_TIER_STRONG_THRESHOLD = -20.0
+"""Milestone C.2: fixed, documented, round-number thresholds on an FCS
+opponent's own trailing average scoring margin against FBS opponents
+(their points minus the FBS team's points, so a large negative number
+means they get blown out) -- NOT adaptive percentile splits (which would
+implicitly depend on the whole population, including future data, and
+could shift discontinuously game to game). margin <= WEAK_THRESHOLD ->
+"weak"; WEAK_THRESHOLD < margin <= STRONG_THRESHOLD -> "average"; margin
+> STRONG_THRESHOLD -> "strong". Mechanically derived from each FCS
+team's OWN prior-game history already present in the corpus (no new
+CFBD endpoint, no manual reputation labels, no hindsight -- see
+`_fcs_team_tiers`)."""
+
+FCS_TIERS = ("weak", "average", "strong")
+FCS_DEFAULT_TIER = "average"
+
 
 @dataclass(frozen=True)
 class RatingsSnapshot:
@@ -117,6 +143,17 @@ class RatingsSnapshot:
     league_avg_pace: float
     n_training_rows: int
     n_teams_with_data: int
+    fcs_mode: str = "pooled"
+    """"pooled" (default/Milestone C behavior) or "tiered" (Milestone C.2
+    candidate -- see `fit_fbs_efficiency_ratings`'s `fcs_mode` param)."""
+    fcs_tier_offense: dict[str, float] = field(default_factory=dict)
+    fcs_tier_defense: dict[str, float] = field(default_factory=dict)
+    fcs_team_tier: dict[str, str] = field(default_factory=dict)
+    """FCS team_id -> tier name, computed ONLY from strictly-prior games
+    (the same `lines` this whole snapshot was fit from) -- an FCS
+    opponent absent from this dict (never seen before, or fewer than
+    FCS_TIER_MIN_GAMES prior matchups) is treated as FCS_DEFAULT_TIER by
+    `opponent_*_rating` below, never as an error."""
 
     def offense_rating(self, team_id: str) -> float:
         return self.offense.get(team_id, 0.0)
@@ -124,15 +161,27 @@ class RatingsSnapshot:
     def defense_rating(self, team_id: str) -> float:
         return self.defense.get(team_id, 0.0)
 
+    def fcs_offense_for(self, opponent_id: str) -> float:
+        if self.fcs_mode != "tiered":
+            return self.fcs_offense
+        tier = self.fcs_team_tier.get(opponent_id, FCS_DEFAULT_TIER)
+        return self.fcs_tier_offense.get(tier, self.fcs_offense)
+
+    def fcs_defense_for(self, opponent_id: str) -> float:
+        if self.fcs_mode != "tiered":
+            return self.fcs_defense
+        tier = self.fcs_team_tier.get(opponent_id, FCS_DEFAULT_TIER)
+        return self.fcs_tier_defense.get(tier, self.fcs_defense)
+
     def opponent_offense_rating(self, opponent_id: str, opponent_classification: str | None) -> float:
         if opponent_classification == "fbs":
             return self.offense.get(opponent_id, 0.0)
-        return self.fcs_offense
+        return self.fcs_offense_for(opponent_id)
 
     def opponent_defense_rating(self, opponent_id: str, opponent_classification: str | None) -> float:
         if opponent_classification == "fbs":
             return self.defense.get(opponent_id, 0.0)
-        return self.fcs_defense
+        return self.fcs_defense_for(opponent_id)
 
     def team_pace(self, team_id: str) -> float:
         return self.pace.get(team_id, self.league_avg_pace)
@@ -147,8 +196,36 @@ def _home_indicator(line: TeamGameLine) -> float:
     return 1.0 if line.is_home else -1.0
 
 
-def _opponent_column_id(line: TeamGameLine) -> str:
-    return line.opponent_id if line.opponent_classification == "fbs" else FCS_PSEUDO_TEAM_ID
+def _fcs_team_tiers(training_rows: list[TeamGameLine]) -> dict[str, str]:
+    """Milestone C.2 candidate: mechanically derives a weak/average/strong
+    tier for each FCS opponent from its OWN trailing scoring margin
+    against FBS teams, using ONLY rows already in `training_rows`
+    (strictly prior to the snapshot's as_of by the caller's leakage
+    check). No new data source, no manual team labels, no hindsight --
+    every input is an FBS team's own row where `opponent_classification
+    == "fcs"` (team_points is the FBS team's score, opponent_points is
+    that FCS team's score). Deterministic: same input rows always
+    produce the same tiering. An FCS opponent with fewer than
+    FCS_TIER_MIN_GAMES such rows is simply absent from the returned dict
+    -- callers must treat that as FCS_DEFAULT_TIER, never as an error.
+    """
+    fcs_margins: dict[str, list[float]] = {}
+    for line in training_rows:
+        if line.opponent_classification == "fcs":
+            fcs_margins.setdefault(line.opponent_id, []).append(line.opponent_points - line.team_points)
+
+    tiers: dict[str, str] = {}
+    for fcs_team_id, margins in fcs_margins.items():
+        if len(margins) < FCS_TIER_MIN_GAMES:
+            continue
+        avg_margin = sum(margins) / len(margins)
+        if avg_margin <= FCS_TIER_WEAK_THRESHOLD:
+            tiers[fcs_team_id] = "weak"
+        elif avg_margin <= FCS_TIER_STRONG_THRESHOLD:
+            tiers[fcs_team_id] = "average"
+        else:
+            tiers[fcs_team_id] = "strong"
+    return tiers
 
 
 def fit_fbs_efficiency_ratings(
@@ -158,13 +235,23 @@ def fit_fbs_efficiency_ratings(
     ridge_lambda: float = DEFAULT_RIDGE_LAMBDA,
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
+    fcs_mode: str = "pooled",
 ) -> RatingsSnapshot:
     """Fits offense/defense/HFA ratings and trailing pace from every
     TeamGameLine row with `team_classification == "fbs"` and
     `row.as_of` strictly before `as_of` (leakage-checked per row -- a row
     that is not strictly prior raises, it is never silently skipped by a
     range filter that could hide a caller's bug).
+
+    `fcs_mode="tiered"` (Milestone C.2 candidate, see `_fcs_team_tiers`)
+    fits THREE FCS pseudo-team offense/defense pairs (weak/average/strong,
+    mechanically derived from each FCS opponent's own trailing scoring
+    margin against FBS teams in `lines`) instead of one pooled pair --
+    otherwise identical leakage/regularization discipline throughout.
     """
+    if fcs_mode not in ("pooled", "tiered"):
+        raise ValueError(f"fcs_mode must be 'pooled' or 'tiered', got {fcs_mode!r}")
+
     training_rows = []
     for line in lines:
         if line.team_classification != "fbs":
@@ -180,8 +267,19 @@ def fit_fbs_efficiency_ratings(
     for line in training_rows:
         games_played[line.team_id] += 1
 
+    fcs_team_tier = _fcs_team_tiers(training_rows) if fcs_mode == "tiered" else {}
+    fcs_groups = list(FCS_TIERS) if fcs_mode == "tiered" else ["pooled"]
+    n_fcs_groups = len(fcs_groups)
+    fcs_group_index = {name: i for i, name in enumerate(fcs_groups)}
+
+    def _fcs_group_for(opponent_id: str) -> str:
+        if fcs_mode == "pooled":
+            return "pooled"
+        return fcs_team_tier.get(opponent_id, FCS_DEFAULT_TIER)
+
     efficiency_rows = [line for line in training_rows if line.team_plays]
-    n_params = 2 + 2 * n_teams + 2  # mu, hfa, offense[n_teams], defense[n_teams], fcs_offense, fcs_defense
+    # mu, hfa, offense[n_teams], defense[n_teams], fcs_offense/defense[groups]
+    n_params = 2 + 2 * n_teams + 2 * n_fcs_groups
     if not efficiency_rows or n_teams == 0:
         # No leakage-safe evidence at all yet (e.g. the very start of the
         # very first season in the corpus) -- return a fully neutral
@@ -200,24 +298,28 @@ def fit_fbs_efficiency_ratings(
             league_avg_pace=70.0,
             n_training_rows=0,
             n_teams_with_data=0,
+            fcs_mode=fcs_mode,
+            fcs_tier_offense=dict.fromkeys(FCS_TIERS, 0.0) if fcs_mode == "tiered" else {},
+            fcs_tier_defense=dict.fromkeys(FCS_TIERS, 0.0) if fcs_mode == "tiered" else {},
+            fcs_team_tier=fcs_team_tier,
         )
 
     X = np.zeros((len(efficiency_rows), n_params))
     y = np.zeros(len(efficiency_rows))
     off_offset = 2
     def_offset = 2 + n_teams
-    fcs_off_col = 2 + 2 * n_teams
-    fcs_def_col = 2 + 2 * n_teams + 1
+    fcs_off_base = 2 + 2 * n_teams
+    fcs_def_base = fcs_off_base + n_fcs_groups
 
     for row_i, line in enumerate(efficiency_rows):
         X[row_i, 0] = 1.0  # mu
         X[row_i, 1] = _home_indicator(line)
         X[row_i, off_offset + team_index[line.team_id]] = 1.0
-        opp_col = _opponent_column_id(line)
-        if opp_col == FCS_PSEUDO_TEAM_ID:
-            X[row_i, fcs_def_col] = -1.0
+        if line.opponent_classification == "fbs":
+            X[row_i, def_offset + team_index[line.opponent_id]] = -1.0
         else:
-            X[row_i, def_offset + team_index[opp_col]] = -1.0
+            group_i = fcs_group_index[_fcs_group_for(line.opponent_id)]
+            X[row_i, fcs_def_base + group_i] = -1.0
         y[row_i] = line.team_points / line.team_plays
 
     # mu (col 0) and hfa (col 1) get only a tiny numerical-stability
@@ -233,12 +335,13 @@ def fit_fbs_efficiency_ratings(
     NUMERICAL_STABILITY_EPSILON = 1e-6
     penalty = np.full(n_params, NUMERICAL_STABILITY_EPSILON)
     penalty[off_offset:] = ridge_lambda
-    # The pooled FCS columns get their own, much smaller penalty -- see
-    # DEFAULT_FCS_RIDGE_LAMBDA's docstring: they are fit from far more
-    # pooled evidence than an individual FBS team's columns, so shrinking
-    # them at the individual-team strength is a bug, not a feature.
-    penalty[fcs_off_col] = fcs_ridge_lambda
-    penalty[fcs_def_col] = fcs_ridge_lambda
+    # The pooled/tiered FCS columns get their own, much smaller penalty --
+    # see DEFAULT_FCS_RIDGE_LAMBDA's docstring: even a single tier is fit
+    # from far more pooled evidence than an individual FBS team's columns,
+    # so shrinking it at the individual-team strength is a bug, not a
+    # feature.
+    penalty[fcs_off_base : fcs_off_base + n_fcs_groups] = fcs_ridge_lambda
+    penalty[fcs_def_base : fcs_def_base + n_fcs_groups] = fcs_ridge_lambda
     ridge_matrix = np.diag(penalty)
 
     XtX = X.T @ X
@@ -248,8 +351,19 @@ def fit_fbs_efficiency_ratings(
     hfa = float(beta[1])
     offense = {team_id: float(beta[off_offset + i]) for team_id, i in team_index.items()}
     defense = {team_id: float(beta[def_offset + i]) for team_id, i in team_index.items()}
-    fcs_offense = float(beta[fcs_off_col])
-    fcs_defense = float(beta[fcs_def_col])
+    fcs_tier_offense = {name: float(beta[fcs_off_base + i]) for name, i in fcs_group_index.items()}
+    fcs_tier_defense = {name: float(beta[fcs_def_base + i]) for name, i in fcs_group_index.items()}
+    # `fcs_offense`/`fcs_defense` (the pooled scalars) are always populated
+    # too, even in "tiered" mode -- used as the documented fallback for an
+    # FCS opponent whose tier bucket somehow has no fitted value (should
+    # not happen given FCS_DEFAULT_TIER, but keeps the fallback real
+    # rather than hardcoded to 0.0).
+    if fcs_mode == "pooled":
+        fcs_offense = fcs_tier_offense["pooled"]
+        fcs_defense = fcs_tier_defense["pooled"]
+    else:
+        fcs_offense = fcs_tier_offense[FCS_DEFAULT_TIER]
+        fcs_defense = fcs_tier_defense[FCS_DEFAULT_TIER]
 
     pace = _estimate_pace(training_rows, team_ids, shrinkage_k=pace_shrinkage_k)
     league_avg_pace = pace.pop("__league_average__")
@@ -267,6 +381,10 @@ def fit_fbs_efficiency_ratings(
         league_avg_pace=league_avg_pace,
         n_training_rows=len(efficiency_rows),
         n_teams_with_data=n_teams,
+        fcs_mode=fcs_mode,
+        fcs_tier_offense=fcs_tier_offense if fcs_mode == "tiered" else {},
+        fcs_tier_defense=fcs_tier_defense if fcs_mode == "tiered" else {},
+        fcs_team_tier=fcs_team_tier,
     )
 
 

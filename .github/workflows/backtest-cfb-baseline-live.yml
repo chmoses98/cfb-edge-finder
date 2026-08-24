@@ -20,6 +20,34 @@ on:
         description: "Win-probability recalibration method (platt/isotonic/none)"
         required: false
         default: "platt"
+      ridge_lambda:
+        description: "Ridge penalty for individual FBS team offense/defense params"
+        required: false
+        default: "25.0"
+      fcs_ridge_lambda:
+        description: "Ridge penalty for pooled/tiered FCS offense/defense params"
+        required: false
+        default: "4.0"
+      pace_shrinkage_k:
+        description: "Games-of-evidence shrinkage constant for trailing pace"
+        required: false
+        default: "4.0"
+      season_shrinkage_k:
+        description: "Games-of-evidence shrinkage constant for season-carryover blend"
+        required: false
+        default: "4.0"
+      fcs_mode:
+        description: "FCS opponent model: pooled (Milestone C) or tiered (Milestone C.2 candidate)"
+        required: false
+        default: "pooled"
+      variant_label:
+        description: "Free-text label for this ablation run"
+        required: false
+        default: ""
+      diagnostics:
+        description: "Print the full Milestone C.2 segmented diagnostic report"
+        required: false
+        default: "false"
 
 # Read-only: this workflow only calls out to CFBD and prints diagnostics.
 # It never commits, pushes, or writes anything back to this repository.
@@ -39,8 +67,22 @@ jobs:
       - name: Run live CFB baseline backtest
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          DIAGNOSTICS_FLAG: ${{ github.event.inputs.diagnostics == 'true' && '--diagnostics' || '' }}
+          VARIANT_LABEL: ${{ github.event.inputs.variant_label }}
         # scripts/backtest_cfb_baseline.py never prints the API key or an
         # Authorization header, and exits non-zero on auth/HTTP/schema
         # failure so this step fails loudly (red X) rather than silently
         # swallowing an error.
-        run: python3 scripts/backtest_cfb_baseline.py --seasons ${{ github.event.inputs.seasons }} --mode live --n-simulations ${{ github.event.inputs.n_simulations }} --calibration-method ${{ github.event.inputs.calibration_method }}
+        run: |
+          python3 scripts/backtest_cfb_baseline.py \
+            --seasons ${{ github.event.inputs.seasons }} \
+            --mode live \
+            --n-simulations ${{ github.event.inputs.n_simulations }} \
+            --calibration-method ${{ github.event.inputs.calibration_method }} \
+            --ridge-lambda ${{ github.event.inputs.ridge_lambda }} \
+            --fcs-ridge-lambda ${{ github.event.inputs.fcs_ridge_lambda }} \
+            --pace-shrinkage-k ${{ github.event.inputs.pace_shrinkage_k }} \
+            --season-shrinkage-k ${{ github.event.inputs.season_shrinkage_k }} \
+            --fcs-mode ${{ github.event.inputs.fcs_mode }} \
+            --variant-label "$VARIANT_LABEL" \
+            $DIAGNOSTICS_FLAG

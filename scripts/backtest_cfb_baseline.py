@@ -37,6 +37,16 @@ from cfb_edge_finder.modeling.backtest import (  # noqa: E402
     segment,
 )
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines  # noqa: E402
+from cfb_edge_finder.modeling.diagnostics import (  # noqa: E402
+    print_diagnostic_report,
+    source_of_margin_bias_summary,
+)
+from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K  # noqa: E402
+from cfb_edge_finder.modeling.ratings import (  # noqa: E402
+    DEFAULT_FCS_RIDGE_LAMBDA,
+    DEFAULT_PACE_SHRINKAGE_K,
+    DEFAULT_RIDGE_LAMBDA,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE_PATH = REPO_ROOT / "src" / "cfb_edge_finder" / "data" / "fixtures" / "cfb_backtest_fixture_corpus.json"
@@ -106,6 +116,28 @@ def main() -> int:
         help="Leakage-safe win-probability recalibration method (modeling/calibration.py). "
         "'none' disables recalibration entirely (calibrated == raw).",
     )
+    parser.add_argument("--ridge-lambda", type=float, default=DEFAULT_RIDGE_LAMBDA)
+    parser.add_argument("--fcs-ridge-lambda", type=float, default=DEFAULT_FCS_RIDGE_LAMBDA)
+    parser.add_argument("--pace-shrinkage-k", type=float, default=DEFAULT_PACE_SHRINKAGE_K)
+    parser.add_argument("--season-shrinkage-k", type=float, default=DEFAULT_SEASON_SHRINKAGE_K)
+    parser.add_argument(
+        "--fcs-mode",
+        choices=["pooled", "tiered"],
+        default="pooled",
+        help="'pooled' (Milestone C default) or 'tiered' (Milestone C.2 candidate, "
+        "modeling/ratings.py's weak/average/strong historical-performance tiers).",
+    )
+    parser.add_argument(
+        "--variant-label",
+        default=None,
+        help="Free-text label printed with the run, for matching against an ablation table.",
+    )
+    parser.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help="Print the full Milestone C.2 segmented diagnostic report (modeling/diagnostics.py) "
+        "in addition to the standard segments.",
+    )
     args = parser.parse_args()
 
     settings = Settings.from_env()
@@ -132,12 +164,25 @@ def main() -> int:
         lines = _load_fixture_lines(args.fixture_file)
         print(f"Loaded {len(lines)} fixture team-game lines. NOT live data -- see module docstring.")
 
+    if args.variant_label:
+        print(f"\n=== VARIANT: {args.variant_label} ===")
+    print(
+        f"Config: ridge_lambda={args.ridge_lambda} fcs_ridge_lambda={args.fcs_ridge_lambda} "
+        f"pace_shrinkage_k={args.pace_shrinkage_k} season_shrinkage_k={args.season_shrinkage_k} "
+        f"fcs_mode={args.fcs_mode} calibration_method={args.calibration_method}"
+    )
+
     outcomes = run_walk_forward_backtest(
         lines,
         min_week_for_first_prediction=args.min_week_for_first_prediction,
         n_simulations=args.n_simulations,
         seed=args.seed,
         calibration_method=args.calibration_method,
+        ridge_lambda=args.ridge_lambda,
+        fcs_ridge_lambda=args.fcs_ridge_lambda,
+        pace_shrinkage_k=args.pace_shrinkage_k,
+        season_shrinkage_k=args.season_shrinkage_k,
+        fcs_mode=args.fcs_mode,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)
@@ -172,6 +217,13 @@ def main() -> int:
     later = segment(outcomes, lambda o: o.week > 3)
     _print_segment("Early season (week<=3)", early)
     _print_segment("Later season (week>3)", later)
+
+    if args.diagnostics:
+        print("\n=== Milestone C.2 diagnostic segmentation (calibrated view) ===")
+        print_diagnostic_report(outcomes)
+        print("\n=== Milestone C.2 margin-bias source summary ===")
+        for key, value in source_of_margin_bias_summary(outcomes).items():
+            print(f"  {key}: {value if value is None else f'{value:+.2f}'}")
 
     print(f"\nMode: {resolved_mode}. Captured at: {captured_at.isoformat()}.")
     if resolved_mode == "fixture":

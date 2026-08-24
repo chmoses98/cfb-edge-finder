@@ -132,6 +132,67 @@ def test_fcs_ridge_lambda_is_separate_from_and_smaller_than_the_team_ridge_lambd
     assert DEFAULT_FCS_RIDGE_LAMBDA < DEFAULT_RIDGE_LAMBDA
 
 
+# --- Milestone C.2: FCS historical-performance tiering ---
+
+
+def test_fcs_tiered_mode_separates_weak_and_strong_fcs_opponents():
+    lines = []
+    for week in range(1, 5):
+        # "weak_fcs" gets blown out every time it plays an FBS team.
+        lines.append(_line("alpha", "weak_fcs", 56, 3, 74, True, week=week, opp_class="fcs"))
+        # "strong_fcs" keeps games close.
+        lines.append(_line("beta", "strong_fcs", 24, 20, 68, True, week=week, opp_class="fcs"))
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=5), fcs_mode="tiered")
+    assert ratings.fcs_team_tier["weak_fcs"] == "weak"
+    assert ratings.fcs_team_tier["strong_fcs"] == "strong"
+    # A weak FCS opponent's defense should allow strictly more (more
+    # negative "defense" rating) than a strong FCS opponent's.
+    assert ratings.fcs_defense_for("weak_fcs") < ratings.fcs_defense_for("strong_fcs")
+
+
+def test_fcs_tier_assignment_is_deterministic():
+    lines = [
+        _line("alpha", "fcs_a", 45, 10, 70, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_a", 42, 7, 70, True, week=2, opp_class="fcs"),
+    ]
+    r1 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), fcs_mode="tiered")
+    r2 = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), fcs_mode="tiered")
+    assert r1.fcs_team_tier == r2.fcs_team_tier
+    assert r1.fcs_tier_offense == r2.fcs_tier_offense
+    assert r1.fcs_tier_defense == r2.fcs_tier_defense
+
+
+def test_fcs_tier_assignment_uses_only_strictly_prior_evidence():
+    lines = [
+        _line("alpha", "fcs_a", 45, 10, 70, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_a", 42, 7, 70, True, week=2, opp_class="fcs"),
+    ]
+    future_blowout = _line("alpha", "fcs_a", 70, 0, 70, True, week=5, opp_class="fcs")
+    with pytest.raises(LeakageError):
+        fit_fbs_efficiency_ratings([*lines, future_blowout], AsOf(season=2025, week=3), fcs_mode="tiered")
+
+
+def test_unknown_fcs_opponent_falls_back_to_default_tier_not_an_error():
+    from cfb_edge_finder.modeling.ratings import FCS_DEFAULT_TIER, FCS_TIER_MIN_GAMES
+
+    lines = [_line("alpha", "brand_new_fcs", 40, 10, 70, True, week=1, opp_class="fcs")]
+    assert FCS_TIER_MIN_GAMES > 1  # sanity: a single game must NOT be enough to tier on its own
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), fcs_mode="tiered")
+    assert "brand_new_fcs" not in ratings.fcs_team_tier
+    assert ratings.fcs_offense_for("brand_new_fcs") == ratings.fcs_tier_offense[FCS_DEFAULT_TIER]
+    assert ratings.fcs_defense_for("brand_new_fcs") == ratings.fcs_tier_defense[FCS_DEFAULT_TIER]
+
+
+def test_pooled_mode_fcs_lookup_matches_the_pooled_scalar():
+    lines = [
+        _line("alpha", "fcs_one", 49, 3, 72, True, week=1, opp_class="fcs"),
+        _line("alpha", "fcs_two", 42, 6, 70, True, week=2, opp_class="fcs"),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3))  # default fcs_mode="pooled"
+    assert ratings.fcs_offense_for("fcs_one") == ratings.fcs_offense
+    assert ratings.fcs_defense_for("anyone_unseen") == ratings.fcs_defense
+
+
 def test_empty_history_returns_neutral_snapshot_not_a_crash():
     ratings = fit_fbs_efficiency_ratings([], AsOf(season=2025, week=1))
     assert ratings.n_training_rows == 0

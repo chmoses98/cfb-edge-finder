@@ -46,7 +46,13 @@ from cfb_edge_finder.modeling.calibration import calibrate
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf
 from cfb_edge_finder.modeling.naive_benchmark import fit_naive_benchmark, naive_expected_scores
-from cfb_edge_finder.modeling.ratings import fit_fbs_efficiency_ratings
+from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K
+from cfb_edge_finder.modeling.ratings import (
+    DEFAULT_FCS_RIDGE_LAMBDA,
+    DEFAULT_PACE_SHRINKAGE_K,
+    DEFAULT_RIDGE_LAMBDA,
+    fit_fbs_efficiency_ratings,
+)
 from cfb_edge_finder.modeling.score_model import (
     DEFAULT_MIN_RESIDUAL_POOL_SIZE,
     _fallback_residual_pool,
@@ -118,6 +124,11 @@ def run_walk_forward_backtest(
     seed: int = 0,
     calibration_method: str = DEFAULT_CALIBRATION_METHOD,
     min_residual_pool_size: int = DEFAULT_MIN_RESIDUAL_POOL_SIZE,
+    ridge_lambda: float = DEFAULT_RIDGE_LAMBDA,
+    fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
+    pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
+    season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
+    fcs_mode: str = "pooled",
 ) -> list[GameOutcome]:
     """Walks every (season, week) that has completed games, strictly in
     chronological order, fitting fresh ratings/naive-benchmark snapshots
@@ -150,7 +161,14 @@ def run_walk_forward_backtest(
         if not history:
             continue
 
-        ratings = fit_fbs_efficiency_ratings(history, as_of)
+        ratings = fit_fbs_efficiency_ratings(
+            history,
+            as_of,
+            ridge_lambda=ridge_lambda,
+            fcs_ridge_lambda=fcs_ridge_lambda,
+            pace_shrinkage_k=pace_shrinkage_k,
+            fcs_mode=fcs_mode,
+        )
         naive = fit_naive_benchmark(history, as_of)
         residual_pool = (
             np.array(residual_accumulator)
@@ -193,6 +211,7 @@ def run_walk_forward_backtest(
                 away_percent_passing_ppa=None,
                 n_simulations=n_simulations,
                 seed=seed + rng_counter,
+                season_shrinkage_k=season_shrinkage_k,
             )
 
             naive_home_pts, naive_away_pts = naive_expected_scores(

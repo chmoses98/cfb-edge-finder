@@ -51,7 +51,7 @@ import numpy as np
 
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf, assert_strictly_before
-from cfb_edge_finder.modeling.priors import BlendedRating, blend_team_rating
+from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K, BlendedRating, blend_team_rating
 from cfb_edge_finder.modeling.qb_continuity import QBContinuityState, classify_continuity, uncertainty_multiplier
 from cfb_edge_finder.modeling.ratings import (
     DEFAULT_FCS_RIDGE_LAMBDA,
@@ -94,7 +94,11 @@ too-thin, too-noisy handful of early-corpus residuals."""
 
 
 def effective_team_rating(
-    team_id: str, current: RatingsSnapshot, prior_season: RatingsSnapshot | None
+    team_id: str,
+    current: RatingsSnapshot,
+    prior_season: RatingsSnapshot | None,
+    *,
+    season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
 ) -> BlendedRating:
     prior_off = prior_season.offense.get(team_id) if prior_season is not None else None
     prior_def = prior_season.defense.get(team_id) if prior_season is not None else None
@@ -104,6 +108,7 @@ def effective_team_rating(
         prior_season_offense=prior_off,
         prior_season_defense=prior_def,
         games_played_this_season=current.games_played_for(team_id),
+        k=season_shrinkage_k,
     )
 
 
@@ -171,6 +176,7 @@ def build_expanding_residual_pool(
     ridge_lambda: float = DEFAULT_RIDGE_LAMBDA,
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
+    fcs_mode: str = "pooled",
 ) -> np.ndarray:
     """Standalone, single-shot expanding walk-forward residual pool for a
     live research projection (scripts/build_cfb_baseline.py) -- the same
@@ -202,6 +208,7 @@ def build_expanding_residual_pool(
             ridge_lambda=ridge_lambda,
             fcs_ridge_lambda=fcs_ridge_lambda,
             pace_shrinkage_k=pace_shrinkage_k,
+            fcs_mode=fcs_mode,
         )
         week_lines = [ln for ln in lines if ln.as_of == step_as_of]
         pool.extend(_residuals_for_pairs(_paired_fbs_games(week_lines), step_ratings))
@@ -316,6 +323,7 @@ def project_game(
     away_percent_passing_ppa: float | None,
     n_simulations: int = DEFAULT_N_SIMULATIONS,
     seed: int | None = None,
+    season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
 ) -> SimulatedGameProjection:
     """The single entry point research callers (scripts/build_cfb_baseline.py)
     use. `home_classification`/`away_classification` must be genuine,
@@ -325,15 +333,29 @@ def project_game(
     season-carryover step entirely (an FCS team was never in the FBS
     rating fit to begin with).
     """
+    # Uses the OPPONENT'S OWN team_id (not just a blanket pooled scalar) --
+    # in "tiered" fcs_mode (ratings.py Milestone C.2 candidate) this
+    # resolves to that specific FCS opponent's own tier; in "pooled" mode
+    # (the RatingsSnapshot default) fcs_offense_for/fcs_defense_for are
+    # identical to the pooled scalar, so this is a strict generalization,
+    # not a behavior change, when fcs_mode="pooled".
     home_blend = (
-        effective_team_rating(home_id, ratings, prior_season_ratings)
+        effective_team_rating(home_id, ratings, prior_season_ratings, season_shrinkage_k=season_shrinkage_k)
         if home_classification == "fbs"
-        else BlendedRating(offense=ratings.fcs_offense, defense=ratings.fcs_defense, weight_on_current_season=1.0)
+        else BlendedRating(
+            offense=ratings.fcs_offense_for(home_id),
+            defense=ratings.fcs_defense_for(home_id),
+            weight_on_current_season=1.0,
+        )
     )
     away_blend = (
-        effective_team_rating(away_id, ratings, prior_season_ratings)
+        effective_team_rating(away_id, ratings, prior_season_ratings, season_shrinkage_k=season_shrinkage_k)
         if away_classification == "fbs"
-        else BlendedRating(offense=ratings.fcs_offense, defense=ratings.fcs_defense, weight_on_current_season=1.0)
+        else BlendedRating(
+            offense=ratings.fcs_offense_for(away_id),
+            defense=ratings.fcs_defense_for(away_id),
+            weight_on_current_season=1.0,
+        )
     )
 
     home_indicator = 0.0 if is_neutral_site else 1.0
