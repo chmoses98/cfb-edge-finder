@@ -68,6 +68,23 @@ predictive model -- Milestone A deliberately stops short of this per
 mission section 6 ("do not build a simplistic Team A 31, Team B 24 model
 and treat it as finished").
 
+## Milestone C.2 — Improve CFB forecast quality before Kalshi pricing
+
+A diagnosis-and-ablation pass over the Milestone C hardened baseline,
+before proceeding to Kalshi pricing. See `docs/MILESTONE_C2.md` for the
+full write-up: one hyperparameter change (`ridge_lambda` 25.0 -> 10.0)
+was adopted after a genuine live ablation showed a real, stable,
+multi-metric improvement; a favorite-tail margin-bias pattern and a
+high-total shootout effect were both diagnosed in detail via new
+leakage-safe segmentation tooling (`modeling/diagnostics.py`) but
+explicitly NOT fixed this pass -- reported as open weaknesses, not
+smoothed over. FBS-vs-FCS margin/spread output remains
+UNSUPPORTED_FOR_PRICING.
+
+**Status: done, not merged pending review; recommends another
+model-quality pass (not Milestone D) as the next step**, since the
+model's largest, most broadly-distributed known bias remains open.
+
 ## Milestone D — Market probability engine
 
 Mostly already built in Milestone A

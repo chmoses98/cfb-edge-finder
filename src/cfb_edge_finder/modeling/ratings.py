@@ -74,13 +74,17 @@ from cfb_edge_finder.modeling.leakage import AsOf, assert_strictly_before
 
 FCS_PSEUDO_TEAM_ID = "__fcs__"
 
-DEFAULT_RIDGE_LAMBDA = 25.0
-"""Chosen, not fit: large enough that a team with 1-2 games of evidence
-sits close to league-average, small enough that a full season of evidence
-dominates it. See docs/MILESTONE_C.md "Team-strength construction" for the
-sensitivity note -- this is a documented, provisional constant, not a
-cross-validated one; picking it rigorously is a real next-step improvement
-(see that document's "Recommendation for next model improvement")."""
+DEFAULT_RIDGE_LAMBDA = 10.0
+"""Milestone C.2: lowered from Milestone C's 25.0 after a genuine live
+walk-forward ablation (see docs/MILESTONE_C2.md "Ridge lambda ablation")
+showed 10.0 improves winner log loss, Brier, and margin MAE/RMSE
+out-of-time relative to 25.0, with no measurable change to margin bias,
+FBS-vs-FCS bias, coverage, or total accuracy, and no season-concentrated
+instability across 2022-2025. This is a genuine out-of-time accuracy
+improvement, NOT a fix for the still-open favorite-tail margin-bias
+finding (see docs/MILESTONE_C2.md) -- that bias was ablation-tested
+against this same lambda sweep and found essentially unchanged by it.
+Still a documented, provisional constant, not a cross-validated one."""
 
 DEFAULT_PACE_SHRINKAGE_K = 4.0
 """Games of evidence at which a team's trailing pace is weighted 50/50
