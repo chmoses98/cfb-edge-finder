@@ -51,6 +51,7 @@ import numpy as np
 
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.modeling.leakage import AsOf, assert_strictly_before
+from cfb_edge_finder.modeling.margin_calibration import IsotonicMarginModel, LinearMarginParams
 from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K, BlendedRating, blend_team_rating
 from cfb_edge_finder.modeling.qb_continuity import QBContinuityState, classify_continuity, uncertainty_multiplier
 from cfb_edge_finder.modeling.ratings import (
@@ -320,6 +321,244 @@ class SimulatedGameProjection:
             distribution=self.to_game_distribution(),
             uncertainty=self.to_uncertainty_profile(),
         )
+
+
+@dataclass(frozen=True)
+class CorrectedGameProjection:
+    """Wraps a `SimulatedGameProjection` with Milestone C.2 Part 3's
+    `margin_correction_method="linear"` favorite-tail correction applied
+    -- the SAME correction (identically parameterized: this module never
+    reimplements `LinearMarginParams`/`IsotonicMarginModel`) that
+    `modeling.backtest.run_walk_forward_backtest` validated. `margin_delta`
+    is 0.0 for a true no-op (method="none", a non-FBS-vs-FBS game, or an
+    as-of predating the frozen artifact's training cutoff -- see
+    `apply_margin_correction` below and `margin_correction_artifact.py`'s
+    leakage-safety note).
+
+    *** HOW HOME/AWAY SCORE MEANS ARE ADJUSTED, PRESERVING TOTAL ***
+    The correction changes the model's projected MARGIN by `margin_delta`
+    (corrected margin - raw margin). Since margin = home - away and
+    total = home + away, shifting home by +margin_delta/2 and away by
+    -margin_delta/2 changes margin by exactly margin_delta while leaving
+    total EXACTLY unchanged -- the unique, symmetric way to move margin
+    without moving total at all. This matches
+    `total_correction_method="none"` (docs/MILESTONE_C2.md section 35):
+    the total channel is genuinely untouched, not just "not further
+    corrected." Both means are floored at 0.0, mirroring `project_game`'s
+    own `max(expected_points, 0.0)` floor.
+
+    *** WHY THE CORRECTION IS APPLIED TO THE DETERMINISTIC POINT ESTIMATE,
+    NOT THE SIMULATED MEAN MARGIN *** `run_walk_forward_backtest` fits/
+    applies its correction against `model_margin_mean`, the MONTE CARLO
+    mean of `home_scores - away_scores`. This module instead applies the
+    frozen artifact to `raw.expected_home_points - raw.expected_away_points`
+    -- the pre-simulation, deterministic point estimate -- so that
+    `expected_home_points - expected_away_points == expected_margin`
+    holds EXACTLY (not merely "up to Monte Carlo noise") for every
+    live projection, satisfying this pass's "internally coherent"
+    requirement without qualification. The two quantities differ only by
+    the residual pool's sample mean, which is approximately zero by
+    construction (a systematic non-zero residual mean would itself be a
+    ratings-fit bias the ridge regression would already have absorbed) --
+    a documented, deliberate, and negligible simplification relative to
+    training, not a silent one.
+
+    *** WHY WIN PROBABILITY IS UNCHANGED ***
+    `prob_home_win`/`prob_away_win` below read directly from the wrapped,
+    UNCORRECTED `raw` projection's own simulated home/away score
+    comparison -- identical to how `run_walk_forward_backtest` computes
+    `model_prob_home_win` BEFORE either correction is applied, and never
+    touches it afterward (margin_calibration.py's "WHY THIS TOUCHES ONLY
+    THE MARGIN CHANNEL" note). This is deliberate parity: the win-
+    probability channel Milestone C.2's backtests validated is exactly
+    the channel this live path reports, with zero divergence introduced
+    by the margin correction.
+
+    *** WHY MARGIN/TOTAL THRESHOLD PROBABILITIES DON'T MUTATE `raw` ***
+    `prob_margin_greater_than`/`to_game_distribution`'s home/away means
+    below are computed by adding the scalar `margin_delta` (or +-
+    `margin_delta / 2`) to values derived from `raw.home_scores`/
+    `raw.away_scores`, never by mutating those arrays in place -- adding a
+    constant to every simulated draw before a `>` comparison is exactly
+    equivalent to shifting the arrays themselves (order-preserving, so
+    threshold probabilities stay monotonic in the threshold), and standard
+    deviation/correlation are invariant under a constant shift, so
+    `raw.to_game_distribution()`'s spread/correlation numbers are reused
+    unchanged rather than recomputed -- exact, not an approximation.
+    """
+
+    raw: SimulatedGameProjection
+    margin_delta: float
+    method: str
+    is_fbs_vs_fbs: bool
+    correction_applied: bool
+    correction_skip_reason: str | None
+    artifact_version: str | None
+
+    @property
+    def raw_expected_margin(self) -> float:
+        return self.raw.expected_home_points - self.raw.expected_away_points
+
+    @property
+    def expected_home_points(self) -> float:
+        return max(self.raw.expected_home_points + self.margin_delta / 2, 0.0)
+
+    @property
+    def expected_away_points(self) -> float:
+        return max(self.raw.expected_away_points - self.margin_delta / 2, 0.0)
+
+    @property
+    def expected_margin(self) -> float:
+        return self.raw_expected_margin + self.margin_delta
+
+    @property
+    def expected_total(self) -> float:
+        # total_correction_method="none" this pass -- genuinely unchanged,
+        # never derived from expected_home_points/expected_away_points
+        # above (which individually move) so this stays exactly the raw
+        # sum even after the 0.0 floor on either side.
+        return self.raw.expected_home_points + self.raw.expected_away_points
+
+    def prob_home_win(self) -> float:
+        return self.raw.prob_home_win()
+
+    def prob_away_win(self) -> float:
+        return self.raw.prob_away_win()
+
+    def prob_margin_greater_than(self, threshold: float) -> float:
+        shifted_margins = (self.raw.home_scores - self.raw.away_scores) + self.margin_delta
+        return float(np.mean(shifted_margins > threshold))
+
+    def prob_total_greater_than(self, threshold: float) -> float:
+        return self.raw.prob_total_greater_than(threshold)
+
+    def to_game_distribution(self) -> GameDistribution:
+        raw_dist = self.raw.to_game_distribution()
+        return GameDistribution(
+            home_mean=max(raw_dist.home_mean + self.margin_delta / 2, 0.0),
+            away_mean=max(raw_dist.away_mean - self.margin_delta / 2, 0.0),
+            home_sd=raw_dist.home_sd,
+            away_sd=raw_dist.away_sd,
+            correlation=raw_dist.correlation,
+        )
+
+    def to_uncertainty_profile(self) -> UncertaintyProfile:
+        return self.raw.to_uncertainty_profile()
+
+    def to_projection_record(
+        self,
+        *,
+        projection_id: str,
+        game_id: str,
+        model_version: ModelVersion,
+        provenance: DataProvenance,
+        projection_timestamp,
+    ) -> ProjectionRecord:
+        return ProjectionRecord(
+            projection_id=projection_id,
+            game_id=game_id,
+            model_version=model_version,
+            provenance=provenance,
+            projection_timestamp=projection_timestamp,
+            distribution=self.to_game_distribution(),
+            uncertainty=self.to_uncertainty_profile(),
+        )
+
+
+def apply_margin_correction(
+    projection: SimulatedGameProjection,
+    *,
+    is_fbs_vs_fbs: bool,
+    method: str,
+    correction_model: LinearMarginParams | IsotonicMarginModel | None,
+    artifact_version: str | None,
+    as_of: AsOf,
+    training_cutoff: AsOf | None,
+) -> CorrectedGameProjection:
+    """The single entry point `scripts/build_cfb_baseline.py` uses to
+    apply Milestone C.2 Part 3's margin correction to a live projection --
+    mirrors `margin_calibration.correct_margin`'s role in
+    `run_walk_forward_backtest`, but against a frozen `correction_model`
+    (see margin_correction_artifact.py) instead of a walk-forward-fit one.
+
+    Skips (returns `margin_delta=0.0`, `correction_applied=False`) with an
+    explicit, distinguishable `correction_skip_reason` when:
+      - `method == "none"` (correction disabled entirely) -- reason
+        "method_none".
+      - `not is_fbs_vs_fbs` -- FBS-vs-FCS games are never corrected,
+        matching margin_calibration.py's FBS-vs-FBS-only fit population
+        and backtest.py's identical restriction -- reason "not_fbs_vs_fbs".
+      - `training_cutoff is not None and as_of.is_strictly_before(training_cutoff)`
+        -- the frozen artifact's training data would be at or after this
+        projection's own as-of point, which would be leakage -- reason
+        "as_of_predates_training_cutoff".
+      - `correction_model is None` -- reason "no_correction_model".
+      - `correction_model.is_identity_fallback` -- the underlying fit
+        itself identity-fell-back (below minimum history / degenerate
+        slope) -- reason "identity_fallback".
+    """
+    if method == "none":
+        return CorrectedGameProjection(
+            raw=projection,
+            margin_delta=0.0,
+            method=method,
+            is_fbs_vs_fbs=is_fbs_vs_fbs,
+            correction_applied=False,
+            correction_skip_reason="method_none",
+            artifact_version=artifact_version,
+        )
+    if not is_fbs_vs_fbs:
+        return CorrectedGameProjection(
+            raw=projection,
+            margin_delta=0.0,
+            method=method,
+            is_fbs_vs_fbs=is_fbs_vs_fbs,
+            correction_applied=False,
+            correction_skip_reason="not_fbs_vs_fbs",
+            artifact_version=artifact_version,
+        )
+    if training_cutoff is not None and as_of.is_strictly_before(training_cutoff):
+        return CorrectedGameProjection(
+            raw=projection,
+            margin_delta=0.0,
+            method=method,
+            is_fbs_vs_fbs=is_fbs_vs_fbs,
+            correction_applied=False,
+            correction_skip_reason="as_of_predates_training_cutoff",
+            artifact_version=artifact_version,
+        )
+    if correction_model is None:
+        return CorrectedGameProjection(
+            raw=projection,
+            margin_delta=0.0,
+            method=method,
+            is_fbs_vs_fbs=is_fbs_vs_fbs,
+            correction_applied=False,
+            correction_skip_reason="no_correction_model",
+            artifact_version=artifact_version,
+        )
+    if correction_model.is_identity_fallback:
+        return CorrectedGameProjection(
+            raw=projection,
+            margin_delta=0.0,
+            method=method,
+            is_fbs_vs_fbs=is_fbs_vs_fbs,
+            correction_applied=False,
+            correction_skip_reason="identity_fallback",
+            artifact_version=artifact_version,
+        )
+
+    raw_margin = projection.expected_home_points - projection.expected_away_points
+    corrected_margin = float(correction_model.apply(np.array([raw_margin]))[0])
+    return CorrectedGameProjection(
+        raw=projection,
+        margin_delta=corrected_margin - raw_margin,
+        method=method,
+        is_fbs_vs_fbs=is_fbs_vs_fbs,
+        correction_applied=True,
+        correction_skip_reason=None,
+        artifact_version=artifact_version,
+    )
 
 
 def project_game(
