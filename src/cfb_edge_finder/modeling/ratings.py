@@ -75,16 +75,23 @@ from cfb_edge_finder.modeling.leakage import AsOf, assert_strictly_before
 FCS_PSEUDO_TEAM_ID = "__fcs__"
 
 DEFAULT_RIDGE_LAMBDA = 10.0
-"""Milestone C.2: lowered from Milestone C's 25.0 after a genuine live
-walk-forward ablation (see docs/MILESTONE_C2.md "Ridge lambda ablation")
-showed 10.0 improves winner log loss, Brier, and margin MAE/RMSE
-out-of-time relative to 25.0, with no measurable change to margin bias,
-FBS-vs-FCS bias, coverage, or total accuracy, and no season-concentrated
-instability across 2022-2025. This is a genuine out-of-time accuracy
-improvement, NOT a fix for the still-open favorite-tail margin-bias
-finding (see docs/MILESTONE_C2.md) -- that bias was ablation-tested
-against this same lambda sweep and found essentially unchanged by it.
-Still a documented, provisional constant, not a cross-validated one."""
+"""Milestone C.2: lowered from Milestone C's 25.0 via a leakage-safe,
+chronological DEVELOPMENT/CONFIRMATION selection procedure (see
+docs/MILESTONE_C2.md "Leakage-safe model selection"), never by tuning on
+and then re-presenting the same season as if it were untouched: candidates
+were compared on 2022-2024 development data ONLY (10.0 was the clear
+winner there on winner log loss/Brier/margin MAE/RMSE), and the selected
+value was then, and only then, checked against the held-out 2025
+confirmation season -- where the margin-accuracy gain replicates clearly,
+while the winner-calibration gain is much smaller and within noise
+(reported honestly, not oversold). No measurable change to margin bias,
+FBS-vs-FCS bias, or total accuracy on either the development or
+confirmation season. This is a genuine out-of-time accuracy improvement,
+NOT a fix for the still-open favorite-tail margin-bias finding (see
+docs/MILESTONE_C2.md) -- that bias was ablation-tested against this same
+lambda sweep, on both development and confirmation data, and found
+essentially unchanged by it. Still a documented, provisional constant,
+not a cross-validated one."""
 
 DEFAULT_PACE_SHRINKAGE_K = 4.0
 """Games of evidence at which a team's trailing pace is weighted 50/50

@@ -172,6 +172,51 @@ def test_fcs_tier_assignment_uses_only_strictly_prior_evidence():
         fit_fbs_efficiency_ratings([*lines, future_blowout], AsOf(season=2025, week=3), fcs_mode="tiered")
 
 
+def test_fcs_tier_recomputed_walk_forward_and_unaffected_by_future_games():
+    """Regression test for the historical-integrity audit: proves (1) FCS
+    tiers are genuinely RECOMPUTED walk-forward, not frozen at their
+    first-seen value, and (2) a future FCS result cannot reach back and
+    change a PAST game's already-assigned tier.
+
+    "weak_fcs" is blown out early (weeks 1-2) but plays much closer games
+    later (weeks 6-7) -- modeling a team that genuinely improves over the
+    season. `history_at_each_as_of` is built the exact same way
+    `backtest.run_walk_forward_backtest` builds its own `history` argument
+    (`[ln for ln in lines if ln.as_of.is_strictly_before(as_of)]`), so this
+    test exercises the real walk-forward access pattern, not a shortcut.
+    """
+    early_weeks = [
+        _line("alpha", "weak_fcs", 56, 3, 74, True, week=1, opp_class="fcs"),
+        _line("alpha", "weak_fcs", 52, 6, 74, True, week=2, opp_class="fcs"),
+    ]
+    later_weeks = [
+        _line("beta", "weak_fcs", 24, 21, 68, True, week=6, opp_class="fcs"),
+        _line("beta", "weak_fcs", 27, 24, 68, True, week=7, opp_class="fcs"),
+    ]
+    full_season = early_weeks + later_weeks
+
+    as_of_week3 = AsOf(season=2025, week=3)
+    history_week3 = [ln for ln in full_season if ln.as_of.is_strictly_before(as_of_week3)]
+    ratings_week3 = fit_fbs_efficiency_ratings(history_week3, as_of_week3, fcs_mode="tiered")
+    assert ratings_week3.fcs_team_tier["weak_fcs"] == "weak"
+
+    as_of_week8 = AsOf(season=2025, week=8)
+    history_week8 = [ln for ln in full_season if ln.as_of.is_strictly_before(as_of_week8)]
+    ratings_week8 = fit_fbs_efficiency_ratings(history_week8, as_of_week8, fcs_mode="tiered")
+    # With the two later, closer games now strictly prior, the SAME
+    # opponent's tier legitimately moves away from "weak" -- proving
+    # recomputation is genuinely walk-forward, not a one-time snapshot.
+    assert ratings_week8.fcs_team_tier["weak_fcs"] != "weak"
+
+    # The critical assertion: the week-3 snapshot's tier is EXACTLY what
+    # it would be if the week-6/7 games never existed at all -- a future
+    # FCS result cannot change a past game's assigned tier.
+    ratings_week3_isolated = fit_fbs_efficiency_ratings(early_weeks, as_of_week3, fcs_mode="tiered")
+    assert ratings_week3.fcs_team_tier == ratings_week3_isolated.fcs_team_tier
+    assert ratings_week3.fcs_tier_offense == ratings_week3_isolated.fcs_tier_offense
+    assert ratings_week3.fcs_tier_defense == ratings_week3_isolated.fcs_tier_defense
+
+
 def test_unknown_fcs_opponent_falls_back_to_default_tier_not_an_error():
     from cfb_edge_finder.modeling.ratings import FCS_DEFAULT_TIER, FCS_TIER_MIN_GAMES
 

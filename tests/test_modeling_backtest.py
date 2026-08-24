@@ -185,6 +185,51 @@ def test_backtest_reproducible_with_same_seed_including_calibration():
         assert o1.calibrated_prob_home_win == pytest.approx(o2.calibrated_prob_home_win, abs=1e-12)
 
 
+def test_development_only_backtest_matches_full_corpus_for_the_shared_seasons():
+    """Historical-integrity audit: proves the leakage-safe chronological
+    model-selection procedure (development on early seasons, confirmation
+    on a later held-out season -- mission Option A) is a mathematically
+    sound decomposition, not an approximation. Running the walk-forward
+    backtest on a DEVELOPMENT-ONLY season subset (e.g. 2022-2024) must
+    produce BIT-IDENTICAL outcomes for those seasons as the corresponding
+    prefix of a run over the FULL corpus (2022-2025) -- i.e. the mere
+    presence of a later, held-out confirmation season anywhere in the
+    input can never change a development-season prediction. This is what
+    makes it safe to select hyperparameters from a development-only run
+    without ever having "seen" the confirmation season's data, even
+    though every input list happens to be built from the same underlying
+    synthetic corpus generator here.
+    """
+    full_lines = _synthetic_corpus(n_teams=8, n_weeks=5, seasons=(2022, 2023, 2024, 2025), seed=11)
+    dev_only_lines = [ln for ln in full_lines if ln.season in (2022, 2023, 2024)]
+
+    full_outcomes = run_walk_forward_backtest(full_lines, min_week_for_first_prediction=2, n_simulations=500, seed=3)
+    dev_outcomes = run_walk_forward_backtest(
+        dev_only_lines, min_week_for_first_prediction=2, n_simulations=500, seed=3
+    )
+
+    full_dev_seasons = {o.source_game_id: o for o in full_outcomes if o.season in (2022, 2023, 2024)}
+    dev_only = {o.source_game_id: o for o in dev_outcomes}
+    assert full_dev_seasons.keys() == dev_only.keys()
+    assert len(dev_only) > 0  # sanity: the development seasons actually produced predictions
+
+    for gid in dev_only:
+        assert full_dev_seasons[gid].model_margin_mean == pytest.approx(
+            dev_only[gid].model_margin_mean, abs=1e-9
+        )
+        assert full_dev_seasons[gid].model_prob_home_win == pytest.approx(
+            dev_only[gid].model_prob_home_win, abs=1e-9
+        )
+        assert full_dev_seasons[gid].calibrated_prob_home_win == pytest.approx(
+            dev_only[gid].calibrated_prob_home_win, abs=1e-9
+        )
+
+    # And the held-out 2025 season must be entirely absent from the
+    # development-only run -- it was never even loaded, let alone leaked.
+    assert all(o.season != 2025 for o in dev_outcomes)
+    assert any(o.season == 2025 for o in full_outcomes)  # sanity: the full run does cover it
+
+
 def test_compute_metrics_calibrated_prob_attr_uses_model_margin_not_naive():
     lines = _synthetic_corpus(n_teams=10, n_weeks=6, seasons=(2024, 2025))
     outcomes = run_walk_forward_backtest(lines, min_week_for_first_prediction=2, n_simulations=500, seed=0)

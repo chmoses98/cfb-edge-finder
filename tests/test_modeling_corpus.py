@@ -131,3 +131,65 @@ def test_genuine_fbs_vs_fcs_game_is_still_retained():
     lines, skipped = build_team_game_lines([raw], [], captured_at=NOW)
     assert skipped == []
     assert len(lines) == 2
+
+
+def test_conference_fields_captured_from_raw_cfbd_game_row():
+    # Conference identity must come from CFBD's own per-game
+    # homeConference/awayConference/conferenceGame fields, captured
+    # verbatim as of that game's season -- see corpus.py's TeamGameLine
+    # docstring and modeling/diagnostics.py's realignment-safety note.
+    raw = _raw_regular_game(homeConference="Big Ten", awayConference="SEC", conferenceGame=False)
+    lines, _ = build_team_game_lines([raw], [], captured_at=NOW)
+    home_row = next(ln for ln in lines if ln.is_home)
+    away_row = next(ln for ln in lines if not ln.is_home)
+    assert home_row.team_conference == "Big Ten"
+    assert home_row.opponent_conference == "SEC"
+    assert home_row.is_conference_game is False
+    # The away row's perspective must be correctly flipped, not a copy of
+    # the home row's fields.
+    assert away_row.team_conference == "SEC"
+    assert away_row.opponent_conference == "Big Ten"
+    assert away_row.is_conference_game is False
+
+
+def test_conference_game_flag_true_carried_through():
+    raw = _raw_regular_game(homeConference="Sun Belt", awayConference="Sun Belt", conferenceGame=True)
+    lines, _ = build_team_game_lines([raw], [], captured_at=NOW)
+    assert all(ln.is_conference_game is True for ln in lines)
+
+
+def test_missing_conference_fields_leave_none_not_a_default_guess():
+    # A raw row with no conference fields at all (e.g. an older CFBD
+    # response shape, or a row this project hasn't independently
+    # verified carries them) must leave team_conference/opponent_conference/
+    # is_conference_game as None, never silently defaulted to a guessed
+    # value.
+    raw = _raw_regular_game()
+    assert "homeConference" not in raw and "conferenceGame" not in raw
+    lines, _ = build_team_game_lines([raw], [], captured_at=NOW)
+    assert all(ln.team_conference is None and ln.opponent_conference is None for ln in lines)
+    assert all(ln.is_conference_game is None for ln in lines)
+
+
+def test_conference_fields_reflect_historical_row_not_current_2026_registry():
+    # Regression test for the realignment-safety bug: build_team_game_lines
+    # must capture whatever conference the RAW ROW reports for that
+    # season, even when it disagrees with the CURRENT (2026) registry.
+    # Texas State is a real, in-repo-documented case (teams/registry.py):
+    # Sun Belt through the 2024 season, Pac-12 as of the 2026 registry.
+    # A 2023 raw row reporting "Sun Belt" for Texas State must produce
+    # exactly that -- not be silently overridden by the registry's
+    # current "Pac-12".
+    raw = _raw_regular_game(
+        season=2023,
+        homeTeam="Texas State",
+        homeConference="Sun Belt",
+        awayTeam="Troy",
+        awayConference="Sun Belt",
+        conferenceGame=True,
+    )
+    lines, skipped = build_team_game_lines([raw], [], captured_at=NOW)
+    assert skipped == []
+    home_row = next(ln for ln in lines if ln.is_home)
+    assert home_row.team_id == "texas-state"
+    assert home_row.team_conference == "Sun Belt"  # NOT the 2026 registry's "Pac-12"

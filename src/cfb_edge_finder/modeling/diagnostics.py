@@ -4,11 +4,24 @@ backtest (mission section 3/8's diagnosis requirement).
 *** WHY THIS IS SAFE, EVEN THOUGH IT'S NOT IN backtest.py ITSELF ***
 Every function here is a PURE function of a list of already-computed
 `backtest.GameOutcome` objects (each one already the output of a leakage-
-checked walk-forward prediction -- see backtest.py) plus a static team
-registry lookup (`teams.registry.get_team`, a fixed pregame-known fact,
-never derived from in-season results). Nothing here re-fits a model,
-re-touches CFBD data, or could introduce a NEW leakage path -- it only
-classifies outcomes that already exist, for reporting.
+checked walk-forward prediction -- see backtest.py). Nothing here re-fits
+a model, re-touches CFBD data, or could introduce a NEW leakage path --
+it only classifies outcomes that already exist, for reporting.
+
+*** WHY CONFERENCE CLASSIFICATION DOES NOT USE teams.registry ***
+`is_conference_game` deliberately does NOT consult `teams.registry` (a
+single CURRENT, 2026 snapshot of conference membership). Conference
+realignment means a team's current conference can differ from its
+conference AT THE TIME of a historical (2022-2025) game -- e.g. Texas
+State: Sun Belt through the 2024 season, Pac-12 as of the 2026 registry.
+Using the current registry to classify a historical game would silently
+misclassify every realigned team's OLD games. Instead, conference
+identity is read from `GameOutcome.home_conference`/`away_conference`/
+`is_conference_game`, which are threaded straight through from CFBD's own
+per-game `homeConference`/`awayConference`/`conferenceGame` fields (see
+corpus.py's `TeamGameLine`) -- a season-scoped, pregame-known fact about
+THAT game's season, never a current-day lookup. See
+test_diagnostics_conference_realignment_safety.
 
 *** WHY FAVORITE/UNDERDOG IS THE MODEL'S OWN CALL, NOT THE MARKET'S ***
 `classify_favorite` uses `model_margin_mean` (the model's own raw
@@ -29,7 +42,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from cfb_edge_finder.modeling.backtest import BacktestMetrics, GameOutcome, compute_metrics
-from cfb_edge_finder.teams.registry import get_team
 
 LARGE_FAVORITE_THRESHOLD = 14.0
 PICKEM_THRESHOLD = 3.0
@@ -54,14 +66,19 @@ def classify_margin_magnitude(o: GameOutcome) -> str:
 
 
 def is_conference_game(o: GameOutcome) -> bool | None:
-    """None when either side isn't in the static FBS registry (an FCS or
-    unresolved opponent) -- "conference game" is only a meaningful concept
-    for two FBS teams."""
-    home = get_team(o.home_id)
-    away = get_team(o.away_id)
-    if home is None or away is None or home.conference is None or away.conference is None:
-        return None
-    return home.conference == away.conference
+    """Historical, season-scoped conference identity ONLY -- see this
+    module's "WHY CONFERENCE CLASSIFICATION DOES NOT USE teams.registry"
+    docstring note. Prefers CFBD's own per-game `conferenceGame` flag
+    (`o.is_conference_game`); falls back to comparing the two teams'
+    CFBD-reported conferences as of that game's season
+    (`o.home_conference`/`o.away_conference`) when the flag wasn't
+    reported for this row. Returns None when neither source is available
+    (e.g. an FCS opponent, or a row CFBD didn't report the field for)."""
+    if o.is_conference_game is not None:
+        return o.is_conference_game
+    if o.home_conference is not None and o.away_conference is not None:
+        return o.home_conference == o.away_conference
+    return None
 
 
 def _bin_label(value: float, edges: list[float]) -> str:

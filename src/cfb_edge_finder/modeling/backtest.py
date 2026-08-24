@@ -87,6 +87,14 @@ class GameOutcome:
     week: int
     home_id: str
     away_id: str
+    # Historical, season-scoped conference identity ONLY -- copied straight
+    # from TeamGameLine.team_conference/opponent_conference/is_conference_game
+    # (CFBD's own homeConference/awayConference/conferenceGame fields on the
+    # raw game row), never derived from teams.registry's single current
+    # (2026) snapshot. See modeling/diagnostics.py's is_conference_game.
+    home_conference: str | None
+    away_conference: str | None
+    is_conference_game: bool | None
     is_neutral_site: bool
     is_fbs_vs_fbs: bool
     actual_home_points: int
@@ -234,6 +242,9 @@ def run_walk_forward_backtest(
                     "week": week,
                     "home_id": home.team_id,
                     "away_id": home.opponent_id,
+                    "home_conference": home.team_conference,
+                    "away_conference": home.opponent_conference,
+                    "is_conference_game": home.is_conference_game,
                     "is_neutral_site": home.is_neutral_site,
                     "is_fbs_vs_fbs": (home.team_classification == "fbs" and home.opponent_classification == "fbs"),
                     "actual_home_points": home.team_points,

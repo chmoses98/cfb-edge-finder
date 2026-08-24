@@ -12,6 +12,7 @@ from cfb_edge_finder.modeling.diagnostics import (
     projected_total_bin,
     source_of_margin_bias_summary,
 )
+from cfb_edge_finder.teams.registry import get_team
 
 NOW = datetime(2026, 8, 23, tzinfo=UTC)
 
@@ -28,6 +29,9 @@ def _outcome(
     actual_away_points=20,
     model_margin_mean=7.0,
     model_total_mean=45.0,
+    home_conference=None,
+    away_conference=None,
+    is_conference_game_flag=None,
 ) -> GameOutcome:
     return GameOutcome(
         source_game_id=f"{home_id}-{away_id}-{week}",
@@ -35,6 +39,9 @@ def _outcome(
         week=week,
         home_id=home_id,
         away_id=away_id,
+        home_conference=home_conference,
+        away_conference=away_conference,
+        is_conference_game=is_conference_game_flag,
         is_neutral_site=is_neutral_site,
         is_fbs_vs_fbs=is_fbs_vs_fbs,
         actual_home_points=actual_home_points,
@@ -72,19 +79,80 @@ def test_projected_margin_bin_and_total_bin_are_deterministic_labels():
     assert "7" in projected_margin_bin(o) or "14" in projected_margin_bin(o)
 
 
-def test_is_conference_game_true_for_same_conference_fbs_teams():
-    same_conf = _outcome(home_id="ohio-state", away_id="michigan")  # both Big Ten
+def test_is_conference_game_true_via_historical_conference_strings():
+    same_conf = _outcome(home_conference="Big Ten", away_conference="Big Ten")
     assert is_conference_game(same_conf) is True
 
 
-def test_is_conference_game_false_for_different_conference_fbs_teams():
-    diff_conf = _outcome(home_id="ohio-state", away_id="texas")  # Big Ten vs SEC
+def test_is_conference_game_false_via_historical_conference_strings():
+    diff_conf = _outcome(home_conference="Big Ten", away_conference="SEC")
     assert is_conference_game(diff_conf) is False
 
 
-def test_is_conference_game_none_when_opponent_unresolvable():
-    fcs_game = _outcome(home_id="ohio-state", away_id="some_fcs_team_not_in_registry", is_fbs_vs_fbs=False)
+def test_is_conference_game_prefers_cfbd_flag_over_conference_strings():
+    # CFBD's own conferenceGame flag is the authoritative historical
+    # source (see is_conference_game's docstring) -- it must win even when
+    # the two conference-name strings alone would suggest the opposite
+    # (e.g. a genuine cross-conference "championship" edge case CFBD
+    # itself classifies differently than a naive string comparison would).
+    flag_says_conference = _outcome(
+        home_conference="Big Ten", away_conference="SEC", is_conference_game_flag=True
+    )
+    assert is_conference_game(flag_says_conference) is True
+
+    flag_says_not = _outcome(
+        home_conference="Big Ten", away_conference="Big Ten", is_conference_game_flag=False
+    )
+    assert is_conference_game(flag_says_not) is False
+
+
+def test_is_conference_game_none_when_no_historical_source_available():
+    # No CFBD conferenceGame flag AND no historical conference strings
+    # (e.g. an FCS opponent, or a row CFBD didn't report the field for) --
+    # must be None, not silently guessed.
+    fcs_game = _outcome(home_conference=None, away_conference=None, is_conference_game_flag=None)
     assert is_conference_game(fcs_game) is None
+
+
+def test_diagnostics_conference_realignment_safety():
+    """Regression test: historical conference classification must NOT be
+    rewritten by a team's CURRENT (2026) registry conference.
+
+    Texas State is a real, in-repo-documented realignment case
+    (teams/registry.py): Sun Belt through the 2024 season, Pac-12 as of
+    the 2026 registry. A 2023 Texas State vs. Troy game (Troy has always
+    been Sun Belt) was a genuine CONFERENCE game at the time it was
+    played. If diagnostics classified conference games from the CURRENT
+    registry (as the pre-audit implementation did), this game would be
+    misclassified as non-conference, because the registry now disagrees
+    with Troy's conference. Using the historical CFBD-reported conference
+    fields (as this implementation does) gets it right regardless of what
+    the registry says today.
+    """
+    current_texas_state_conference = get_team("texas-state").conference
+    current_troy_conference = get_team("troy").conference
+    assert current_texas_state_conference != current_troy_conference, (
+        "test setup assumes Texas State's CURRENT registry conference differs from Troy's "
+        "(the realignment this test is guarding against) -- if the registry changes, update this test"
+    )
+
+    historical_2023_game = _outcome(
+        home_id="texas-state",
+        away_id="troy",
+        season=2023,
+        home_conference="Sun Belt",
+        away_conference="Sun Belt",
+    )
+    assert is_conference_game(historical_2023_game) is True
+
+    # The CFBD conferenceGame flag path must be equally realignment-safe.
+    historical_2023_game_via_flag = _outcome(
+        home_id="texas-state",
+        away_id="troy",
+        season=2023,
+        is_conference_game_flag=True,
+    )
+    assert is_conference_game(historical_2023_game_via_flag) is True
 
 
 def test_full_diagnostic_report_returns_nonempty_segments_with_positive_n():
@@ -127,6 +195,6 @@ def test_source_of_margin_bias_summary_none_for_empty_subset():
 
 
 @pytest.mark.parametrize("bad_id", ["totally-fake-team-xyz"])
-def test_is_conference_game_none_when_home_team_unresolvable(bad_id):
-    o = _outcome(home_id=bad_id, away_id="michigan")
+def test_is_conference_game_none_for_unresolvable_team_with_no_historical_conference(bad_id):
+    o = _outcome(home_id=bad_id, away_id="michigan", home_conference=None, away_conference=None)
     assert is_conference_game(o) is None
