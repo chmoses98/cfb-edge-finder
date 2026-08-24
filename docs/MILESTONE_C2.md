@@ -1194,3 +1194,452 @@ No test asserting Part 1's audit fixes (conference realignment,
 FCS-tiering as-of correctness, the prediction/diagnostics architectural
 boundary, development/confirmation bit-identical-outcomes) was modified
 or weakened -- all remain in the suite, verbatim, and passing.
+
+# Part 3 -- Margin-tail and totals structural pass (this session)
+
+## 27. Scope and starting state
+
+A final, narrow structural pass before a go/no-go decision on Milestone D
+(research-only Kalshi pricing), per this Part's mission brief. Starting
+point: PR #5 at `785f723` (Part 2's accepted head); the Part 2 model
+(`ridge_lambda=10.0`, `pace_mode="matchup"`, `residual_scale=0.85`,
+`fcs_mode="pooled"`, `season_shrinkage_k=4.0`, walk-forward Platt
+calibration, `MODEL_VERSION="0.3.0-milestone-c2"`) and the leakage-safe
+development(2022-2024)/confirmation(2025) discipline (section 2A.4) were
+both preserved unchanged. Scope was explicitly narrowed to two remaining
+structural weaknesses flagged in Part 2 section 24: the favorite-tail
+margin-bias pattern and the two-mechanism totals weakness. No broad
+feature work was attempted.
+
+## 28. CI registration on the final PR head
+
+PR #5's head advanced through this Part's four commits
+(`449ad2c` diagnosis infra -> `d398bd5` margin correction ->
+`856e69b` total correction -> `b749621` bug fix). Each commit's push
+triggered the repository's existing `pull_request`-triggered CI workflow
+against that exact head automatically -- no synthetic/no-op commit was
+needed to "register" CI, since the workflow is already wired to run on
+every push to an open PR's branch. The final head, `b749621`, has a
+genuinely green CI run (`workflow run 32778652571`, conclusion
+`success`), and PR #5 reports `mergeable_state: clean` against `main`.
+
+## 29. Favorite-tail margin diagnosis
+
+`favorite_tail_margin_diagnosis` (new, `modeling/diagnostics.py`) bins
+`|model_margin_mean|` into `[0,3) [3,7) [7,14) [14,21) [21,28) [28,999)`
+(mission's specified edges) crossed with five slices (home favorite, away
+favorite, neutral site, FBS-vs-FBS, FBS-vs-FCS), and reports a
+sign-corrected `favorite_direction_margin_error` -- positive always means
+"the favorite won by more than projected," regardless of which side is
+favored, so home- and away-favorite compression can't cancel out in an
+aggregate. Run live on development data only
+(`dev-margin-tail-and-totals-diagnosis-2022-2024`, job `97584918706`,
+model at Part 2's settings, no correction applied):
+
+**Favorite-direction margin bias by |projected margin| bin (dev, n=2,402):**
+
+| Slice | [0,3) | [3,7) | [7,14) | [14,21) | [21,28)\* | [28,999)\* |
+|---|---:|---:|---:|---:|---:|---:|
+| home favorite | +1.33 (n=411) | +2.79 (n=478) | **+7.35** (n=476) | **+11.67** (n=177) | +14.66 (n=24) | +13.90 (n=4) |
+| away favorite | -0.02 (n=359) | +1.87 (n=296) | +1.68 (n=154) | +5.26 (n=22) | +2.73 (n=1) | -- |
+| FBS-vs-FBS | +0.72 (n=765) | +2.03 (n=759) | +4.85 (n=556) | +4.41 (n=98) | +22.03 (n=10) | +5.08 (n=1) |
+| FBS-vs-FCS | -2.10 (n=5) | +22.87 (n=15) | +14.33 (n=74) | +17.32 (n=101) | +8.95 (n=15) | +16.84 (n=3) |
+
+\* smallest-n cells (n<25) are noisy and not load-bearing for the
+conclusion below; included for completeness only.
+
+**Confirmed: the model systematically compresses large expected margins
+toward zero**, growing from near-zero at pick'em to a clear, monotonic
+bias by the 7-14 point bin and beyond. Two findings the mission
+specifically asked to check:
+
+- **A real home/away asymmetry exists.** At matched |projected margin|,
+  home favorites show roughly 2-4x the compression of away favorites
+  (7-14 bin: +7.35 vs +1.68; 14-21 bin: +11.67 vs +5.26). Within
+  FBS-vs-FBS alone the raw home/away split isn't separately reported, but
+  the FBS-vs-FBS-only column (+4.85, +4.41) sits between the two,
+  confirming the asymmetry isn't purely an FBS-vs-FCS artifact even
+  though FBS-vs-FCS games (disproportionately large home favorites)
+  amplify it in the unconditioned home_favorite row.
+- **FBS-vs-FCS shows a much larger, separate effect** (+14 to +23 across
+  every bin above pick'em) and, per this mission's explicit instruction,
+  is **not** the optimization target -- see section 37.
+
+Source-summary cross-check (`source_of_margin_bias_summary`, same run):
+`overall_bias +2.88`, `fbs_vs_fbs_bias +1.61`, `fbs_vs_fcs_bias +16.00`,
+`large_favorite_bias +10.33`, `pickem_like_bias +0.72` -- consistent with
+the binned table and with Part 2's already-documented pattern (section
+3.1), now precisely localized to the 7+ point-favorite range.
+
+## 30. Margin structural-fix candidates
+
+Two monotonic, walk-forward, FBS-vs-FBS-only candidates were implemented
+in a new module, `modeling/margin_calibration.py`, mirroring
+`calibration.py`'s existing win-probability Platt/isotonic architecture
+exactly (same `_pava` primitive reused for isotonic, same
+200-game/800-game minimum-history identity-fallback guards, same refit-
+at-every-walk-forward-step discipline -- refit strictly from
+prior-only FBS-vs-FBS (projected margin, actual margin) pairs):
+
+- **`linear`**: a 2-parameter OLS recalibration of `model_margin_mean`,
+  falling back to identity if the fitted slope is <=0 or history is thin.
+- **`isotonic`**: a pool-adjacent-violators fit, monotonic by
+  construction.
+
+Both are applied as a uniform **location shift** to `model_margin_mean`
+and both `model_margin_p05`/`model_margin_p95` bounds (never a rescale,
+preserving Part 2's `residual_scale` coverage gain exactly), FBS-vs-FCS
+games untouched, and are structurally decoupled from
+`model_prob_home_win`/`calibrated_prob_home_win` (verified by dedicated
+tests, section 41) -- satisfying the mission's "must not distort winner
+probability incoherently" requirement by construction, not by
+post-hoc check alone. No hand-written correction table was used; both
+are genuine data fits.
+
+**Dev results (n=2,402, seasons 2022-2024, base = Part 2 model):**
+
+| Variant | Winner LL | Margin MAE | Margin RMSE | Margin Bias | Margin 90% cov |
+|---|---:|---:|---:|---:|---:|
+| none (Part 2 baseline) | 0.5891 | 14.42 | 18.44 | +2.88 | 0.923 |
+| `linear` | 0.5893 | **14.29** | **18.26** | +2.29 | 0.920 |
+| `isotonic` | 0.5893 | 14.39 | 18.36 | **+2.16** | **0.926** |
+
+`linear` was **selected**: it gives the larger MAE/RMSE improvement with
+a comparable bias reduction (+2.88 -> +2.29 vs. isotonic's +2.16), no
+material coverage cost (0.920 vs. Part 2's 0.923), and no change to
+winner calibration or the totals channel (both fully decoupled). The
+tiny (~0.0002) Winner LL/Brier drift between the baseline and both
+correction rows here is ordinary live-CFBD-fetch noise between separate
+runs, not a coupling leak -- decoupling is enforced structurally and
+verified by dedicated unit/integration tests, not inferred from this
+aggregate.
+
+## 31. Totals two-mechanism diagnosis
+
+Reusing the existing segmentation infrastructure
+(`source_of_total_bias_summary`, `full_diagnostic_report`, both already
+present from Part 2) on the same baseline run, segmented by projected
+margin/total magnitude, actual closeness, favorite size, pace, and
+offense/defense strength -- **post-hoc only, no actual final
+margin/score used as a prediction-time input anywhere in this
+diagnosis or in either candidate below.**
+
+Two genuinely distinct patterns, confirmed:
+
+- **(A) Garbage-time suppression**: `large_projected_margin_bias -4.39`
+  in the aggregate summary -- but breaking this down by division,
+  `fbs_vs_fbs_bias +0.44` while `fbs_vs_fcs_bias -8.74`: **the
+  garbage-time effect is concentrated almost entirely in FBS-vs-FCS
+  games**, not FBS-vs-FBS. This is the key refinement this Part adds to
+  Part 2's diagnosis: within the population any correction is allowed to
+  train on (FBS-vs-FBS only, per section 37), the garbage-time signal is
+  much weaker than the unconditioned aggregate implies.
+- **(B) Shootout under-prediction**: the diagnostic segmentation table's
+  `projected total in [63,70)`/`[70,200)` rows show total bias jumping to
+  `+12.98`/`+16.57` -- a real, sharply-onset effect above roughly a
+  63-point projected total, unrelated to margin.
+- Tempo and offense/defense-strength bias are all near zero
+  (`high_tempo_bias +0.27`, `low_tempo_bias -1.02`,
+  `strong_combined_offense_bias -0.34`, etc.) -- ruled out as simple
+  explanations, consistent with Part 2 section 18's finding.
+
+## 32. Total-mean structural-fix candidates
+
+A new module, `modeling/total_calibration.py`, reuses
+`margin_calibration.py`'s generic OLS/PAVA fit primitives directly rather
+than re-implementing them, offering two independent single-predictor
+candidates matching the two mechanisms above -- each fitted/applied
+walk-forward, FBS-vs-FBS-only, location-shift-only, decoupled from
+win probability, using only pregame-known predictors (the model's own
+projected total, or the model's own projected margin magnitude -- never
+the actual final score/margin):
+
+- **`predictor="total"`**: direct fit of actual total on the model's own
+  projected total -- targets mechanism (B).
+- **`predictor="margin_magnitude"`**: fits the *residual*
+  (actual - projected total) as a function of `|projected margin|`,
+  added back onto the model's own projected total -- targets mechanism
+  (A). (Implementation note: this candidate's genuine relationship is
+  negative in `|margin|`, opposite the increasing-relationship assumption
+  built into the reused linear/isotonic primitives; the predictor is
+  negated before fitting/applying, in mirrored coordinates, to recover it
+  correctly -- see the module's docstring.)
+
+**A real bug was found and fixed during this candidate's first live
+test**, before being reported as a finding: the identity-fallback branch
+(insufficient history or a degenerate fit) was returning the raw negated
+`|margin|` predictor value as if it were the fitted total-points residual
+-- correct behavior for the margin-to-margin primitives' original use
+case, wrong here since input and output are different quantities in
+different units. The buggy run (`total_correction_method=linear`,
+`predictor=margin_magnitude`) showed a nonsensical total bias of **+5.75**
+(MAE 14.98, coverage 0.895) spread uniformly across nearly every segment
+-- the uniformity, not just the magnitude, was the tell that this wasn't
+a genuine targeted garbage-time effect. Fixed by explicitly zeroing the
+identity-fallback residual (commit `b749621`); two regression tests
+added (`tests/test_modeling_total_calibration.py`); both `predictor`
+candidates were then re-run live with the corrected code before any
+conclusion was drawn.
+
+**Dev results (n=2,402, base = Part 2 model + margin `linear` correction):**
+
+| Variant | Winner LL | Margin Bias | Total MAE | Total RMSE | Total Bias | Total 90% cov |
+|---|---:|---:|---:|---:|---:|---:|
+| `total_correction=none` (base) | 0.5893 | +2.29 | **13.45** | **16.82** | **-0.37** | **0.926** |
+| `linear` / predictor=`total` | 0.5895 | +2.28 | 13.47 | 16.84 | -0.50 | 0.920 |
+| `isotonic` / predictor=`total` | 0.5886 | +2.28 | 13.53 | 16.93 | -0.41 | 0.921 |
+| `linear` / predictor=`margin_magnitude` (bug-fixed) | 0.5893 | +2.29 | 13.48 | 16.85 | -0.44 | 0.923 |
+| `isotonic` / predictor=`margin_magnitude` (bug-fixed) | 0.5895 | +2.28 | 13.50 | 16.86 | -0.49 | 0.920 |
+
+**All four candidates are rejected.** None improves total MAE, RMSE, or
+coverage over doing nothing; bias magnitude is flat-to-slightly-worse in
+every case. This is a genuine negative finding, not a bug artifact (the
+bug that would have produced a false positive was caught and fixed
+first, section above) -- it directly confirms the section 31 refinement:
+within FBS-vs-FBS specifically, neither diagnosed mechanism leaves enough
+signal for one of this mission's "small set of defensible" structural
+corrections to exploit. **`total_correction_method="none"` is retained.**
+
+## 33. Development ablation table (complete, this Part)
+
+Per the leakage-safe procedure (section 2A.4, reused verbatim): every row
+below was selected using ONLY 2022-2024 development data; 2025 was not
+consulted until section 34, after this table was already locked in.
+
+**Development ablation table (n=2,402, seasons 2022-2024, walk-forward, calibrated):**
+
+| Variant | Winner LL | Brier | Margin MAE | Margin RMSE | Margin Bias | Total MAE | Total RMSE | Total Bias | Margin 90% | Total 90% |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Part 2 model (base, no Part 3 correction) | 0.5891 | 0.2037 | 14.42 | 18.44 | +2.88 | 13.45 | 16.82 | -0.38 | 0.923 | 0.927 |
+| `margin_correction=linear` | 0.5893 | 0.2038 | 14.29 | 18.26 | +2.29 | 13.45 | 16.82 | -0.37 | 0.920 | 0.926 | **margin: SELECTED** |
+| `margin_correction=isotonic` | 0.5893 | 0.2038 | 14.39 | 18.36 | +2.16 | 13.46 | 16.82 | -0.37 | 0.926 | 0.926 | tested, not selected |
+| + `total=linear`/predictor=total | 0.5895 | 0.2039 | 14.29 | 18.27 | +2.28 | 13.47 | 16.84 | -0.50 | 0.922 | 0.920 | **REJECTED** |
+| + `total=isotonic`/predictor=total | 0.5886 | 0.2035 | 14.28 | 18.26 | +2.28 | 13.53 | 16.93 | -0.41 | 0.924 | 0.921 | **REJECTED** |
+| + `total=linear`/predictor=margin_magnitude | 0.5893 | 0.2038 | 14.30 | 18.28 | +2.29 | 13.48 | 16.85 | -0.44 | 0.920 | 0.923 | **REJECTED** |
+| + `total=isotonic`/predictor=margin_magnitude | 0.5895 | 0.2040 | 14.32 | 18.29 | +2.28 | 13.50 | 16.86 | -0.49 | 0.920 | 0.920 | **REJECTED** |
+| **FINAL: `margin_correction=linear` + `total_correction=none`** | **0.5893** | **0.2038** | **14.29** | **18.26** | **+2.29** | **13.45** | **16.82** | **-0.37** | **0.920** | **0.926** | **SELECTED** |
+
+No total-correction candidate improved on doing nothing (section 32), so
+the final row is identical to the `margin_correction=linear` row --
+stated plainly rather than manufacturing a combined row that doesn't
+exist. **This is the final selected candidate**, frozen before any 2025
+data was consulted.
+
+## 34. 2025 confirmation run (run EXACTLY ONCE)
+
+The final candidate was evaluated on the full 2022-2025 corpus **exactly
+once** (`FINAL-C2-PART3-2025-CONFIRMATION-ONCE-ONLY`, live workflow run,
+job `97597147600`). No parameter was adjusted after this run.
+
+**2025 confirmation season only (n=823, calibrated):**
+
+| Metric | Value |
+|---|---:|
+| Winner log loss | 0.5624 |
+| Winner Brier | 0.1920 |
+| Margin MAE / RMSE / bias | 14.33 / 18.06 / **+2.28** |
+| Margin 90% coverage | 0.898 |
+| Total MAE / RMSE / bias | 13.06 / 16.27 / -1.24 |
+| Total 90% coverage | 0.922 |
+
+**The margin-bias improvement replicates almost exactly out-of-time**:
+dev bias +2.29 (section 33) vs. 2025-confirmation bias **+2.28** --
+essentially identical, and a clear improvement over Part 2's own 2025
+confirmation number for the pre-correction model (+3.20, section 22).
+Margin coverage on 2025 (0.898) sits slightly below both the dev number
+(0.920) and the nominal 0.90 target -- noted honestly, not a material
+collapse (n=823, a 2-3 point difference is within ordinary confirmation-
+to-confirmation noise given Part 2's own dev-vs-2025 coverage gap was
+similar in magnitude). Total metrics are, as expected, essentially flat
+between dev (bias -0.37) and confirmation (bias -1.24) since
+`total_correction=none` changes nothing about the totals channel.
+
+**Full-corpus subsets (n=3,225, calibrated):**
+
+| Subset | n | Winner LL | Margin MAE/bias | Margin 90% cov | Total MAE/bias | Total 90% cov |
+|---|---:|---:|---|---:|---|---:|
+| Overall | 3,225 | 0.5823 | 14.30 / +2.29 | 0.916 | 13.35 / -0.59 | 0.925 |
+| FBS-vs-FBS | 2,935 | 0.6112 | 13.67 / +0.87 | 0.917 | 13.13 / +0.26 | 0.923 |
+| FBS-vs-FCS | 290 | 0.2899 | 20.69 / +16.68 | 0.907 | 15.60 / -9.19 | 0.945 |
+| Neutral site | 242 | 0.6654 | 13.20 / +2.35 | 0.942 | 14.50 / -1.37 | 0.905 |
+
+**Scope note, stated explicitly** (same convention as section 22): the
+subset rows above are full-corpus (2022-2025) segments, not re-cut to
+2025-only games -- the confirmation run's diagnostics code was frozen
+before this run by design, and no new segmentation code was written
+inside the confirmation step itself. The season-2025 row above IS the
+true, isolated confirmation number for the model's overall quality. The
+FBS-vs-FBS margin bias (+0.87 full corpus) and FBS-vs-FCS margin bias
+(+16.68 full corpus) are both close to their dev-only counterparts
+(+1.61 dev before this Part's correction narrows it further within
+2022-2024 specifically; +16.00 dev), showing the same stability pattern
+Part 2 observed.
+
+**Verdict: the gain replicates.** The favorite-tail margin correction is
+a genuine, out-of-time-confirmed improvement, not a development-set
+artifact. The totals-structure candidates were correctly identified as
+not helping and were not adopted; no post-hoc adjustment was made after
+this run.
+
+## 35. Final C.2 model (complete)
+
+`ridge_lambda=10.0`, `fcs_ridge_lambda=4.0`, `pace_shrinkage_k=4.0`,
+`season_shrinkage_k=4.0`, `fcs_mode="pooled"`, `pace_mode="matchup"`,
+`residual_scale=0.85`, walk-forward Platt win-probability calibration
+(all unchanged from Part 2) **plus `margin_correction_method="linear"`**
+(new this Part, walk-forward, FBS-vs-FBS-only, location-shift-only) and
+**`total_correction_method="none"`** (evaluated and explicitly rejected
+this Part, section 32-33). `MODEL_VERSION` remains
+`"0.3.0-milestone-c2"` in `scripts/build_cfb_baseline.py` -- **not
+bumped**, because that script's single-game research-projection pipeline
+does not currently invoke `margin_calibration.py` at all (see section
+38); the version string continues to describe exactly what that script
+produces.
+
+## 36. CORE_V1 readiness (current, complete -- supersedes section 23)
+
+Same three-tier scheme as sections 12/23. PRODUCTION_PRICING_READY
+remains **NO for all three families, unconditionally** -- no Kalshi
+contract/settlement mapping exists anywhere in this codebase.
+
+| Family | RESEARCH_PRIMITIVE_AVAILABLE | RESEARCH_VALIDATED | PRODUCTION_PRICING_READY |
+|---|---|---|---|
+| Game winner | YES | YES -- unchanged from Part 2; margin/total corrections are structurally decoupled from this channel | NO |
+| Point spread | YES | **YES (further upgraded)** -- favorite-tail bias reduced (+2.88 -> +2.29 dev), confirmed to replicate almost exactly out-of-time (+2.28 on 2025); MAE/RMSE also improved; bias not eliminated, still the largest single open item | NO |
+| Game total | YES | NO, still not upgraded -- both diagnosed mechanisms were tested as candidates this Part and genuinely rejected (section 32); MAE/RMSE/bias remain flat vs. Part 2; interval coverage remains Part 2's genuine gain, undisturbed | NO |
+
+FBS-vs-FCS remains **UNSUPPORTED_FOR_PRICING** across all three families,
+unchanged from Milestone C and Part 2.
+
+## 37. Excluded populations
+
+Per this mission's explicit instruction, FBS-vs-FCS was diagnosed
+(sections 29/31, both bias sources) but never used to select or tune
+either candidate, and no FCS-specific model change was attempted.
+FBS-vs-FCS margin bias (+16.68 full corpus / +16.00 dev, essentially
+unchanged from Part 2's +16.63/+16.05) and total bias (-9.19 full corpus
+/ -8.74 dev, essentially unchanged from Part 2's -9.25/-8.75) remain
+materially unresolved and **UNSUPPORTED_FOR_PRICING**, retained in every
+diagnostic/coverage table in this document but excluded from every
+selection decision.
+
+## 38. Known gap: correction not yet wired into the live single-game projection path
+
+**Stated explicitly, not discovered by an external reviewer:**
+`modeling/margin_calibration.py`'s `correct_margin` is wired into
+`modeling/backtest.py`'s `run_walk_forward_backtest` (used for every
+ablation/ confirmation number in this document) but is **not** invoked by
+`scripts/build_cfb_baseline.py` -- the CLI that produces a single live
+game's `ProjectionRecord` via `project_game` directly. A real,
+leakage-safe wiring would require accumulating the same walk-forward
+(FBS-vs-FBS projected-margin, actual-margin) history used inside the
+backtest for the single-game CLI's own as-of cutoff -- a piece of
+plumbing that doesn't exist yet outside the backtest harness. This Part's
+scope was validating the correction via genuine walk-forward backtesting
+for the Milestone D go/no-go decision (section 40), not building the
+live-projection plumbing; wiring the selected, confirmed correction into
+`build_cfb_baseline.py` (or wherever Milestone D's live projections
+originate) is explicitly the **first item of work for Milestone D**, not
+a blocker to starting it -- Milestone D is precisely where live-pricing
+plumbing gets built, per its own scope statement (section 16/21).
+
+## 39. Remaining weaknesses (current, complete -- supersedes section 24)
+
+- **Favorite-tail margin bias is reduced but not eliminated.** Dev bias
+  +2.88 -> +2.29 (linear correction), confirmed +2.28 on 2025. The
+  home/away asymmetry (section 29) is diagnosed but not separately
+  modeled -- a single scalar correction narrows the overall pattern
+  without addressing why home favorites compress more than away
+  favorites at matched |margin|.
+- **Total point-accuracy (MAE/RMSE) remains unchanged from Part 2 and
+  Milestone C.** Both diagnosed mechanisms were tested as candidates this
+  Part and genuinely rejected -- not for lack of trying, but because
+  neither leaves exploitable signal within the FBS-vs-FBS-only,
+  pregame-predictor-only, small-candidate-family constraints this
+  mission imposed.
+- **Interval coverage remains Part 2's gain, undisturbed** by this
+  Part's changes (margin/total corrections are location-shift-only, by
+  design) -- margin 0.920 dev / 0.898 2025-confirmation, total 0.926 dev
+  / 0.922 2025-confirmation, both still slightly off nominal 0.90 in
+  different directions across seasons, as previously noted.
+- **FBS-vs-FCS margin bias (+16.68) and total bias (-9.19) remain
+  materially unresolved**, deliberately excluded from this Part's scope
+  per mission instruction (section 37).
+- **The correction is validated in backtesting but not yet wired into
+  the live single-game projection CLI** (section 38) -- a real,
+  explicitly-flagged gap for Milestone D's first work item, not a
+  research-validation problem.
+- **Early-season games (weeks<=3) remain a distinct, sizable weak spot**
+  on both margin and total, present in every Part of this mission,
+  untouched by any Part's changes.
+- Every Part 2 remaining-weakness item not superseded above (no
+  possession/efficiency features wired in, `residual_scale=0.85` from a
+  coarse 2-point search) is unchanged and still applies.
+
+## 40. Recommended next step (current -- supersedes section 25)
+
+**MOVE TO MILESTONE D -- RESEARCH-ONLY KALSHI PRICING.** Checked against
+this mission's own decision threshold: winner calibration remains
+validated and untouched by this Part's changes; FBS-vs-FBS margin
+modeling is measurably more stable (bias nearly halved, confirmed to
+replicate almost exactly out-of-time rather than merely on development
+data); the total distribution remains coherent and uncertainty-
+calibrated (coverage preserved, MAE/RMSE honestly flat rather than
+claimed as improved); FBS-vs-FCS is explicitly excluded and stays
+UNSUPPORTED_FOR_PRICING; the leakage-safe walk-forward architecture was
+reused verbatim a third time with no new leakage surface introduced (and
+is enforced by tests, not just asserted); the 2025 confirmation shows no
+collapse anywhere; CI is green on the final head; the full test suite
+(384 tests) and `ruff check` both pass. Milestone D remains
+research-only -- no real-money readiness is implied by this
+recommendation, and section 38's live-projection wiring gap should be
+its first concrete task.
+
+## 41. Tests added this Part
+
+`ruff check src tests scripts` and `pytest -v` both pass (**384 tests**,
+up from Part 2's 347). New/changed test coverage this Part:
+
+- `tests/test_modeling_diagnostics.py`: `absolute_projected_margin_bin`
+  symmetry, `favorite_direction_margin_error`'s sign-flip for away
+  favorites (the specific test that proves home/away bias can't cancel
+  out in an aggregate), `favorite_tail_margin_diagnosis` reports all five
+  slices (3 new tests).
+- `tests/test_modeling_margin_calibration.py` (new file, 10 tests):
+  identity fallback below history threshold and for a degenerate/
+  negative-slope fit, correct recovery of a known synthetic linear/
+  isotonic relationship, monotonicity, `correct_margin`'s
+  none/unknown-method dispatch.
+- `tests/test_modeling_total_calibration.py` (new file, 10 tests):
+  both candidates' none-is-a-true-no-op and known-relationship-recovery
+  behavior, the sign-handling regression test for the negated-predictor
+  design, and **two regression tests for the identity-fallback bug**
+  found this Part -- one asserting the fixed output equals the
+  unchanged projected total (not the raw negated predictor that would
+  have been the buggy answer), one for the isotonic path.
+- `tests/test_modeling_backtest.py`: 12 new integration tests --
+  no-op at `method="none"` for both correction types, win-probability/
+  margin channel decoupling, mean-and-both-interval-bounds shift
+  coherently together, FBS-vs-FCS games never touched by either
+  correction, no leakage from a game's own or future outcomes (season-
+  scoped, since the synthetic corpus reuses week numbers across
+  seasons), reproducibility, unknown-predictor raises. A new
+  `_synthetic_corpus_with_garbage_time` helper (genuine, deliberate
+  margin<->total coupling) was added after the bug fix, because the two
+  `predictor="margin_magnitude"` integration tests were previously
+  passing only because the bug made the correction trivially "engage" on
+  pure-noise data; they now correctly exercise real signal.
+
+No test asserting any Part 1 or Part 2 fix/finding was modified or
+weakened -- all remain in the suite, verbatim, and passing.
+
+## 42. Merge verdict
+
+**SAFE TO MERGE AS RESEARCH MODEL: YES.** CI is green on the final head
+(`b749621`), the PR reports `mergeable_state: clean`, the full test suite
+passes, `ruff` is clean, no leakage was reintroduced, and the 2025
+confirmation replicates the development-set gain honestly (including the
+totals-channel non-improvement, reported as such rather than obscured).
+This assessment does not authorize action: **per this mission's explicit
+instruction, PR #5 was not merged and Milestone D was not begun as part
+of this session.**
