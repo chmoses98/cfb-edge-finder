@@ -84,18 +84,19 @@ constant responds to. A round, documented, provisional constant, applied
 on top of (not instead of) the mean-bias fix in ratings.py's
 DEFAULT_FCS_RIDGE_LAMBDA."""
 
-DEFAULT_RESIDUAL_SCALE = 1.0
-"""Milestone C.2 uncertainty-calibration candidate: a single, global
-multiplier applied to EVERY simulated residual draw (on top of, not
-instead of, the QB-continuity/early-season/FCS-involved multipliers
+DEFAULT_RESIDUAL_SCALE = 0.85
+"""Milestone C.2 ADOPTED uncertainty-calibration default: a single,
+global multiplier applied to EVERY simulated residual draw (on top of,
+not instead of, the QB-continuity/early-season/FCS-involved multipliers
 above -- this one is uniform across all of them). 1.0 (the Milestone C
-default) is a true no-op. Values below 1.0 narrow every simulated
-interval uniformly, tested via genuine live walk-forward ablation on
-development data ONLY (never fit by eyeballing a target coverage number
-directly -- see docs/MILESTONE_C2.md "Uncertainty calibration") to bring
-margin/total 90% interval coverage closer to nominal without the
-per-scenario multipliers above losing their own, separately-justified
-relative shape."""
+default, still available as an explicit opt-out) is a true no-op. 0.85
+was selected on 2022-2024 DEVELOPMENT data ONLY, from a live walk-forward
+ablation against 0.90 and 1.0 (never fit by eyeballing a target coverage
+number directly), because it dominated both alternatives simultaneously
+on winner LL/Brier/margin MAE/RMSE while also bringing margin/total 90%
+interval coverage closer to the nominal 90% target -- see
+docs/MILESTONE_C2.md "Uncertainty calibration" for the full ablation and
+the untouched 2025 confirmation check."""
 
 FALLBACK_RESIDUAL_SD = 14.0
 DEFAULT_MIN_RESIDUAL_POOL_SIZE = 40
@@ -188,7 +189,7 @@ def build_expanding_residual_pool(
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
     fcs_mode: str = "pooled",
-    pace_mode: str = "symmetric",
+    pace_mode: str = "matchup",
 ) -> np.ndarray:
     """Standalone, single-shot expanding walk-forward residual pool for a
     live research projection (scripts/build_cfb_baseline.py) -- the same

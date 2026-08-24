@@ -29,25 +29,34 @@ from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: 
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines  # noqa: E402
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
 from cfb_edge_finder.modeling.ratings import DEFAULT_RIDGE_LAMBDA, fit_fbs_efficiency_ratings  # noqa: E402
-from cfb_edge_finder.modeling.score_model import build_expanding_residual_pool, project_game  # noqa: E402
+from cfb_edge_finder.modeling.score_model import (  # noqa: E402
+    DEFAULT_RESIDUAL_SCALE,
+    build_expanding_residual_pool,
+    project_game,
+)
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE_PATH = REPO_ROOT / "src" / "cfb_edge_finder" / "data" / "fixtures" / "cfb_backtest_fixture_corpus.json"
-MODEL_VERSION = "0.2.0-milestone-c2"
-"""Bumped from Milestone C's 0.1.0 for the C.2 ridge_lambda change (see
-docs/MILESTONE_C2.md). Every historical prediction stays reproducible:
-re-running this script with the same seasons/as-of/seed against a given
-git commit is deterministic, and this string plus git_commit_sha
-identify exactly which hyperparameters/code produced any past record."""
+MODEL_VERSION = "0.3.0-milestone-c2"
+"""Bumped from 0.2.0 for this pass's second round of C.2 changes
+(pace_mode=matchup, residual_scale=0.85 -- see docs/MILESTONE_C2.md).
+Every historical prediction stays reproducible: re-running this script
+with the same seasons/as-of/seed against a given git commit is
+deterministic, and this string plus git_commit_sha identify exactly
+which hyperparameters/code produced any past record."""
 RATINGS_COMPONENT_VERSION = (
-    f"ridge_lambda={DEFAULT_RIDGE_LAMBDA};fcs_mode=pooled;calibration=platt;fcs_treatment=pooled-shrinkage-v2"
+    f"ridge_lambda={DEFAULT_RIDGE_LAMBDA};pace_mode=matchup;"
+    f"residual_scale={DEFAULT_RESIDUAL_SCALE};fcs_mode=pooled;calibration=platt;"
+    "fcs_treatment=pooled-shrinkage-v2"
 )
 """Milestone C.2: compact, versioned summary of the rating/calibration/
 FCS-treatment configuration actually used, per mission section 18 ("model/
 feature/calibration/uncertainty/FCS-treatment version"). fcs_mode=tiered
-was evidence-tested and rejected (docs/MILESTONE_C2.md); pooled with the
-Milestone C "v2" shrinkage-vs-n fix remains the shipped FCS treatment."""
+and pace_shrinkage_k=1.0 were evidence-tested and rejected; pace_mode=matchup
+and residual_scale=0.85 were evidence-tested and ADOPTED this pass, each
+selected on 2022-2024 development data alone and confirmed, once, on the
+untouched 2025 season (docs/MILESTONE_C2.md)."""
 
 
 def _fetch_live_lines(seasons: list[int], client: CFBDClient, captured_at: datetime) -> list[TeamGameLine]:

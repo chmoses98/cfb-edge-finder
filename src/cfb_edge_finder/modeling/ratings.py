@@ -276,7 +276,7 @@ def fit_fbs_efficiency_ratings(
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
     fcs_mode: str = "pooled",
-    pace_mode: str = "symmetric",
+    pace_mode: str = "matchup",
 ) -> RatingsSnapshot:
     """Fits offense/defense/HFA ratings and trailing pace from every
     TeamGameLine row with `team_classification == "fbs"` and
@@ -290,11 +290,14 @@ def fit_fbs_efficiency_ratings(
     margin against FBS teams in `lines`) instead of one pooled pair --
     otherwise identical leakage/regularization discipline throughout.
 
-    `pace_mode="matchup"` (Milestone C.2 totals candidate, see
+    `pace_mode="matchup"` (Milestone C.2 ADOPTED default, see
     `_estimate_defense_pace_allowed` and `RatingsSnapshot.expected_plays_for`)
     additionally fits each team's trailing defensive plays-allowed, so the
     two teams in a game can get genuinely different expected-plays values
-    instead of one shared symmetric average.
+    instead of one shared symmetric average. Selected on 2022-2024
+    development data and confirmed on the untouched 2025 season (see
+    docs/MILESTONE_C2.md); `pace_mode="symmetric"` (Milestone C behavior)
+    remains available as an explicit opt-out.
     """
     if fcs_mode not in ("pooled", "tiered"):
         raise ValueError(f"fcs_mode must be 'pooled' or 'tiered', got {fcs_mode!r}")

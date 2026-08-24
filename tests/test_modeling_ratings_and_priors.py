@@ -311,12 +311,32 @@ def test_blend_moves_toward_current_season_as_games_accumulate():
 # --- Milestone C.2 (this pass): matchup-tempo-interaction pace_mode ---
 
 
-def test_pace_symmetric_mode_is_the_default_and_unchanged():
+def test_pace_matchup_mode_is_now_the_default():
+    """Milestone C.2 ADOPTED `pace_mode="matchup"` as the default (see
+    docs/MILESTONE_C2.md) after it was selected on 2022-2024 development
+    data and confirmed on 2025 -- not passing pace_mode explicitly must
+    reproduce the same result as passing "matchup" explicitly."""
     lines = [
         _line("alpha", "beta", 28, 24, 65, True, week=1),
         _line("beta", "alpha", 24, 28, 60, False, week=1),
     ]
-    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2))
+    default_ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2))
+    explicit_ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="matchup")
+    assert default_ratings.pace_mode == "matchup"
+    assert default_ratings.expected_plays_for("alpha", "beta") == pytest.approx(
+        explicit_ratings.expected_plays_for("alpha", "beta")
+    )
+
+
+def test_pace_symmetric_mode_remains_available_as_explicit_opt_out():
+    """Milestone C behavior (both teams share one expected-plays value) is
+    preserved verbatim when a caller explicitly asks for it, even though
+    it is no longer the default."""
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="symmetric")
     assert ratings.pace_mode == "symmetric"
     expected = (ratings.team_pace("alpha") + ratings.team_pace("beta")) / 2
     assert ratings.expected_plays_for("alpha", "beta") == pytest.approx(expected)
