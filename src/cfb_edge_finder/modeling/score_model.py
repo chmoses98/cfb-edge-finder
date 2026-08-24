@@ -84,6 +84,19 @@ constant responds to. A round, documented, provisional constant, applied
 on top of (not instead of) the mean-bias fix in ratings.py's
 DEFAULT_FCS_RIDGE_LAMBDA."""
 
+DEFAULT_RESIDUAL_SCALE = 1.0
+"""Milestone C.2 uncertainty-calibration candidate: a single, global
+multiplier applied to EVERY simulated residual draw (on top of, not
+instead of, the QB-continuity/early-season/FCS-involved multipliers
+above -- this one is uniform across all of them). 1.0 (the Milestone C
+default) is a true no-op. Values below 1.0 narrow every simulated
+interval uniformly, tested via genuine live walk-forward ablation on
+development data ONLY (never fit by eyeballing a target coverage number
+directly -- see docs/MILESTONE_C2.md "Uncertainty calibration") to bring
+margin/total 90% interval coverage closer to nominal without the
+per-scenario multipliers above losing their own, separately-justified
+relative shape."""
+
 FALLBACK_RESIDUAL_SD = 14.0
 DEFAULT_MIN_RESIDUAL_POOL_SIZE = 40
 """Below this many accumulated out-of-sample residual pairs, both
@@ -323,6 +336,7 @@ def project_game(
     n_simulations: int = DEFAULT_N_SIMULATIONS,
     seed: int | None = None,
     season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
+    residual_scale: float = DEFAULT_RESIDUAL_SCALE,
 ) -> SimulatedGameProjection:
     """The single entry point research callers (scripts/build_cfb_baseline.py)
     use. `home_classification`/`away_classification` must be genuine,
@@ -388,11 +402,13 @@ def project_game(
         uncertainty_multiplier(home_qb_state)
         * (1 + EARLY_SEASON_UNCERTAINTY_SCALE * (1 - home_blend.weight_on_current_season))
         * fcs_involved_scale
+        * residual_scale
     )
     away_scale = (
         uncertainty_multiplier(away_qb_state)
         * (1 + EARLY_SEASON_UNCERTAINTY_SCALE * (1 - away_blend.weight_on_current_season))
         * fcs_involved_scale
+        * residual_scale
     )
 
     rng = np.random.default_rng(seed)

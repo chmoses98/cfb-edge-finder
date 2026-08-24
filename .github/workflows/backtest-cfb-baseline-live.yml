@@ -44,6 +44,10 @@ on:
         description: "Pace model: symmetric (Milestone C) or matchup (Milestone C.2 totals candidate)"
         required: false
         default: "symmetric"
+      residual_scale:
+        description: "Global multiplier on every simulated residual draw (1.0 = Milestone C default)"
+        required: false
+        default: "1.0"
       variant_label:
         description: "Free-text label for this ablation run"
         required: false
@@ -89,5 +93,6 @@ jobs:
             --season-shrinkage-k ${{ github.event.inputs.season_shrinkage_k }} \
             --fcs-mode ${{ github.event.inputs.fcs_mode }} \
             --pace-mode ${{ github.event.inputs.pace_mode }} \
+            --residual-scale ${{ github.event.inputs.residual_scale }} \
             --variant-label "$VARIANT_LABEL" \
             $DIAGNOSTICS_FLAG

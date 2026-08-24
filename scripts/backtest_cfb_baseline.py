@@ -48,6 +48,7 @@ from cfb_edge_finder.modeling.ratings import (  # noqa: E402
     DEFAULT_PACE_SHRINKAGE_K,
     DEFAULT_RIDGE_LAMBDA,
 )
+from cfb_edge_finder.modeling.score_model import DEFAULT_RESIDUAL_SCALE  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE_PATH = REPO_ROOT / "src" / "cfb_edge_finder" / "data" / "fixtures" / "cfb_backtest_fixture_corpus.json"
@@ -137,6 +138,13 @@ def main() -> int:
         "own-offense-pace x opponent-defense-pace-allowed interaction).",
     )
     parser.add_argument(
+        "--residual-scale",
+        type=float,
+        default=DEFAULT_RESIDUAL_SCALE,
+        help="Milestone C.2 uncertainty-calibration candidate: global multiplier on every simulated "
+        "residual draw (1.0 = Milestone C default/no-op). See score_model.py's DEFAULT_RESIDUAL_SCALE.",
+    )
+    parser.add_argument(
         "--variant-label",
         default=None,
         help="Free-text label printed with the run, for matching against an ablation table.",
@@ -178,7 +186,8 @@ def main() -> int:
     print(
         f"Config: ridge_lambda={args.ridge_lambda} fcs_ridge_lambda={args.fcs_ridge_lambda} "
         f"pace_shrinkage_k={args.pace_shrinkage_k} season_shrinkage_k={args.season_shrinkage_k} "
-        f"fcs_mode={args.fcs_mode} pace_mode={args.pace_mode} calibration_method={args.calibration_method}"
+        f"fcs_mode={args.fcs_mode} pace_mode={args.pace_mode} residual_scale={args.residual_scale} "
+        f"calibration_method={args.calibration_method}"
     )
 
     outcomes = run_walk_forward_backtest(
@@ -193,6 +202,7 @@ def main() -> int:
         season_shrinkage_k=args.season_shrinkage_k,
         fcs_mode=args.fcs_mode,
         pace_mode=args.pace_mode,
+        residual_scale=args.residual_scale,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)

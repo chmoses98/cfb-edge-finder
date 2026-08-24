@@ -55,6 +55,7 @@ from cfb_edge_finder.modeling.ratings import (
 )
 from cfb_edge_finder.modeling.score_model import (
     DEFAULT_MIN_RESIDUAL_POOL_SIZE,
+    DEFAULT_RESIDUAL_SCALE,
     _fallback_residual_pool,
     _paired_fbs_games,
     _residuals_for_pairs,
@@ -158,6 +159,7 @@ def run_walk_forward_backtest(
     season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
     fcs_mode: str = "pooled",
     pace_mode: str = "symmetric",
+    residual_scale: float = DEFAULT_RESIDUAL_SCALE,
 ) -> list[GameOutcome]:
     """Walks every (season, week) that has completed games, strictly in
     chronological order, fitting fresh ratings/naive-benchmark snapshots
@@ -242,6 +244,7 @@ def run_walk_forward_backtest(
                 n_simulations=n_simulations,
                 seed=seed + rng_counter,
                 season_shrinkage_k=season_shrinkage_k,
+                residual_scale=residual_scale,
             )
 
             naive_home_pts, naive_away_pts = naive_expected_scores(
