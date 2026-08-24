@@ -4,9 +4,12 @@ import pytest
 
 from cfb_edge_finder.modeling.backtest import GameOutcome
 from cfb_edge_finder.modeling.diagnostics import (
+    absolute_projected_margin_bin,
     actual_total_bin,
     classify_favorite,
     classify_margin_magnitude,
+    favorite_direction_margin_error,
+    favorite_tail_margin_diagnosis,
     full_diagnostic_report,
     is_conference_game,
     projected_margin_bin,
@@ -271,3 +274,50 @@ def test_source_of_total_bias_summary_none_for_empty_subset():
     outcomes = [_outcome(is_fbs_vs_fbs=True)]
     summary = source_of_total_bias_summary(outcomes)
     assert summary["fbs_vs_fcs_bias"] is None
+
+
+# --- Milestone C.2 Part 3 (this pass): favorite-tail margin-bias diagnosis ---
+
+
+def test_absolute_projected_margin_bin_is_symmetric_in_favorite_direction():
+    # A home favorite by 10 and an away favorite by 10 must land in the
+    # SAME |margin| bin -- the whole point of using abs(), per mission
+    # section 2's request for symmetric bins.
+    assert absolute_projected_margin_bin(_outcome(model_margin_mean=10.0)) == absolute_projected_margin_bin(
+        _outcome(model_margin_mean=-10.0)
+    )
+    assert absolute_projected_margin_bin(_outcome(model_margin_mean=10.0)) == "[7,14)"
+    assert absolute_projected_margin_bin(_outcome(model_margin_mean=30.0)) == "[28,999)"
+
+
+def test_favorite_direction_margin_error_flips_sign_for_away_favorites():
+    # Home favorite projected +10, actual home margin +15 (favorite won by
+    # MORE than projected -- model under-predicted/compressed the
+    # favorite's margin): favorite-direction error must be positive.
+    home_fav_underpredicted = _outcome(model_margin_mean=10.0, actual_home_points=35, actual_away_points=20)
+    assert favorite_direction_margin_error(home_fav_underpredicted) == pytest.approx(5.0)
+
+    # Away favorite projected -10 (home margin), actual home margin -15
+    # (away favorite won by MORE than projected, same real-world
+    # direction as above) -- favorite-direction error must ALSO be
+    # positive, even though the raw (home-signed) error here is -5, not
+    # +5. This is exactly the sign-mixing problem this function exists
+    # to fix.
+    away_fav_underpredicted = _outcome(model_margin_mean=-10.0, actual_home_points=20, actual_away_points=35)
+    assert favorite_direction_margin_error(away_fav_underpredicted) == pytest.approx(5.0)
+
+
+def test_favorite_tail_margin_diagnosis_reports_all_five_slices():
+    outcomes = [
+        _outcome(model_margin_mean=10.0, is_fbs_vs_fbs=True, is_neutral_site=False),
+        _outcome(model_margin_mean=-10.0, is_fbs_vs_fbs=True, is_neutral_site=False),
+        _outcome(model_margin_mean=5.0, is_fbs_vs_fbs=False, is_neutral_site=True),
+    ]
+    reports = favorite_tail_margin_diagnosis(outcomes)
+    slice_names = {r.slice_name for r in reports}
+    assert slice_names == {"home_favorite", "away_favorite", "neutral_site", "fbs_vs_fbs", "fbs_vs_fcs"}
+    # Every bin actually present must carry a real n and a finite bias,
+    # never a fabricated placeholder for an empty bin.
+    for r in reports:
+        assert r.n > 0
+        assert r.favorite_direction_bias == r.favorite_direction_bias  # not NaN

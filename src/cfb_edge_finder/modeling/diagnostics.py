@@ -232,6 +232,104 @@ def print_diagnostic_report(outcomes: list[GameOutcome]) -> None:
         )
 
 
+ABSOLUTE_PROJECTED_MARGIN_EDGES = [0, 3, 7, 14, 21, 28, 999]
+"""Milestone C.2 Part 3 (mission section 2): symmetric bins on
+|model_margin_mean|, requested explicitly by the mission to test whether
+the model compresses large expected margins toward zero, regardless of
+which side is favored. Deliberately magnitude-based (not the existing
+signed `PROJECTED_MARGIN_EDGES`, which mixes home-favorite and
+away-favorite games with opposite-signed bias) so a single number can
+answer "is the favorite's margin under- or over-predicted", not just
+"is home's margin under- or over-predicted"."""
+
+
+def absolute_projected_margin_bin(o: GameOutcome) -> str:
+    return _bin_label(abs(o.model_margin_mean), ABSOLUTE_PROJECTED_MARGIN_EDGES)
+
+
+def favorite_direction_margin_error(o: GameOutcome) -> float:
+    """Signed margin error in the FAVORITE's own direction, not home's.
+    For a home favorite (model_margin_mean >= 0) this is identical to the
+    ordinary `actual_margin - model_margin_mean`. For an away favorite
+    (model_margin_mean < 0) the sign is flipped, so a POSITIVE value
+    always means "the favorite won by MORE than projected" (the model
+    under-predicted/compressed the favorite's margin) and a NEGATIVE
+    value always means "the favorite won by LESS than projected"
+    (over-predicted), regardless of whether home or away was favored.
+    Mixing home/away favorites without this flip would partially cancel
+    out a genuine compression pattern, since `actual_margin -
+    model_margin_mean` has opposite real-world meaning depending on which
+    side is favored."""
+    actual_margin = o.actual_home_points - o.actual_away_points
+    sign = 1.0 if o.model_margin_mean >= 0 else -1.0
+    return sign * (actual_margin - o.model_margin_mean)
+
+
+@dataclass(frozen=True)
+class MarginTailBinReport:
+    """One (population slice x |projected margin| bin) cell of the
+    favorite-tail margin-bias diagnosis (mission section 2). All fields
+    are post-hoc, read-only summaries of already-computed `GameOutcome`
+    rows -- see this module's top-level leakage-safety docstring."""
+
+    slice_name: str
+    bin_label: str
+    n: int
+    favorite_direction_bias: float
+    margin_mae: float
+    winner_log_loss: float
+    margin_coverage_90: float
+
+
+def favorite_tail_margin_diagnosis(outcomes: list[GameOutcome]) -> list[MarginTailBinReport]:
+    """Mission section 2: margin bias by |projected margin| bin, separated
+    by home-favorite / away-favorite / neutral-site / FBS-vs-FBS /
+    FBS-vs-FCS. FBS-vs-FBS is the priority population (mission's explicit
+    instruction not to treat FBS-vs-FCS as the main optimization target);
+    all five slices are still reported for completeness."""
+    slices: dict[str, object] = {
+        "home_favorite": lambda o: classify_favorite(o) == "home_favorite",
+        "away_favorite": lambda o: classify_favorite(o) == "home_underdog",
+        "neutral_site": lambda o: o.is_neutral_site,
+        "fbs_vs_fbs": lambda o: o.is_fbs_vs_fbs,
+        "fbs_vs_fcs": lambda o: not o.is_fbs_vs_fbs,
+    }
+    reports: list[MarginTailBinReport] = []
+    for slice_name, predicate in slices.items():
+        subset = [o for o in outcomes if predicate(o)]
+        for lo, hi in zip(ABSOLUTE_PROJECTED_MARGIN_EDGES, ABSOLUTE_PROJECTED_MARGIN_EDGES[1:], strict=False):
+            bin_subset = [o for o in subset if lo <= abs(o.model_margin_mean) < hi]
+            if not bin_subset:
+                continue
+            metrics = compute_metrics(bin_subset, prob_attr="calibrated_prob_home_win")
+            reports.append(
+                MarginTailBinReport(
+                    slice_name=slice_name,
+                    bin_label=f"[{lo:g},{hi:g})",
+                    n=len(bin_subset),
+                    favorite_direction_bias=float(
+                        np.mean([favorite_direction_margin_error(o) for o in bin_subset])
+                    ),
+                    margin_mae=metrics.margin_mae,
+                    winner_log_loss=metrics.winner_log_loss,
+                    margin_coverage_90=metrics.margin_interval_coverage_90,
+                )
+            )
+    return reports
+
+
+def print_favorite_tail_margin_diagnosis(outcomes: list[GameOutcome]) -> None:
+    reports = favorite_tail_margin_diagnosis(outcomes)
+    print("\n=== Milestone C.2 Part 3: favorite-tail margin diagnosis (by |projected margin| bin) ===")
+    header = f"{'Slice':<14} {'Bin':<10} {'n':>6} {'FavDirBias':>11} {'MgnMAE':>8} {'WinLL':>8} {'Mgn90cov':>9}"
+    print(header)
+    for r in reports:
+        print(
+            f"{r.slice_name:<14} {r.bin_label:<10} {r.n:>6} {r.favorite_direction_bias:>+11.2f} "
+            f"{r.margin_mae:>8.2f} {r.winner_log_loss:>8.4f} {r.margin_coverage_90:>9.3f}"
+        )
+
+
 def source_of_margin_bias_summary(outcomes: list[GameOutcome]) -> dict:
     """A compact, structured summary specifically aimed at mission section
     3's "determine whether the bias is mostly X" question -- computed

@@ -39,6 +39,7 @@ from cfb_edge_finder.modeling.backtest import (  # noqa: E402
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines  # noqa: E402
 from cfb_edge_finder.modeling.diagnostics import (  # noqa: E402
     print_diagnostic_report,
+    print_favorite_tail_margin_diagnosis,
     source_of_margin_bias_summary,
     source_of_total_bias_summary,
 )
@@ -247,6 +248,7 @@ def main() -> int:
         print("\n=== Milestone C.2 total-bias source summary ===")
         for key, value in source_of_total_bias_summary(outcomes).items():
             print(f"  {key}: {value if value is None else f'{value:+.2f}'}")
+        print_favorite_tail_margin_diagnosis(outcomes)
 
     print(f"\nMode: {resolved_mode}. Captured at: {captured_at.isoformat()}.")
     if resolved_mode == "fixture":
