@@ -4,6 +4,7 @@ import pytest
 
 from cfb_edge_finder.modeling.backtest import GameOutcome
 from cfb_edge_finder.modeling.diagnostics import (
+    actual_total_bin,
     classify_favorite,
     classify_margin_magnitude,
     full_diagnostic_report,
@@ -11,6 +12,7 @@ from cfb_edge_finder.modeling.diagnostics import (
     projected_margin_bin,
     projected_total_bin,
     source_of_margin_bias_summary,
+    source_of_total_bias_summary,
 )
 from cfb_edge_finder.teams.registry import get_team
 
@@ -32,6 +34,11 @@ def _outcome(
     home_conference=None,
     away_conference=None,
     is_conference_game_flag=None,
+    model_expected_plays=70.0,
+    home_offense_rating=0.0,
+    away_offense_rating=0.0,
+    home_defense_rating=0.0,
+    away_defense_rating=0.0,
 ) -> GameOutcome:
     return GameOutcome(
         source_game_id=f"{home_id}-{away_id}-{week}",
@@ -57,6 +64,11 @@ def _outcome(
         model_margin_p95=model_margin_mean + 14,
         model_total_p05=model_total_mean - 14,
         model_total_p95=model_total_mean + 14,
+        model_expected_plays=model_expected_plays,
+        home_offense_rating=home_offense_rating,
+        away_offense_rating=away_offense_rating,
+        home_defense_rating=home_defense_rating,
+        away_defense_rating=away_defense_rating,
     )
 
 
@@ -198,3 +210,64 @@ def test_source_of_margin_bias_summary_none_for_empty_subset():
 def test_is_conference_game_none_for_unresolvable_team_with_no_historical_conference(bad_id):
     o = _outcome(home_id=bad_id, away_id="michigan", home_conference=None, away_conference=None)
     assert is_conference_game(o) is None
+
+
+# --- Milestone C.2 (this pass): totals-diagnosis segmentation ---
+
+
+def test_actual_total_bin_is_deterministic_and_distinct_from_projected():
+    o = _outcome(actual_home_points=35, actual_away_points=28, model_total_mean=50.0)
+    assert actual_total_bin(o) == actual_total_bin(o)
+    # actual total (63) falls in a higher bin than the projected total (50).
+    assert actual_total_bin(o) != projected_total_bin(o)
+
+
+def test_full_diagnostic_report_includes_tempo_and_offense_defense_segments():
+    outcomes = [
+        _outcome(week=w, model_expected_plays=plays, home_offense_rating=off, away_offense_rating=0.0)
+        for w, (plays, off) in enumerate(
+            [(60.0, -0.05), (65.0, -0.02), (70.0, 0.0), (75.0, 0.02), (80.0, 0.05)], start=2
+        )
+    ]
+    reports = full_diagnostic_report(outcomes)
+    labels = {r.label for r in reports}
+    assert any("high tempo" in label for label in labels)
+    assert any("low tempo" in label for label in labels)
+    assert any("combined offense" in label for label in labels)
+    assert any("combined defense" in label for label in labels)
+
+
+def test_source_of_total_bias_summary_has_all_expected_keys():
+    outcomes = [
+        _outcome(week=w, actual_home_points=30, actual_away_points=20 + w, model_total_mean=48.0)
+        for w in range(2, 8)
+    ]
+    summary = source_of_total_bias_summary(outcomes)
+    expected_keys = {
+        "overall_bias",
+        "fbs_vs_fbs_bias",
+        "fbs_vs_fcs_bias",
+        "conference_game_bias",
+        "non_conference_game_bias",
+        "neutral_site_bias",
+        "early_season_bias",
+        "later_season_bias",
+        "large_projected_margin_bias",
+        "close_projected_margin_bias",
+        "high_tempo_bias",
+        "low_tempo_bias",
+        "strong_combined_offense_bias",
+        "weak_combined_offense_bias",
+        "strong_combined_defense_bias",
+        "weak_combined_defense_bias",
+    }
+    assert expected_keys.issubset(summary.keys())
+    assert summary["overall_bias"] is not None
+
+
+def test_source_of_total_bias_summary_none_for_empty_subset():
+    # Every outcome is FBS-vs-FBS -- the "fbs_vs_fcs_bias" bucket must be
+    # None (no crash on an empty subset), not a fabricated 0.0.
+    outcomes = [_outcome(is_fbs_vs_fbs=True)]
+    summary = source_of_total_bias_summary(outcomes)
+    assert summary["fbs_vs_fcs_bias"] is None

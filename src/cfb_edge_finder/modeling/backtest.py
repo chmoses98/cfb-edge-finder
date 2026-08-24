@@ -110,6 +110,26 @@ class GameOutcome:
     model_margin_p95: float
     model_total_p05: float
     model_total_p95: float
+    # Milestone C.2 totals-diagnosis fields: every value here is exactly
+    # what the model itself used to build this game's projection (the
+    # SAME `ratings` snapshot -- fit strictly before this game's as_of --
+    # that produced model_margin_mean/model_total_mean above), threaded
+    # through purely for POST-HOC segmentation. Never fed back into any
+    # prediction -- see diagnostics.py's prediction-boundary docstring.
+    model_expected_plays: float
+    """(home pace + away pace) / 2 under whichever pace_mode fit `ratings`
+    -- a genuinely pregame-known tempo estimate, usable for a "high-tempo
+    vs low-tempo" diagnostic split without any new leakage surface."""
+    home_offense_rating: float
+    away_offense_rating: float
+    home_defense_rating: float
+    away_defense_rating: float
+    """Higher defense_rating = stronger (more points-suppressing) defense,
+    per ratings.py's `points_per_play ~= mu + offense[team] -
+    defense[opponent] + hfa*home` sign convention. 0.0 for an FCS
+    opponent (ratings.offense_rating/defense_rating default for any
+    team_id absent from the fitted FBS dict), consistent with how the
+    rest of this module already treats an unrated team."""
 
 
 def _log_loss_term(p: float, outcome: int) -> float:
@@ -137,6 +157,7 @@ def run_walk_forward_backtest(
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
     season_shrinkage_k: float = DEFAULT_SEASON_SHRINKAGE_K,
     fcs_mode: str = "pooled",
+    pace_mode: str = "symmetric",
 ) -> list[GameOutcome]:
     """Walks every (season, week) that has completed games, strictly in
     chronological order, fitting fresh ratings/naive-benchmark snapshots
@@ -176,6 +197,7 @@ def run_walk_forward_backtest(
             fcs_ridge_lambda=fcs_ridge_lambda,
             pace_shrinkage_k=pace_shrinkage_k,
             fcs_mode=fcs_mode,
+            pace_mode=pace_mode,
         )
         naive = fit_naive_benchmark(history, as_of)
         residual_pool = (
@@ -252,6 +274,14 @@ def run_walk_forward_backtest(
                     "naive_prob_home_win": naive_prob_home_win,
                     "naive_margin": naive_margin,
                     "naive_total": naive_home_pts + naive_away_pts,
+                    "model_expected_plays": (
+                        ratings.team_pace(home.team_id) + ratings.team_pace(home.opponent_id)
+                    )
+                    / 2,
+                    "home_offense_rating": ratings.offense_rating(home.team_id),
+                    "away_offense_rating": ratings.offense_rating(home.opponent_id),
+                    "home_defense_rating": ratings.defense_rating(home.team_id),
+                    "away_defense_rating": ratings.defense_rating(home.opponent_id),
                     "model_prob_home_win": raw_prob,
                     "model_margin_mean": float(np.mean(margins)),
                     "model_total_mean": float(np.mean(totals)),

@@ -165,6 +165,20 @@ class RatingsSnapshot:
     opponent absent from this dict (never seen before, or fewer than
     FCS_TIER_MIN_GAMES prior matchups) is treated as FCS_DEFAULT_TIER by
     `opponent_*_rating` below, never as an error."""
+    pace_mode: str = "symmetric"
+    """"symmetric" (default/Milestone C behavior: both teams in a game get
+    the SAME expected-plays value, `(team_pace(A) + team_pace(B)) / 2`) or
+    "matchup" (Milestone C.2 candidate -- see `_estimate_defense_pace_allowed`
+    and `expected_plays_for`): each team's OWN expected plays combines its
+    own trailing offensive pace with the OPPONENT's trailing defensive
+    "plays allowed" tendency, so the two teams in a game can genuinely
+    differ in expected play volume instead of being forced to share one
+    number."""
+    defense_pace_allowed: dict[str, float] = field(default_factory=dict)
+    """Trailing average plays/game a team's DEFENSE has allowed (i.e. the
+    OPPONENT's plays in games where this team_id was on defense), shrunk
+    toward the league average identically to `pace` -- only populated when
+    `pace_mode == "matchup"`. See `_estimate_defense_pace_allowed`."""
 
     def offense_rating(self, team_id: str) -> float:
         return self.offense.get(team_id, 0.0)
@@ -196,6 +210,21 @@ class RatingsSnapshot:
 
     def team_pace(self, team_id: str) -> float:
         return self.pace.get(team_id, self.league_avg_pace)
+
+    def defense_pace_allowed_for(self, team_id: str) -> float:
+        return self.defense_pace_allowed.get(team_id, self.league_avg_pace)
+
+    def expected_plays_for(self, team_id: str, opponent_id: str) -> float:
+        """The expected-plays value `score_model.py` uses for `team_id`'s
+        own scoring line in a game against `opponent_id`. "symmetric" mode
+        (default) reproduces Milestone C's original shared-value behavior
+        exactly (order-independent, both teams get the same number).
+        "matchup" mode instead combines `team_id`'s own trailing offensive
+        pace with `opponent_id`'s trailing defensive plays-allowed
+        tendency -- see `pace_mode`'s docstring."""
+        if self.pace_mode != "matchup":
+            return (self.team_pace(team_id) + self.team_pace(opponent_id)) / 2
+        return (self.team_pace(team_id) + self.defense_pace_allowed_for(opponent_id)) / 2
 
     def games_played_for(self, team_id: str) -> int:
         return self.games_played.get(team_id, 0)
@@ -247,6 +276,7 @@ def fit_fbs_efficiency_ratings(
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
     fcs_mode: str = "pooled",
+    pace_mode: str = "symmetric",
 ) -> RatingsSnapshot:
     """Fits offense/defense/HFA ratings and trailing pace from every
     TeamGameLine row with `team_classification == "fbs"` and
@@ -259,9 +289,17 @@ def fit_fbs_efficiency_ratings(
     mechanically derived from each FCS opponent's own trailing scoring
     margin against FBS teams in `lines`) instead of one pooled pair --
     otherwise identical leakage/regularization discipline throughout.
+
+    `pace_mode="matchup"` (Milestone C.2 totals candidate, see
+    `_estimate_defense_pace_allowed` and `RatingsSnapshot.expected_plays_for`)
+    additionally fits each team's trailing defensive plays-allowed, so the
+    two teams in a game can get genuinely different expected-plays values
+    instead of one shared symmetric average.
     """
     if fcs_mode not in ("pooled", "tiered"):
         raise ValueError(f"fcs_mode must be 'pooled' or 'tiered', got {fcs_mode!r}")
+    if pace_mode not in ("symmetric", "matchup"):
+        raise ValueError(f"pace_mode must be 'symmetric' or 'matchup', got {pace_mode!r}")
 
     training_rows = []
     for line in lines:
@@ -313,6 +351,8 @@ def fit_fbs_efficiency_ratings(
             fcs_tier_offense=dict.fromkeys(FCS_TIERS, 0.0) if fcs_mode == "tiered" else {},
             fcs_tier_defense=dict.fromkeys(FCS_TIERS, 0.0) if fcs_mode == "tiered" else {},
             fcs_team_tier=fcs_team_tier,
+            pace_mode=pace_mode,
+            defense_pace_allowed=dict.fromkeys(team_ids, 0.0) if pace_mode == "matchup" else {},
         )
 
     X = np.zeros((len(efficiency_rows), n_params))
@@ -378,6 +418,11 @@ def fit_fbs_efficiency_ratings(
 
     pace = _estimate_pace(training_rows, team_ids, shrinkage_k=pace_shrinkage_k)
     league_avg_pace = pace.pop("__league_average__")
+    defense_pace_allowed = (
+        _estimate_defense_pace_allowed(training_rows, team_ids, shrinkage_k=pace_shrinkage_k)
+        if pace_mode == "matchup"
+        else {}
+    )
 
     return RatingsSnapshot(
         as_of=as_of,
@@ -396,6 +441,8 @@ def fit_fbs_efficiency_ratings(
         fcs_tier_offense=fcs_tier_offense if fcs_mode == "tiered" else {},
         fcs_tier_defense=fcs_tier_defense if fcs_mode == "tiered" else {},
         fcs_team_tier=fcs_team_tier,
+        pace_mode=pace_mode,
+        defense_pace_allowed=defense_pace_allowed,
     )
 
 
@@ -429,6 +476,44 @@ def _estimate_pace(
         weight = n / (n + shrinkage_k)
         pace[team_id] = weight * team_avg + (1 - weight) * league_avg
     return pace
+
+
+def _estimate_defense_pace_allowed(
+    training_rows: list[TeamGameLine], team_ids: list[str], *, shrinkage_k: float
+) -> dict[str, float]:
+    """Milestone C.2 "matchup" pace_mode candidate: trailing average
+    plays/game a team's DEFENSE has ALLOWED, mirroring `_estimate_pace`'s
+    shrinkage form exactly. FBS-vs-FBS games only (same population
+    `_paired_fbs_games`/the residual pool already restrict to -- mission
+    section 4: FBS-vs-FCS is never blended into main FBS-vs-FBS
+    calibration), so this needs `opponent_classification == "fbs"` on top
+    of `training_rows`'s existing `team_classification == "fbs"` filter.
+    For a row where team=A played opponent=B, A's own `team_plays` is
+    exactly how many plays B's DEFENSE allowed that game -- no new data,
+    just re-aggregating the SAME already-captured `team_plays` field from
+    the opponent's (defense's) perspective instead of the offense's.
+    """
+    allowed_by_team: dict[str, list[int]] = {team_id: [] for team_id in team_ids}
+    all_allowed: list[int] = []
+    for line in training_rows:
+        if line.team_plays is None or line.opponent_classification != "fbs":
+            continue
+        allowed_by_team.setdefault(line.opponent_id, []).append(line.team_plays)
+        all_allowed.append(line.team_plays)
+
+    league_avg = float(np.mean(all_allowed)) if all_allowed else 70.0
+
+    allowed: dict[str, float] = {}
+    for team_id in team_ids:
+        observed = allowed_by_team.get(team_id, [])
+        n = len(observed)
+        if n == 0:
+            allowed[team_id] = league_avg
+            continue
+        team_avg = float(np.mean(observed))
+        weight = n / (n + shrinkage_k)
+        allowed[team_id] = weight * team_avg + (1 - weight) * league_avg
+    return allowed
 
 
 def expected_points_per_play(

@@ -40,6 +40,7 @@ from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines 
 from cfb_edge_finder.modeling.diagnostics import (  # noqa: E402
     print_diagnostic_report,
     source_of_margin_bias_summary,
+    source_of_total_bias_summary,
 )
 from cfb_edge_finder.modeling.priors import DEFAULT_SEASON_SHRINKAGE_K  # noqa: E402
 from cfb_edge_finder.modeling.ratings import (  # noqa: E402
@@ -128,6 +129,14 @@ def main() -> int:
         "modeling/ratings.py's weak/average/strong historical-performance tiers).",
     )
     parser.add_argument(
+        "--pace-mode",
+        choices=["symmetric", "matchup"],
+        default="symmetric",
+        help="'symmetric' (Milestone C default: both teams share one (home_pace + away_pace)/2 "
+        "expected-plays value) or 'matchup' (Milestone C.2 totals candidate, modeling/ratings.py's "
+        "own-offense-pace x opponent-defense-pace-allowed interaction).",
+    )
+    parser.add_argument(
         "--variant-label",
         default=None,
         help="Free-text label printed with the run, for matching against an ablation table.",
@@ -169,7 +178,7 @@ def main() -> int:
     print(
         f"Config: ridge_lambda={args.ridge_lambda} fcs_ridge_lambda={args.fcs_ridge_lambda} "
         f"pace_shrinkage_k={args.pace_shrinkage_k} season_shrinkage_k={args.season_shrinkage_k} "
-        f"fcs_mode={args.fcs_mode} calibration_method={args.calibration_method}"
+        f"fcs_mode={args.fcs_mode} pace_mode={args.pace_mode} calibration_method={args.calibration_method}"
     )
 
     outcomes = run_walk_forward_backtest(
@@ -183,6 +192,7 @@ def main() -> int:
         pace_shrinkage_k=args.pace_shrinkage_k,
         season_shrinkage_k=args.season_shrinkage_k,
         fcs_mode=args.fcs_mode,
+        pace_mode=args.pace_mode,
     )
     if not outcomes:
         print("ERROR: zero backtest outcomes produced -- check corpus/season coverage.", file=sys.stderr)
@@ -223,6 +233,9 @@ def main() -> int:
         print_diagnostic_report(outcomes)
         print("\n=== Milestone C.2 margin-bias source summary ===")
         for key, value in source_of_margin_bias_summary(outcomes).items():
+            print(f"  {key}: {value if value is None else f'{value:+.2f}'}")
+        print("\n=== Milestone C.2 total-bias source summary ===")
+        for key, value in source_of_total_bias_summary(outcomes).items():
             print(f"  {key}: {value if value is None else f'{value:+.2f}'}")
 
     print(f"\nMode: {resolved_mode}. Captured at: {captured_at.isoformat()}.")

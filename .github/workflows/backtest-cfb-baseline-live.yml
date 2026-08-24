@@ -40,6 +40,10 @@ on:
         description: "FCS opponent model: pooled (Milestone C) or tiered (Milestone C.2 candidate)"
         required: false
         default: "pooled"
+      pace_mode:
+        description: "Pace model: symmetric (Milestone C) or matchup (Milestone C.2 totals candidate)"
+        required: false
+        default: "symmetric"
       variant_label:
         description: "Free-text label for this ablation run"
         required: false
@@ -84,5 +88,6 @@ jobs:
             --pace-shrinkage-k ${{ github.event.inputs.pace_shrinkage_k }} \
             --season-shrinkage-k ${{ github.event.inputs.season_shrinkage_k }} \
             --fcs-mode ${{ github.event.inputs.fcs_mode }} \
+            --pace-mode ${{ github.event.inputs.pace_mode }} \
             --variant-label "$VARIANT_LABEL" \
             $DIAGNOSTICS_FLAG

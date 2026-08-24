@@ -306,3 +306,83 @@ def test_blend_moves_toward_current_season_as_games_accumulate():
         ).offense
 
     assert blend_at(0) < blend_at(2) < blend_at(8) < 1.0
+
+
+# --- Milestone C.2 (this pass): matchup-tempo-interaction pace_mode ---
+
+
+def test_pace_symmetric_mode_is_the_default_and_unchanged():
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2))
+    assert ratings.pace_mode == "symmetric"
+    expected = (ratings.team_pace("alpha") + ratings.team_pace("beta")) / 2
+    assert ratings.expected_plays_for("alpha", "beta") == pytest.approx(expected)
+    assert ratings.expected_plays_for("beta", "alpha") == pytest.approx(expected)
+    assert ratings.expected_plays_for("alpha", "beta") == ratings.expected_plays_for("beta", "alpha")
+
+
+def test_pace_matchup_mode_reflects_opponent_defense_plays_allowed():
+    """A team's expected plays under pace_mode="matchup" must genuinely
+    depend on the OPPONENT's own identity (specifically, how many plays
+    that opponent's defense has trailingly allowed) -- not just a shared
+    per-game average both sides are forced into. "leaky_D" has allowed
+    90 plays/game to three different offenses; "stingy_D" has allowed
+    only 50 plays/game to three others. A fixed third team ("watcher",
+    whose own offensive pace is held constant across both calls below)
+    must get a strictly higher expected-plays estimate against leaky_D
+    than against stingy_D.
+    """
+    lines = []
+    for i, off in enumerate(["off1", "off2", "off3"], start=1):
+        lines.append(_line(off, "leaky_D", 30, 10, 90, True, week=i))
+        lines.append(_line("leaky_D", off, 10, 30, 65, False, week=i))
+    for i, off in enumerate(["off4", "off5", "off6"], start=1):
+        lines.append(_line(off, "stingy_D", 20, 15, 50, True, week=i))
+        lines.append(_line("stingy_D", off, 15, 20, 65, False, week=i))
+    lines.append(_line("watcher", "leaky_D", 20, 20, 68, True, week=7))
+    lines.append(_line("leaky_D", "watcher", 20, 20, 90, False, week=7))
+    lines.append(_line("watcher", "stingy_D", 20, 20, 68, True, week=8))
+    lines.append(_line("stingy_D", "watcher", 20, 20, 50, False, week=8))
+
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=9), pace_mode="matchup")
+
+    assert ratings.expected_plays_for("watcher", "leaky_D") > ratings.expected_plays_for("watcher", "stingy_D")
+
+
+def test_pace_matchup_mode_lets_the_two_sides_of_one_game_differ():
+    # Under "symmetric" mode the two sides of a game always share one
+    # value; under "matchup" mode they are no longer forced to.
+    lines = []
+    for i, off in enumerate(["off1", "off2", "off3"], start=1):
+        lines.append(_line(off, "leaky_D", 30, 10, 90, True, week=i))
+        lines.append(_line("leaky_D", off, 10, 30, 55, False, week=i))
+    lines.append(_line("watcher", "leaky_D", 20, 20, 68, True, week=4))
+    lines.append(_line("leaky_D", "watcher", 20, 20, 72, False, week=4))
+
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=5), pace_mode="matchup")
+    assert ratings.expected_plays_for("watcher", "leaky_D") != ratings.expected_plays_for("leaky_D", "watcher")
+
+
+def test_defense_pace_allowed_excludes_fbs_vs_fcs_games():
+    # Mirrors the residual pool's own FBS-vs-FBS-only population (mission
+    # section 4: FBS-vs-FCS is never blended into main calibration) --
+    # an FCS opponent's plays must not contribute to an FBS team's
+    # defense_pace_allowed.
+    lines = [
+        _line("alpha", "beta", 28, 24, 65, True, week=1),
+        _line("beta", "alpha", 24, 28, 60, False, week=1),
+        _line("alpha", "some_fcs", 49, 3, 120, True, week=2, opp_class="fcs"),
+    ]
+    ratings = fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=3), pace_mode="matchup")
+    # "alpha"'s defense_pace_allowed must reflect ONLY the FBS-vs-FBS row
+    # (60 plays from beta), not the 120-play FCS blowout.
+    assert ratings.defense_pace_allowed_for("alpha") != pytest.approx(120.0)
+
+
+def test_pace_mode_rejects_unknown_value():
+    lines = [_line("alpha", "beta", 28, 24, 65, True, week=1)]
+    with pytest.raises(ValueError, match="pace_mode"):
+        fit_fbs_efficiency_ratings(lines, AsOf(season=2025, week=2), pace_mode="bogus")

@@ -153,7 +153,6 @@ def _residuals_for_pairs(
             away_line.team_id,
             "fbs",
             home_indicator=(0.0 if home_line.is_neutral_site else 1.0),
-            away_team_id_for_pace=away_line.team_id,
         )
         away_expected = expected_points(
             ratings,
@@ -161,7 +160,6 @@ def _residuals_for_pairs(
             home_line.team_id,
             "fbs",
             home_indicator=(0.0 if away_line.is_neutral_site else -1.0),
-            away_team_id_for_pace=home_line.team_id,
         )
         residuals.append((home_line.team_points - home_expected, away_line.team_points - away_expected))
     return residuals
@@ -177,6 +175,7 @@ def build_expanding_residual_pool(
     fcs_ridge_lambda: float = DEFAULT_FCS_RIDGE_LAMBDA,
     pace_shrinkage_k: float = DEFAULT_PACE_SHRINKAGE_K,
     fcs_mode: str = "pooled",
+    pace_mode: str = "symmetric",
 ) -> np.ndarray:
     """Standalone, single-shot expanding walk-forward residual pool for a
     live research projection (scripts/build_cfb_baseline.py) -- the same
@@ -209,6 +208,7 @@ def build_expanding_residual_pool(
             fcs_ridge_lambda=fcs_ridge_lambda,
             pace_shrinkage_k=pace_shrinkage_k,
             fcs_mode=fcs_mode,
+            pace_mode=pace_mode,
         )
         week_lines = [ln for ln in lines if ln.as_of == step_as_of]
         pool.extend(_residuals_for_pairs(_paired_fbs_games(week_lines), step_ratings))
@@ -225,7 +225,6 @@ def expected_points(
     opponent_classification: str | None,
     *,
     home_indicator: float,
-    away_team_id_for_pace: str,
 ) -> float:
     efficiency = (
         ratings.mu
@@ -233,7 +232,7 @@ def expected_points(
         - ratings.opponent_defense_rating(opponent_id, opponent_classification)
         + ratings.hfa * home_indicator
     )
-    expected_plays = (ratings.team_pace(team_id) + ratings.team_pace(away_team_id_for_pace)) / 2
+    expected_plays = ratings.expected_plays_for(team_id, opponent_id)
     return max(efficiency * expected_plays, 0.0)
 
 
@@ -360,12 +359,18 @@ def project_game(
 
     home_indicator = 0.0 if is_neutral_site else 1.0
     away_indicator = 0.0 if is_neutral_site else -1.0
-    expected_plays = (ratings.team_pace(home_id) + ratings.team_pace(away_id)) / 2
+    # "symmetric" pace_mode (default): expected_plays_for returns the SAME
+    # shared (home_pace + away_pace) / 2 value for both calls below,
+    # reproducing Milestone C's original behavior exactly. "matchup" mode
+    # (Milestone C.2 candidate) lets the two sides genuinely differ -- see
+    # RatingsSnapshot.expected_plays_for's docstring.
+    home_expected_plays = ratings.expected_plays_for(home_id, away_id)
+    away_expected_plays = ratings.expected_plays_for(away_id, home_id)
 
     home_efficiency = ratings.mu + home_blend.offense - away_blend.defense + ratings.hfa * home_indicator
     away_efficiency = ratings.mu + away_blend.offense - home_blend.defense + ratings.hfa * away_indicator
-    expected_home_points = max(home_efficiency * expected_plays, 0.0)
-    expected_away_points = max(away_efficiency * expected_plays, 0.0)
+    expected_home_points = max(home_efficiency * home_expected_plays, 0.0)
+    expected_away_points = max(away_efficiency * away_expected_plays, 0.0)
 
     home_qb_state = classify_continuity(home_percent_passing_ppa)
     away_qb_state = classify_continuity(away_percent_passing_ppa)
