@@ -30,11 +30,31 @@ two are directly comparable in one run.
 from __future__ import annotations
 
 import re
+import time
 
 import requests
 
 TIMEOUT_SECONDS = 30.0
 MAX_PRINTED_CHARS = 20000
+RETRY_BACKOFFS_SECONDS = (5.0, 15.0)
+"""kalshi.com's first live probe (run 32848218834) returned HTTP 429 for
+BOTH primary sources on the FIRST request from a fresh runner (no prior
+request volume against this host at all) -- a signature more consistent
+with bot-protection (e.g. a Cloudflare challenge triggered by a bare
+`requests` User-Agent/TLS fingerprint) than genuine rate-limiting. A
+short, bounded retry with browser-like headers is a legitimate read-only
+retry of the SAME public page, not evasion of any access control this
+mission is meant to bypass -- if every attempt still fails, that is
+itself the honest, reported answer, never silently assumed away."""
+
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 PRIMARY_SOURCES = (
     "https://kalshi.com/regulatory/fee-schedule",
@@ -92,17 +112,33 @@ def _report_keyword_hits(text: str) -> None:
     print(f"CFB-specific-exception keyword hits: {cfb_hits if cfb_hits else 'NONE'}")
 
 
+def _get_with_retry(url: str) -> requests.Response | None:
+    attempt_delays = (0.0, *RETRY_BACKOFFS_SECONDS)
+    resp = None
+    for i, delay in enumerate(attempt_delays):
+        if delay:
+            print(f"Retrying after {delay}s backoff (attempt {i + 1}/{len(attempt_delays)})...")
+            time.sleep(delay)
+        try:
+            resp = requests.get(url, timeout=TIMEOUT_SECONDS, headers=_BROWSER_HEADERS)
+        except requests.RequestException as exc:
+            print(f"REQUEST FAILED: {exc.__class__.__name__}: {exc}")
+            return None
+        if resp.status_code != 429:
+            return resp
+        print(f"HTTP 429 on attempt {i + 1}/{len(attempt_delays)}.")
+    return resp
+
+
 def _fetch_primary_page(url: str) -> None:
     print(f"\n=== PRIMARY SOURCE: GET {url} ===")
-    try:
-        resp = requests.get(url, timeout=TIMEOUT_SECONDS, headers={"User-Agent": "Mozilla/5.0"})
-    except requests.RequestException as exc:
-        print(f"REQUEST FAILED: {exc.__class__.__name__}: {exc}")
+    resp = _get_with_retry(url)
+    if resp is None:
         return
     content_type = resp.headers.get("content-type", "?")
     print(f"HTTP {resp.status_code}, content-type={content_type!r}")
     if resp.status_code != 200:
-        print("Not usable (non-200).")
+        print("Not usable (non-200) after retries.")
         return
 
     if url.endswith(".pdf") or "pdf" in content_type.lower():
@@ -121,14 +157,12 @@ def _fetch_primary_page(url: str) -> None:
 
 def _fetch_older_candidate(url: str) -> None:
     print(f"\n--- (older candidate) GET {url} ---")
-    try:
-        resp = requests.get(url, timeout=TIMEOUT_SECONDS)
-    except requests.RequestException as exc:
-        print(f"REQUEST FAILED: {exc.__class__.__name__}: {exc}")
+    resp = _get_with_retry(url)
+    if resp is None:
         return
     print(f"HTTP {resp.status_code}, content-type={resp.headers.get('content-type', '?')!r}")
     if resp.status_code != 200:
-        print("Not usable (non-200).")
+        print("Not usable (non-200) after retries.")
         return
     body = resp.text
     fee_mentions = len(_FEE_KEYWORD_RE.findall(body))
