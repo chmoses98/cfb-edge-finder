@@ -24,6 +24,7 @@ on:
           - market_detail
           - fees
           - fees_browser
+          - ambiguous_audit
           - snapshot
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
@@ -91,6 +92,16 @@ jobs:
           pip install pypdf playwright
           playwright install --with-deps chromium
           python3 scripts/validate_kalshi_fees_browser_live.py
+      - name: Run AMBIGUOUS_TEAM_MAPPING root-cause audit
+        if: ${{ github.event.inputs.script == 'ambiguous_audit' }}
+        # scripts/audit_ambiguous_team_mappings.py -- diagnosis-only, reuses
+        # the exact production mapping code path against a live discovery
+        # sweep. Never modifies mapping/alias logic.
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python3 scripts/audit_ambiguous_team_mappings.py \
+            --schedule-season ${{ github.event.inputs.schedule_season }}
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:
