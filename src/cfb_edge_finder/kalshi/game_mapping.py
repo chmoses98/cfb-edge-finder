@@ -82,7 +82,23 @@ considered the same physical game. Wide enough to absorb a market closing
 well before kickoff or briefly after it starts, narrow enough that it
 cannot span two genuinely different weekend windows."""
 
-_SEPARATOR_PATTERNS = (" at ", " vs. ", " vs ", " v. ", " v ", "@")
+_SEPARATOR_PATTERNS = (" vs. ", " vs ", " at ", " v. ", " v ", "@")
+"""Milestone D closure: " vs "/" vs. " now checked BEFORE " at " -- a live
+root-cause audit of the AMBIGUOUS_TEAM_MAPPING population found a real
+parser bug here. Every production evidence string reaching `_split_title`
+is built by `extract_matchup_from_rules_primary`, which ALWAYS produces
+a "<TEAM1> vs <TEAM2>" string (its own regex requires a literal " vs ").
+With " at " checked first, a matchup like "New Hampshire vs University at
+Albany" (CFBD's own school name for UAlbany contains " at ") split on
+the SUBSTRING " at " inside the second team's own name, producing a
+garbled "New Hampshire vs University" / "Albany" pair instead of the
+correct "New Hampshire" / "University at Albany" -- both sides then
+failed team resolution, landing as an unexplained AMBIGUOUS_TEAM_MAPPING
+rather than the genuine team-name each side actually is. Checking " vs "
+first is safe: it never changes behavior for a genuine "<TEAM1> at
+<TEAM2>" evidence string with no " vs " anywhere in it (the fallback
+path some tests exercise directly), since that pattern is simply never
+found on that first attempt and the loop falls through to " at " next."""
 
 
 @dataclass(frozen=True)

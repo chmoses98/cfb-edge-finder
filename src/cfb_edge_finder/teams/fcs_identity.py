@@ -33,12 +33,32 @@ def build_fcs_school_name_set(cfbd_teams: list[dict]) -> frozenset[str]:
     """`cfbd_teams`: raw dicts from `CFBDClient.fetch_all_division_teams()`.
     Keeps only `classification == "fcs"` school names, exact-match
     normalized. Deliberately ignores every other field (mascot,
-    conference, and anything ratings-relevant) -- identity only."""
-    return frozenset(
-        normalize_school_name(team["school"])
-        for team in cfbd_teams
-        if str(team.get("classification", "")).casefold() == "fcs" and team.get("school")
-    )
+    conference, and anything ratings-relevant) -- identity only.
+
+    Milestone D closure: a live root-cause audit of the
+    AMBIGUOUS_TEAM_MAPPING population (GH Actions run 32886794099) found
+    that Kalshi's live rules_primary text abbreviates "<X> State" as
+    "<X> St." for FCS programs too, exactly like the FBS side (see
+    teams/registry.py's `_generate_state_abbreviation_aliases`) -- e.g.
+    real live sightings of "Weber St.", "Jackson St.", "Tennessee St.",
+    "Indiana St.", "Portland St.", "Youngstown St.", "Idaho St.",
+    "Alabama St.", "Murray St." never matched CFBD's own full-word school
+    names ("Weber State", etc.), so genuine FCS-vs-FCS/FBS-vs-FCS markets
+    involving these programs fell through to an unexplained
+    AMBIGUOUS_TEAM_MAPPING instead of the FCS identity check ever seeing
+    them. This set now includes BOTH the full CFBD name and its
+    deterministic "St."-abbreviated form for every FCS school ending in
+    " state" -- same exact-match-only transformation as the FBS side,
+    never a fuzzy match."""
+    names: set[str] = set()
+    for team in cfbd_teams:
+        if str(team.get("classification", "")).casefold() != "fcs" or not team.get("school"):
+            continue
+        normalized = normalize_school_name(team["school"])
+        names.add(normalized)
+        if normalized.endswith(" state"):
+            names.add(normalized[: -len(" state")] + " st.")
+    return frozenset(names)
 
 
 def is_known_fcs_school(raw_name: str | None, fcs_school_names: frozenset[str]) -> bool:

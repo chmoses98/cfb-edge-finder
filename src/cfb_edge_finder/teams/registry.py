@@ -265,7 +265,46 @@ ALIASES: dict[str, str] = {
     "San José State": "san-jose-state",  # accented form observed in the genuine live /games response
     "App State": "appalachian-state",  # CFBD's shorthand for Appalachian State, observed live
     "Florida International": "fiu",  # CFBD's full-name form of FIU, observed live
+    "North Carolina St.": "nc-state",  # abbreviated form of the hand-aliased "North Carolina State"
 }
+
+
+def _generate_state_abbreviation_aliases() -> dict[str, str]:
+    """Milestone D closure: a live root-cause audit of the
+    AMBIGUOUS_TEAM_MAPPING population (2,088 observations, GH Actions run
+    32886794099) found that Kalshi's live rules_primary text consistently
+    abbreviates every "<X> State" FBS program as "<X> St." -- e.g.
+    "Michigan St.", "Ohio St.", "Oklahoma St.", "Fresno St." were, between
+    them, the single largest driver of that population (40-90+ live
+    sightings each in one capture, none of them genuinely ambiguous or
+    unresolvable -- every one a real, currently-playing FBS program).
+
+    Generated deterministically from REGISTRY's own display names -- ONE
+    exact string transformation (strip the trailing " State", append
+    " St.") applied uniformly to every team whose canonical name ends in
+    " State" -- never a fuzzy match, and never a hand-maintained list
+    that could silently miss a team or go stale as the registry changes.
+    Mirrors the exact same "genuine CFBD/Kalshi live-text-format variant"
+    precedent as "App State"/"Florida International"/"San José State"
+    above, just applied programmatically instead of by hand because the
+    pattern here is a single uniform convention across ~30 teams, not a
+    one-off name."""
+    generated: dict[str, str] = {}
+    for team in REGISTRY:
+        if team.display_name.endswith(" State"):
+            abbreviated = team.display_name[: -len(" State")] + " St."
+            generated[abbreviated] = team.team_id
+    return generated
+
+
+_GENERATED_ALIASES = _generate_state_abbreviation_aliases()
+for _alias, _team_id in _GENERATED_ALIASES.items():
+    if _alias in ALIASES and ALIASES[_alias] != _team_id:
+        raise RuntimeError(
+            f"generated alias {_alias!r} -> {_team_id!r} conflicts with an existing hand-authored alias "
+            f"pointing at {ALIASES[_alias]!r} -- fix the seed data"
+        )
+ALIASES.update(_GENERATED_ALIASES)
 
 # Genuinely ambiguous short forms -- MUST fail loud, never silently resolved.
 AMBIGUOUS_ALIASES: dict[str, list[str]] = {

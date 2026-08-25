@@ -20,7 +20,7 @@ RAW_CFBD_TEAMS = [
 
 def test_build_fcs_school_name_set_keeps_only_fcs():
     names = build_fcs_school_name_set(RAW_CFBD_TEAMS)
-    assert names == {"cornell", "colgate", "north dakota state"}
+    assert names == {"cornell", "colgate", "north dakota state", "north dakota st."}
 
 
 def test_fbs_teams_are_never_in_the_fcs_set():
@@ -59,3 +59,35 @@ def test_missing_school_or_classification_field_is_skipped_not_crashed():
 
 def test_normalize_school_name_collapses_whitespace():
     assert normalize_school_name("North   Dakota  State") == "north dakota state"
+
+
+# --- "St."-abbreviation generation (Milestone D closure) -------------------
+# Real live bug (GH Actions run 32886794099): Kalshi's live text
+# abbreviates "<X> State" as "<X> St." for FCS programs exactly like it
+# does for FBS ones, but CFBD's own /teams data reports the full "State"
+# spelling -- e.g. "Weber St.", "Jackson St.", "Tennessee St." never
+# matched, so genuine FCS-vs-FCS/FBS-vs-FCS markets involving these
+# programs fell through to an unexplained ambiguity instead.
+
+
+def test_fcs_state_school_gets_both_full_and_abbreviated_forms():
+    teams = [{"school": "Weber State", "classification": "fcs"}]
+    names = build_fcs_school_name_set(teams)
+    assert names == {"weber state", "weber st."}
+
+
+def test_is_known_fcs_school_matches_the_abbreviated_state_form():
+    teams = [
+        {"school": "Jackson State", "classification": "fcs"},
+        {"school": "Tennessee State", "classification": "fcs"},
+    ]
+    names = build_fcs_school_name_set(teams)
+    assert is_known_fcs_school("Jackson St.", names) is True
+    assert is_known_fcs_school("Tennessee St.", names) is True
+    assert is_known_fcs_school("jackson st.", names) is True  # case-insensitive
+
+
+def test_non_state_fcs_school_gets_no_extra_abbreviated_form():
+    teams = [{"school": "Cornell", "classification": "fcs"}]
+    names = build_fcs_school_name_set(teams)
+    assert names == {"cornell"}

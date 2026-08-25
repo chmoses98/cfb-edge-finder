@@ -12,6 +12,7 @@ from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
 from cfb_edge_finder.kalshi.game_mapping import (
     CORE_V1_MARKET_FAMILIES,
     KalshiGameEvidence,
+    _split_title,
     classify_mapped_market,
     map_kalshi_event_to_game,
 )
@@ -351,3 +352,43 @@ def test_classify_mapped_market_none_family_is_parse_unresolved():
         mapping, market_family=None, home_classification="fbs", away_classification="fbs"
     )
     assert reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+# --- _split_title separator priority (Milestone D closure) ----------------
+# Real live bug (GH Actions run 32886794099): a matchup string whose
+# SECOND team's own name contains " at " (e.g. CFBD's "University at
+# Albany") was mis-split when " at " was checked before " vs "/" vs. ",
+# because every production matchup string is always "<TEAM1> vs <TEAM2>"
+# (extract_matchup_from_rules_primary's own regex requires a literal
+# " vs "). " vs "/" vs. " are now checked first.
+
+
+def test_split_title_prefers_vs_over_at_when_a_team_name_contains_at():
+    # CFBD's real school name for UAlbany is "University at Albany" --
+    # the SECOND team's own name contains " at ", which must not be
+    # mistaken for the team-pair separator.
+    assert _split_title("New Hampshire vs University at Albany") == ("New Hampshire", "University at Albany")
+
+
+def test_split_title_still_splits_on_at_when_no_vs_present():
+    # The " at " fallback must still work for evidence that never
+    # contains " vs " at all (e.g. a raw "<TEAM1> at <TEAM2>" title, as
+    # already exercised by make_evidence("Texas at Ohio State") above).
+    assert _split_title("Texas at Ohio State") == ("Texas", "Ohio State")
+
+
+def test_university_at_albany_matchup_is_fcs_vs_fcs_not_ambiguous():
+    # The full, real-shaped scenario (both New Hampshire and University
+    # at Albany are genuine FCS programs, per the real live event this
+    # bug was found against): before the separator-priority fix, this
+    # matchup mis-split into "New Hampshire vs University" / "Albany",
+    # neither of which is a known FCS school name, so it landed as an
+    # unexplained AMBIGUOUS_TEAM_MAPPING. With the fix, it splits into
+    # the two real team names, both of which ARE known FCS schools --
+    # correctly reclassified as the distinct, understood FCS_VS_FCS
+    # outcome instead.
+    fcs_names = frozenset({"new hampshire", "university at albany"})
+    result = map_kalshi_event_to_game(
+        make_evidence("New Hampshire vs University at Albany"), [], fcs_school_names=fcs_names
+    )
+    assert result.reason == KalshiCfbCoverageReason.FCS_VS_FCS
