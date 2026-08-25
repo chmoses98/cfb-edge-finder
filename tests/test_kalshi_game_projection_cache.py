@@ -96,3 +96,15 @@ def test_no_history_before_as_of_raises():
     empty_cache = GameProjectionCache([])
     with pytest.raises(ValueError):
         empty_cache.get_or_build(_request(game_id="no-history"))
+
+
+def test_ratings_are_shared_across_games_with_the_same_as_of(cache):
+    # Real evidence this fix is not premature: a live snapshot capture
+    # against ~300+ real, mapped games sharing one as_of ran 15+ minutes
+    # and had to be cancelled before this fix -- see game_projection_cache
+    # module docstring. Two distinct games sharing an as_of must trigger
+    # only ONE ratings/residual-pool fit, not one per game.
+    cache.get_or_build(_request(game_id="shared-as-of-a", home_id="t2", away_id="t3"))
+    cache.get_or_build(_request(game_id="shared-as-of-b", home_id="t4", away_id="t5"))
+    assert len(cache._ratings_and_pool_cache) == 1
+    assert len(cache) >= 2
