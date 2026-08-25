@@ -15,7 +15,7 @@ from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market
 from cfb_edge_finder.modeling.corpus import TeamGameLine
-from cfb_edge_finder.schemas.common import MarketFamily
+from cfb_edge_finder.schemas.common import MarketFamily, Side
 from cfb_edge_finder.schemas.kalshi_observation import SnapshotTiming
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion
 
@@ -100,6 +100,20 @@ def _spread_market(ticker, team_name, threshold):
         "no_bid_dollars": "0.50",
         "no_ask_dollars": "0.90",
     }
+
+
+def _winner_market(ticker, team_name, rules_primary=None):
+    market = {
+        "ticker": ticker,
+        "title": f"{team_name} wins",
+        "yes_bid_dollars": "0.40",
+        "yes_ask_dollars": "0.55",
+        "no_bid_dollars": "0.45",
+        "no_ask_dollars": "0.60",
+    }
+    if rules_primary is not None:
+        market["rules_primary"] = rules_primary
+    return market
 
 
 def _total_market(ticker, threshold):
@@ -188,6 +202,48 @@ def test_total_ladder_probability_decreases_as_threshold_increases(cached_projec
         probs.append(obs.model_probability)
     assert probs == sorted(probs, reverse=True)
     assert all(p1 > p2 for p1, p2 in zip(probs, probs[1:], strict=False))
+
+
+# --- winner/moneyline: hardened grammar + ticker/team identity ------------
+
+
+def test_winner_market_resolves_named_team_side_and_is_model_priced(cached_projection):
+    # "Ohio State wins" against SUCCESSFUL_MAPPING (home=ohio-state,
+    # away=texas) -- proves the named-team-side resolution (ticker/team
+    # identity) that ladder_pricing already does for spread also works
+    # for the hardened winner-market grammar, end-to-end through to a
+    # real model probability.
+    market = _winner_market("WINNER-OSU", "Ohio State")
+    obs = _price(market, MarketFamily.MONEYLINE, SUCCESSFUL_MAPPING, cached=cached_projection)
+    assert obs.coverage_reason == KalshiCfbCoverageReason.MAPPED_SUPPORTED.value
+    assert obs.team == Side.HOME
+    assert obs.pricing_status == "model_priced"
+    assert obs.model_probability is not None
+    assert 0.0 <= obs.model_probability <= 1.0
+
+
+def test_winner_market_rules_primary_agreement_is_semantics_confirmed(cached_projection):
+    market = _winner_market(
+        "WINNER-OSU",
+        "Ohio State",
+        rules_primary=(
+            "If Ohio State wins the Ohio State vs Texas college football game originally "
+            "scheduled for Nov 1, 2026, then the market resolves to Yes."
+        ),
+    )
+    obs = _price(market, MarketFamily.MONEYLINE, SUCCESSFUL_MAPPING, cached=cached_projection)
+    assert obs.coverage_reason == KalshiCfbCoverageReason.MAPPED_SUPPORTED.value
+    assert obs.pricing_status == "model_priced"
+
+
+def test_winner_market_fcs_vs_fcs_is_unsupported_population_not_priced():
+    fcs_vs_fcs_mapping = KalshiGameMappingResult(
+        reason=KalshiCfbCoverageReason.FCS_VS_FCS, game_id=None, detail="both sides deterministically FCS"
+    )
+    obs = _price(_winner_market("WINNER-COR", "Cornell"), MarketFamily.MONEYLINE, fcs_vs_fcs_mapping, cached=None)
+    assert obs.coverage_reason == KalshiCfbCoverageReason.FCS_VS_FCS.value
+    assert obs.pricing_status == "unsupported_population"
+    assert obs.model_probability is None
 
 
 # --- coverage classification branches --------------------------------------

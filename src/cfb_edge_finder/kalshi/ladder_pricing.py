@@ -74,9 +74,9 @@ def _resolve_named_team_side(
 
 
 _PARSERS = {
-    MarketFamily.SPREAD: lambda title, floor_strike: parse_spread_market(title, floor_strike),
-    MarketFamily.TOTAL: lambda title, floor_strike: parse_total_market(title, floor_strike),
-    MarketFamily.MONEYLINE: lambda title, floor_strike: parse_winner_market(title),
+    MarketFamily.SPREAD: lambda title, floor_strike, rules_primary: parse_spread_market(title, floor_strike),
+    MarketFamily.TOTAL: lambda title, floor_strike, rules_primary: parse_total_market(title, floor_strike),
+    MarketFamily.MONEYLINE: lambda title, floor_strike, rules_primary: parse_winner_market(title, rules_primary),
 }
 
 
@@ -109,10 +109,11 @@ def price_one_market(
     title = str(raw_market.get("title", "") or "")
     floor_strike = raw_market.get("floor_strike")
     floor_strike_f = float(floor_strike) if isinstance(floor_strike, (int, float)) else None
+    rules_primary = raw_market.get("rules_primary")
 
     parser = _PARSERS.get(family_hint)
     parsed: ParsedContract = (
-        parser(title, floor_strike_f)
+        parser(title, floor_strike_f, rules_primary)
         if parser is not None
         else ParsedContract(
             reason=KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY,

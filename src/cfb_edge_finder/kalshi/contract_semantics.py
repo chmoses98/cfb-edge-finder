@@ -97,6 +97,26 @@ from cfb_edge_finder.schemas.common import MarketFamily, Side
 
 _SPREAD_TITLE_RE = re.compile(r"^(?P<team>.+?) wins by over (?P<threshold>-?\d+(?:\.\d+)?) points?$", re.IGNORECASE)
 _TOTAL_TITLE_RE = re.compile(r"^Over (?P<threshold>-?\d+(?:\.\d+)?) points? scored$", re.IGNORECASE)
+_WINNER_TITLE_RE = re.compile(r"^(?P<team>.+?) wins$", re.IGNORECASE)
+_WINNER_RULES_TEAM_RE = re.compile(r"^If (?P<team>.+?) wins the ", re.IGNORECASE)
+"""Milestone D hardening pass, mission item 7: the confirmed winner/
+moneyline grammar, from the SAME live rules_primary evidence
+`_MATCHUP_IN_RULES_RE` already relies on (job 97711133675): "If Cornell
+wins the Cornell vs Colgate college football game originally scheduled
+for Sep 19, 2026, then the market resolves to Yes." The market's own
+TITLE for this family is the short "<TEAM> wins" form (mirroring
+SPREAD's "<TEAM> wins by over X points" and TOTAL's "Over X points
+scored" -- each family's title names only what that contract itself
+settles on). `parse_winner_market` requires the title to match this
+grammar (previously it accepted ANY non-empty string as a team name --
+no grammar was ever enforced), and, when `rules_primary` is also
+supplied, cross-checks that the SAME team name is stated as the winner
+there too -- a genuine, deterministic title/team/event correspondence
+check, not a confidence upgrade taken on faith. A game going to overtime
+changes nothing about this grammar or the check: Kalshi settles the
+SAME "<TEAM> wins" contract on the final score regardless of how many
+periods it took, so there is no separate overtime state for this parser
+to special-case."""
 
 _MATCHUP_IN_RULES_RE = re.compile(r"\bthe (?P<matchup>[A-Z].+? vs .+?) college football game")
 """Extracts the two-team matchup embedded in a market's own
@@ -246,21 +266,65 @@ def parse_total_market(title: str, floor_strike: float | None) -> ParsedContract
     )
 
 
-def parse_winner_market(title: str) -> ParsedContract:
+def parse_winner_market(title: str, rules_primary: str | None = None) -> ParsedContract:
     """Architecturally supported (mirrors Milestone B.5's historical
     audit: one binary YES/NO contract per team, cent price = implied win
-    probability directly, no separate threshold) but NOT live-confirmed
-    this session -- see module docstring. `semantics_confidence` is
-    always "unconfirmed" from this function; a future live confirmation
-    should upgrade this function's docstring/confidence, not silently
-    change the returned value's meaning."""
+    probability directly, no separate threshold). Hardened (mission item
+    7) to require the confirmed "<TEAM> wins" title grammar -- a title
+    that doesn't match it is PARSE_UNRESOLVED, never accepted as a raw
+    team name on faith.
+
+    `semantics_confidence` starts at "unconfirmed" and is raised to
+    "confirmed_live" ONLY when `rules_primary` is also supplied AND its
+    own "If <TEAM> wins the ..." text names the EXACT SAME team as the
+    title -- a deterministic title/team/event correspondence, never a
+    confidence bump taken on faith (mission: "Do not lower semantics
+    confidence unless the title/team/event correspondence is
+    deterministically verified" -- read together with this module's
+    existing spread/total precedent of rejecting inconsistent evidence
+    rather than guessing, the same applies in reverse: never RAISE
+    confidence without that same verification either). If `rules_primary`
+    names a DIFFERENT team than the title, that is a genuine anomaly
+    (inconsistent payload) and this returns PARSE_UNRESOLVED, exactly
+    like a spread/total title-vs-floor_strike mismatch. If
+    `rules_primary` is absent, or present but doesn't match this
+    module's own confirmed rules-text grammar, confidence simply stays
+    "unconfirmed" -- never guessed either way."""
     stripped = title.strip()
-    if not stripped:
-        return ParsedContract(reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED, detail="empty winner market title")
+    match = _WINNER_TITLE_RE.match(stripped)
+    if match is None:
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail=f"winner title {title!r} did not match the confirmed '<TEAM> wins' grammar",
+        )
+    team = match.group("team").strip()
+    if not team:
+        return ParsedContract(reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED, detail="empty team name in winner title")
+
+    confidence = "unconfirmed"
+    detail = f"parsed: {team!r} as a moneyline/winner contract (title grammar confirmed, no rules_primary cross-check)"
+    if rules_primary:
+        rules_match = _WINNER_RULES_TEAM_RE.match(rules_primary.strip())
+        if rules_match is not None:
+            rules_team = rules_match.group("team").strip()
+            if rules_team != team:
+                return ParsedContract(
+                    reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                    detail=(
+                        f"title names {team!r} but rules_primary names {rules_team!r} as the winning team "
+                        f"-- inconsistent payload, never guessed"
+                    ),
+                )
+            confidence = "confirmed_live"
+            detail = (
+                f"parsed: {team!r} confirmed by BOTH the title's '<TEAM> wins' grammar AND rules_primary's "
+                f"'If {team} wins the ...' text -- deterministic title/team/event correspondence"
+            )
+
     return ParsedContract(
         reason=None,
-        detail=f"parsed (unconfirmed grammar): {stripped!r} as a moneyline/winner contract for that named team",
+        detail=detail,
         market_family=MarketFamily.MONEYLINE,
-        raw_team_name=stripped,
-        semantics_confidence="unconfirmed",
+        raw_team_name=team,
+        semantics_confidence=confidence,
     )

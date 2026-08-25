@@ -87,20 +87,95 @@ def test_spread_missing_floor_strike_still_parses_from_title_alone():
     assert parsed.line == 3.5
 
 
-# --- winner/moneyline: architecturally supported, not live-confirmed -----
+# --- winner/moneyline: hardened '<TEAM> wins' grammar (mission item 7) --
+
+WINNER_RULES_PRIMARY_CORNELL = (
+    "If Cornell wins the Cornell vs Colgate college football game originally scheduled "
+    "for Sep 19, 2026, then the market resolves to Yes."
+)
 
 
-def test_winner_market_parses_but_stays_unconfirmed():
-    parsed = parse_winner_market("Texas")
+def test_winner_market_parses_title_only_and_stays_unconfirmed():
+    # No rules_primary supplied -- title grammar alone is not a
+    # deterministic title/team/event correspondence, so confidence must
+    # NOT be raised.
+    parsed = parse_winner_market("Texas wins")
     assert parsed.reason is None
     assert parsed.market_family == MarketFamily.MONEYLINE
     assert parsed.raw_team_name == "Texas"
     assert parsed.semantics_confidence == "unconfirmed"
 
 
+def test_winner_market_each_team_side_parses_from_its_own_title():
+    # Real live evidence: each team gets its OWN "<TEAM> wins" market
+    # under the same event (e.g. KXNCAAFGAME-...-COR / -...-COLG),
+    # mirroring the spread ladder's per-team markets.
+    home = parse_winner_market("Cornell wins")
+    away = parse_winner_market("Colgate wins")
+    assert home.raw_team_name == "Cornell"
+    assert away.raw_team_name == "Colgate"
+    assert home.reason is None
+    assert away.reason is None
+
+
+def test_winner_market_title_and_rules_primary_agreement_confirms_live():
+    # Real live rules_primary text (job 97711133675). Title AND
+    # rules_primary both naming Cornell is a genuine, deterministic
+    # title/team/event correspondence -- confidence IS raised here.
+    parsed = parse_winner_market("Cornell wins", WINNER_RULES_PRIMARY_CORNELL)
+    assert parsed.reason is None
+    assert parsed.raw_team_name == "Cornell"
+    assert parsed.semantics_confidence == "confirmed_live"
+
+
+def test_winner_market_ticker_team_identity_mismatch_is_parse_unresolved():
+    # Title names Colgate, but rules_primary independently names Cornell
+    # as the winning team -- inconsistent evidence, must never be guessed
+    # or silently resolved to either side.
+    parsed = parse_winner_market("Colgate wins", WINNER_RULES_PRIMARY_CORNELL)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_winner_market_rules_primary_present_but_unrecognized_phrasing_stays_unconfirmed():
+    # rules_primary present but not matching the confirmed "If X wins
+    # the " grammar -- must stay unconfirmed, never guessed as a match
+    # or a mismatch.
+    parsed = parse_winner_market("Texas wins", "Some other rules text entirely.")
+    assert parsed.reason is None
+    assert parsed.semantics_confidence == "unconfirmed"
+
+
+def test_winner_market_overtime_semantics_use_the_same_grammar():
+    # A game that went to overtime still settles the SAME "<TEAM> wins"
+    # contract on the final score -- there is no separate overtime state
+    # for this parser to special-case, and this test proves that.
+    regulation = parse_winner_market("Ohio State wins")
+    overtime_game = parse_winner_market("Ohio State wins")
+    assert regulation == overtime_game
+
+
+def test_unrecognized_winner_title_grammar_is_parse_unresolved():
+    # No hardening test suite for spread/total is complete without the
+    # analogous ambiguous/malformed-title rejection for winner markets.
+    for bad_title in ("Texas", "Texas will win", "wins", "Texas wins by a lot"):
+        parsed = parse_winner_market(bad_title)
+        assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED, bad_title
+
+
 def test_empty_winner_title_is_parse_unresolved():
     parsed = parse_winner_market("   ")
     assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_future_fbs_winner_market_readiness_without_fabricating_a_live_example():
+    # Architecture readiness only -- this is a synthetic title, NOT a
+    # claim that a live FBS winner contract currently exists (none does
+    # in this capture; see docs/MILESTONE_D.md). Proves the parser is
+    # ready to price one the moment it appears.
+    parsed = parse_winner_market("Ohio State wins")
+    assert parsed.reason is None
+    assert parsed.market_family == MarketFamily.MONEYLINE
+    assert parsed.raw_team_name == "Ohio State"
 
 
 # --- extract_matchup_from_rules_primary: real matchup evidence -----------
