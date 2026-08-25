@@ -36,12 +36,21 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
+from cfb_edge_finder.schemas.common import MarketFamily
 from cfb_edge_finder.schemas.game import GameRecord
 from cfb_edge_finder.teams.registry import (
     AmbiguousTeamAliasError,
     UnknownTeamAliasError,
     resolve_team_alias,
 )
+
+CORE_V1_MARKET_FAMILIES = frozenset({MarketFamily.MONEYLINE, MarketFamily.SPREAD, MarketFamily.TOTAL})
+"""The three families kalshi/cfb_market_family_registry.py marks
+CORE_V1 (game_winner/point_spread/game_total) -- the only families the
+C.2 model is wired to price via kalshi/market_pricing.py. Any other
+MarketFamily reaching classify_mapped_market is a real, mapped Kalshi
+contract this milestone simply doesn't build pricing for yet, not a
+parsing failure -- see MAPPED_UNSUPPORTED_FAMILY below."""
 
 GAME_DATE_MATCH_WINDOW = timedelta(hours=36)
 """How far a candidate GameRecord's kickoff_utc may sit from the evidence's
@@ -194,3 +203,47 @@ def map_kalshi_event_to_game(
             f"date window -- {[g.game_id for g in matches]}"
         ),
     )
+
+
+def classify_mapped_market(
+    mapping: KalshiGameMappingResult,
+    *,
+    market_family: MarketFamily | None,
+    home_classification: str | None,
+    away_classification: str | None,
+) -> KalshiCfbCoverageReason:
+    """The downstream step promised by `KalshiGameMappingResult`'s
+    docstring and by `contract_semantics.ParsedContract`'s own module
+    docstring -- the ONLY place in this codebase allowed to return
+    `MAPPED_SUPPORTED`, because it is the only place three separate
+    facts are all available together: game identity (`mapping`), market
+    family (`market_family`, from a `ParsedContract`), and both teams'
+    classification (from the caller's own CFBD ingestion -- see
+    `ingestion.game_normalization.home_classification`/
+    `away_classification`; `GameRecord` itself deliberately carries no
+    classification field, see schemas/game.py).
+
+    Never raises -- always returns a `KalshiCfbCoverageReason`, so a
+    caller can record it directly in the coverage ledger.
+    """
+    if mapping.reason is not None:
+        # Game identity itself never resolved -- pass the mapping
+        # failure straight through; family/classification are moot.
+        return mapping.reason
+
+    if market_family is None:
+        return KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+    if market_family not in CORE_V1_MARKET_FAMILIES:
+        # A real, identity-mapped Kalshi contract in a family this
+        # milestone's model simply isn't built to price yet (e.g.
+        # ALT_SPREAD, TEAM_TOTAL, FIRST_HALF_*) -- not a parse failure.
+        return KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY
+
+    if home_classification != "fbs" or away_classification != "fbs":
+        # Mapped, and a CORE_V1 family, but the C.2 model is only
+        # trained/validated for FBS-vs-FBS -- mission section 9 requires
+        # this population to stay in coverage, never silently priced.
+        return KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION
+
+    return KalshiCfbCoverageReason.MAPPED_SUPPORTED
