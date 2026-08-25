@@ -623,3 +623,79 @@ is **not** merged by this mission. No recommendation logic was begun. The
 MLB repo (`chmoses98/edge-finder-api`) was never modified. The only
 direct-to-main commit is the infrastructure-only workflow registration
 described in section 1.
+
+## 29. Closure: ambiguous-mapping root cause and verified July 2026 fee schedule
+
+The sections above (1-28) describe this milestone's original state, in
+which fees were UNVERIFIED and 1,902 observations fell into
+`AMBIGUOUS_TEAM_MAPPING`. A closure pass on the same PR resolved both
+gaps; this section supersedes the fee/ambiguity claims above.
+
+**Ambiguous-mapping audit.** A dedicated diagnostic script
+(`scripts/audit_ambiguous_team_mappings.py`) reused the production
+mapping code paths exactly (no reimplementation) and root-caused the
+population to two systematic, deterministic, safe-to-fix mechanisms:
+
+1. Kalshi's live `rules_primary` text consistently abbreviates every
+   `<X> State` FBS/FCS program as `<X> St.` — neither `teams/registry.py`
+   (FBS) nor `teams/fcs_identity.py` (FCS) recognized this form. Fixed by
+   programmatically generating the `<X> St.` alias for every `<X> State`
+   entry on both sides (`teams/registry.py`'s
+   `_generate_state_abbreviation_aliases`, `fcs_identity.py`'s
+   `build_fcs_school_name_set`) — exact-string generation only, no fuzzy
+   matching.
+2. `_split_title`'s separator-priority order checked `" at "` before
+   `" vs "`/`" vs. "`, breaking any team name containing " at " as a
+   substring (e.g. "University at Albany"). Fixed by reordering
+   `_SEPARATOR_PATTERNS` to check `" vs. "`/`" vs "` first, since every
+   production evidence string is guaranteed to be in "<TEAM1> vs
+   <TEAM2>" form.
+
+Two independent live audit runs confirmed the fix: 2,088 ambiguous
+observations (the audit script's own count, in a run made shortly after
+this PR's original captures) dropped to 926 after the alias/split fixes
+— a genuine 55.6% reduction, cross-validated against the subsequent full
+live snapshot's own `ambiguous_team_mapping` count (also exactly 926).
+The remaining 926 are genuine ambiguity (unrecognized tokens, real
+alias/registry gaps not matching either systematic pattern, or other
+per-case issues) and were deliberately left unresolved rather than
+forced down with fuzzy matching.
+
+**Verified July 2026 fee schedule.** The previously UNVERIFIED/legacy
+fee constants (`LEGACY_UNVERIFIED_TAKER_SCHEDULE`,
+`LEGACY_UNVERIFIED_MAKER_SCHEDULE`) were removed entirely and replaced
+with `KALSHI_FEE_SCHEDULE_2026_07_07_TAKER`/`_MAKER`
+(`kalshi/fee_schedule.py`), sourced directly from user-supplied content
+of the official document at
+`https://kalshi.com/docs/kalshi-fee-schedule.pdf` ("Fee Schedule for
+July 2026 -- 7.7.26 Update", effective 2026-07-07):
+taker fee = `round_up(M x 0.07 x C x P x (1-P))`, maker fee =
+`round_up(M x 0.0175 x C x P x (1-P))`, cents-safe via `Decimal` +
+`ROUND_CEILING`. `KXNCAAFGAME` is explicitly listed in the schedule's
+non-standard-fee table with maker/taker multiplier 1 (numerically
+identical to the default, but recorded with its own evidenced
+`SeriesMultiplier` entry); `KXNCAAFSPREAD`/`KXNCAAFTOTAL` are absent
+from that table and therefore fall back to the schedule's general
+formula with the default multiplier of 1 — this fallback rule is
+implemented in `get_taker_multiplier` and covered by regression tests.
+`fee_verification_status="VERIFIED_CURRENT"` is now stamped on every
+fee-aware ledger row that computes a fee, and is never labeled legacy or
+unverified. Tests reproduce the official table at 1 and 100 contracts
+for 10/25/50/75/90 cent prices.
+
+Fee-aware ledger fields were also renamed to more neutral,
+precise terms: `research_fee_amount` -> `estimated_taker_fee`; new
+`gross_probability_gap` (alias of `research_probability_gap`) and
+`fee_verification_status` fields were added; `fee_adjusted_research_gap`
+is retained. No stake/tier/recommendation/order field or logic was
+added anywhere in this closure pass.
+
+**Final live snapshot after both fixes** (snapshot_id
+`f33edc63-5380-45c0-b25a-cbe50bb79aad`, captured
+2026-08-25T19:12:02Z, EARLY_OPEN): 4,136 total observations,
+`mapped_supported=751` (research-comparable, fee-priced),
+`ambiguous_team_mapping=926`, `fcs_vs_fcs=1948`, `parse_unresolved=451`,
+`non_game_futures=60`; both the outcome-level and reason-level sums
+check exactly (4136 == 4136). Production readiness remains NO — this
+closure pass hardened mapping and fee provenance only; it did not add
+any recommendation, staking, or execution surface.
