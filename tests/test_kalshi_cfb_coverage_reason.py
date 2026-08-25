@@ -34,7 +34,22 @@ def test_unsupported_reasons_are_unsupported_market():
         to_coverage_outcome(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION)
         == CoverageOutcome.UNSUPPORTED_MARKET
     )
+    assert to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS) == CoverageOutcome.UNSUPPORTED_MARKET
     assert to_coverage_outcome(KalshiCfbCoverageReason.NON_GAME_FUTURES) == CoverageOutcome.UNSUPPORTED_MARKET
+
+
+def test_fcs_vs_fcs_is_distinct_from_ambiguous_and_parse_unresolved():
+    # Mission hardening: FCS-vs-FCS must be a real, understood
+    # UNSUPPORTED_MARKET outcome, never collapsed into TICKER_UNRESOLVED
+    # alongside genuinely unresolvable markets.
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS)
+        != to_coverage_outcome(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING)
+    )
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS)
+        != to_coverage_outcome(KalshiCfbCoverageReason.PARSE_UNRESOLVED)
+    )
 
 
 def test_reason_values_carry_no_betting_language():

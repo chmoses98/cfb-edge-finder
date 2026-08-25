@@ -157,6 +157,9 @@ def price_one_market(
     elif coverage_reason == KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION:
         pricing_status = "unsupported_population"
         pricing_detail = "mapped and semantically parsed, but not FBS-vs-FBS -- C.2 model never priced this"
+    elif coverage_reason == KalshiCfbCoverageReason.FCS_VS_FCS:
+        pricing_status = "unsupported_population"
+        pricing_detail = "both teams deterministically identified as FCS -- FBS-only C.2 model never priced this"
     elif coverage_reason == KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY:
         pricing_status = "unsupported_family"
         pricing_detail = "mapped, but this market family is outside CORE_V1"

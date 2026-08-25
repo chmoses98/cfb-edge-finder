@@ -70,10 +70,29 @@ class CFBDClient:
         )
 
     def fetch_teams(self, season: int | None = None) -> list[dict]:
-        """Raw CFBD /teams response: id, school, mascot, abbreviation,
-        conference, classification, and similar metadata fields.
+        """Raw CFBD /teams/fbs response (FBS ONLY): id, school, mascot,
+        abbreviation, conference, classification, and similar metadata
+        fields.
         """
         return self._get("/teams/fbs", {"year": season})
+
+    def fetch_all_division_teams(self, season: int | None = None) -> list[dict]:
+        """Raw CFBD GET /teams response -- covers ALL divisions (FBS AND
+        FCS), unlike `fetch_teams()` above which is deliberately pinned
+        to the FBS-only /teams/fbs endpoint (per CFBD/cfbd-python's own
+        TeamsApi docs: get_teams -> GET /teams spans both divisions,
+        get_fbs_teams -> GET /teams/fbs is FBS-only). Used ONLY for a
+        minimal, deterministic team-name -> classification identity
+        lookup (see teams/fcs_identity.py) so a genuine FCS-vs-FCS Kalshi
+        market can be classified as a distinct, understood
+        MAPPED_UNSUPPORTED_POPULATION-family outcome instead of an
+        unexplained parse/ambiguity failure -- NOT to ingest or model the
+        FCS statistical universe (this codebase's predictive model
+        remains FBS-only). Same dict shape as fetch_teams(): id, school,
+        mascot, abbreviation, conference, classification, and similar
+        metadata fields; `classification` here can be "fcs" (and other
+        divisions) in addition to "fbs"."""
+        return self._get("/teams", {"year": season})
 
     def fetch_advanced_team_game_stats(
         self, season: int, week: int | None = None, team: str | None = None, exclude_garbage_time: bool = False

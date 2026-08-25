@@ -236,6 +236,75 @@ def test_unparseable_title_is_parse_unresolved():
     assert result.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
 
 
+# --- FCS-vs-FCS: distinct, understood unsupported population -------------
+
+FCS_SCHOOL_NAMES = frozenset({"cornell", "colgate", "yale", "holy cross"})
+
+
+def test_fcs_vs_fcs_is_classified_distinctly_not_as_ambiguous():
+    # Real live evidence: KXNCAAFGAME-26SEP19CORCOLG (job 97711133675) --
+    # Cornell vs Colgate, neither team in teams.registry (FBS-only) and
+    # never a candidate GameRecord (FBS-scoped schedule fetch).
+    result = map_kalshi_event_to_game(
+        make_evidence("Cornell vs Colgate"), candidate_games=[], fcs_school_names=FCS_SCHOOL_NAMES
+    )
+    assert result.reason == KalshiCfbCoverageReason.FCS_VS_FCS
+    assert result.game_id is None
+
+
+def test_fcs_vs_fcs_still_works_with_real_fbs_candidate_games_present():
+    # An unrelated FBS game in the candidate pool must not interfere.
+    result = map_kalshi_event_to_game(
+        make_evidence("Yale vs Holy Cross"), candidate_games=[make_game()], fcs_school_names=FCS_SCHOOL_NAMES
+    )
+    assert result.reason == KalshiCfbCoverageReason.FCS_VS_FCS
+
+
+def test_without_fcs_school_names_supplied_behavior_is_unchanged():
+    # Default (empty) fcs_school_names must reproduce the exact prior
+    # behavior -- AMBIGUOUS_TEAM_MAPPING, never a silent regression.
+    result = map_kalshi_event_to_game(make_evidence("Cornell vs Colgate"), [])
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_one_known_fcs_side_and_one_unknown_side_is_not_fcs_vs_fcs():
+    # Only ONE side matches the FCS set -- must stay AMBIGUOUS_TEAM_MAPPING,
+    # never guessed as FCS-vs-FCS from partial evidence.
+    result = map_kalshi_event_to_game(
+        make_evidence("Cornell vs Some Unknown School"), candidate_games=[], fcs_school_names=FCS_SCHOOL_NAMES
+    )
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_one_known_fcs_side_and_one_real_fbs_side_is_not_fcs_vs_fcs():
+    # A genuine FBS-vs-FCS market resolves the FBS side via the registry
+    # (first_id/second_id both non-None) -- it never reaches the FCS-vs-FCS
+    # branch at all, and is instead handled downstream by
+    # classify_mapped_market's MAPPED_UNSUPPORTED_POPULATION.
+    game = make_game()
+    result = map_kalshi_event_to_game(
+        make_evidence("Cornell at Ohio State"), [game], fcs_school_names=FCS_SCHOOL_NAMES
+    )
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_fcs_vs_fcs_reason_maps_to_unsupported_market_outcome():
+    from cfb_edge_finder.kalshi.cfb_coverage_reason import to_coverage_outcome
+    from cfb_edge_finder.schemas.common import CoverageOutcome
+
+    assert to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS) == CoverageOutcome.UNSUPPORTED_MARKET
+
+
+def test_classify_mapped_market_passes_through_fcs_vs_fcs_unchanged():
+    failed_mapping = map_kalshi_event_to_game(
+        make_evidence("Cornell vs Colgate"), [], fcs_school_names=FCS_SCHOOL_NAMES
+    )
+    reason = classify_mapped_market(
+        failed_mapping, market_family=MarketFamily.SPREAD, home_classification=None, away_classification=None
+    )
+    assert reason == KalshiCfbCoverageReason.FCS_VS_FCS
+
+
 # --- classify_mapped_market: the only place MAPPED_SUPPORTED can appear --
 
 

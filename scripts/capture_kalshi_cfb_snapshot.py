@@ -52,6 +52,7 @@ from cfb_edge_finder.schemas.common import MarketFamily  # noqa: E402
 from cfb_edge_finder.schemas.game import GameRecord  # noqa: E402
 from cfb_edge_finder.schemas.kalshi_observation import KalshiResearchObservation, SnapshotTiming  # noqa: E402
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion  # noqa: E402
+from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set  # noqa: E402
 
 MODEL_VERSION = "0.4.0-milestone-c2-live-margin-correction"
 """Must match scripts/build_cfb_baseline.py's own MODEL_VERSION exactly
@@ -118,6 +119,16 @@ def _fetch_candidate_games(
         games.append(game)
         classification_by_game_id[game.game_id] = (home_classification(raw), away_classification(raw))
     return games, classification_by_game_id
+
+
+def _fetch_fcs_school_names(client: CFBDClient, season: int) -> frozenset[str]:
+    """Milestone D hardening pass: a minimal, deterministic identity
+    lookup (NOT an FCS registry, NOT FCS modeling -- see
+    teams/fcs_identity.py) so a genuine FCS-vs-FCS Kalshi market is
+    classified as the distinct, understood FCS_VS_FCS coverage reason
+    instead of an undifferentiated parse/ambiguity failure."""
+    raw_teams = client.fetch_all_division_teams(season=season)
+    return build_fcs_school_name_set(raw_teams)
 
 
 def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list[dict]:
@@ -214,12 +225,14 @@ def main() -> int:
             args.schedule_season, cfbd_client, captured_at
         )
         history_lines = _fetch_history_lines(args.history_seasons, cfbd_client, captured_at)
+        fcs_school_names = _fetch_fcs_school_names(cfbd_client, args.schedule_season)
     except CFBDAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
     print(f"Fetched {len(candidate_games)} candidate games for season {args.schedule_season} from live CFBD.")
     print(f"Fetched {len(history_lines)} historical TeamGameLine rows across seasons {args.history_seasons}.")
+    print(f"Fetched {len(fcs_school_names)} known FCS school names from live CFBD (FCS-vs-FCS classification only).")
 
     cache = GameProjectionCache(history_lines)
     ledger = ResearchLedger()
@@ -237,7 +250,7 @@ def main() -> int:
         for event_ticker, event_markets in markets_by_event.items():
             probe_market = event_markets[0]
             evidence = _evidence_from_market(probe_market, event_ticker)
-            mapping = map_kalshi_event_to_game(evidence, candidate_games)
+            mapping = map_kalshi_event_to_game(evidence, candidate_games, fcs_school_names=fcs_school_names)
 
             cached_projection = None
             home_cls = away_cls = None
@@ -314,6 +327,12 @@ def main() -> int:
     print(f"Total observations: {len(ledger)}")
     print(f"Coverage outcome counts: {ledger.coverage_outcome_counts()}")
     print(f"Coverage sum check: {sum(ledger.coverage_outcome_counts().values())} == {len(ledger)}")
+    reason_counts: dict[str, int] = {}
+    for row in ledger.rows():
+        key = row.coverage_reason or "none"
+        reason_counts[key] = reason_counts.get(key, 0) + 1
+    print(f"Coverage reason counts (specific, mission hardening breakdown): {reason_counts}")
+    print(f"Reason sum check: {sum(reason_counts.values())} == {len(ledger)}")
     print(f"Research readiness counts: {ledger.readiness_counts()}")
 
     priced = [r for r in ledger.rows() if r.pricing_status == "model_priced"]

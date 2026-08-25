@@ -49,10 +49,24 @@ class KalshiCfbCoverageReason(StrEnum):
     projections.distribution.price_market's UnsupportedMarketFamilyError."""
 
     MAPPED_UNSUPPORTED_POPULATION = "mapped_unsupported_population"
-    """Mapped to a game and a CORE_V1 family, but the game itself is a
+    """Game IDENTITY resolved (a specific candidate GameRecord matched)
+    and the market family is CORE_V1, but the game itself is a
     population this pass explicitly does not price -- FBS-vs-FCS
     (UNSUPPORTED_FOR_PRICING per every C.2 document) is the only current
-    member."""
+    member. Contrast with FCS_VS_FCS below, where game identity is never
+    resolved to a GameRecord at all (this codebase's CFBD schedule fetch
+    and team registry are both FBS-scoped)."""
+
+    FCS_VS_FCS = "fcs_vs_fcs"
+    """Both sides of the matchup are deterministically identified as FCS
+    programs (via CFBD's own /teams classification metadata, exact-match
+    only -- see teams.fcs_identity), NOT via teams.registry (which is
+    FBS-only by design and never contains these names) and NOT via a
+    matched candidate GameRecord (this milestone's CFBD schedule fetch
+    is FBS-scoped, so no FCS-vs-FCS GameRecord is ever a candidate).
+    A real, understood, unsupported population -- distinct from a
+    genuinely unresolved market -- even though no game_id is produced.
+    See mission hardening notes in game_mapping.py."""
 
     AMBIGUOUS_GAME_MAPPING = "ambiguous_game_mapping"
     """Team identities resolved, but more than one (or zero) candidate
@@ -99,6 +113,7 @@ _REASON_TO_COVERAGE_OUTCOME: dict[KalshiCfbCoverageReason, CoverageOutcome] = {
     KalshiCfbCoverageReason.MAPPED_SUPPORTED: CoverageOutcome.EVALUATED,
     KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY: CoverageOutcome.UNSUPPORTED_MARKET,
     KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION: CoverageOutcome.UNSUPPORTED_MARKET,
+    KalshiCfbCoverageReason.FCS_VS_FCS: CoverageOutcome.UNSUPPORTED_MARKET,
     KalshiCfbCoverageReason.AMBIGUOUS_GAME_MAPPING: CoverageOutcome.TICKER_UNRESOLVED,
     KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING: CoverageOutcome.TICKER_UNRESOLVED,
     KalshiCfbCoverageReason.PARSE_UNRESOLVED: CoverageOutcome.TICKER_UNRESOLVED,

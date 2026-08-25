@@ -17,7 +17,29 @@ Team-name resolution is delegated entirely to
 fail-loud resolver Milestone B already built and tested
 (`AmbiguousTeamAliasError`/`UnknownTeamAliasError`). This module adds zero
 new string-similarity logic; a name this resolver cannot confidently
-resolve is always AMBIGUOUS_TEAM_MAPPING, never a best-guess.
+resolve is always AMBIGUOUS_TEAM_MAPPING, never a best-guess -- UNLESS
+both raw names are deterministically identified as FCS programs (see
+below), in which case the market is a distinct, understood unsupported
+population, not an ambiguity.
+
+*** FCS-VS-FCS (Milestone D hardening pass) ***
+`teams.registry` is FBS-only by design, and this module's own candidate
+`GameRecord` pool is always FBS-scoped (the caller fetches CFBD's
+schedule with `division="fbs"`) -- so a genuine FCS-vs-FCS Kalshi market
+(e.g. "Cornell vs Colgate") can NEVER resolve team identity via either
+path: both raw names raise `UnknownTeamAliasError`, and even if they
+somehow did resolve, no FCS-vs-FCS `GameRecord` is ever a candidate. A
+first pass over a genuine live capture (3,447 `TICKER_UNRESOLVED`
+observations, including these) mischaracterized ALL of them as an
+undifferentiated parse failure. `fcs_school_names` (optional, supplied
+by the caller from `teams.fcs_identity.build_fcs_school_name_set` over
+`CFBDClient.fetch_all_division_teams()`) lets `map_kalshi_event_to_game`
+recognize this specific, real, understood case
+(`KalshiCfbCoverageReason.FCS_VS_FCS`) and keep it distinct from a
+genuinely unresolvable market -- without adding any FCS alias
+resolution, fuzzy matching, or statistical modeling (see
+`teams/fcs_identity.py`'s own docstring for why this is deliberately
+minimal).
 
 *** WHY A DATE WINDOW, NOT AN EXACT TIMESTAMP MATCH ***
 A Kalshi market's `close_time` is when the market itself stops trading,
@@ -38,6 +60,7 @@ from datetime import datetime, timedelta
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
 from cfb_edge_finder.schemas.common import MarketFamily
 from cfb_edge_finder.schemas.game import GameRecord
+from cfb_edge_finder.teams.fcs_identity import is_known_fcs_school
 from cfb_edge_finder.teams.registry import (
     AmbiguousTeamAliasError,
     UnknownTeamAliasError,
@@ -126,12 +149,21 @@ def _resolve_one(raw_name: str) -> tuple[str | None, str | None]:
 
 
 def map_kalshi_event_to_game(
-    evidence: KalshiGameEvidence, candidate_games: list[GameRecord]
+    evidence: KalshiGameEvidence,
+    candidate_games: list[GameRecord],
+    fcs_school_names: frozenset[str] = frozenset(),
 ) -> KalshiGameMappingResult:
     """The single entry point. Never raises -- every failure path returns a
     `KalshiGameMappingResult` with an explicit `reason` and human-readable
     `detail`, so a caller can record it in the coverage ledger without a
-    try/except around this call."""
+    try/except around this call.
+
+    `fcs_school_names`: optional, exact-match-normalized set of known FCS
+    school names (see `teams.fcs_identity`). Defaults to empty -- callers
+    that don't supply it get IDENTICAL behavior to before this parameter
+    existed (both sides simply fall through to AMBIGUOUS_TEAM_MAPPING, as
+    always). When supplied and BOTH raw team names match it exactly, a
+    genuine FCS-vs-FCS market is classified as FCS_VS_FCS instead."""
     if evidence.raw_home_name and evidence.raw_away_name:
         first_raw, second_raw = evidence.raw_home_name, evidence.raw_away_name
     elif evidence.title:
@@ -153,6 +185,17 @@ def map_kalshi_event_to_game(
     first_id, first_error = _resolve_one(first_raw)
     second_id, second_error = _resolve_one(second_raw)
     if first_id is None or second_id is None:
+        if is_known_fcs_school(first_raw, fcs_school_names) and is_known_fcs_school(second_raw, fcs_school_names):
+            return KalshiGameMappingResult(
+                reason=KalshiCfbCoverageReason.FCS_VS_FCS,
+                game_id=None,
+                detail=(
+                    f"{first_raw!r} and {second_raw!r} are both deterministically identified as FCS "
+                    f"programs (CFBD /teams classification) -- teams.registry is FBS-only by design, "
+                    f"so game identity is not further resolved; this is an understood unsupported "
+                    f"population, not a parse failure"
+                ),
+            )
         details = [d for d in (first_error, second_error) if d]
         return KalshiGameMappingResult(
             reason=KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING,
