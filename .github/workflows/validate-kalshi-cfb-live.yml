@@ -23,6 +23,7 @@ on:
           - discovery
           - market_detail
           - fees
+          - fees_browser
           - snapshot
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
@@ -78,6 +79,18 @@ jobs:
         run: |
           pip install pypdf
           python3 scripts/validate_kalshi_fees_live.py
+      - name: Run live Kalshi fee-schedule verification via headless browser
+        if: ${{ github.event.inputs.script == 'fees_browser' }}
+        # scripts/validate_kalshi_fees_browser_live.py -- follow-up to the
+        # plain-requests attempt above, which got HTTP 429 from both
+        # official sources on every attempt (signature consistent with
+        # Cloudflare bot-protection, not genuine rate-limiting). A real
+        # headless browser is a legitimate read of the same public page,
+        # not evasion of any access control. Read-only, no credentials.
+        run: |
+          pip install pypdf playwright
+          playwright install --with-deps chromium
+          python3 scripts/validate_kalshi_fees_browser_live.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:
