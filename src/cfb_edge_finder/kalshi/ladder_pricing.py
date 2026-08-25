@@ -30,6 +30,7 @@ silently coercing to one side.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason, to_coverage_outcome
 from cfb_edge_finder.kalshi.contract_semantics import (
@@ -38,6 +39,7 @@ from cfb_edge_finder.kalshi.contract_semantics import (
     parse_total_market,
     parse_winner_market,
 )
+from cfb_edge_finder.kalshi.fee_schedule import LEGACY_UNVERIFIED_TAKER_SCHEDULE, calculate_fee_dollars
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, classify_mapped_market
 from cfb_edge_finder.kalshi.game_projection_cache import CachedGameProjection
 from cfb_edge_finder.kalshi.market_pricing import price_parsed_contract
@@ -46,6 +48,16 @@ from cfb_edge_finder.schemas.common import MarketFamily, Side
 from cfb_edge_finder.schemas.kalshi_observation import KalshiResearchObservation, SnapshotTiming
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion
 from cfb_edge_finder.teams.registry import AmbiguousTeamAliasError, UnknownTeamAliasError, resolve_team_alias
+
+
+def _price_dollars_to_cents(price_dollars: float) -> int:
+    """`str(price_dollars)` first, not a raw float multiply -- Kalshi's
+    own dollar strings ("0.3500") are always clean 2-4 decimal values, so
+    round-tripping through `str` avoids binary-float artifacts (e.g.
+    0.35 * 100 landing on 34.999999999999996 in plain float arithmetic)
+    before the fee schedule's own Decimal math ever runs. See
+    fee_schedule.py's module docstring on cents-vs-dollars unit safety."""
+    return int((Decimal(str(price_dollars)) * 100).to_integral_value())
 
 
 def _resolve_named_team_side(
@@ -169,6 +181,17 @@ def price_one_market(
     if model_probability is not None and extracted.executable_yes_price is not None:
         research_probability_gap = model_probability - extracted.executable_yes_price
 
+    research_fee_amount = None
+    fee_schedule_version = None
+    fee_adjusted_research_gap = None
+    if pricing_status == "model_priced" and extracted.executable_yes_price is not None:
+        price_cents = _price_dollars_to_cents(extracted.executable_yes_price)
+        if 1 <= price_cents <= 99:
+            research_fee_amount = float(calculate_fee_dollars(price_cents, 1, LEGACY_UNVERIFIED_TAKER_SCHEDULE))
+            fee_schedule_version = LEGACY_UNVERIFIED_TAKER_SCHEDULE.version_label
+            if research_probability_gap is not None:
+                fee_adjusted_research_gap = research_probability_gap - research_fee_amount
+
     detail_parts = [parsed.detail]
     if side_detail:
         detail_parts.append(side_detail)
@@ -192,6 +215,9 @@ def price_one_market(
         market_midpoint=extracted.midpoint,
         research_probability_gap=research_probability_gap,
         fee_status=fee_status,
+        research_fee_amount=research_fee_amount,
+        fee_schedule_version=fee_schedule_version,
+        fee_adjusted_research_gap=fee_adjusted_research_gap,
         model_version=model_version if pricing_status == "model_priced" else None,
         training_cutoff=training_cutoff if pricing_status == "model_priced" else None,
         coverage_outcome=to_coverage_outcome(coverage_reason),

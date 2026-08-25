@@ -16,7 +16,7 @@ from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, Ga
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market
 from cfb_edge_finder.modeling.corpus import TeamGameLine
 from cfb_edge_finder.schemas.common import MarketFamily, Side
-from cfb_edge_finder.schemas.kalshi_observation import SnapshotTiming
+from cfb_edge_finder.schemas.kalshi_observation import KalshiResearchObservation, SnapshotTiming
 from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion
 
 NOW = datetime(2026, 8, 23, tzinfo=UTC)
@@ -202,6 +202,59 @@ def test_total_ladder_probability_decreases_as_threshold_increases(cached_projec
         probs.append(obs.model_probability)
     assert probs == sorted(probs, reverse=True)
     assert all(p1 > p2 for p1, p2 in zip(probs, probs[1:], strict=False))
+
+
+# --- fee-aware research fields (mission items 5/6) -------------------------
+
+
+def test_model_priced_market_gets_fee_aware_fields_populated(cached_projection):
+    market = _spread_market("SPREAD-3.5", "Ohio State", 3.5)
+    obs = _price(market, MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=cached_projection)
+    assert obs.pricing_status == "model_priced"
+    assert obs.research_fee_amount is not None
+    assert obs.research_fee_amount > 0.0
+    assert obs.fee_schedule_version == "legacy_unverified_taker_v1"
+    assert obs.fee_adjusted_research_gap == pytest.approx(obs.research_probability_gap - obs.research_fee_amount)
+
+
+def test_fee_adjusted_gap_is_strictly_less_than_gross_gap_for_a_positive_fee(cached_projection):
+    # A positive fee amount must always make the fee-adjusted number a
+    # real, visible reduction from the gross research_probability_gap --
+    # never silently absorbed to zero or negated in the wrong direction.
+    market = _spread_market("SPREAD-3.5", "Ohio State", 3.5)
+    obs = _price(market, MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=cached_projection)
+    assert obs.fee_adjusted_research_gap < obs.research_probability_gap
+
+
+def test_fee_fields_are_none_when_not_model_priced():
+    obs = _price(_spread_market("SPREAD-3.5", "Ohio State", 3.5), MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=None)
+    assert obs.pricing_status == "not_priced"
+    assert obs.research_fee_amount is None
+    assert obs.fee_schedule_version is None
+    assert obs.fee_adjusted_research_gap is None
+
+
+def test_fee_fields_are_none_for_unsupported_population(cached_projection):
+    obs = _price(
+        _spread_market("SPREAD-3.5", "Ohio State", 3.5),
+        MarketFamily.SPREAD,
+        SUCCESSFUL_MAPPING,
+        away_cls="fcs",
+        cached=cached_projection,
+    )
+    assert obs.pricing_status == "unsupported_population"
+    assert obs.research_fee_amount is None
+    assert obs.fee_schedule_version is None
+
+
+def test_ledger_row_carries_no_recommendation_or_staking_language():
+    # Mission-forbidden terms must never appear as an attribute name on
+    # the fee-aware fields this hardening pass added.
+    forbidden = {"bet", "play", "tier", "stake", "wager"}
+    field_names = set(KalshiResearchObservation.model_fields)
+    for name in field_names:
+        tokens = set(name.split("_"))
+        assert not (tokens & forbidden), name
 
 
 # --- winner/moneyline: hardened grammar + ticker/team identity ------------
