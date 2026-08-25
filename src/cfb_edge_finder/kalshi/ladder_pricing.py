@@ -39,7 +39,11 @@ from cfb_edge_finder.kalshi.contract_semantics import (
     parse_total_market,
     parse_winner_market,
 )
-from cfb_edge_finder.kalshi.fee_schedule import LEGACY_UNVERIFIED_TAKER_SCHEDULE, calculate_fee_dollars
+from cfb_edge_finder.kalshi.fee_schedule import (
+    KALSHI_FEE_SCHEDULE_2026_07_07_TAKER,
+    calculate_fee_dollars,
+    get_taker_multiplier,
+)
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, classify_mapped_market
 from cfb_edge_finder.kalshi.game_projection_cache import CachedGameProjection
 from cfb_edge_finder.kalshi.market_pricing import price_parsed_contract
@@ -97,6 +101,7 @@ def price_one_market(
     *,
     family_hint: MarketFamily,
     event_ticker: str,
+    series_ticker: str,
     mapping: KalshiGameMappingResult,
     home_classification: str | None,
     away_classification: str | None,
@@ -109,14 +114,20 @@ def price_one_market(
     provenance: DataProvenance,
     fee_status: str = "unverified",
 ) -> KalshiResearchObservation:
-    """The single entry point for pricing ONE market. `family_hint` comes
-    from the caller's own discovery step (which series_ticker the market
-    was fetched under -- see docs/MILESTONE_D.md "Discovery method"),
-    not re-derived here from ticker-string guessing. `cached_projection`
-    should be the SAME object across every call for markets belonging to
-    the same game -- see module docstring and `GameProjectionCache`.
-    Never raises: every failure path still returns a valid, explicit
-    `KalshiResearchObservation` row."""
+    """The single entry point for pricing ONE market. `family_hint` and
+    `series_ticker` both come from the caller's own discovery step (which
+    series the market was fetched under -- see docs/MILESTONE_D.md
+    "Discovery method"), not re-derived here from ticker-string guessing.
+    `series_ticker` is used ONLY to look up this series' fee multiplier
+    (`fee_schedule.get_taker_multiplier`) -- e.g. KXNCAAFGAME is
+    explicitly listed in the current schedule's non-standard-fee table
+    (at the same value as the default), while KXNCAAFSPREAD/KXNCAAFTOTAL
+    fall back to the general default multiplier per that table's own
+    documented absence rule. `cached_projection` should be the SAME
+    object across every call for markets belonging to the same game --
+    see module docstring and `GameProjectionCache`. Never raises: every
+    failure path still returns a valid, explicit `KalshiResearchObservation`
+    row."""
     market_ticker = str(raw_market.get("ticker", ""))
     title = str(raw_market.get("title", "") or "")
     floor_strike = raw_market.get("floor_strike")
@@ -180,17 +191,23 @@ def price_one_market(
     research_probability_gap = None
     if model_probability is not None and extracted.executable_yes_price is not None:
         research_probability_gap = model_probability - extracted.executable_yes_price
+    gross_probability_gap = research_probability_gap
 
-    research_fee_amount = None
+    estimated_taker_fee = None
     fee_schedule_version = None
+    fee_verification_status = None
     fee_adjusted_research_gap = None
     if pricing_status == "model_priced" and extracted.executable_yes_price is not None:
         price_cents = _price_dollars_to_cents(extracted.executable_yes_price)
         if 1 <= price_cents <= 99:
-            research_fee_amount = float(calculate_fee_dollars(price_cents, 1, LEGACY_UNVERIFIED_TAKER_SCHEDULE))
-            fee_schedule_version = LEGACY_UNVERIFIED_TAKER_SCHEDULE.version_label
+            multiplier, _multiplier_evidence = get_taker_multiplier(series_ticker)
+            estimated_taker_fee = float(
+                calculate_fee_dollars(price_cents, 1, KALSHI_FEE_SCHEDULE_2026_07_07_TAKER, multiplier)
+            )
+            fee_schedule_version = KALSHI_FEE_SCHEDULE_2026_07_07_TAKER.version_label
+            fee_verification_status = KALSHI_FEE_SCHEDULE_2026_07_07_TAKER.verification_status
             if research_probability_gap is not None:
-                fee_adjusted_research_gap = research_probability_gap - research_fee_amount
+                fee_adjusted_research_gap = research_probability_gap - estimated_taker_fee
 
     detail_parts = [parsed.detail]
     if side_detail:
@@ -214,9 +231,11 @@ def price_one_market(
         executable_no_price=extracted.executable_no_price,
         market_midpoint=extracted.midpoint,
         research_probability_gap=research_probability_gap,
-        fee_status=fee_status,
-        research_fee_amount=research_fee_amount,
+        gross_probability_gap=gross_probability_gap,
+        fee_status=(fee_verification_status or fee_status),
+        estimated_taker_fee=estimated_taker_fee,
         fee_schedule_version=fee_schedule_version,
+        fee_verification_status=fee_verification_status,
         fee_adjusted_research_gap=fee_adjusted_research_gap,
         model_version=model_version if pricing_status == "model_priced" else None,
         training_cutoff=training_cutoff if pricing_status == "model_priced" else None,

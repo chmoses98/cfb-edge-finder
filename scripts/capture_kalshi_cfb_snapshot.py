@@ -284,6 +284,7 @@ def main() -> int:
                     market,
                     family_hint=family,
                     event_ticker=event_ticker,
+                    series_ticker=series_ticker,
                     mapping=mapping,
                     home_classification=home_cls,
                     away_classification=away_cls,
@@ -344,8 +345,9 @@ def main() -> int:
             f"model_probability={row.model_probability:.4f} "
             f"executable_yes_price={row.executable_yes_price} "
             f"research_probability_gap={row.research_probability_gap} "
-            f"research_fee_amount={row.research_fee_amount} "
+            f"estimated_taker_fee={row.estimated_taker_fee} "
             f"fee_schedule_version={row.fee_schedule_version} "
+            f"fee_verification_status={row.fee_verification_status} "
             f"fee_adjusted_research_gap={row.fee_adjusted_research_gap}"
         )
 

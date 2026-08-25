@@ -128,11 +128,19 @@ def _total_market(ticker, threshold):
     }
 
 
-def _price(market, family, mapping, home_cls="fbs", away_cls="fbs", cached=None):
+_FAMILY_TO_DEFAULT_SERIES = {
+    MarketFamily.SPREAD: "KXNCAAFSPREAD",
+    MarketFamily.TOTAL: "KXNCAAFTOTAL",
+    MarketFamily.MONEYLINE: "KXNCAAFGAME",
+}
+
+
+def _price(market, family, mapping, home_cls="fbs", away_cls="fbs", cached=None, series_ticker=None):
     return price_one_market(
         market,
         family_hint=family,
         event_ticker="EVT-TEST",
+        series_ticker=series_ticker or _FAMILY_TO_DEFAULT_SERIES.get(family, "KXNCAAFSPREAD"),
         mapping=mapping,
         home_classification=home_cls,
         away_classification=away_cls,
@@ -211,10 +219,13 @@ def test_model_priced_market_gets_fee_aware_fields_populated(cached_projection):
     market = _spread_market("SPREAD-3.5", "Ohio State", 3.5)
     obs = _price(market, MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=cached_projection)
     assert obs.pricing_status == "model_priced"
-    assert obs.research_fee_amount is not None
-    assert obs.research_fee_amount > 0.0
-    assert obs.fee_schedule_version == "legacy_unverified_taker_v1"
-    assert obs.fee_adjusted_research_gap == pytest.approx(obs.research_probability_gap - obs.research_fee_amount)
+    assert obs.estimated_taker_fee is not None
+    assert obs.estimated_taker_fee > 0.0
+    assert obs.fee_schedule_version == "kalshi_fee_schedule_2026_07_07_taker"
+    assert obs.fee_verification_status == "VERIFIED_CURRENT"
+    assert obs.fee_status == "VERIFIED_CURRENT"
+    assert obs.gross_probability_gap == obs.research_probability_gap
+    assert obs.fee_adjusted_research_gap == pytest.approx(obs.research_probability_gap - obs.estimated_taker_fee)
 
 
 def test_fee_adjusted_gap_is_strictly_less_than_gross_gap_for_a_positive_fee(cached_projection):
@@ -229,9 +240,11 @@ def test_fee_adjusted_gap_is_strictly_less_than_gross_gap_for_a_positive_fee(cac
 def test_fee_fields_are_none_when_not_model_priced():
     obs = _price(_spread_market("SPREAD-3.5", "Ohio State", 3.5), MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=None)
     assert obs.pricing_status == "not_priced"
-    assert obs.research_fee_amount is None
+    assert obs.estimated_taker_fee is None
     assert obs.fee_schedule_version is None
+    assert obs.fee_verification_status is None
     assert obs.fee_adjusted_research_gap is None
+    assert obs.fee_status == "unverified"
 
 
 def test_fee_fields_are_none_for_unsupported_population(cached_projection):
@@ -243,8 +256,25 @@ def test_fee_fields_are_none_for_unsupported_population(cached_projection):
         cached=cached_projection,
     )
     assert obs.pricing_status == "unsupported_population"
-    assert obs.research_fee_amount is None
+    assert obs.estimated_taker_fee is None
     assert obs.fee_schedule_version is None
+    assert obs.fee_verification_status is None
+
+
+def test_kxncaafgame_and_kxncaafspread_produce_the_same_fee_amount(cached_projection):
+    # Both series resolve to multiplier=1 today (one explicitly listed at
+    # that value, one absent and falling back to the same default) -- so
+    # the estimated fee must be numerically identical at the same price.
+    spread_market = _spread_market("SPREAD-3.5", "Ohio State", 3.5)
+    winner_market = _winner_market("WINNER-OSU", "Ohio State")
+    spread_obs = _price(
+        spread_market, MarketFamily.SPREAD, SUCCESSFUL_MAPPING, cached=cached_projection, series_ticker="KXNCAAFSPREAD"
+    )
+    winner_obs = _price(
+        winner_market, MarketFamily.MONEYLINE, SUCCESSFUL_MAPPING, cached=cached_projection, series_ticker="KXNCAAFGAME"
+    )
+    if spread_obs.executable_yes_price == winner_obs.executable_yes_price:
+        assert spread_obs.estimated_taker_fee == winner_obs.estimated_taker_fee
 
 
 def test_ledger_row_carries_no_recommendation_or_staking_language():

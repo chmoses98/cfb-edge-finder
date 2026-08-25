@@ -83,30 +83,51 @@ class KalshiResearchObservation(BaseModel):
         ),
     )
 
-    fee_status: str = Field(
-        ..., description="'unverified' (this mission's finding) or a future verified fee-schedule identifier"
-    )
-    research_fee_amount: float | None = Field(
+    gross_probability_gap: float | None = Field(
         default=None,
         description=(
-            "Estimated per-contract fee in dollars at executable_yes_price, from "
-            "kalshi.fee_schedule.calculate_fee_dollars -- None if not computed (e.g. not model-priced, or "
+            "Alias for research_probability_gap, populated identically -- kept as a separate field "
+            "purely to match the fee-schedule closure pass's own naming convention (gross vs. "
+            "fee_adjusted). Never diverges from research_probability_gap's value."
+        ),
+    )
+
+    fee_status: str = Field(
+        ...,
+        description=(
+            "'unverified', or the fee schedule's own verification_status (e.g. 'VERIFIED_CURRENT') "
+            "whenever a fee was actually computed for this row."
+        ),
+    )
+    estimated_taker_fee: float | None = Field(
+        default=None,
+        description=(
+            "Estimated per-contract taker fee in dollars at executable_yes_price, from "
+            "kalshi.fee_schedule.calculate_fee_dollars against the current verified schedule (with "
+            "this row's series multiplier applied) -- None if not computed (e.g. not model-priced, or "
             "price at the 0/100-cent edge where the fee formula is undefined). Always paired with "
-            "fee_schedule_version; see that field's own docstring for why this is a research ESTIMATE, "
-            "not a confirmed fee, per fee_schedule.py's documented verification-attempt evidence."
+            "fee_schedule_version and fee_verification_status."
         ),
     )
     fee_schedule_version: str | None = Field(
         default=None,
         description=(
-            "kalshi.fee_schedule.FeeScheduleVersion.version_label used to compute research_fee_amount -- "
-            "e.g. 'legacy_unverified_taker_v1'. None whenever research_fee_amount is None."
+            "kalshi.fee_schedule.FeeScheduleVersion.version_label used to compute estimated_taker_fee -- "
+            "e.g. 'kalshi_fee_schedule_2026_07_07_taker'. None whenever estimated_taker_fee is None."
+        ),
+    )
+    fee_verification_status: str | None = Field(
+        default=None,
+        description=(
+            "kalshi.fee_schedule.FeeScheduleVersion.verification_status used to compute "
+            "estimated_taker_fee -- 'VERIFIED_CURRENT' for a schedule read/supplied directly from a "
+            "current official source. None whenever estimated_taker_fee is None."
         ),
     )
     fee_adjusted_research_gap: float | None = Field(
         default=None,
         description=(
-            "research_probability_gap minus research_fee_amount, in probability-scale points (a "
+            "research_probability_gap minus estimated_taker_fee, in probability-scale points (a "
             "per-contract dollar fee on a $1-notional binary contract maps directly to a probability-"
             "scale amount). Deliberately NOT named 'net_research_value' -- see "
             "kalshi/research_ledger.py's module docstring on why 'edge'-adjacent naming is avoided "
