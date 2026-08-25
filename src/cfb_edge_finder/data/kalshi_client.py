@@ -106,11 +106,19 @@ class KalshiClient:
         )
 
     def fetch_market_detail(self, market_ticker: str) -> dict | None:
-        """Raw GET /markets/{ticker} -- the single-market endpoint that
-        carries live pricing fields (yes_bid/yes_ask/no_bid/no_ask/
-        last_price/volume/open_interest) that the list endpoints
-        (fetch_markets) do NOT include (confirmed via the live discovery
-        script). Returns None on any non-2xx status rather than raising."""
+        """Raw GET /markets/{ticker}. CORRECTION (see
+        scripts/validate_kalshi_market_detail_live.py's own docstring):
+        an earlier version of this docstring claimed the list endpoint
+        (fetch_markets) omits pricing fields (yes_bid_dollars/
+        yes_ask_dollars/no_bid_dollars/no_ask_dollars/last_price_dollars/
+        volume_fp/open_interest_fp) that only this detail endpoint
+        carries -- a live, unfiltered-JSON probe confirmed that claim was
+        WRONG: both endpoints return IDENTICAL pricing fields, so a
+        caller that already has a market dict from fetch_markets does
+        NOT need a separate detail fetch per ticker just to get pricing.
+        This method is kept for the genuinely distinct case of already
+        holding a bare ticker string with no list context at all.
+        Returns None on any non-2xx status rather than raising."""
         try:
             body = self._get(f"/markets/{market_ticker}")
         except requests.HTTPError:
