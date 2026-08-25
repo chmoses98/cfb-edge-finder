@@ -20,6 +20,7 @@ import pkgutil
 import cfb_edge_finder.betting
 import cfb_edge_finder.data
 import cfb_edge_finder.ingestion
+import cfb_edge_finder.kalshi
 import cfb_edge_finder.modeling
 import cfb_edge_finder.projections
 import cfb_edge_finder.research
@@ -59,6 +60,7 @@ _SCANNED_PACKAGES = (
     cfb_edge_finder.projections,
     cfb_edge_finder.research,
     cfb_edge_finder.modeling,
+    cfb_edge_finder.kalshi,
 )
 _MILESTONE_B_PACKAGES = (cfb_edge_finder.ingestion, cfb_edge_finder.teams, cfb_edge_finder.data)
 
