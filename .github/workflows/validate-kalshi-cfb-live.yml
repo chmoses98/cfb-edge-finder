@@ -1,0 +1,38 @@
+name: Validate Kalshi CFB Live (manual)
+
+# Manual-only, read-only, infrastructure-only (Milestone D). This dev
+# environment's own network egress to Kalshi's API hosts is blocked by
+# organization policy (confirmed via the agent proxy's __agentproxy/status
+# endpoint: 403 policy denial on both api.elections.kalshi.com and
+# trading-api.kalshi.com), mirroring the same CFBD-access restriction
+# validate-cfbd-live.yml already works around. This workflow lets a human
+# deliberately dispatch a genuine, unauthenticated, GET-only discovery
+# sweep of Kalshi's current college-football market universe from a
+# GitHub-hosted runner instead. No trading credentials are used or
+# required -- see scripts/validate_kalshi_cfb_live.py's own docstring for
+# why public read endpoints are sufficient for this milestone's scope.
+on:
+  workflow_dispatch:
+
+# Read-only: this workflow only calls out to Kalshi's public read API and
+# prints discovery results. It never commits, pushes, writes anything back
+# to this repository, or calls any order-placement/trading endpoint.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live Kalshi CFB discovery
+        # scripts/validate_kalshi_cfb_live.py uses no credentials, prints no
+        # secrets (there are none to print), and never calls a write/order
+        # endpoint -- only GET requests against Kalshi's public market-data
+        # API.
+        run: python3 scripts/validate_kalshi_cfb_live.py
