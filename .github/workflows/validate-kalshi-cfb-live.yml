@@ -69,10 +69,15 @@ jobs:
         run: python3 scripts/validate_kalshi_market_detail_live.py
       - name: Run live Kalshi fee-schedule verification attempt
         if: ${{ github.event.inputs.script == 'fees' }}
-        # scripts/validate_kalshi_fees_live.py -- read-only GETs against a
-        # handful of candidate public documentation/API URLs, no
-        # credentials, mission section 12.
-        run: python3 scripts/validate_kalshi_fees_live.py
+        # scripts/validate_kalshi_fees_live.py -- read-only GETs against
+        # the current official fee-schedule page + PDF (plus older
+        # candidate URLs for comparison), no credentials, mission section
+        # 12 / hardening-pass items 2-3. pypdf is installed here only,
+        # not added to pyproject.toml -- this is a one-off verification
+        # script, not a runtime dependency.
+        run: |
+          pip install pypdf
+          python3 scripts/validate_kalshi_fees_live.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:
