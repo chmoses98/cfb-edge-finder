@@ -9,7 +9,12 @@ from pathlib import Path
 import pytest
 
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
-from cfb_edge_finder.kalshi.contract_semantics import parse_spread_market, parse_total_market, parse_winner_market
+from cfb_edge_finder.kalshi.contract_semantics import (
+    extract_matchup_from_rules_primary,
+    parse_spread_market,
+    parse_total_market,
+    parse_winner_market,
+)
 from cfb_edge_finder.schemas.common import MarketFamily, Side
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "kalshi"
@@ -96,3 +101,38 @@ def test_winner_market_parses_but_stays_unconfirmed():
 def test_empty_winner_title_is_parse_unresolved():
     parsed = parse_winner_market("   ")
     assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+# --- extract_matchup_from_rules_primary: real matchup evidence -----------
+
+
+def test_extracts_matchup_from_real_spread_fixture_rules_primary():
+    market = _load_fixture("spread_market_suu5.json")
+    matchup = extract_matchup_from_rules_primary(market["rules_primary"])
+    assert matchup == "Southern Utah vs Montana"
+
+
+def test_extracts_matchup_from_real_total_fixture_rules_primary():
+    market = _load_fixture("total_market_81.json")
+    matchup = extract_matchup_from_rules_primary(market["rules_primary"])
+    assert matchup == "Southern Utah vs Montana"
+
+
+def test_extracted_matchup_is_splittable_by_game_mapping():
+    from cfb_edge_finder.kalshi.game_mapping import _split_title
+
+    matchup = extract_matchup_from_rules_primary(
+        "If Ohio State wins by more than 3.5 points in the Ohio State vs Michigan college "
+        "football game originally scheduled for Nov 28, 2026, then the market resolves to Yes."
+    )
+    assert matchup == "Ohio State vs Michigan"
+    assert _split_title(matchup) == ("Ohio State", "Michigan")
+
+
+def test_missing_rules_primary_returns_none():
+    assert extract_matchup_from_rules_primary(None) is None
+    assert extract_matchup_from_rules_primary("") is None
+
+
+def test_unrecognized_rules_primary_phrasing_returns_none():
+    assert extract_matchup_from_rules_primary("Some unrelated rules text with no matchup phrase.") is None

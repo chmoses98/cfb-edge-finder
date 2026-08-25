@@ -42,6 +42,7 @@ from cfb_edge_finder.ingestion.game_normalization import (  # noqa: E402
     normalize_cfbd_game,
 )
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason, to_coverage_outcome  # noqa: E402
+from cfb_edge_finder.kalshi.contract_semantics import extract_matchup_from_rules_primary  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameEvidence, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest  # noqa: E402
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
@@ -156,6 +157,17 @@ def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list
 
 
 def _evidence_from_market(market: dict, event_ticker: str) -> KalshiGameEvidence:
+    """Builds mapping evidence for one event, from ONE of its markets
+    (`probe_market` at the call site). The matchup string comes from
+    `extract_matchup_from_rules_primary(rules_primary)` -- NOT from this
+    market's own `title` -- because a live event probe (job 97709841758)
+    confirmed the event object itself has no title/matchup field, and an
+    individual market's title is single-team/single-line, never a real
+    "TEAM1 vs TEAM2" pairing (see that function's own docstring for the
+    full evidence). If extraction fails (title/rules_primary absent, or
+    the confirmed phrasing isn't matched), `title=None` is passed through
+    honestly -- `map_kalshi_event_to_game` already treats that as
+    PARSE_UNRESOLVED, never a guess."""
     close_time_raw = market.get("close_time")
     reference_timestamp = None
     if isinstance(close_time_raw, str):
@@ -163,11 +175,12 @@ def _evidence_from_market(market: dict, event_ticker: str) -> KalshiGameEvidence
             reference_timestamp = datetime.fromisoformat(close_time_raw.replace("Z", "+00:00"))
         except ValueError:
             reference_timestamp = None
+    matchup = extract_matchup_from_rules_primary(market.get("rules_primary"))
     return KalshiGameEvidence(
         market_ticker=str(market.get("ticker", "")),
         event_ticker=event_ticker,
-        title=str(market.get("title", "") or ""),
-        subtitle=str(market.get("subtitle", "") or "") or None,
+        title=matchup,
+        subtitle=str(market.get("title", "") or "") or None,
         reference_timestamp=reference_timestamp,
     )
 

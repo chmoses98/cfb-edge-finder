@@ -98,6 +98,42 @@ from cfb_edge_finder.schemas.common import MarketFamily, Side
 _SPREAD_TITLE_RE = re.compile(r"^(?P<team>.+?) wins by over (?P<threshold>-?\d+(?:\.\d+)?) points?$", re.IGNORECASE)
 _TOTAL_TITLE_RE = re.compile(r"^Over (?P<threshold>-?\d+(?:\.\d+)?) points? scored$", re.IGNORECASE)
 
+_MATCHUP_IN_RULES_RE = re.compile(r"in the (?P<matchup>.+? vs .+?) college football game", re.IGNORECASE)
+"""Extracts the two-team matchup embedded in a market's own
+`rules_primary` prose -- e.g. "...in the Southern Utah vs Montana college
+football game originally scheduled..." -> "Southern Utah vs Montana".
+
+*** WHY THIS EXISTS: A REAL, LIVE-CONFIRMED STRUCTURAL GAP ***
+A live `GET /events/{event_ticker}` response (job 97709841758, this
+branch) confirmed the EVENT object itself carries no title/subtitle/
+matchup field at all -- only `available_on_brokers`, `category`,
+`collateral_return_type`, `event_ticker`, `exchange_index`,
+`last_updated_ts`, and a nested `markets` array. Each individual
+MARKET's own `title` is single-team/single-line ("Southern Utah wins by
+over 4.5 points", "Over 80.5 points scored") and can never be split into
+two team names by `game_mapping._split_title`. The ONLY place a genuine
+two-team matchup string appears anywhere in this API's real responses is
+embedded in prose inside `rules_primary`, consistently phrased "...in
+the <TEAM> vs <TEAM> college football game...". This function extracts
+exactly that, nothing more -- a first live snapshot capture that instead
+passed a market's own single-team title as mapping evidence saw 100% of
+2,278 discovered game-level markets land in TICKER_UNRESOLVED for
+exactly this reason (see docs/MILESTONE_D.md section 15)."""
+
+
+def extract_matchup_from_rules_primary(rules_primary: str | None) -> str | None:
+    """Returns a `"<TEAM> vs <TEAM>"` string suitable as
+    `KalshiGameEvidence.title` (whose separator list already includes
+    `" vs "`), or None if `rules_primary` is absent or doesn't match the
+    confirmed phrasing -- callers should treat None as PARSE_UNRESOLVED-
+    worthy evidence, never guess a matchup from anywhere else."""
+    if not rules_primary:
+        return None
+    match = _MATCHUP_IN_RULES_RE.search(rules_primary)
+    if match is None:
+        return None
+    return match.group("matchup").strip()
+
 _CONFIRMED_OPERATOR = ">"
 """The only operator confirmed from real live rules_primary text this
 session -- see module docstring."""
