@@ -28,6 +28,8 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfb_edge_finder.config import Settings  # noqa: E402
@@ -117,6 +119,26 @@ def _fetch_candidate_games(
     return games, classification_by_game_id
 
 
+def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list[dict]:
+    """GET /markets?series_ticker=X&status=active for one series, treating
+    an HTTP 400 as "genuinely zero markets" rather than crashing the
+    whole capture. Real evidence (job 32816755586 on this branch): Kalshi
+    returns 400 Bad Request for KXNCAAFGAME specifically -- the one
+    CORE_V1 series independently confirmed (via
+    scripts/validate_kalshi_cfb_live.py) to have ZERO current events --
+    while the same query shape against KXNCAAFSPREAD/KXNCAAFTOTAL (which
+    do have live markets) succeeds normally. This is treated as a real,
+    reportable API quirk for a truly-empty series, not silently ignored:
+    the 400 and its message are printed before continuing with an empty
+    list."""
+    try:
+        return client.fetch_markets(series_ticker=series_ticker, status="active")
+    except requests.HTTPError as exc:
+        print(f"  NOTE: GET /markets?series_ticker={series_ticker}&status=active failed ({exc})")
+        print(f"  Treating {series_ticker!r} as 0 active markets and continuing.")
+        return []
+
+
 def _evidence_from_market(market: dict, event_ticker: str) -> KalshiGameEvidence:
     close_time_raw = market.get("close_time")
     reference_timestamp = None
@@ -176,7 +198,7 @@ def main() -> int:
 
     # --- CORE_V1 game-level series ---------------------------------
     for series_ticker, family in CORE_V1_SERIES_TO_FAMILY.items():
-        markets = kalshi_client.fetch_markets(series_ticker=series_ticker, status="active")
+        markets = _fetch_active_markets_safe(kalshi_client, series_ticker)
         print(f"\n{series_ticker}: {len(markets)} active markets")
         markets_by_event: dict[str, list[dict]] = {}
         for market in markets:
@@ -236,7 +258,7 @@ def main() -> int:
     # --- Futures / season-long series -- discovered + isolated, never priced ---
     futures_count = 0
     for series_ticker in FUTURES_SERIES_TICKERS:
-        markets = kalshi_client.fetch_markets(series_ticker=series_ticker, status="active")
+        markets = _fetch_active_markets_safe(kalshi_client, series_ticker)
         futures_count += len(markets)
         for market in markets:
             ledger.append(
