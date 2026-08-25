@@ -339,9 +339,14 @@ def main() -> int:
     print(f"\nModel-priced (RESEARCH_COMPARABLE-eligible) observations: {len(priced)}")
     for row in priced[:20]:
         print(
-            f"  {row.kalshi_market_ticker}: model_probability={row.model_probability:.4f} "
+            f"  {row.kalshi_market_ticker} ({row.family.value if row.family else None}, "
+            f"parse_status={row.parse_status}): "
+            f"model_probability={row.model_probability:.4f} "
             f"executable_yes_price={row.executable_yes_price} "
-            f"research_probability_gap={row.research_probability_gap}"
+            f"research_probability_gap={row.research_probability_gap} "
+            f"research_fee_amount={row.research_fee_amount} "
+            f"fee_schedule_version={row.fee_schedule_version} "
+            f"fee_adjusted_research_gap={row.fee_adjusted_research_gap}"
         )
 
     print("\nSTATUS: RESEARCH-ONLY. No bet recommendation, stake sizing, or trading action anywhere in this output.")
