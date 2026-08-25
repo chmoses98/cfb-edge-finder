@@ -120,23 +120,39 @@ def _fetch_candidate_games(
 
 
 def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list[dict]:
-    """GET /markets?series_ticker=X&status=active for one series, treating
-    an HTTP 400 as "genuinely zero markets" rather than crashing the
-    whole capture. Real evidence (job 32816755586 on this branch): Kalshi
-    returns 400 Bad Request for KXNCAAFGAME specifically -- the one
-    CORE_V1 series independently confirmed (via
-    scripts/validate_kalshi_cfb_live.py) to have ZERO current events --
-    while the same query shape against KXNCAAFSPREAD/KXNCAAFTOTAL (which
-    do have live markets) succeeds normally. This is treated as a real,
-    reportable API quirk for a truly-empty series, not silently ignored:
-    the 400 and its message are printed before continuing with an empty
-    list."""
+    """Fetches every market for one series and filters to `status ==
+    "active"` CLIENT-SIDE, deliberately never passing `status=` as a
+    server-side query parameter.
+
+    *** REAL EVIDENCE THIS IS BUILT FROM (two live runs on this branch) ***
+    Run 1 (job 32816755586) passed `status="active"` server-side and got
+    HTTP 400 for KXNCAAFGAME specifically, which looked at first like a
+    quirk of that one truly-empty series. Run 2 (job 97708513504), after
+    a first fix attempt still passed `status="active"` server-side for
+    EVERY series -- and EVERY one of them returned 400 (KXNCAAFSPREAD/
+    KXNCAAFTOTAL included, both confirmed via
+    scripts/validate_kalshi_cfb_live.py to have ~200 real active markets
+    each), except KXNCAAFWINS which returned 429 (rate-limited). That
+    ruled out the "empty series" theory: the real cause is that Kalshi's
+    `/markets` endpoint does not accept `status=active` as a query
+    parameter value at all, even though `"active"` IS the real value it
+    puts in each market's own `status` FIELD in the response body -- the
+    query-parameter vocabulary and the response-field vocabulary are not
+    the same, and `validate_kalshi_cfb_live.py` already worked around
+    this correctly (see its own module docstring) by fetching markets
+    UNFILTERED and checking `status` client-side. This function now does
+    the same, rather than trusting a server-side filter that was never
+    actually confirmed to work.
+
+    A genuine per-series HTTPError (e.g. real rate-limiting) is still
+    caught here and reported rather than crashing the whole capture."""
     try:
-        return client.fetch_markets(series_ticker=series_ticker, status="active")
+        markets = client.fetch_markets(series_ticker=series_ticker)
     except requests.HTTPError as exc:
-        print(f"  NOTE: GET /markets?series_ticker={series_ticker}&status=active failed ({exc})")
-        print(f"  Treating {series_ticker!r} as 0 active markets and continuing.")
+        print(f"  NOTE: GET /markets?series_ticker={series_ticker} failed ({exc})")
+        print(f"  Treating {series_ticker!r} as 0 markets and continuing.")
         return []
+    return [m for m in markets if str(m.get("status", "")).lower() == "active"]
 
 
 def _evidence_from_market(market: dict, event_ticker: str) -> KalshiGameEvidence:
