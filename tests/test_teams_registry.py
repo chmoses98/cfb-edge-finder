@@ -105,6 +105,70 @@ def test_known_alias_cases_resolve_correctly(raw_name, expected_team_id):
     assert get_team(expected_team_id) is not None
 
 
+@pytest.mark.parametrize(
+    ("raw_name", "expected_team_id"),
+    [
+        # Milestone D closure: a live root-cause audit of the
+        # AMBIGUOUS_TEAM_MAPPING population (GH Actions run 32886794099)
+        # found Kalshi's live rules_primary text consistently abbreviates
+        # "<X> State" as "<X> St." -- these were the highest-volume
+        # failing tokens (40-90+ live sightings each in one capture).
+        ("Michigan St.", "michigan-state"),
+        ("Ohio St.", "ohio-state"),
+        ("Oklahoma St.", "oklahoma-state"),
+        ("Fresno St.", "fresno-state"),
+        ("Oregon St.", "oregon-state"),
+        ("NC St.", "nc-state"),
+        ("North Carolina St.", "nc-state"),
+        ("Kennesaw St.", "kennesaw-state"),
+        ("Boise St.", "boise-state"),
+        ("Colorado St.", "colorado-state"),
+        ("Texas St.", "texas-state"),
+        ("Arkansas St.", "arkansas-state"),
+        ("Utah St.", "utah-state"),
+        ("Kansas St.", "kansas-state"),
+        ("Georgia St.", "georgia-state"),
+        ("Washington St.", "washington-state"),
+        ("San Jose St.", "san-jose-state"),
+        ("San Diego St.", "san-diego-state"),
+        ("New Mexico St.", "new-mexico-state"),
+        ("North Dakota St.", "north-dakota-state"),
+        ("Sacramento St.", "sacramento-state"),
+        ("Jacksonville St.", "jacksonville-state"),
+        ("Ball St.", "ball-state"),
+        ("Iowa St.", "iowa-state"),
+        ("Arizona St.", "arizona-state"),
+        ("Mississippi St.", "mississippi-state"),
+        ("Missouri St.", "missouri-state"),
+        ("Kent St.", "kent-state"),
+        ("Penn St.", "penn-state"),
+        ("Florida St.", "florida-state"),
+        ("Appalachian St.", "appalachian-state"),
+    ],
+)
+def test_state_abbreviation_aliases_resolve_correctly(raw_name, expected_team_id):
+    assert resolve_team_alias(raw_name) == expected_team_id
+    assert get_team(expected_team_id) is not None
+
+
+def test_state_abbreviation_generated_for_every_state_school_in_the_registry():
+    # The generation is programmatic over REGISTRY, not a hand-picked
+    # subset -- prove every single "<X> State" display name has a
+    # corresponding "<X> St." alias, not just the sampled cases above.
+    for team in REGISTRY:
+        if team.display_name.endswith(" State"):
+            abbreviated = team.display_name[: -len(" State")] + " St."
+            assert resolve_team_alias(abbreviated) == team.team_id
+
+
+def test_state_abbreviation_does_not_enable_fuzzy_typo_matching():
+    # "Ohio Stat" (a typo, not the real "St." abbreviation) must still
+    # fail loud -- the generated aliases are exact strings, not a prefix
+    # or fuzzy match.
+    with pytest.raises(UnknownTeamAliasError):
+        resolve_team_alias("Ohio Stat")
+
+
 def test_usc_and_south_carolina_never_conflate():
     # The exact case the mission calls out: USC (Southern California) and
     # South Carolina must resolve to two DIFFERENT teams, never accidentally

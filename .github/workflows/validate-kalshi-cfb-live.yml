@@ -13,10 +13,35 @@ name: Validate Kalshi CFB Live (manual)
 # why public read endpoints are sufficient for this milestone's scope.
 on:
   workflow_dispatch:
+    inputs:
+      script:
+        description: "Which read-only Kalshi script to run"
+        required: false
+        default: "discovery"
+        type: choice
+        options:
+          - discovery
+          - market_detail
+          - fees
+          - fees_browser
+          - ambiguous_audit
+          - snapshot
+      schedule_season:
+        description: "(snapshot only) CFBD season to fetch candidate games from"
+        required: false
+        default: "2026"
+      history_seasons:
+        description: "(snapshot only) Space-separated seasons for the ratings/residual history corpus"
+        required: false
+        default: "2022 2023 2024 2025"
+      n_simulations:
+        description: "(snapshot only) Monte Carlo simulations per game projection"
+        required: false
+        default: "6000"
 
-# Read-only: this workflow only calls out to Kalshi's public read API and
-# prints discovery results. It never commits, pushes, writes anything back
-# to this repository, or calls any order-placement/trading endpoint.
+# Read-only: this workflow only calls out to Kalshi's and CFBD's public
+# read APIs and prints results. It never commits, pushes, writes anything
+# back to this repository, or calls any order-placement/trading endpoint.
 permissions:
   contents: read
 
@@ -31,8 +56,62 @@ jobs:
       - name: Install package
         run: pip install -e ".[dev]"
       - name: Run live Kalshi CFB discovery
+        if: ${{ github.event.inputs.script == 'discovery' || github.event.inputs.script == '' }}
         # scripts/validate_kalshi_cfb_live.py uses no credentials, prints no
         # secrets (there are none to print), and never calls a write/order
         # endpoint -- only GET requests against Kalshi's public market-data
         # API.
         run: python3 scripts/validate_kalshi_cfb_live.py
+      - name: Run live Kalshi market-detail field probe
+        if: ${{ github.event.inputs.script == 'market_detail' }}
+        # scripts/validate_kalshi_market_detail_live.py -- same read-only,
+        # credential-free contract, bounded to a handful of specific
+        # tickers to settle exactly which pricing fields the detail/
+        # orderbook endpoints return.
+        run: python3 scripts/validate_kalshi_market_detail_live.py
+      - name: Run live Kalshi fee-schedule verification attempt
+        if: ${{ github.event.inputs.script == 'fees' }}
+        # scripts/validate_kalshi_fees_live.py -- read-only GETs against
+        # the current official fee-schedule page + PDF (plus older
+        # candidate URLs for comparison), no credentials, mission section
+        # 12 / hardening-pass items 2-3. pypdf is installed here only,
+        # not added to pyproject.toml -- this is a one-off verification
+        # script, not a runtime dependency.
+        run: |
+          pip install pypdf
+          python3 scripts/validate_kalshi_fees_live.py
+      - name: Run live Kalshi fee-schedule verification via headless browser
+        if: ${{ github.event.inputs.script == 'fees_browser' }}
+        # scripts/validate_kalshi_fees_browser_live.py -- follow-up to the
+        # plain-requests attempt above, which got HTTP 429 from both
+        # official sources on every attempt (signature consistent with
+        # Cloudflare bot-protection, not genuine rate-limiting). A real
+        # headless browser is a legitimate read of the same public page,
+        # not evasion of any access control. Read-only, no credentials.
+        run: |
+          pip install pypdf playwright
+          playwright install --with-deps chromium
+          python3 scripts/validate_kalshi_fees_browser_live.py
+      - name: Run AMBIGUOUS_TEAM_MAPPING root-cause audit
+        if: ${{ github.event.inputs.script == 'ambiguous_audit' }}
+        # scripts/audit_ambiguous_team_mappings.py -- diagnosis-only, reuses
+        # the exact production mapping code path against a live discovery
+        # sweep. Never modifies mapping/alias logic.
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python3 scripts/audit_ambiguous_team_mappings.py \
+            --schedule-season ${{ github.event.inputs.schedule_season }}
+      - name: Run first genuine prospective Kalshi CFB snapshot capture
+        if: ${{ github.event.inputs.script == 'snapshot' }}
+        env:
+          # CFBD_API_KEY: read-only schedule/stats fetch (same secret and
+          # scope already used by backtest-cfb-baseline-live.yml). Kalshi
+          # itself is never authenticated -- see KalshiClient's own
+          # docstring. Never printed by this script.
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python3 scripts/capture_kalshi_cfb_snapshot.py \
+            --schedule-season ${{ github.event.inputs.schedule_season }} \
+            --history-seasons ${{ github.event.inputs.history_seasons }} \
+            --n-simulations ${{ github.event.inputs.n_simulations }}
