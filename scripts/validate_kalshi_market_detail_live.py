@@ -28,6 +28,13 @@ TIMEOUT_SECONDS = 20.0
 PROBE_TICKERS = (
     "KXNCAAFSPREAD-26AUG29SUUMONT-SUU5",
     "KXNCAAFTOTAL-26AUG29SUUMONT-81",
+    # KXNCAAFGAME (winner/moneyline) ticker observed live in the first
+    # successful snapshot capture (job 97710429233) -- probed here to
+    # settle its rules_primary phrasing, since extract_matchup_from_
+    # rules_primary() has only been confirmed against SPREAD/TOTAL text
+    # so far and every KXNCAAFGAME market in that capture landed in
+    # PARSE_UNRESOLVED.
+    "KXNCAAFGAME-26SEP19CORCOLG-COR",
 )
 PROBE_EVENT_TICKERS = ("KXNCAAFSPREAD-26AUG29SUUMONT",)
 PROBE_SERIES_TICKERS = ("KXNCAAFSPREAD",)
