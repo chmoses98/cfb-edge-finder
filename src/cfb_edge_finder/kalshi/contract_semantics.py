@@ -98,10 +98,35 @@ from cfb_edge_finder.schemas.common import MarketFamily, Side
 _SPREAD_TITLE_RE = re.compile(r"^(?P<team>.+?) wins by over (?P<threshold>-?\d+(?:\.\d+)?) points?$", re.IGNORECASE)
 _TOTAL_TITLE_RE = re.compile(r"^Over (?P<threshold>-?\d+(?:\.\d+)?) points? scored$", re.IGNORECASE)
 
-_MATCHUP_IN_RULES_RE = re.compile(r"in the (?P<matchup>.+? vs .+?) college football game", re.IGNORECASE)
+_MATCHUP_IN_RULES_RE = re.compile(r"\bthe (?P<matchup>[A-Z].+? vs .+?) college football game")
 """Extracts the two-team matchup embedded in a market's own
 `rules_primary` prose -- e.g. "...in the Southern Utah vs Montana college
 football game originally scheduled..." -> "Southern Utah vs Montana".
+
+*** CONFIRMED ACROSS ALL THREE CORE_V1 FAMILIES, NOT JUST SPREAD/TOTAL ***
+The word immediately before "the <TEAM> vs <TEAM> college football game"
+differs by family -- SPREAD/TOTAL use "...points **in** the <matchup>
+college football game..." while WINNER/moneyline uses "<TEAM> wins
+**the** <matchup> college football game..." (no "in"). A first version
+of this regex required literal "in the ", which matched SPREAD/TOTAL but
+left every live KXNCAAFGAME market PARSE_UNRESOLVED (job 97710429233:
+256/3995 observations model-priced, but zero of the 368 live KXNCAAFGAME
+markets among them). A follow-up live probe (job 97711133675) confirmed
+the real winner-market text: "If Cornell wins the Cornell vs Colgate
+college football game originally scheduled for Sep 19, 2026, then the
+market resolves to Yes." -- matching on `\\bthe ` instead of `in the `
+covers both phrasings.
+
+*** CASE-SENSITIVE ON PURPOSE, REQUIRES AN UPPERCASE MATCHUP START ***
+The TOTAL family's real text is "If **the** teams collectively score
+more than 80.5 points in **the** Southern Utah vs Montana college
+football game..." -- TWO "the"s appear before "college football game".
+Matching `\\bthe ` case-insensitively anchors on the FIRST one ("the
+teams collectively ... Montana"), producing a wrong, over-long matchup.
+Requiring `[A-Z]` immediately after "the " (real team names are always
+capitalized proper nouns, unlike "teams") skips that generic occurrence
+and lands on the real matchup every time. This regex therefore has NO
+`re.IGNORECASE` flag, unlike the title-grammar regexes above.
 
 *** WHY THIS EXISTS: A REAL, LIVE-CONFIRMED STRUCTURAL GAP ***
 A live `GET /events/{event_ticker}` response (job 97709841758, this

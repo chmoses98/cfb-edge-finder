@@ -129,6 +129,18 @@ def test_extracted_matchup_is_splittable_by_game_mapping():
     assert _split_title(matchup) == ("Ohio State", "Michigan")
 
 
+def test_extracts_matchup_from_real_winner_market_rules_primary():
+    # Real live text (job 97711133675, KXNCAAFGAME-26SEP19CORCOLG-COR):
+    # winner markets phrase this as "wins THE <matchup> college football
+    # game" (no "in"), unlike spread/total's "...points IN THE <matchup>
+    # college football game" -- both must extract correctly.
+    matchup = extract_matchup_from_rules_primary(
+        "If Cornell wins the Cornell vs Colgate college football game originally scheduled "
+        "for Sep 19, 2026, then the market resolves to Yes."
+    )
+    assert matchup == "Cornell vs Colgate"
+
+
 def test_missing_rules_primary_returns_none():
     assert extract_matchup_from_rules_primary(None) is None
     assert extract_matchup_from_rules_primary("") is None
