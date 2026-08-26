@@ -42,10 +42,32 @@ def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
 
 
+DURABLE_STORE_PATHS: tuple[str, ...] = ("data/research",)
+"""The only paths this module ever stages/commits on the durable-store
+branch -- see the module-level bug note in commit_and_push_with_retry's
+docstring for why this must never be a bare `git add -A`."""
+
+
 def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin") -> None:
     """Fetches `branch` and checks it out, creating a fresh ORPHAN branch
     (no shared history with main -- keeps bot commits fully out of main's
-    line of history) the first time it does not exist remotely yet."""
+    line of history) the first time it does not exist remotely yet.
+
+    *** WHY THE ORPHAN PATH DOES NOT `rm` THE WORKING TREE ***
+    `git checkout --orphan` detaches the index from history but leaves
+    every file from the PREVIOUS branch (main -- this runs in the same
+    checkout `actions/checkout@v4` already populated) sitting on disk,
+    merely unstaged by the `git rm --cached` below. This is intentional
+    and safe now that `commit_and_push_with_retry` only ever stages
+    `DURABLE_STORE_PATHS` (never a bare `git add -A`) -- see that
+    function's docstring for the real incident this fixes: an earlier
+    version staged everything, and because `data/research/` is
+    (correctly, on main/feature branches) `.gitignore`d, `git add -A`
+    silently skipped the actual data and committed main's entire stray
+    source tree instead. Wiping the working tree here would risk deleting
+    files a caller's already-imported-but-not-yet-executed deferred
+    import still expects to find on disk; scoping the ADD instead avoids
+    that risk entirely while fixing the real bug."""
     fetch = _run(["git", "fetch", remote, branch], repo_dir)
     if fetch.returncode == 0:
         checkout = _run(["git", "checkout", "-B", branch, f"{remote}/{branch}"], repo_dir)
@@ -92,16 +114,59 @@ def commit_and_push_with_retry(
     anything already pushed by the other run) and `apply_fn` runs again
     against that updated content, so genuinely-new rows are re-appended
     while rows the other run already wrote are correctly re-detected as
-    duplicates and skipped."""
+    duplicates and skipped.
+
+    *** WHY THE ADD/EMPTY-CHECK SEQUENCE IS SCOPED TO DURABLE_STORE_PATHS, NEVER `-A` ***
+    A live preseason dress rehearsal caught two related bugs here, both
+    rooted in the same fact: this repo's own `.gitignore` correctly
+    excludes `data/research/` on `main`/feature branches (a safety net
+    against an accidental commit of local rehearsal output -- see
+    .gitignore's own comment), but `ensure_branch_checked_out`'s orphan
+    path runs in the SAME working directory `actions/checkout@v4` already
+    populated with `main`'s full source tree (only unstaged via
+    `git rm --cached`, never deleted from disk):
+
+    1. A bare `git add -A` re-staged every one of main's non-ignored
+       stray files (src/, tests/, docs/, scripts/, ...) while silently
+       SKIPPING the one directory that actually needed to be tracked --
+       `data/research/` itself, still `.gitignore`d. Two separate live
+       GitHub Actions runs an hour apart each committed a stray copy of
+       main's source tree and ZERO real observations.
+    2. Even after scoping `git add` to `DURABLE_STORE_PATHS` with `-f`
+       (overriding the ignore rule deliberately), a plain
+       `git status --porcelain` on an ignored path still reports nothing
+       by default (ignored paths don't show as untracked) -- so the
+       "anything to commit" check returned empty and the loop skipped
+       committing/pushing entirely, even though real new data existed on
+       disk.
+
+    Fixed by staging FIRST (`git add -f`, idempotent whether or not
+    anything actually changed) and then checking `git diff --cached
+    --quiet` -- gitignore-agnostic once a path is staged -- to decide
+    whether there is genuinely anything new to commit."""
     last_result: AppendResult | None = None
     for attempt in range(1, max_retries + 1):
         result = apply_fn(repo_dir)
         last_result = result
 
-        status = _run(["git", "status", "--porcelain"], repo_dir)
-        if not status.stdout.strip():
-            # Nothing new to commit this attempt (everything was already
-            # present, e.g. the other run wrote the same logical rows).
+        existing_paths = [p for p in DURABLE_STORE_PATHS if (repo_dir / p).exists()]
+        if not existing_paths:
+            # apply_fn wrote nothing at all this attempt (a genuine no-op
+            # -- distinct from "wrote rows that happened to already
+            # exist," which still creates the file) -- `git add` on a
+            # path that doesn't exist on disk errors, so short-circuit
+            # rather than treat that as a failure.
+            return PushResult(attempts=attempt, append_result=result)
+
+        add = _run(["git", "add", "-f", "--", *existing_paths], repo_dir)
+        if add.returncode != 0:
+            raise GitDurableStoreError(f"git add failed: {add.stderr}")
+
+        staged_diff = _run(["git", "diff", "--cached", "--quiet"], repo_dir)
+        if staged_diff.returncode == 0:
+            # Nothing staged -- everything was already present (e.g. the
+            # other run wrote the same logical rows), so there is
+            # genuinely nothing new to commit this attempt.
             return PushResult(attempts=attempt, append_result=result)
 
         conflict_check = _run(["git", "diff", "--name-only", "--diff-filter=U"], repo_dir)
@@ -109,10 +174,6 @@ def commit_and_push_with_retry(
             raise GitDurableStoreError(
                 f"unexpected unmerged paths before commit: {conflict_check.stdout!r} -- refusing to commit"
             )
-
-        add = _run(["git", "add", "-A"], repo_dir)
-        if add.returncode != 0:
-            raise GitDurableStoreError(f"git add failed: {add.stderr}")
         commit = _run(["git", "commit", "-m", commit_message], repo_dir)
         if commit.returncode != 0:
             raise GitDurableStoreError(f"git commit failed: {commit.stderr}")

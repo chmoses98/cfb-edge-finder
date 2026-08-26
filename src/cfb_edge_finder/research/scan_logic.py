@@ -8,10 +8,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason, to_coverage_outcome
 from cfb_edge_finder.research.identity import CAPTURE_WINDOW_VERSION, observation_key
+from cfb_edge_finder.schemas.common import CoverageOutcome
 from cfb_edge_finder.schemas.corpus_row import ResearchCorpusRow
 from cfb_edge_finder.schemas.data_versions import DataVersionManifest
 from cfb_edge_finder.schemas.kalshi_observation import KalshiResearchObservation
+
+
+def is_genuine_mapping_failure(reason: KalshiCfbCoverageReason | None) -> bool:
+    """True only for a reason the health report should count against
+    `mapping_failures` -- i.e. one that resolves to
+    `CoverageOutcome.TICKER_UNRESOLVED` (AMBIGUOUS_GAME_MAPPING/
+    AMBIGUOUS_TEAM_MAPPING/PARSE_UNRESOLVED). A live rehearsal caught a
+    real bug where a cruder `reason is not None` check also counted
+    FCS_VS_FCS -- a correctly-classified, well-understood, UNSUPPORTED_MARKET
+    population (a large fraction of any early-season slate), not a
+    failure -- making the health check cry wolf on entirely normal data."""
+    if reason is None:
+        return False
+    return to_coverage_outcome(reason) == CoverageOutcome.TICKER_UNRESOLVED
 
 MAX_SCHEDULE_STALENESS_HOURS = 6.0
 """mission section 9: source schedule timestamp must be "fresh enough."
