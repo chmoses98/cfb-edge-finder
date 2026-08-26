@@ -1,0 +1,54 @@
+name: Research Settlement
+
+# Milestone E, Part E/P. Runs periodically after games are expected to
+# finish -- every 6 hours covers CFB's Saturday-heavy, but not
+# Saturday-only, schedule (Tuesday/Wednesday MACtion, occasional weekday
+# bowls) without needing a separate per-day-of-week schedule. Idempotent
+# (research/persistence.py's settlement fact-fingerprint dedup) --
+# running more often than strictly necessary is safe, just wasted CI
+# minutes, so 6h is a conservative, documented choice rather than a tight
+# one.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Season to settle"
+        required: false
+        default: "2026"
+      no_push:
+        required: false
+        default: "false"
+
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Configure git identity for durable-store commits
+        run: |
+          git config user.name "research-settlement-bot"
+          git config user.email "research-settlement-bot@users.noreply.github.com"
+      - name: Settle observations
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python scripts/research_settle.py \
+            --season "${{ github.event.inputs.season || '2026' }}" \
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}

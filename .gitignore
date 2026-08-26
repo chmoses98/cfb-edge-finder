@@ -1,0 +1,31 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+.env
+dist/
+build/
+
+# Large/raw data artifacts do not belong in git (see docs/STORAGE_STRATEGY.md).
+# Only compact, curated files should ever be added under data/ with -f.
+data/raw/
+data/archive/
+
+# scripts/ingest_schedule.py writes here at runtime. Not committed by
+# default: a fixture-mode run's output is synthetic test data, not a real
+# schedule, and committing it would misleadingly look like one. A genuine
+# live-fetched artifact worth keeping should be added explicitly with -f
+# once CFBD_API_KEY is configured and a real run has been verified.
+data/schedules/
+data/ingestion_reports/
+
+# Milestone E: the durable research corpus lives ONLY on the dedicated
+# research-data branch (see docs/MILESTONE_E.md), never on main/feature
+# branches. This ignores it here as a safety net against an accidental
+# `git add -A` committing a local/rehearsal run's output (e.g. --no-push)
+# to the wrong branch -- scripts/research_*.py always check out
+# research-data via research/git_durable_store.py before writing for real.
+data/research/

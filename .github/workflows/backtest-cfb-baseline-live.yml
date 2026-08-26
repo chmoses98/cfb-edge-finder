@@ -1,0 +1,143 @@
+name: Backtest CFB Baseline Live (manual)
+
+# Manual-only. No schedule/cron trigger -- this workflow exists to let a
+# human deliberately spend a handful of real, rate-limited CFBD API calls
+# (one /games + one /stats/game/advanced call per season, whole-season
+# pulls, not per-week) to run a genuine walk-forward backtest of the
+# Milestone C baseline model, not to run automatically or repeatedly.
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Space-separated seasons to backtest, e.g. '2022 2023 2024 2025'"
+        required: true
+        default: "2022 2023 2024 2025"
+      n_simulations:
+        description: "Monte Carlo simulations per game projection"
+        required: false
+        default: "6000"
+      calibration_method:
+        description: "Win-probability recalibration method (platt/isotonic/none)"
+        required: false
+        default: "platt"
+      ridge_lambda:
+        description: "Ridge penalty for individual FBS team offense/defense params"
+        required: false
+        default: "25.0"
+      fcs_ridge_lambda:
+        description: "Ridge penalty for pooled/tiered FCS offense/defense params"
+        required: false
+        default: "4.0"
+      pace_shrinkage_k:
+        description: "Games-of-evidence shrinkage constant for trailing pace"
+        required: false
+        default: "4.0"
+      season_shrinkage_k:
+        description: "Games-of-evidence shrinkage constant for season-carryover blend"
+        required: false
+        default: "4.0"
+      fcs_mode:
+        description: "FCS opponent model: pooled (Milestone C) or tiered (Milestone C.2 candidate)"
+        required: false
+        default: "pooled"
+      pace_mode:
+        description: "Pace model: symmetric (Milestone C) or matchup (Milestone C.2 totals candidate)"
+        required: false
+        default: "symmetric"
+      residual_scale:
+        description: "Global multiplier on every simulated residual draw (1.0 = Milestone C default)"
+        required: false
+        default: "1.0"
+      margin_correction_method:
+        description: "Favorite-tail margin correction: none (default), linear, or isotonic"
+        required: false
+        default: "none"
+      total_correction_method:
+        description: "Totals correction: none (default), linear, or isotonic"
+        required: false
+        default: "none"
+      total_correction_predictor:
+        description: "Totals correction predictor: total (default) or margin_magnitude"
+        required: false
+        default: "total"
+      variant_label:
+        description: "Free-text label for this ablation run"
+        required: false
+        default: ""
+      diagnostics:
+        description: "Print the full Milestone C.2 segmented diagnostic report"
+        required: false
+        default: "false"
+      fit_margin_artifact:
+        description: "If 'true', ALSO runs scripts/fit_margin_correction_artifact.py (prints the frozen margin-correction fit; see modeling/margin_correction_artifact.py) instead of skipping that job"
+        required: false
+        default: "false"
+
+# Read-only: this workflow only calls out to CFBD and prints diagnostics.
+# It never commits, pushes, or writes anything back to this repository.
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live CFB baseline backtest
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          DIAGNOSTICS_FLAG: ${{ github.event.inputs.diagnostics == 'true' && '--diagnostics' || '' }}
+          VARIANT_LABEL: ${{ github.event.inputs.variant_label }}
+        # scripts/backtest_cfb_baseline.py never prints the API key or an
+        # Authorization header, and exits non-zero on auth/HTTP/schema
+        # failure so this step fails loudly (red X) rather than silently
+        # swallowing an error.
+        run: |
+          python3 scripts/backtest_cfb_baseline.py \
+            --seasons ${{ github.event.inputs.seasons }} \
+            --mode live \
+            --n-simulations ${{ github.event.inputs.n_simulations }} \
+            --calibration-method ${{ github.event.inputs.calibration_method }} \
+            --ridge-lambda ${{ github.event.inputs.ridge_lambda }} \
+            --fcs-ridge-lambda ${{ github.event.inputs.fcs_ridge_lambda }} \
+            --pace-shrinkage-k ${{ github.event.inputs.pace_shrinkage_k }} \
+            --season-shrinkage-k ${{ github.event.inputs.season_shrinkage_k }} \
+            --fcs-mode ${{ github.event.inputs.fcs_mode }} \
+            --pace-mode ${{ github.event.inputs.pace_mode }} \
+            --residual-scale ${{ github.event.inputs.residual_scale }} \
+            --margin-correction-method ${{ github.event.inputs.margin_correction_method }} \
+            --total-correction-method ${{ github.event.inputs.total_correction_method }} \
+            --total-correction-predictor ${{ github.event.inputs.total_correction_predictor }} \
+            --variant-label "$VARIANT_LABEL" \
+            $DIAGNOSTICS_FLAG
+
+  fit-margin-artifact:
+    # Reuses this same registered workflow (workflow_dispatch requires the
+    # workflow FILE to exist on the default branch, but the job list/steps
+    # actually executed come from whatever ref is dispatched against -- so
+    # a brand-new, separate workflow file added only on a feature branch
+    # cannot be dispatched until merged. Adding a gated second job here,
+    # instead, lets scripts/fit_margin_correction_artifact.py run live from
+    # this feature branch immediately.
+    if: ${{ github.event.inputs.fit_margin_artifact == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Fit margin-correction artifact
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python3 scripts/fit_margin_correction_artifact.py \
+            --seasons ${{ github.event.inputs.seasons }} \
+            --mode live \
+            --n-simulations ${{ github.event.inputs.n_simulations }}
