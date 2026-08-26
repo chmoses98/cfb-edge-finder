@@ -94,15 +94,31 @@ first-half markets (needs a first-half `GameDistribution`, deliberately
 deferred) and validating the Normal-approximation assumption against real
 Milestone C output once it exists.
 
-## Milestone E — Kalshi universe capture
+## Milestone E — Preseason Production/Research Readiness
 
-Discover, map, and archive the complete supported market universe,
-reproducing the MLB audit's broad-sweep -> allowlist-classify -> parse ->
-match -> price pipeline (`docs/MLB_ARCHITECTURE_AUDIT.md` section 1) with
-CFB's own series tickers (`KXNCAAFGAME`, `KXNCAAFWINS`, `KXNCAAF` --
-see `docs/DATA_SOURCES.md`). This is also where the storage-strategy
-decision in `docs/STORAGE_STRATEGY.md` actually gets implemented, once
-there's real capture volume to justify it.
+Discovery/mapping/pricing of the supported market universe (this
+milestone's original scope, reproducing the MLB audit's broad-sweep ->
+allowlist-classify -> parse -> match -> price pipeline,
+`docs/MLB_ARCHITECTURE_AUDIT.md` section 1) was already delivered by
+Milestone D, ahead of this milestone's original sequencing -- see
+`docs/MILESTONE_D.md`. Milestone E was re-scoped to what the mission
+actually needed next: the durable, autonomous, season-long capture
+machine that has to exist BEFORE the first meaningful 2026 game, not
+individual pieces built "as we go." This is also where the storage-
+strategy decision in `docs/STORAGE_STRATEGY.md` actually gets
+implemented, now that real capture volume exists to justify it.
+
+**Status: done, not merged.** Durable append-only persistence (a
+dedicated `research-data` git branch, deterministic dedup, race-safe
+concurrent writes), the hourly scheduler with timing-bucket due/missed
+logic, kickoff-change/postponement handling, a rigorous closing
+definition, CFBD-sourced settlement (winner/spread/total, verified
+operators, no special-cased overtime), CLV/gap-bucket/correlation-aware
+research metrics, health monitoring with collapse thresholds, weekly/
+season reports, and a hard-disabled future qualification interface. Full
+write-up in `docs/MILESTONE_E.md`; see the mission's own final report for
+exact test/lint counts and the launch-readiness checklist. Recommendation/
+staking/execution logic remains entirely absent -- mechanically checked.
 
 ## Milestone F — Prospective snapshots
 
