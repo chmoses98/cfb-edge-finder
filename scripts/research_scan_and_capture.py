@@ -110,7 +110,13 @@ def _apply_scan(
             mapping: KalshiGameMappingResult = map_kalshi_event_to_game(
                 evidence, games, fcs_school_names=fcs_school_names
             )
-            if mapping.reason is not None:
+            # See research.scan_logic.is_genuine_mapping_failure's own
+            # docstring: a live rehearsal caught a cruder
+            # `mapping.reason is not None` check here also counting
+            # FCS_VS_FCS (a correctly-classified, understood population)
+            # as a failure, making a routine ~45% FCS-involved early-
+            # season slate look like a 72% mapping failure rate.
+            if scan_logic.is_genuine_mapping_failure(mapping.reason):
                 report.mapping_failures += len(event_markets)
 
             matched_game = (

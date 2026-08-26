@@ -127,6 +127,112 @@ def test_retried_run_with_identical_logical_row_does_not_duplicate(tmp_path):
     assert len(rows) == 1
 
 
+def test_orphan_commit_never_includes_stray_gitignored_main_tree_files(tmp_path):
+    """Regression test for a genuine bug a live rehearsal caught: when
+    `main`'s working tree (already checked out by `actions/checkout@v4`
+    before this module ever runs) has its own tracked source files AND a
+    `.gitignore` that excludes `data/research/` (correct on main, wrong
+    on research-data), the orphan-branch commit must contain ONLY the
+    durable-store data -- never a stray copy of main's source tree, and
+    never silently omit the real data because it happens to be
+    gitignored on the branch it was copied from."""
+    bare = tmp_path / "bare.git"
+    _run(["git", "init", "--bare", str(bare)], tmp_path)
+
+    clone_a = tmp_path / "clone_a"
+    _run(["git", "clone", str(bare), str(clone_a)], tmp_path)
+    _run(["git", "config", "user.email", "test@example.com"], clone_a)
+    _run(["git", "config", "user.name", "Test Runner"], clone_a)
+
+    # Seed `main` with a realistic stray source tree PLUS a .gitignore
+    # that excludes data/research/ -- exactly this repo's real shape.
+    (clone_a / "src").mkdir()
+    (clone_a / "src" / "app.py").write_text("print('hello')\n")
+    (clone_a / "tests").mkdir()
+    (clone_a / "tests" / "test_app.py").write_text("def test_x(): pass\n")
+    (clone_a / ".gitignore").write_text("data/research/\n")
+    _run(["git", "add", "-A"], clone_a)
+    _run(["git", "commit", "-m", "seed main with a real source tree"], clone_a)
+    _run(["git", "push", "-u", "origin", "HEAD:main"], clone_a)
+
+    # Now run the durable-store flow from THIS SAME working directory --
+    # exactly like the real workflow, which checks out main via
+    # actions/checkout@v4 and only then calls ensure_branch_checked_out
+    # in the SAME clone.
+    git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)
+
+    def apply_fn(repo_dir: Path) -> persistence.AppendResult:
+        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-REGRESSION"))
+        return persistence.append_observation_rows(path, [row])
+
+    result = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "capture: regression test")
+    assert result.append_result.written == 1
+
+    committed_files = _run(["git", "ls-tree", "-r", "--name-only", "HEAD"], clone_a).stdout.splitlines()
+    assert committed_files == ["data/research/observations/2026.jsonl"], (
+        f"orphan commit must contain ONLY the durable-store data, got: {committed_files}"
+    )
+
+    # A second, genuinely separate clone must be able to read that exact
+    # row back -- proving the fix actually restores cross-run visibility.
+    clone_c = tmp_path / "clone_c"
+    _run(["git", "clone", str(bare), str(clone_c)], tmp_path)
+    _run(["git", "checkout", BRANCH], clone_c)
+    final_path = persistence.canonical_path(clone_c / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+    rows = persistence.read_observation_rows(final_path)
+    assert len(rows) == 1
+    assert rows[0].observation.kalshi_market_ticker == "MKT-REGRESSION"
+
+
+def test_second_run_against_polluted_main_tree_correctly_dedupes(tmp_path):
+    """The other half of the regression: a SECOND run (fresh clone, same
+    polluted-main-tree shape) reading the FIRST run's now-correctly-
+    persisted data must see it and skip re-capturing the same logical
+    checkpoint -- this is the exact cross-run scenario the live
+    rehearsal's two scheduled runs failed before the fix."""
+    bare = tmp_path / "bare.git"
+    _run(["git", "init", "--bare", str(bare)], tmp_path)
+
+    clone_a = tmp_path / "clone_a"
+    _run(["git", "clone", str(bare), str(clone_a)], tmp_path)
+    _run(["git", "config", "user.email", "test@example.com"], clone_a)
+    _run(["git", "config", "user.name", "Test Runner"], clone_a)
+    (clone_a / "src").mkdir()
+    (clone_a / "src" / "app.py").write_text("print('hello')\n")
+    (clone_a / ".gitignore").write_text("data/research/\n")
+    _run(["git", "add", "-A"], clone_a)
+    _run(["git", "commit", "-m", "seed main"], clone_a)
+    _run(["git", "push", "-u", "origin", "HEAD:main"], clone_a)
+
+    shared_observation = make_observation(kalshi_market_ticker="MKT-CROSS-RUN")
+
+    def apply_fn(repo_dir: Path) -> persistence.AppendResult:
+        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        row = make_corpus_row(observation=shared_observation)
+        return persistence.append_observation_rows(path, [row])
+
+    git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)
+    result_a = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "run A")
+    assert result_a.append_result.written == 1
+
+    # A second, brand-new clone of `main` (fresh runner) with the SAME
+    # polluted-tree shape -- simulates the next hourly scheduled run.
+    clone_b = tmp_path / "clone_b"
+    _run(["git", "clone", str(bare), str(clone_b)], tmp_path)
+    _run(["git", "checkout", "main"], clone_b)
+    _run(["git", "config", "user.email", "test@example.com"], clone_b)
+    _run(["git", "config", "user.name", "Test Runner"], clone_b)
+
+    git_durable_store.ensure_branch_checked_out(clone_b, BRANCH)
+    result_b = git_durable_store.commit_and_push_with_retry(clone_b, BRANCH, apply_fn, "run B")
+    assert result_b.append_result.written == 0
+    assert result_b.append_result.skipped_duplicate == 1
+
+    committed_files = _run(["git", "ls-tree", "-r", "--name-only", "HEAD"], clone_b).stdout.splitlines()
+    assert committed_files == ["data/research/observations/2026.jsonl"]
+
+
 def test_no_op_apply_produces_no_new_commit(tmp_path):
     _bare, clone_a, _clone_b = _init_bare_and_clones(tmp_path)
     git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)

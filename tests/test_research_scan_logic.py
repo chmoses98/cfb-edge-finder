@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, "tests")
 from research_factories import make_data_versions, make_observation  # noqa: E402
 
+from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
 from cfb_edge_finder.research import scan_logic
 from cfb_edge_finder.research.identity import observation_key
 
@@ -87,3 +88,44 @@ def test_build_corpus_row_unmapped_game_uses_placeholder_in_key():
         schedule_source_timestamp=None, data_versions=make_data_versions(), run_id=None,
     )
     assert row.observation_key  # does not crash on missing game_id/model_version
+
+
+# --- is_genuine_mapping_failure: regression for a live rehearsal finding ---
+# (a cruder `reason is not None` check previously also flagged FCS_VS_FCS,
+# a correctly-classified, expected population, as a "mapping failure",
+# making a routine early-season slate look like a 72% failure rate.)
+
+
+def test_none_reason_is_not_a_failure():
+    assert scan_logic.is_genuine_mapping_failure(None) is False
+
+
+def test_fcs_vs_fcs_is_not_a_genuine_mapping_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.FCS_VS_FCS) is False
+
+
+def test_mapped_unsupported_population_is_not_a_genuine_mapping_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION) is False
+
+
+def test_non_game_futures_is_not_a_genuine_mapping_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.NON_GAME_FUTURES) is False
+
+
+def test_ambiguous_game_mapping_is_a_genuine_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.AMBIGUOUS_GAME_MAPPING) is True
+
+
+def test_ambiguous_team_mapping_is_a_genuine_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING) is True
+
+
+def test_parse_unresolved_is_a_genuine_failure():
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.PARSE_UNRESOLVED) is True
+
+
+def test_every_coverage_reason_is_classified_without_error():
+    # Exercises the total, tested to_coverage_outcome mapping for every
+    # reason -- never raises, always returns a bool.
+    for reason in KalshiCfbCoverageReason:
+        assert isinstance(scan_logic.is_genuine_mapping_failure(reason), bool)
