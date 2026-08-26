@@ -1,0 +1,58 @@
+name: Research Weekly Report
+
+# Milestone E, Part I/P. Once per week, Monday 09:00 UTC -- after the
+# Saturday/Sunday slate (plus a small Monday-night-game buffer for
+# settlement to catch up) and well ahead of the following week's first
+# kickoffs. Also builds the season-cumulative report on the same run
+# (mission section 23: keep it versioned, updated regularly).
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      season:
+        required: false
+        default: "2026"
+      week_label:
+        description: "e.g. wk01 -- required for the weekly report"
+        required: false
+        default: "wk01"
+      no_push:
+        required: false
+        default: "false"
+
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Configure git identity for durable-store commits
+        run: |
+          git config user.name "research-report-bot"
+          git config user.email "research-report-bot@users.noreply.github.com"
+      - name: Build weekly report
+        run: |
+          python scripts/research_weekly_report.py \
+            --season "${{ github.event.inputs.season || '2026' }}" \
+            --week-label "${{ github.event.inputs.week_label || 'wk01' }}" \
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+      - name: Build season cumulative report
+        run: |
+          python scripts/research_season_report.py \
+            --season "${{ github.event.inputs.season || '2026' }}" \
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}

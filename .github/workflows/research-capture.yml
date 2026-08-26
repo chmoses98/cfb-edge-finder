@@ -1,0 +1,77 @@
+name: Research Capture (scheduled scanner)
+
+# Milestone E, Part B/P. ONE scanner, not one workflow per game (mission
+# section 4): every run scans the whole not-started CFB slate and decides
+# which timing buckets are due (research/timing.py). Cadence: hourly
+# during the active season. GitHub Actions' own documented floor for
+# `schedule` is 5 minutes, and cron accuracy degrades under platform load
+# (GitHub's own docs note delays during high-demand periods) -- hourly is
+# comfortably above that floor, matches every numeric bucket's half-width
+# (>= 15 minutes, see research/timing.py), and keeps this well under
+# GitHub's per-repo concurrent-workflow fairness limits. A tighter cadence
+# (e.g. every 15 min near kickoff) is a documented future refinement, not
+# adopted here because it would require a second, kickoff-aware scheduling
+# mechanism this milestone deliberately keeps out of scope (mission
+# section 4: one scanner, not per-game infrastructure).
+#
+# `concurrency` serializes writers as the PRIMARY defense against a race
+# on the research-data branch; research/git_durable_store.py's fetch-
+# reset-retry loop is the secondary defense for the cases a concurrency
+# group doesn't cover (see that module's docstring).
+#
+# Requires this workflow to exist on the repository's default branch to
+# be schedulable at all (see the ci: register manual ... commits already
+# in this repo's history for the same GitHub constraint) -- until this
+# branch is merged, `workflow_dispatch` (ref=this branch) is the only way
+# to exercise it; the `schedule` trigger only fires for the copy on the
+# default branch.
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      schedule_season:
+        description: "CFBD season to scan"
+        required: false
+        default: "2026"
+      no_push:
+        description: "Write locally only, skip the durable push (dry run)"
+        required: false
+        default: "false"
+
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan-and-capture:
+    runs-on: ubuntu-latest
+    # Least-privilege: this job only needs write access to push to the
+    # dedicated research-data branch, never to main and never anything
+    # beyond `contents`. No Kalshi trading permission of any kind exists
+    # anywhere in this repository.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Configure git identity for durable-store commits
+        run: |
+          git config user.name "research-capture-bot"
+          git config user.email "research-capture-bot@users.noreply.github.com"
+      - name: Scan and capture
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python scripts/research_scan_and_capture.py \
+            --schedule-season "${{ github.event.inputs.schedule_season || '2026' }}" \
+            --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}

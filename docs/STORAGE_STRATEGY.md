@@ -45,14 +45,18 @@ file committed to git (path/hash/timestamp, not the bytes) lets a
 git-tracked record point at an archived blob without embedding it,
 preserving reproducibility without repository bloat.
 
-This is explicitly **not implemented in this foundation phase** -- no
-object-store client, no bucket, no credentials are wired up yet, because
-there is no real capture volume to store until Milestone E (Kalshi
-universe capture) exists. Building the storage client before there's
-anything to store would be premature infrastructure. What this phase does
-establish is the git/non-git boundary and the reasoning, so Milestone E
-doesn't have to make this decision under pressure once volume actually
-shows up.
+**Update (Milestone E, preseason readiness):** durable persistence is now
+implemented -- not the S3-compatible object store speculated above, but
+the "everything small enough stays in git" half of this document's own
+recommendation, applied directly: compact, normalized `KalshiResearchObservation`
+rows on a dedicated `research-data` branch (never `main`), append-only,
+deterministically deduped. The season-scale estimate in
+`docs/MILESTONE_E.md` shows even a deliberately worst-case capture volume
+stays comfortably within what git handles as line-oriented text, so the
+object-store client speculated above was not needed after all -- see that
+document's "Durable persistence" section for the full comparison and
+reasoning. `data/raw/` and `data/archive/` remain reserved and gitignored
+for genuinely raw/high-churn data if that ever changes.
 
 `data/.gitignore` rules already reserve `data/raw/` and `data/archive/` as
 paths that must never be added to git even accidentally, regardless of

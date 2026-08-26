@@ -21,3 +21,11 @@ data/archive/
 # once CFBD_API_KEY is configured and a real run has been verified.
 data/schedules/
 data/ingestion_reports/
+
+# Milestone E: the durable research corpus lives ONLY on the dedicated
+# research-data branch (see docs/MILESTONE_E.md), never on main/feature
+# branches. This ignores it here as a safety net against an accidental
+# `git add -A` committing a local/rehearsal run's output (e.g. --no-push)
+# to the wrong branch -- scripts/research_*.py always check out
+# research-data via research/git_durable_store.py before writing for real.
+data/research/
