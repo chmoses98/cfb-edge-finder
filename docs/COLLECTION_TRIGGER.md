@@ -110,6 +110,49 @@ and the guard must already have completed a full cycle by then —
 margin. Kickoffs cluster (noon, 3:30, 7:00), so overlapping bands
 collapse into a handful of short windows per game day.
 
+## The anti-runaway invariant
+
+On 2026-08-27T23:01Z one manual conductor dispatch produced 25+ runs at
+roughly three per minute. Two defects combined: the conductor could not
+read its CFBD credential (it used `Settings()` rather than
+`Settings.from_env()`), so it saw zero kickoffs and concluded it had
+nothing to guard — and "nothing to guard" then **fell through to an
+unconditional self-dispatch**. No collector ran and no research data was
+written, but nothing in the repository stopped the chain.
+
+**The invariant now:** a successor is dispatched only when *every* one of
+these holds, evaluated in one pure function (`may_dispatch_successor`)
+whose default is STOP and which has exactly one `return True`, after all
+deny paths:
+
+| # | Condition | Stops |
+|---|---|---|
+| 1 | self-continue enabled | a flagged-off run |
+| 2 | a real continuation reason (job budget reached with work ahead) | **the incident's exact path** |
+| 3 | a supported kickoff still inside the horizon | guarding nothing |
+| 4 | run lived ≥ 10 min | rapid chaining (~20s observed) |
+| 5 | generation < 24 | an endless lineage |
+| 6 | chain age < 12 h | a chain outliving its game window |
+
+These are deliberately **independent**. A logic error in any one cannot
+by itself recreate a storm: conditions 4, 5 and 6 are structural rate and
+lifetime bounds that hold regardless of what the planning logic concluded.
+Worst case, generation cap × rate floor puts a hard floor of four hours on
+what a runaway could even attempt, against ~20 seconds per generation
+observed during the incident.
+
+Each condition has its own test, plus a parametrised test asserting that
+*any single* failing condition stops the chain.
+
+### Chain lineage
+
+Every conductor carries `chain_id`, `generation`, and `chain_started_at`,
+passed to its successor as workflow inputs. Without lineage a runaway is
+invisible — every generation looks like a fresh manual dispatch, and the
+generation cap and chain lease cannot be enforced at all. The metadata is
+small and lives only in workflow inputs and run logs; nothing
+high-volume is persisted.
+
 ## Trigger SLA
 
 | | |

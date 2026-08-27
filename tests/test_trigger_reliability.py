@@ -9,6 +9,7 @@ than hoped for.
 
 from __future__ import annotations
 
+import inspect
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -375,57 +376,198 @@ def test_no_secret_is_echoed_by_the_conductor():
     assert "token present          : {bool(token)}" in source or "bool(token)" in source
 
 
-# --- the 2026-08-27T23:01Z live-dispatch failures -------------------------
+# --- the 2026-08-27T23:01Z incident ---------------------------------------
 #
-# The first dispatch of the merged conductor exposed two defects. One
-# manual dispatch at 23:01:00Z produced twelve runs by 23:04:59Z, each
-# finishing in ~20s and immediately starting the next. These pin both
-# root causes so neither can return.
+# One manual dispatch produced 25+ conductor runs at ~3/minute, none of
+# which invoked the collector. Two root causes; these tests exercise
+# BEHAVIOUR, not source text, because a source-string assertion would
+# have passed against a conductor that still could not read a credential.
+
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import capture_kalshi_cfb_snapshot as _milestone_d  # noqa: E402,F401  (import registers it for monkeypatching)
+
+import scripts.collection_conductor as conductor  # noqa: E402
+
+# --- root cause 1: configuration must actually propagate ------------------
 
 
-def test_conductor_reads_credentials_from_the_environment():
-    """Root cause 1: the conductor called `Settings()` -- the bare
-    dataclass constructor, whose fields all default to None -- instead of
-    `Settings.from_env()`. It therefore ran with no CFBD credential on
-    EVERY invocation, saw zero kickoffs, and concluded it had nothing to
-    guard. A conductor that can never see a kickoff can never guard one."""
-    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
-    assert "Settings.from_env()" in source
-    assert "settings = Settings()" not in source
+def test_cfbd_credential_actually_reaches_the_client(monkeypatch):
+    """Proves PROPAGATION, not spelling.
+
+    The conductor called `Settings()` -- the bare dataclass constructor,
+    every field defaulting to None -- so it ran with no CFBD credential on
+    every invocation and saw zero kickoffs. This captures the key the
+    client is actually constructed with, so the same class of bug (any
+    settings object that does not read the environment) fails here."""
+    seen = {}
+
+    class RecordingClient:
+        def __init__(self, api_key=None, **kwargs):
+            seen["api_key"] = api_key
+
+        def fetch_games(self, *a, **k):
+            return []
+
+    monkeypatch.setenv("CFBD_API_KEY", "test-key-12345")
+    monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", RecordingClient)
+    monkeypatch.setattr(
+        "capture_kalshi_cfb_snapshot._fetch_candidate_games",
+        lambda season, client, now: ([], {}),
+    )
+
+    conductor.supported_upcoming_kickoffs(2026, NOW)
+
+    assert seen.get("api_key") == "test-key-12345", (
+        "the conductor built its CFBD client without the environment credential"
+    )
 
 
-def test_settings_bare_constructor_really_is_empty():
-    """Guards the assumption above rather than trusting it."""
+def test_missing_credential_surfaces_rather_than_silently_returning_zero(monkeypatch):
+    """The failure mode that made the incident invisible: no credential
+    produced an empty kickoff list that looked exactly like 'no games'."""
+    monkeypatch.delenv("CFBD_API_KEY", raising=False)
     from cfb_edge_finder.config import Settings
 
-    assert Settings().cfbd_api_key is None
+    assert Settings.from_env().cfbd_api_key is None
+    assert Settings().cfbd_api_key is None, "bare constructor must remain credential-free"
 
 
-def test_no_successor_when_there_is_nothing_to_guard():
-    """Root cause 2: the loop broke out on 'no upcoming supported kickoff'
-    and then fell through to an UNCONDITIONAL self-dispatch, so a
-    conductor with nothing to do started another one immediately."""
-    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
-    assert "handoff_reason" in source
-    assert "elif handoff_reason is None:" in source
-    assert "no successor: nothing left to guard" in source
+# --- root cause 2 + the anti-runaway invariant ----------------------------
 
 
-def test_short_lived_run_may_not_start_a_successor():
-    """The structural backstop. Independent of why a run ended: a
-    conductor that lived only seconds cannot chain. Had this existed, the
-    runaway could not have formed even with the reason logic wrong."""
-    from scripts.collection_conductor import MIN_LIFETIME_FOR_HANDOFF_SECONDS  # type: ignore
-
-    assert MIN_LIFETIME_FOR_HANDOFF_SECONDS >= 300, "floor too low to stop a fast chain"
-    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
-    assert "lifetime < MIN_LIFETIME_FOR_HANDOFF_SECONDS" in source
+def _lineage(generation=0, age_hours=0.0):
+    return conductor.ChainLineage(
+        chain_id="chain-test",
+        generation=generation,
+        chain_started_at=NOW - timedelta(hours=age_hours),
+    )
 
 
-def test_handoff_requires_both_a_reason_and_the_lifetime_floor():
-    """Two independent conditions, so one being wrong cannot alone
-    recreate an unbounded chain."""
-    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
-    handoff = source[source.index("lifetime = (datetime.now(UTC) - started)") :]
-    assert handoff.index("elif handoff_reason is None:") < handoff.index("elif lifetime <")
-    assert handoff.index("elif lifetime <") < handoff.index("successor = dispatch_workflow(")
+def _decide(**over):
+    kwargs = dict(
+        self_continue_enabled=True,
+        handoff_reason="job budget reached with work still ahead",
+        run_lifetime_seconds=conductor.MIN_LIFETIME_FOR_HANDOFF_SECONDS + 1,
+        lineage=_lineage(),
+        now=NOW,
+        guard_still_needed=True,
+    )
+    kwargs.update(over)
+    return conductor.may_dispatch_successor(**kwargs)
+
+
+def test_nothing_to_guard_dispatches_no_successor():
+    """THE incident condition, asserted directly."""
+    allowed, reason = _decide(handoff_reason=None)
+    assert allowed is False
+    assert "nothing left to guard" in reason
+
+
+def test_no_upcoming_kickoff_dispatches_no_successor():
+    allowed, reason = _decide(guard_still_needed=False)
+    assert allowed is False
+    assert "no supported kickoff" in reason
+
+
+def test_rapid_handoff_is_refused():
+    """The rate floor: the incident chained every ~20 seconds."""
+    allowed, reason = _decide(run_lifetime_seconds=20.0)
+    assert allowed is False
+    assert "floor" in reason
+
+
+def test_generation_cap_terminates_a_chain():
+    allowed, reason = _decide(lineage=_lineage(generation=conductor.MAX_CHAIN_GENERATIONS))
+    assert allowed is False
+    assert "generation" in reason
+
+
+def test_chain_lease_terminates_a_long_lived_chain():
+    allowed, reason = _decide(lineage=_lineage(age_hours=13))
+    assert allowed is False
+    assert "lease" in reason
+
+
+def test_self_continue_flag_is_respected():
+    allowed, _ = _decide(self_continue_enabled=False)
+    assert allowed is False
+
+
+def test_successor_allowed_only_when_every_condition_holds():
+    allowed, reason = _decide()
+    assert allowed is True
+    assert "job budget" in reason
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"handoff_reason": None},
+        {"guard_still_needed": False},
+        {"run_lifetime_seconds": 1.0},
+        {"lineage": _lineage(generation=conductor.MAX_CHAIN_GENERATIONS + 5)},
+        {"lineage": _lineage(age_hours=99)},
+        {"self_continue_enabled": False},
+    ],
+)
+def test_any_single_failing_condition_stops_the_chain(override):
+    """Independence: no single guard carries the whole invariant, so one
+    logic error cannot recreate the storm."""
+    allowed, _ = _decide(**override)
+    assert allowed is False
+
+
+def test_decision_is_deny_by_default_with_no_fallthrough():
+    """The incident's shape was a `break` falling THROUGH to an
+    unconditional dispatch. Every deny path must return before the single
+    allow at the end."""
+    source = inspect.getsource(conductor.may_dispatch_successor)
+    body = source[source.index('"""', source.index('"""') + 3) :]
+    assert body.count("return True") == 1
+    assert body.rindex("return True") > body.rindex("return False")
+
+
+# --- lineage (section 4) --------------------------------------------------
+
+
+def test_successor_inherits_chain_identity_and_increments_generation():
+    parent = _lineage(generation=3)
+    child = parent.child()
+    assert child.chain_id == parent.chain_id
+    assert child.generation == 4
+    assert child.chain_started_at == parent.chain_started_at
+
+
+def test_lineage_is_passed_to_the_successor_as_workflow_inputs():
+    inputs = _lineage(generation=2).as_inputs()
+    assert inputs["chain_id"] == "chain-test"
+    assert inputs["generation"] == "3"
+    assert "chain_started_at" in inputs
+
+
+def test_workflow_declares_the_lineage_inputs():
+    conductor_yml = _workflow("research-collection-conductor.yml")
+    for field in ("chain_id", "generation", "chain_started_at"):
+        assert field in conductor_yml, f"lineage field {field} is not carried by the workflow"
+
+
+def test_bounded_chain_cannot_exceed_the_generation_cap():
+    """Walk a chain forward and prove it terminates."""
+    lineage = _lineage()
+    generations = 0
+    while True:
+        allowed, _ = _decide(lineage=lineage)
+        if not allowed:
+            break
+        lineage = lineage.child()
+        generations += 1
+        assert generations <= conductor.MAX_CHAIN_GENERATIONS + 1, "chain did not terminate"
+    assert generations == conductor.MAX_CHAIN_GENERATIONS
+
+
+def test_worst_case_chain_duration_is_bounded():
+    """Generation cap x rate floor gives a hard floor on how long a
+    runaway could possibly take, versus ~20s per generation observed."""
+    floor = conductor.MIN_LIFETIME_FOR_HANDOFF_SECONDS
+    assert conductor.MAX_CHAIN_GENERATIONS * floor >= 4 * 3600

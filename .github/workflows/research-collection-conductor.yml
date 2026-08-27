@@ -46,6 +46,21 @@ on:
         description: "Hand off to a successor conductor on exit"
         required: false
         default: "true"
+      # Chain lineage, set by a predecessor and never by a human. Without
+      # it every generation looks like a fresh manual dispatch, so the
+      # generation cap and chain lease cannot be enforced at all.
+      chain_id:
+        description: "Inherited chain identity (leave blank to start a new chain)"
+        required: false
+        default: ""
+      generation:
+        description: "Inherited handoff count (leave blank for a new chain)"
+        required: false
+        default: "0"
+      chain_started_at:
+        description: "Inherited chain start, ISO (leave blank for a new chain)"
+        required: false
+        default: ""
 
 # NOT research-data-write. This job spends most of its life asleep, and
 # putting it in the writers' group would let a sleeping conductor block
@@ -88,5 +103,8 @@ jobs:
           python scripts/collection_conductor.py \
             --season "${{ github.event.inputs.season || '2026' }}" \
             --ref "${{ github.ref_name }}" \
+            --chain-id "${{ github.event.inputs.chain_id }}" \
+            --generation "${{ github.event.inputs.generation || '0' }}" \
+            --chain-started-at "${{ github.event.inputs.chain_started_at }}" \
             ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
             ${{ github.event.inputs.self_continue == 'false' && '--no-self-continue' || '' }}
