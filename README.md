@@ -112,6 +112,10 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/PERFORMANCE.md` -- scanner performance: the per-ticker history
   re-read bottleneck, the one-load-per-run fix, output-equivalence proof,
   scale benchmarks, concurrency behaviour, remaining bottlenecks.
+- `docs/WEEK1_READINESS.md` -- end-to-end Week 1 audit: the system
+  diagram, workflow cadences, schema-version policy and how legacy rows
+  are treated, current live health, pending live proofs, findings, and
+  the Week 1 operating procedure.
 - `docs/RECOMMENDATION_SKELETON.md` -- the deliberately disabled
   recommendation/risk skeleton: the two independent locks (qualification
   disabled, no validated threshold artifact), evidence readiness,

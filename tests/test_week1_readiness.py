@@ -284,3 +284,113 @@ def test_quality_prerequisites_are_pure(tmp_path):
     for candidate in candidates:
         evaluate_quality_prerequisites(candidate, EligibilityConfig(max_quote_age_seconds=86_400), now=NOW)
     assert [str(c) for c in candidates] == before
+
+
+# --- durable store: a failed fetch is not an absent branch (section 18/19/21)
+
+
+def _git(args, cwd):
+    env = {
+        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+        "PATH": "/usr/bin:/bin", "HOME": str(cwd),
+    }
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, env=env, timeout=120)
+
+
+@pytest.fixture
+def remote_with_corpus(tmp_path):
+    """A bare remote holding a real research-data branch with rows in it."""
+    remote = tmp_path / "remote.git"
+    _git(["init", "-q", "--bare", str(remote)], tmp_path)
+    work = tmp_path / "work"
+    work.mkdir()
+    _git(["init", "-q"], work)
+    _git(["checkout", "-q", "-b", "main"], work)
+    (work / "code.py").write_text("x = 1\n", encoding="utf-8")
+    _git(["add", "-A"], work)
+    _git(["commit", "-qm", "main"], work)
+    _git(["push", "-q", str(remote), "main"], work)
+    _git(["checkout", "-q", "--orphan", "research-data"], work)
+    _git(["rm", "-rq", "--cached", "."], work)
+    (work / "code.py").unlink()
+    obs = work / "data" / "research" / "observations"
+    obs.mkdir(parents=True)
+    (obs / "2026.jsonl").write_text("REAL-1\nREAL-2\n", encoding="utf-8")
+    _git(["add", "-f", "data"], work)
+    _git(["commit", "-qm", "corpus"], work)
+    _git(["push", "-q", str(remote), "research-data"], work)
+    return remote
+
+
+def test_unreachable_remote_refuses_to_start_a_fresh_orphan(tmp_path, remote_with_corpus):
+    """The regression: a transient fetch failure used to be read as
+    'branch does not exist', so the run continued against an EMPTY corpus
+    and reported every captured label as due again."""
+    from cfb_edge_finder.research.git_durable_store import GitDurableStoreError, ensure_branch_checked_out
+
+    consumer = tmp_path / "consumer"
+    _git(["clone", "-q", str(remote_with_corpus), str(consumer)], tmp_path)
+    _git(["remote", "set-url", "origin", str(tmp_path / "does-not-exist.git")], consumer)
+
+    with pytest.raises(GitDurableStoreError) as excinfo:
+        ensure_branch_checked_out(consumer, "research-data")
+    assert "refusing" in str(excinfo.value).lower()
+
+
+def test_existing_branch_that_cannot_be_fetched_is_an_error(tmp_path, remote_with_corpus):
+    from cfb_edge_finder.research.git_durable_store import GitDurableStoreError, ensure_branch_checked_out
+
+    consumer = tmp_path / "consumer2"
+    _git(["clone", "-q", str(remote_with_corpus), str(consumer)], tmp_path)
+    # Reachable remote, but the branch fetch is made to fail by asking for
+    # a branch name that exists remotely under a refspec git cannot resolve
+    # locally is fragile; instead point at an unreadable path, which is the
+    # realistic transient case (network/auth), and assert we do not orphan.
+    _git(["remote", "set-url", "origin", "/proc/self/mem/nope.git"], consumer)
+    with pytest.raises(GitDurableStoreError):
+        ensure_branch_checked_out(consumer, "research-data")
+
+
+def test_genuinely_absent_branch_still_creates_the_orphan(tmp_path, remote_with_corpus):
+    """The legitimate first-run path must keep working -- the fix must not
+    turn a real cold start into a hard failure."""
+    from cfb_edge_finder.research.git_durable_store import ensure_branch_checked_out
+
+    consumer = tmp_path / "consumer3"
+    _git(["clone", "-q", str(remote_with_corpus), str(consumer)], tmp_path)
+    ensure_branch_checked_out(consumer, "branch-that-does-not-exist")
+    # symbolic-ref, not rev-parse: --orphan leaves the branch UNBORN (no
+    # commit yet), and rev-parse cannot resolve HEAD in that state.
+    head = _git(["symbolic-ref", "--short", "HEAD"], consumer).stdout.strip()
+    assert head == "branch-that-does-not-exist"
+
+
+def test_orphan_push_cannot_destroy_an_existing_corpus(tmp_path, remote_with_corpus):
+    """Belt-and-braces on the blast radius: even if an orphan run somehow
+    reached the push, a non-forced push is rejected and the real rows
+    survive. This is why the bug above was MEDIUM and not data loss."""
+    consumer = tmp_path / "consumer4"
+    _git(["clone", "-q", str(remote_with_corpus), str(consumer)], tmp_path)
+    _git(["checkout", "-q", "--orphan", "research-data-local"], consumer)
+    _git(["rm", "-rq", "--cached", "."], consumer)
+    obs = consumer / "data" / "research" / "observations"
+    obs.mkdir(parents=True, exist_ok=True)
+    (obs / "2026.jsonl").write_text("FRESH-ONLY\n", encoding="utf-8")
+    _git(["add", "-f", "data"], consumer)
+    _git(["commit", "-qm", "orphan"], consumer)
+
+    pushed = _git(["push", "origin", "HEAD:research-data"], consumer)
+    assert pushed.returncode != 0, "a non-fast-forward push must be rejected"
+
+    survivor = _git(["show", "research-data:data/research/observations/2026.jsonl"], tmp_path / "work")
+    assert "REAL-1" in survivor.stdout and "REAL-2" in survivor.stdout
+
+
+def test_dry_run_loads_the_real_corpus(tmp_path):
+    """--no-push used to skip the corpus fetch entirely, so a rehearsal
+    scanned an empty ledger and disagreed with the real run by 1,337
+    captures. The call must no longer be conditional on no_push."""
+    source = (REPO_ROOT / "scripts" / "research_scan_and_capture.py").read_text(encoding="utf-8")
+    assert "if not args.no_push:\n        git_durable_store.ensure_branch_checked_out" not in source
+    assert "git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)" in source

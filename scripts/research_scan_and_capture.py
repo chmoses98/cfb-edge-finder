@@ -516,8 +516,16 @@ def main() -> int:
     def training_cutoff_fn(request: GameProjectionRequest) -> str:
         return f"strictly before season={request.as_of_season} week={request.as_of_week}"
 
-    if not args.no_push:
-        git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
+    # A rehearsal must rehearse against the REAL corpus. Skipping this
+    # entirely under --no-push made the dry run scan an empty ledger, so
+    # every already-captured label looked due again: the same slate that
+    # a real run correctly reported as 0 captures due came back as 1,337
+    # (observed across runs 23 and 24 on 2026-08-27). A rehearsal whose
+    # answer differs that much from the real thing is worse than none.
+    #
+    # Read-only either way here: --no-push still refuses to commit or
+    # push below, it just stops pretending the corpus is empty.
+    git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
         return _apply_scan(
