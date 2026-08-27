@@ -35,6 +35,7 @@ from cfb_edge_finder.recommendation.thresholds import (
     ThresholdProvider,
 )
 from cfb_edge_finder.schemas.common import Side
+from cfb_edge_finder.schemas.schema_evolution import FieldAvailability, classify_field_availability
 
 QUALIFICATION_DISABLED = "QUALIFICATION_DISABLED"
 QUOTE_AGE_UNCONFIGURED = "UNCONFIGURED"
@@ -56,6 +57,12 @@ class QualityPrerequisite(StrEnum):
     SEMANTICS_RESOLVED = "SEMANTICS_RESOLVED"
     SUPPORTED_POPULATION = "SUPPORTED_POPULATION"
     MODEL_PROBABILITY_PRESENT = "MODEL_PROBABILITY_PRESENT"
+    LEGACY_SCHEMA_MARKET_STATUS_UNAVAILABLE = "LEGACY_SCHEMA_MARKET_STATUS_UNAVAILABLE"
+    """The row predates `market_status` (schemas/schema_evolution.py).
+    Reported INSTEAD of MARKET_EXECUTABLE so a 2026-08-26 legacy row is
+    not silently indistinguishable from a current row whose quote is
+    genuinely broken. It is exactly as disqualifying: the status is
+    unknowable, and unknowable is never executable."""
 
 
 class FamilyResearchStatus(StrEnum):
@@ -138,7 +145,14 @@ def evaluate_quality_prerequisites(
     if candidate.executable_price is None or candidate.fee_adjusted_break_even_probability is None:
         failures.append(QualityPrerequisite.EXECUTABLE_SIDE_PRESENT)
     if (candidate.market_status or "").strip().lower() not in EXECUTABLE_MARKET_STATUSES:
-        failures.append(QualityPrerequisite.MARKET_EXECUTABLE)
+        # Same verdict either way -- only the reported reason differs, so
+        # a legacy backlog cannot drown out a live regression.
+        availability = classify_field_availability("market_status", candidate.market_status, candidate.schema_version)
+        failures.append(
+            QualityPrerequisite.LEGACY_SCHEMA_MARKET_STATUS_UNAVAILABLE
+            if availability is FieldAvailability.LEGACY_SCHEMA_FIELD_ABSENT
+            else QualityPrerequisite.MARKET_EXECUTABLE
+        )
     if not candidate.semantics_resolved:
         failures.append(QualityPrerequisite.SEMANTICS_RESOLVED)
     if candidate.model_probability is None:

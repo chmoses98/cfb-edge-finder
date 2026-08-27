@@ -37,6 +37,7 @@ import capture_kalshi_cfb_snapshot as milestone_d  # noqa: E402
 from cfb_edge_finder.config import Settings  # noqa: E402
 from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: E402
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
+from cfb_edge_finder.kalshi.fee_schedule import KALSHI_FEE_SCHEDULE_2026_07_07_TAKER  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest  # noqa: E402
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
@@ -51,7 +52,7 @@ from cfb_edge_finder.research import (  # noqa: E402
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
 from cfb_edge_finder.schemas.capture_state import CaptureState, CaptureStateRecord  # noqa: E402
-from cfb_edge_finder.schemas.corpus_row import ResearchCorpusRow  # noqa: E402
+from cfb_edge_finder.schemas.corpus_row import CORPUS_SCHEMA_VERSION, ResearchCorpusRow  # noqa: E402
 from cfb_edge_finder.schemas.data_versions import DataVersionManifest  # noqa: E402
 from cfb_edge_finder.schemas.game import GameRecord  # noqa: E402
 from cfb_edge_finder.schemas.kalshi_observation import SnapshotTiming  # noqa: E402
@@ -68,9 +69,9 @@ def _build_data_versions(model_version: ModelVersion, captured_at: datetime) -> 
         cfbd_capture_timestamp=captured_at,
         kalshi_capture_timestamp=captured_at,
         mapping_version=MAPPING_VERSION,
-        fee_schedule_version=None,
+        fee_schedule_version=KALSHI_FEE_SCHEDULE_2026_07_07_TAKER.version_label,
         settlement_version=None,
-        snapshot_schema_version="research_corpus_v1",
+        snapshot_schema_version=CORPUS_SCHEMA_VERSION,
     )
 
 

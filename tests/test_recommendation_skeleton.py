@@ -255,11 +255,24 @@ def test_stale_quote_fails_when_a_policy_exists():
     assert QualityPrerequisite.QUOTE_FRESH in evaluate_quality_prerequisites(stale, config, now=NOW)
 
 
-@pytest.mark.parametrize("status", [None, "suspended", "closed", "finalized", "weird"])
+@pytest.mark.parametrize("status", ["suspended", "closed", "finalized", "weird"])
 def test_non_executable_market_status_fails(status):
     config = EligibilityConfig(max_quote_age_seconds=3600)
     c = _candidate(status=status)
     assert QualityPrerequisite.MARKET_EXECUTABLE in evaluate_quality_prerequisites(c, config, now=NOW)
+
+
+def test_absent_market_status_fails_with_the_legacy_reason():
+    """A None status on a row whose schema predates the field is reported
+    as LEGACY_SCHEMA_MARKET_STATUS_UNAVAILABLE rather than
+    MARKET_EXECUTABLE -- see schemas/schema_evolution.py. Equally
+    disqualifying, differently diagnosable: 1,724 legacy rows must not
+    drown out a live collector regression."""
+    config = EligibilityConfig(max_quote_age_seconds=3600)
+    failures = evaluate_quality_prerequisites(_candidate(status=None), config, now=NOW)
+    assert QualityPrerequisite.LEGACY_SCHEMA_MARKET_STATUS_UNAVAILABLE in failures
+    assert QualityPrerequisite.MARKET_EXECUTABLE not in failures
+    assert failures, "an absent status must still disqualify the candidate"
 
 
 def test_unverified_fee_schedule_fails():

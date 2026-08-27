@@ -108,6 +108,7 @@ def load_contract_snapshots(
                 model_version=model_version,
                 pricing_status=observation.get("pricing_status"),
                 series_ticker=ticker.split("-", 1)[0] or None,
+                schema_version=row.get("schema_version"),
             )
 
             existing = chosen.get(ticker)

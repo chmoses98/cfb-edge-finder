@@ -62,6 +62,10 @@ class ResearchCandidate:
     fee_schedule_version: str | None
     pricing_status: str | None
     semantics_resolved: bool
+    schema_version: str | None = None
+    """Corpus schema version of the source row. Lets eligibility say WHY a
+    field is missing -- schema too old vs. a current-schema defect --
+    without softening the gate either way."""
 
     @property
     def priceable(self) -> bool:
@@ -117,6 +121,7 @@ def build_candidates(
                 model_version=snapshot.model_version,
                 captured_at=snapshot.captured_at,
                 market_status=snapshot.market_status,
+                schema_version=snapshot.schema_version,
                 fee_status=snapshot.fee_status,
                 fee_schedule_version=snapshot.fee_schedule_version,
                 pricing_status=snapshot.pricing_status,

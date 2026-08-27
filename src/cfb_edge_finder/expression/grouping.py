@@ -62,6 +62,11 @@ class ContractSnapshot:
     model_version: str | None
     pricing_status: str | None
     series_ticker: str | None
+    schema_version: str | None = None
+    """Corpus schema version of the row this came from. Required to tell
+    a field the schema could not store from one it should have -- see
+    schemas/schema_evolution.py. Defaults to None (ranked oldest) so an
+    unstamped row is never credited with fields it may not carry."""
 
     @property
     def model_probability_no_side(self) -> float | None:
