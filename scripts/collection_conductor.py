@@ -74,9 +74,94 @@ MAX_JOB_SECONDS = 5 * 3600 + 30 * 60
 """Stay clear of GitHub's 6-hour job ceiling, leaving room to hand off to
 a successor before being killed mid-sleep."""
 
+MAX_CHAIN_GENERATIONS = 24
+"""How many times one chain may hand off before it must stop and let cron
+restart it. At the ~5.5h job budget this is far more than any real game
+day needs; it exists so a chain cannot outlive its purpose unnoticed."""
+
+MAX_CHAIN_LIFETIME_SECONDS = 12 * 3600
+"""Wall-clock lease on a whole chain, independent of generation count. A
+chain that has been alive half a day is guarding nothing real any more,
+whatever its counters say."""
+
+MIN_LIFETIME_FOR_HANDOFF_SECONDS = 600.0
+"""A conductor that lived under 10 minutes must not start another.
+
+Structural anti-runaway backstop, independent of why the run ended. On
+2026-08-27T23:01Z a logic error let every run hand off after ~20 seconds,
+producing roughly three runs a minute with no game within 41 hours. A
+correct conductor either guards for minutes or exits; nothing legitimate
+finishes in seconds AND needs a successor, so this floor cannot suppress
+real work."""
+
 MAX_IDLE_SLEEP_SECONDS = 30 * 60
 """Longest single wait when no band is open. Bounds how much runner time
 one conductor burns doing nothing, and how stale its schedule view gets."""
+
+
+@dataclass(frozen=True)
+class ChainLineage:
+    """Identity of one conductor chain, inherited by each successor.
+
+    Without it a runaway is invisible: every run looks like a fresh
+    manual dispatch, so nothing can tell "the 25th generation of a chain
+    that should have stopped" from "someone pressed Run". Carrying the
+    lineage forward is what makes generation count and chain age
+    enforceable at all."""
+
+    chain_id: str
+    generation: int
+    chain_started_at: datetime
+
+    def child(self) -> ChainLineage:
+        return ChainLineage(self.chain_id, self.generation + 1, self.chain_started_at)
+
+    def as_inputs(self) -> dict[str, str]:
+        return {
+            "chain_id": self.chain_id,
+            "generation": str(self.generation + 1),
+            "chain_started_at": self.chain_started_at.isoformat(),
+        }
+
+
+def may_dispatch_successor(
+    *,
+    self_continue_enabled: bool,
+    handoff_reason: str | None,
+    run_lifetime_seconds: float,
+    lineage: ChainLineage,
+    now: datetime,
+    guard_still_needed: bool,
+) -> tuple[bool, str]:
+    """Every condition a successor must satisfy, in one pure function.
+
+    *** THE INVARIANT ***
+    A successor is dispatched ONLY when ALL of these hold. There is no
+    fallthrough: the default is STOP, and each guard is independent, so a
+    logic error in any single one cannot by itself recreate a runaway.
+
+    The incident this encodes: on 2026-08-27T23:01Z the loop broke out on
+    "nothing to guard" and then fell THROUGH to an unconditional
+    dispatch. One manual dispatch became 25+ runs at ~3/minute. Making
+    the decision a pure function with an explicit deny-by-default is what
+    stops that shape of bug from being expressible here again."""
+    if not self_continue_enabled:
+        return False, "self-continue disabled by flag"
+    if handoff_reason is None:
+        return False, "nothing left to guard -- cron restarts a conductor when a game nears"
+    if not guard_still_needed:
+        return False, "no supported kickoff remains in the horizon"
+    if run_lifetime_seconds < MIN_LIFETIME_FOR_HANDOFF_SECONDS:
+        return False, (
+            f"run lived {run_lifetime_seconds:.0f}s, under the "
+            f"{MIN_LIFETIME_FOR_HANDOFF_SECONDS:.0f}s floor -- refusing to chain at this rate"
+        )
+    if lineage.generation + 1 > MAX_CHAIN_GENERATIONS:
+        return False, f"chain reached generation {lineage.generation}, cap is {MAX_CHAIN_GENERATIONS}"
+    chain_age = (now - lineage.chain_started_at).total_seconds()
+    if chain_age > MAX_CHAIN_LIFETIME_SECONDS:
+        return False, f"chain has lived {chain_age / 3600:.1f}h, lease is {MAX_CHAIN_LIFETIME_SECONDS / 3600:.0f}h"
+    return True, handoff_reason
 
 
 @dataclass
@@ -125,7 +210,12 @@ def supported_upcoming_kickoffs(season: int, now: datetime, horizon_hours: float
     from cfb_edge_finder.config import Settings
     from cfb_edge_finder.data.cfbd_client import CFBDClient
 
-    settings = Settings()
+    # from_env(), NOT Settings(): the bare constructor returns dataclass
+    # defaults with every key None, so the conductor silently ran with no
+    # CFBD credential, saw zero kickoffs, and concluded it had nothing to
+    # guard -- on every single invocation. The collector has always used
+    # from_env(); this line was the one place that diverged.
+    settings = Settings.from_env()
     client = CFBDClient(api_key=settings.cfbd_api_key)
     # The SAME schedule fetch and FBS/FCS classification the collector
     # uses, so the conductor cannot decide to guard a game the collector
@@ -159,6 +249,9 @@ def main() -> int:
         action="store_true",
         help="Compute and print the plan; dispatch nothing and sleep not at all.",
     )
+    parser.add_argument("--chain-id", default=None, help="Inherited chain identity; a new one is minted if absent.")
+    parser.add_argument("--generation", type=int, default=0, help="Inherited handoff count.")
+    parser.add_argument("--chain-started-at", default=None, help="Inherited chain start (ISO).")
     parser.add_argument(
         "--no-self-continue",
         action="store_true",
@@ -168,7 +261,24 @@ def main() -> int:
 
     token = os.environ.get("GITHUB_TOKEN", "")
     started = datetime.now(UTC)
+
+    chain_started_at = started
+    if args.chain_started_at:
+        try:
+            chain_started_at = datetime.fromisoformat(args.chain_started_at.replace("Z", "+00:00"))
+        except ValueError:
+            chain_started_at = started
+    lineage = ChainLineage(
+        chain_id=args.chain_id or f"chain-{started.strftime('%Y%m%dT%H%M%S')}-{os.urandom(3).hex()}",
+        generation=max(0, args.generation),
+        chain_started_at=chain_started_at,
+    )
+
     print(f"conductor start        : {started.isoformat()}")
+    print(f"chain id               : {lineage.chain_id}")
+    print(f"generation             : {lineage.generation} of max {MAX_CHAIN_GENERATIONS}")
+    print(f"chain started at       : {lineage.chain_started_at.isoformat()}")
+    print(f"chain age              : {(started - lineage.chain_started_at).total_seconds() / 60:.1f} min")
     print(f"repo / ref             : {args.repo or '(unset)'} / {args.ref}")
     print(f"tight interval         : {args.interval_seconds:.0f}s")
     print(f"guard lead             : {CLOSING_GUARD_LEAD_MINUTES:.0f} min before kickoff")
@@ -200,11 +310,13 @@ def main() -> int:
 
     dispatches = 0
     failures = 0
+    handoff_reason: str | None = None
     while dispatches < MAX_DISPATCHES_PER_RUN:
         now = datetime.now(UTC)
         elapsed = (now - started).total_seconds()
         if elapsed > args.max_seconds:
             print(f"job budget reached after {elapsed / 60:.0f} min")
+            handoff_reason = "job budget reached with work still ahead"
             break
 
         active, until_band = plan(now, kickoffs)
@@ -226,6 +338,13 @@ def main() -> int:
                     return 1
             sleep_for = args.interval_seconds
         elif until_band is None:
+            # NOT a handoff. Nothing to guard means this conductor's work
+            # is done; the hourly cron restarts one when a game
+            # approaches. Dispatching a successor here is what produced
+            # the runaway observed at 2026-08-27T23:01Z: with the next
+            # kickoff 41h out (beyond the 36h horizon) every run exited
+            # in ~20s and immediately started another, ~3 runs/minute
+            # with no game anywhere near.
             print("no upcoming supported kickoff in horizon -- conductor has nothing to guard")
             break
         else:
@@ -238,17 +357,43 @@ def main() -> int:
         remaining_budget = args.max_seconds - (datetime.now(UTC) - started).total_seconds()
         if sleep_for >= remaining_budget:
             print("next wait would exceed the job budget -- handing off")
+            handoff_reason = "next wait exceeds the job budget"
             break
         time.sleep(sleep_for)
 
     print(f"\ndispatches issued      : {dispatches}")
     print(f"dispatch failures      : {failures}")
 
-    if not args.no_self_continue:
+    lifetime = (datetime.now(UTC) - started).total_seconds()
+    print(f"run lifetime           : {lifetime:.0f}s")
+    print(f"handoff reason         : {handoff_reason or 'none -- nothing left to guard'}")
+
+    # A successor is for CONTINUING work, never for "there was nothing to
+    # do". Every condition lives in may_dispatch_successor, which denies
+    # by default -- see its docstring for the full invariant and the
+    # incident it encodes.
+    now_end = datetime.now(UTC)
+    guard_still_needed = seconds_until_guard_needed(now_end, kickoffs) is not None
+    allowed, decision = may_dispatch_successor(
+        self_continue_enabled=not args.no_self_continue,
+        handoff_reason=handoff_reason,
+        run_lifetime_seconds=lifetime,
+        lineage=lineage,
+        now=now_end,
+        guard_still_needed=guard_still_needed,
+    )
+    print(f"guard still needed     : {guard_still_needed}")
+    print(f"successor decision     : {'DISPATCH' if allowed else 'STOP'} -- {decision}")
+
+    if not allowed:
+        print("chain ends here. The */10 collector cron and manual dispatch remain unaffected.")
+    else:
         successor = dispatch_workflow(
-            args.repo, CONDUCTOR_WORKFLOW, args.ref, token, {"season": str(args.season)}
+            args.repo, CONDUCTOR_WORKFLOW, args.ref, token,
+            {"season": str(args.season), **lineage.as_inputs()},
         )
         print(f"successor conductor    : {successor.status} {'ok' if successor.ok else successor.detail}")
+        print(f"successor generation   : {lineage.generation + 1}")
         if not successor.ok:
             print("NO SUCCESSOR -- the chain has stopped; GitHub cron is now the only trigger.")
 
