@@ -1,13 +1,33 @@
 name: Research Settlement
 
-# Milestone E, Part E/P. Runs periodically after games are expected to
-# finish -- every 6 hours covers CFB's Saturday-heavy, but not
-# Saturday-only, schedule (Tuesday/Wednesday MACtion, occasional weekday
-# bowls) without needing a separate per-day-of-week schedule. Idempotent
-# (research/persistence.py's settlement fact-fingerprint dedup) --
-# running more often than strictly necessary is safe, just wasted CI
-# minutes, so 6h is a conservative, documented choice rather than a tight
-# one.
+# Runs periodically after games are expected to finish. Every 6 hours
+# covers CFB's Saturday-heavy, but not Saturday-only, schedule
+# (Tuesday/Wednesday MACtion, occasional weekday bowls) without needing a
+# separate per-day-of-week schedule.
+#
+# *** WHY THIS DOES NOT NEED THE COLLECTOR'S 10-MINUTE CADENCE ***
+# Prospective capture is racing a market: a closing line exists for
+# fourteen minutes and is gone forever. Settlement is racing nothing. A
+# final score does not expire, and an observation settled six hours after
+# kickoff carries exactly the same research value as one settled six
+# minutes after. Matching the collector's cadence would multiply CFBD and
+# Kalshi load 36x to make a permanent fact available slightly sooner.
+#
+# Both steps are idempotent, so running more often than strictly
+# necessary is safe -- just wasted CI minutes and API budget. 6h is a
+# deliberate, documented choice rather than a tight one.
+#
+# Two steps run in sequence:
+#   1. research_settle.py     -- MARKET-level outcome facts (one per
+#                                game/ticker), unchanged.
+#   2. research_attribute.py  -- OBSERVATION-level attribution (one per
+#                                captured checkpoint) with research-unit
+#                                economics and CLOSING linkage.
+# The second depends on the first only through the corpus, not through
+# process state, so a failure in one does not silently corrupt the other.
+#
+# Shares the `research-data-write` concurrency group with every other
+# corpus writer, so settlement can never interleave with a capture run.
 
 on:
   schedule:
@@ -45,10 +65,24 @@ jobs:
         run: |
           git config user.name "research-settlement-bot"
           git config user.email "research-settlement-bot@users.noreply.github.com"
-      - name: Settle observations
+      - name: Settle markets (outcome facts)
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: |
           python scripts/research_settle.py \
             --season "${{ github.event.inputs.season || '2026' }}" \
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+
+      # Per-observation attribution: resolves each captured checkpoint to
+      # its market's outcome with its own entry price, fee, hypothetical
+      # research-unit economics and CLOSING linkage. Exits non-zero on a
+      # settlement that disagrees with Kalshi's own finalized result.
+      - name: Attribute observations (per-checkpoint settlement)
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python scripts/research_attribute.py \
+            --season "${{ github.event.inputs.season || '2026' }}" \
+            --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            --trigger-type "${{ github.event_name }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
