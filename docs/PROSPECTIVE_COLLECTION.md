@@ -317,7 +317,35 @@ labels for the real slate and captures nothing.
 
 ## 13. Live validation evidence
 
-See the mission report and the workflow run linked there.
+Run [33101342018](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33101342018),
+`2026-08-27T18:01:15Z`, head `2133bae` — green.
+
+| | |
+|---|---|
+| Scan runtime | 7.93 s (vs ~45 s on main) |
+| Scheduled games | 3,550 (3,131 with a future kickoff) |
+| Markets discovered | 4,578 (full universe) |
+| API failures | 0 |
+| Corpus rows before → after | 1,724 → 1,724 |
+| Due labels / observations written | 0 / 0 |
+| Duplicates / malformed | 0 / 0 |
+| Unique-key invariant | holds |
+| `history_fetch_count` / `game_projection_count` | 0 / 0 |
+
+Nothing was due, so the CFBD history fetch never fired and the model never
+ran — which is precisely what makes the 10-minute cadence affordable.
+
+The read-only validator confirmed the windows against the real slate. Note
+the games 3.98 h from kickoff: `T_6H`'s window is 240–480 min and 3.98 h is
+238.8 min, just past the near edge, so `T_6H` is correctly *not* due and
+`T_90` is correctly next.
+
+**Closing live proof: PENDING.** No game was inside the 0–14 minute window
+at run time (`closing_due_count: 0`). Manufacturing a CLOSING label that
+was not legitimately due would corrupt the exact primitive this milestone
+protects, so none was. Closing logic is proven meanwhile by 28
+deterministic tests plus end-to-end capture tests; live proof will land on
+the first real FBS kickoff the scheduled cadence covers.
 
 ## 14. Deferred
 
