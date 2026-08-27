@@ -112,4 +112,8 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/PERFORMANCE.md` -- scanner performance: the per-ticker history
   re-read bottleneck, the one-load-per-run fix, output-equivalence proof,
   scale benchmarks, concurrency behaviour, remaining bottlenecks.
+- `docs/RECOMMENDATION_SKELETON.md` -- the deliberately disabled
+  recommendation/risk skeleton: the two independent locks (qualification
+  disabled, no validated threshold artifact), evidence readiness,
+  exposure grouping, and the safety tests proving zero actionable output.
 - `docs/ROADMAP.md` -- milestones A-H, critical path, what's next.

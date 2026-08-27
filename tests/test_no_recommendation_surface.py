@@ -10,6 +10,12 @@ Note: `cfb_edge_finder.schemas` legitimately defines
 closed enum with no behavior, not an implementation, so it is intentionally
 excluded from this scan. What's checked here is the set of packages where
 actual staking/execution *logic* would show up if someone added it.
+
+`cfb_edge_finder.recommendation` (the disabled recommendation/risk
+skeleton) is included deliberately: it is the package where a sizing or
+execution surface would most plausibly appear, so it is held to the same
+mechanical rule as the rest rather than being trusted because its
+docstrings say it is disabled.
 """
 
 from __future__ import annotations
@@ -19,10 +25,12 @@ import pkgutil
 
 import cfb_edge_finder.betting
 import cfb_edge_finder.data
+import cfb_edge_finder.expression
 import cfb_edge_finder.ingestion
 import cfb_edge_finder.kalshi
 import cfb_edge_finder.modeling
 import cfb_edge_finder.projections
+import cfb_edge_finder.recommendation
 import cfb_edge_finder.research
 import cfb_edge_finder.teams
 
@@ -61,6 +69,11 @@ _SCANNED_PACKAGES = (
     cfb_edge_finder.research,
     cfb_edge_finder.modeling,
     cfb_edge_finder.kalshi,
+    # The recommendation skeleton is the package most likely to grow a
+    # staking or execution surface, so it is scanned by the same rule as
+    # everything else rather than trusted to police itself.
+    cfb_edge_finder.recommendation,
+    cfb_edge_finder.expression,
 )
 _MILESTONE_B_PACKAGES = (cfb_edge_finder.ingestion, cfb_edge_finder.teams, cfb_edge_finder.data)
 
