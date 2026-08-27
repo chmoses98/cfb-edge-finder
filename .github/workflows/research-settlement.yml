@@ -73,6 +73,27 @@ jobs:
             --season "${{ github.event.inputs.season || '2026' }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
 
+      # *** WHY THE CODE IS RE-CHECKED-OUT HERE ***
+      # The previous step's `ensure_branch_checked_out` switches the
+      # working tree to the `research-data` ORPHAN branch, which holds
+      # data and no code. A second Python step therefore cannot find its
+      # own script -- a live run failed exactly that way
+      # (job 98627603145). The already-running interpreter in step 1 is
+      # unaffected because its module was loaded before the switch; a NEW
+      # process is not. Re-checking out the workflow ref restores
+      # scripts/ and src/, and the attribution script then does its own
+      # `ensure_branch_checked_out` exactly as the first one did.
+      - name: Restore code checkout after the durable-branch switch
+        uses: actions/checkout@v4
+
+      - name: Reinstall package after checkout
+        run: pip install -e ".[dev]"
+
+      - name: Configure git identity (restored checkout)
+        run: |
+          git config user.name "research-settlement-bot"
+          git config user.email "research-settlement-bot@users.noreply.github.com"
+
       # Per-observation attribution: resolves each captured checkpoint to
       # its market's outcome with its own entry price, fee, hypothetical
       # research-unit economics and CLOSING linkage. Exits non-zero on a
