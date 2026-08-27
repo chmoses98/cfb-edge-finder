@@ -211,10 +211,9 @@ def install_fake_market_feed(monkeypatch, markets_by_series: dict[str, list[dict
 
     calls: dict[str, int] = {}
 
-    def _fake(_client, series_ticker: str) -> list[dict]:
-        calls[series_ticker] = calls.get(series_ticker, 0) + 1
-        # Mirrors the real `_fetch_active_markets_safe`, which filters to
-        # status == "active" CLIENT-side (Kalshi rejects status= as a query
+    def _active(series_ticker: str) -> list[dict]:
+        # Mirrors the real fetch helper, which filters to status ==
+        # "active" CLIENT-side (Kalshi rejects status= as a query
         # parameter -- see that function's docstring). Without this the
         # fixture would be unfaithful in exactly the direction that hides
         # bugs: suspended/closed markets would reach pricing in tests but
@@ -225,5 +224,31 @@ def install_fake_market_feed(monkeypatch, markets_by_series: dict[str, list[dict
             if str(m.get("status", "")).lower() == "active"
         ]
 
+    def _fake(_client, series_ticker: str) -> list[dict]:
+        calls[series_ticker] = calls.get(series_ticker, 0) + 1
+        return _active(series_ticker)
+
+    def _fake_with_status(_client, series_ticker: str) -> tuple[list[dict], bool]:
+        """The variant the scheduled collector uses: (markets, fetch_failed).
+        `fetch_failed` is False here -- a fixture that never fails would
+        hide the API-failure path, so tests that care about it patch this
+        themselves (see install_failing_market_feed)."""
+        calls[series_ticker] = calls.get(series_ticker, 0) + 1
+        return _active(series_ticker), False
+
     monkeypatch.setattr(milestone_d, "_fetch_active_markets_safe", _fake)
+    monkeypatch.setattr(milestone_d, "_fetch_active_markets_with_status", _fake_with_status)
     return calls
+
+
+def install_failing_market_feed(monkeypatch, *, failing_series: set[str]) -> None:
+    """Simulates a Kalshi fetch failure (e.g. the live HTTP 429 that
+    exposed this path) for the named series."""
+    import capture_kalshi_cfb_snapshot as milestone_d
+
+    def _fake_with_status(_client, series_ticker: str) -> tuple[list[dict], bool]:
+        if series_ticker in failing_series:
+            return [], True
+        return [], False
+
+    monkeypatch.setattr(milestone_d, "_fetch_active_markets_with_status", _fake_with_status)

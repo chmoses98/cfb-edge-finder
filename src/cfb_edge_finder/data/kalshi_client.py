@@ -24,6 +24,8 @@ milestone must not build.
 
 from __future__ import annotations
 
+import time
+
 import requests
 
 DEFAULT_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
@@ -35,20 +37,77 @@ pricing sweep should never loop indefinitely against a live API, even if
 a cursor were to (incorrectly) never terminate."""
 
 
+RETRY_ATTEMPTS = 4
+"""Total attempts per request (1 initial + 3 retries)."""
+
+RETRY_BASE_DELAY_SECONDS = 1.0
+RETRY_MAX_DELAY_SECONDS = 8.0
+"""Worst case per request: 1 + 2 + 4 = 7s of sleeping. Bounded well
+under the collection cadence so a rate-limited run still finishes long
+before the next tick."""
+
+
 class KalshiClient:
     def __init__(self, base_url: str = DEFAULT_BASE_URL, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS):
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
 
     def _get(self, path: str, params: dict[str, object] | None = None) -> dict:
-        response = requests.get(
-            f"{self._base_url}{path}",
-            params={k: v for k, v in (params or {}).items() if v is not None},
-            headers={"Accept": "application/json"},
-            timeout=self._timeout_seconds,
-        )
-        response.raise_for_status()
-        return response.json()
+        """GET with bounded retry on transient failures.
+
+        *** WHY THIS EXISTS (live evidence, not speculation) ***
+        A live collection run (job 98618136387) got HTTP 429 partway
+        through paginating KXNCAAFTOTAL. The caller's own guard treated
+        that series as "0 markets and continuing", so the run reported
+        2,966 markets instead of ~4,578 and looked perfectly healthy while
+        silently dropping a third of the market universe -- including any
+        closing line those markets were about to produce. Raising the
+        collection cadence makes bursts like that MORE likely, not less.
+
+        Retries only genuinely transient statuses (429 and 5xx). A 4xx
+        that is not 429 is a real client error and is raised immediately:
+        retrying a 400 just turns one clear failure into five slow ones.
+        Backoff is exponential and honours `Retry-After` when the server
+        sends it."""
+        last_error: requests.HTTPError | None = None
+        for attempt in range(RETRY_ATTEMPTS):
+            response = requests.get(
+                f"{self._base_url}{path}",
+                params={k: v for k, v in (params or {}).items() if v is not None},
+                headers={"Accept": "application/json"},
+                timeout=self._timeout_seconds,
+            )
+            if response.status_code < 400:
+                return response.json()
+
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                last_error = exc
+
+            retryable = response.status_code == 429 or 500 <= response.status_code < 600
+            if not retryable or attempt == RETRY_ATTEMPTS - 1:
+                assert last_error is not None
+                raise last_error
+
+            time.sleep(self._retry_delay_seconds(response, attempt))
+
+        assert last_error is not None  # loop always raises or returns
+        raise last_error
+
+    @staticmethod
+    def _retry_delay_seconds(response: requests.Response, attempt: int) -> float:
+        """Server-provided `Retry-After` wins over our own backoff -- it
+        is the only party that actually knows how long the limit lasts.
+        Capped so a hostile or malformed header cannot stall a scheduled
+        run past its next cadence tick."""
+        header = response.headers.get("Retry-After")
+        if header:
+            try:
+                return min(float(header), RETRY_MAX_DELAY_SECONDS)
+            except ValueError:
+                pass
+        return min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS)
 
     def _paginate(
         self, path: str, params: dict[str, object], list_key: str, limit: int = DEFAULT_PAGE_LIMIT

@@ -158,13 +158,33 @@ def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list
 
     A genuine per-series HTTPError (e.g. real rate-limiting) is still
     caught here and reported rather than crashing the whole capture."""
+    markets, _failed = _fetch_active_markets_with_status(client, series_ticker)
+    return markets
+
+
+def _fetch_active_markets_with_status(client: KalshiClient, series_ticker: str) -> tuple[list[dict], bool]:
+    """As `_fetch_active_markets_safe`, but also reports whether the fetch
+    FAILED as opposed to genuinely returning nothing.
+
+    *** WHY THE DISTINCTION MATTERS (live evidence) ***
+    A live collection run (job 98618136387) hit HTTP 429 partway through
+    KXNCAAFTOTAL. The old code returned `[]` for it, which is
+    indistinguishable from "this series really has no active markets" --
+    so the run reported 2,966 markets instead of ~4,578, emitted no
+    failure signal, and looked healthy while silently dropping a third of
+    the market universe. Any closing line those markets were about to
+    produce would have gone missing with no attributable reason, which is
+    exactly what mission section 18's CLOSING_MISSING_API_FAILURE exists
+    to prevent. Callers that care (the scheduled collector) use this
+    variant and count the failure; the legacy signature is preserved for
+    callers that genuinely only want a best-effort list."""
     try:
         markets = client.fetch_markets(series_ticker=series_ticker)
     except requests.HTTPError as exc:
         print(f"  NOTE: GET /markets?series_ticker={series_ticker} failed ({exc})")
-        print(f"  Treating {series_ticker!r} as 0 markets and continuing.")
-        return []
-    return [m for m in markets if str(m.get("status", "")).lower() == "active"]
+        print(f"  Treating {series_ticker!r} as 0 markets and continuing, but recording an API FAILURE.")
+        return [], True
+    return [m for m in markets if str(m.get("status", "")).lower() == "active"], False
 
 
 def _evidence_from_market(market: dict, event_ticker: str) -> KalshiGameEvidence:

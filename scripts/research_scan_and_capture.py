@@ -139,7 +139,16 @@ def _apply_scan(
 
     for series_ticker, family in milestone_d.CORE_V1_SERIES_TO_FAMILY.items():
         with telemetry.phase("market_discovery_seconds"):
-            markets = milestone_d._fetch_active_markets_safe(kalshi_client, series_ticker)  # noqa: SLF001
+            markets, fetch_failed = milestone_d._fetch_active_markets_with_status(  # noqa: SLF001
+                kalshi_client, series_ticker
+            )
+        if fetch_failed:
+            # A failed series is NOT an empty series. Counting it makes the
+            # run fail loudly rather than under-reporting the market
+            # universe while looking healthy (see that helper's docstring
+            # for the live 429 that proved this).
+            report.api_failures += 1
+            telemetry.api_failure_count += 1
         report.markets_scanned += len(markets)
         telemetry.discovered_market_count += len(markets)
         markets_by_event: dict[str, list[dict]] = {}

@@ -511,3 +511,75 @@ def test_unexpected_zeros_fail_but_expected_ones_do_not():
 def test_closing_statuses_all_reachable_from_the_enum():
     assert closing_capture.MISSING_CLOSING_STATUSES
     assert all(s.value.startswith("CLOSING_MISSING") for s in closing_capture.MISSING_CLOSING_STATUSES)
+
+
+# --- API failure is never silently an empty series (section 15/18) -------
+
+
+def test_failed_series_fetch_is_counted_as_an_api_failure(tmp_path, monkeypatch):
+    """Regression for a live HTTP 429 (job 98618136387): a failed series
+    fetch used to return [] -- indistinguishable from "this series has no
+    active markets" -- so the run reported a third fewer markets, emitted
+    no failure signal, and looked healthy."""
+    from scan_harness import install_failing_market_feed
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    games, classification = make_games(2, kickoff_hours_ahead=6.0)
+    install_failing_market_feed(monkeypatch, failing_series={"KXNCAAFTOTAL"})
+
+    report = health.CaptureHealthReport()
+    telemetry = ScanTelemetry()
+    scanner._apply_scan(
+        repo,
+        season=SEASON,
+        games=games,
+        classification_by_game_id=classification,
+        fcs_school_names=frozenset(),
+        cache=GameProjectionCache(make_history_lines(games)),
+        kalshi_client=None,
+        model_version=MODEL_VERSION,
+        training_cutoff_fn=lambda r: "cutoff",
+        n_simulations=200,
+        seed=0,
+        now=NOW,
+        schedule_source_timestamp=NOW,
+        run_id="api-fail",
+        report=report,
+        telemetry=telemetry,
+    )
+    assert report.api_failures == 1, "a failed series fetch was not counted"
+    assert telemetry.api_failure_count == 1
+    assert health.should_fail_run(health.evaluate_collapse(report, None)) is True
+
+
+def test_successful_empty_series_is_not_an_api_failure(tmp_path, monkeypatch):
+    """The complement: a series that genuinely has no active markets must
+    NOT be reported as a failure."""
+    from scan_harness import install_failing_market_feed
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    games, classification = make_games(2, kickoff_hours_ahead=6.0)
+    install_failing_market_feed(monkeypatch, failing_series=set())
+
+    report = health.CaptureHealthReport()
+    scanner._apply_scan(
+        repo,
+        season=SEASON,
+        games=games,
+        classification_by_game_id=classification,
+        fcs_school_names=frozenset(),
+        cache=GameProjectionCache(make_history_lines(games)),
+        kalshi_client=None,
+        model_version=MODEL_VERSION,
+        training_cutoff_fn=lambda r: "cutoff",
+        n_simulations=200,
+        seed=0,
+        now=NOW,
+        schedule_source_timestamp=NOW,
+        run_id="empty-ok",
+        report=report,
+        telemetry=ScanTelemetry(),
+    )
+    assert report.api_failures == 0

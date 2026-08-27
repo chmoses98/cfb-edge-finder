@@ -250,6 +250,30 @@ most runs at a 10-minute cadence have nothing due. Zero *markets* or zero
 *games* is a HIGH failure, because those can only mean a broken data
 source.
 
+## 9a. Data-source failures
+
+A failed series fetch is **not** an empty series. A live collection run
+(job 98618136387) hit HTTP 429 partway through `KXNCAAFTOTAL`; the old
+code returned `[]` for it, which is indistinguishable from "this series
+genuinely has no active markets". The run reported 2,966 markets instead
+of ~4,578, emitted no failure signal, and looked perfectly healthy while
+silently dropping a third of the market universe — including any closing
+line those markets were about to produce.
+
+Two fixes:
+
+1. **Bounded retry with backoff** in `KalshiClient._get` — retries only
+   genuinely transient statuses (429 and 5xx), honours `Retry-After`
+   (capped), and fails fast on any other 4xx, because retrying a 400 just
+   turns one clear failure into several slow ones. Worst case 7 s of
+   sleeping per request, bounded well under the collection cadence.
+2. **Explicit accounting** — `_fetch_active_markets_with_status` returns
+   `(markets, fetch_failed)`, and the collector increments
+   `api_failures`, which is HIGH severity and fails the run.
+
+Raising the cadence makes rate-limit bursts more likely, not less, so
+this had to be fixed as part of the cadence change rather than after it.
+
 ## 10. Stale-data policy
 
 `scan_logic.guard_capture_allowed` rejects a capture when the game is not

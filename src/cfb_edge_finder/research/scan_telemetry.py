@@ -59,6 +59,7 @@ class ScanTelemetry:
     history_fetch_seconds: float = 0.0
     priced_contract_count: int = 0
     unresolved_count: int = 0
+    api_failure_count: int = 0
     closing_due_count: int = 0
     closing_captured_count: int = 0
     duplicate_count: int = 0
