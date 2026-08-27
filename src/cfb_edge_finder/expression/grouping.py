@@ -271,9 +271,6 @@ def _complement_key(key: str) -> str | None:
     if len(parts) != 3:
         return None
     game, dimension, condition = parts
-    if dimension == "WINNER":
-        other = "away" if condition == "home" else "home"
-        return f"{game}|WINNER|{other}"
     if dimension == "MARGIN":
         for operator, inverse in ((">=", "<"), ("<=", ">"), (">", "<="), ("<", ">=")):
             if f"home_margin{operator}" in condition:

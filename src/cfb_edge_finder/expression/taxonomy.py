@@ -55,11 +55,19 @@ from cfb_edge_finder.schemas.common import MarketFamily, Side
 class MarketDimension(StrEnum):
     """The latent football quantity a contract resolves against."""
 
-    WINNER = "WINNER"
-    """Which team wins. Decided by the sign of the final margin."""
-
     MARGIN = "MARGIN"
-    """The final margin itself. Every spread rung reads this one number."""
+    """The final margin. BOTH the moneyline and every spread rung read
+    this one number: a moneyline is simply the rung at threshold 0
+    ("home_margin > 0"), which is why `Team A ML`, `Team A -3.5` and
+    `Team A -7.5` belong to one margin thesis group rather than to
+    separate dimensions. Treating the winner as its own dimension would
+    hide that a moneyline and a spread on the same team move together."""
+
+    WINNER = "WINNER"
+    """Retained as a LABEL for winner-specific diagnostics (see
+    `check_model_tie_mass`). Deliberately not a grouping dimension -- no
+    market family maps to it, because the winner is not a separate latent
+    quantity from the margin."""
 
     TOTAL = "TOTAL"
     """Combined final score."""
@@ -92,7 +100,9 @@ class CorrelationClass(StrEnum):
 
 
 FAMILY_TO_DIMENSION = {
-    MarketFamily.MONEYLINE: MarketDimension.WINNER,
+    # Moneyline and spread share the MARGIN dimension on purpose -- see
+    # MarketDimension.MARGIN's docstring.
+    MarketFamily.MONEYLINE: MarketDimension.MARGIN,
     MarketFamily.SPREAD: MarketDimension.MARGIN,
     MarketFamily.TOTAL: MarketDimension.TOTAL,
 }
@@ -160,13 +170,19 @@ def truth_condition_key(semantics: ContractSemantics, executable_side: Side) -> 
 
     game = semantics.game_id
     if semantics.family is MarketFamily.MONEYLINE:
-        # YES on the home ticket and NO on the away ticket are the same
-        # event, because settlement partitions every final score into
-        # exactly one winner (a 0 margin resolves to AWAY).
+        # Expressed in the SAME canonical margin language as the spread
+        # rungs, because a moneyline is the rung at threshold 0.
+        # Settlement sets actual_winner = HOME iff home_margin > 0, so:
+        #   home wins  <=>  home_margin > 0
+        #   away wins  <=>  home_margin <= 0        (a 0 margin is AWAY)
+        # YES on the home ticket and NO on the away ticket therefore
+        # produce the identical key, which is the exact-equivalence the
+        # settlement rule guarantees.
         team_wins = semantics.team
         if executable_side is Side.NO:
             team_wins = Side.AWAY if team_wins is Side.HOME else Side.HOME
-        return f"{game}|WINNER|{team_wins.value}"
+        condition = "home_margin>0" if team_wins is Side.HOME else "home_margin<=0"
+        return f"{game}|MARGIN|{condition}"
 
     if semantics.family is MarketFamily.SPREAD:
         # Settlement: team_margin > threshold, where away_margin is
@@ -212,8 +228,4 @@ def classify_pair(a: ContractSemantics, b: ContractSemantics) -> CorrelationClas
         return CorrelationClass.SAME_MARGIN_DIMENSION_NESTED
     if a.dimension is MarketDimension.TOTAL:
         return CorrelationClass.SAME_TOTAL_DIMENSION_NESTED
-    if a.dimension is MarketDimension.WINNER:
-        # Two winner contracts on one game that are not the same event
-        # can only be the two opposite winners.
-        return CorrelationClass.SAME_MARGIN_DIMENSION_NESTED
     return CorrelationClass.EQUIVALENCE_UNRESOLVED
