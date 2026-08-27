@@ -75,7 +75,35 @@ def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin
             raise GitDurableStoreError(f"checkout of {branch!r} failed: {checkout.stderr}")
         return
 
-    # Remote branch does not exist yet -- create it as a fresh orphan.
+    # *** A FAILED FETCH IS NOT AN ABSENT BRANCH ***
+    # `git fetch` exits non-zero for a missing branch AND for a network
+    # blip, an auth expiry, or a GitHub outage. Treating every non-zero
+    # as "first run, start fresh" meant a transient failure silently
+    # continued against an EMPTY corpus: every already-captured label
+    # looked due again, so the run re-priced the whole slate and reported
+    # (observed live) 1,337 captures due where the true answer was 0.
+    #
+    # That failed safe -- the orphan has no shared history, so the
+    # non-forced push below is rejected as non-fast-forward and
+    # _reset_to_remote_tip recovers the real corpus (verified against a
+    # real remote: the existing rows survive untouched). But it burns a
+    # full scan and, worse, reports wildly wrong telemetry during exactly
+    # the incident an operator is trying to read. So ask the remote
+    # directly what exists, and fail loudly when we cannot tell.
+    listing = _run(["git", "ls-remote", "--heads", remote, branch], repo_dir)
+    if listing.returncode != 0:
+        raise GitDurableStoreError(
+            f"cannot reach {remote!r} to determine whether {branch!r} exists "
+            f"(fetch: {fetch.stderr.strip()!r}; ls-remote: {listing.stderr.strip()!r}) -- "
+            f"refusing to start a fresh orphan branch, which would scan against an empty corpus"
+        )
+    if listing.stdout.strip():
+        raise GitDurableStoreError(
+            f"{branch!r} exists on {remote!r} but could not be fetched: {fetch.stderr.strip()!r} -- "
+            f"refusing to continue against an empty corpus"
+        )
+
+    # Genuinely absent on the remote -- this is the first run.
     orphan = _run(["git", "checkout", "--orphan", branch], repo_dir)
     if orphan.returncode != 0:
         raise GitDurableStoreError(f"orphan checkout of {branch!r} failed: {orphan.stderr}")

@@ -21,8 +21,13 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from cfb_edge_finder.schemas.data_versions import DataVersionManifest
 from cfb_edge_finder.schemas.kalshi_observation import KalshiResearchObservation
+from cfb_edge_finder.schemas.schema_evolution import CURRENT_CORPUS_SCHEMA_VERSION
 
-CORPUS_SCHEMA_VERSION = "research_corpus_v1"
+CORPUS_SCHEMA_VERSION = CURRENT_CORPUS_SCHEMA_VERSION
+"""Single source of truth, defined in schema_evolution.py alongside the
+field-introduction registry that gives the version its meaning. Bumping
+it here without registering what changed there would produce a version
+nothing can interpret."""
 
 CaptureMode = Literal["PROSPECTIVE", "RETROSPECTIVE_BACKFILL"]
 """PROSPECTIVE: captured by the live scheduler before/at the checkpoint it

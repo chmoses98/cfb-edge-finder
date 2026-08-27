@@ -135,6 +135,35 @@ jobs:
             --schedule-season "$SEASON" \
             --data-repo-dir "$CORPUS_DIR"
 
+      # Read-only, and deliberately BEFORE the scan: the scan's
+      # ensure_branch_checked_out moves the working tree to the
+      # research-data orphan branch, which carries data and no code, so a
+      # step placed after it cannot find its own script. The corpus is
+      # materialised with `git show` for the same reason.
+      #
+      # --live is what makes this worth running: it compares the CURRENT
+      # Kalshi status vocabulary against the eligibility allow-list. If
+      # Kalshi ever renames "active", every Week 1 row fails
+      # MARKET_EXECUTABLE while every run still exits 0, and this is the
+      # only check that would notice before the games.
+      - name: Week 1 readiness (read-only, manual runs only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          SEASON: ${{ github.event.inputs.schedule_season || '2026' }}
+        run: |
+          set -euo pipefail
+          CORPUS_DIR="$RUNNER_TEMP/corpus"
+          for kind in observations settlements attributions; do
+            mkdir -p "$CORPUS_DIR/data/research/$kind"
+            git show "origin/research-data:data/research/$kind/${SEASON}.jsonl" \
+              > "$CORPUS_DIR/data/research/$kind/${SEASON}.jsonl" 2>/dev/null || true
+          done
+          python scripts/week1_readiness.py \
+            --data-repo-dir "$CORPUS_DIR" \
+            --season "$SEASON" \
+            --live
+
       - name: Scan and capture
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
