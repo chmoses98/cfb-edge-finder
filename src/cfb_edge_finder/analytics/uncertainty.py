@@ -99,16 +99,43 @@ def cluster_bootstrap_mean(
             f"only {n_clusters} distinct cluster(s); need >= {min_clusters} for a meaningful interval",
         )
 
-    clusters = list(by_cluster.values())
     rng = random.Random(seed)
     samples: list[float] = []
-    for _ in range(iterations):
-        drawn: list[float] = []
-        for _ in range(n_clusters):
-            drawn.extend(clusters[rng.randrange(n_clusters)])
-        stat = statistic(drawn)
-        if stat is not None:
-            samples.append(stat)
+
+    if statistic is _mean:
+        # *** WHY THE MEAN IS BOOTSTRAPPED ON CLUSTER TOTALS ***
+        # The obvious implementation concatenates every drawn cluster's
+        # raw values and re-means them, which is O(iterations x n). At
+        # 100k rows that made report generation take 80 seconds, and it
+        # grows with the corpus -- the same shape of mistake this repo
+        # already fixed once in the capture path.
+        #
+        # The mean of a cluster-resample is exactly
+        #     sum(drawn cluster sums) / sum(drawn cluster counts),
+        # so precomputing (sum, count) per cluster makes each iteration
+        # O(n_clusters) instead of O(n). This is an ALGEBRAIC identity,
+        # not an approximation: the resulting distribution is identical.
+        totals = [(sum(v), len(v)) for v in by_cluster.values()]
+        for _ in range(iterations):
+            drawn_sum = 0.0
+            drawn_count = 0
+            for _ in range(n_clusters):
+                cluster_sum, cluster_count = totals[rng.randrange(n_clusters)]
+                drawn_sum += cluster_sum
+                drawn_count += cluster_count
+            if drawn_count:
+                samples.append(drawn_sum / drawn_count)
+    else:
+        # A caller-supplied statistic cannot be decomposed, so fall back
+        # to the general (slower) resample-the-values form.
+        clusters = list(by_cluster.values())
+        for _ in range(iterations):
+            drawn: list[float] = []
+            for _ in range(n_clusters):
+                drawn.extend(clusters[rng.randrange(n_clusters)])
+            stat = statistic(drawn)
+            if stat is not None:
+                samples.append(stat)
 
     if not samples:
         return ClusteredEstimate(point, len(values), n_clusters, False, "bootstrap produced no usable samples")
