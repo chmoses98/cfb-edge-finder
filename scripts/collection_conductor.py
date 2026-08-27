@@ -369,10 +369,9 @@ def main() -> int:
     print(f"handoff reason         : {handoff_reason or 'none -- nothing left to guard'}")
 
     # A successor is for CONTINUING work, never for "there was nothing to
-    # do". Both conditions are required, and the lifetime floor is a
-    # structural backstop that holds even if the reason logic is wrong
-    # again: a run that did nothing for less than MIN_LIFETIME_FOR_HANDOFF
-    # seconds can never start another, so a runaway cannot re-form.
+    # do". Every condition lives in may_dispatch_successor, which denies
+    # by default -- see its docstring for the full invariant and the
+    # incident it encodes.
     now_end = datetime.now(UTC)
     guard_still_needed = seconds_until_guard_needed(now_end, kickoffs) is not None
     allowed, decision = may_dispatch_successor(
