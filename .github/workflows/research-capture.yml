@@ -172,5 +172,6 @@ jobs:
             --schedule-season "${{ github.event.inputs.schedule_season || '2026' }}" \
             --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
             --trigger-type "${{ github.event_name }}" \
+            --trigger-actor "${{ github.actor }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
 

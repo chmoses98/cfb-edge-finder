@@ -39,7 +39,7 @@ import json
 import re
 import sys
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -51,7 +51,21 @@ from cfb_edge_finder.recommendation.eligibility import (  # noqa: E402
     EligibilityConfig,
 )
 from cfb_edge_finder.recommendation.pipeline import run_pipeline  # noqa: E402
+from cfb_edge_finder.research.heartbeat import (  # noqa: E402
+    heartbeat_path,
+    last_successful_run,
+    load_heartbeats,
+)
 from cfb_edge_finder.research.timing import ALL_PREGAME_LABELS  # noqa: E402
+from cfb_edge_finder.research.trigger import (  # noqa: E402
+    CLOSING_GUARD_LEAD_MINUTES,
+    TIGHT_INTERVAL_SECONDS,
+    TriggerHealth,
+    TriggerType,
+    assess_trigger_health,
+    checkpoints_for_kickoff,
+    next_checkpoint,
+)
 from cfb_edge_finder.schemas.corpus_row import CORPUS_SCHEMA_VERSION  # noqa: E402
 from cfb_edge_finder.schemas.schema_evolution import (  # noqa: E402
     FieldAvailability,
@@ -340,6 +354,103 @@ def section_candidates(repo_dir: Path, season: int, findings: Findings, now: dat
         )
 
 
+MAX_DISPATCH_LATENCY_SECONDS = 30.0
+"""Measured, not assumed: the self-dispatch probe on 2026-08-27 created
+the successor run in under a second (22:02:27 dispatch, 22:02:27 start).
+30s is a deliberately pessimistic allowance over that."""
+
+FULL_COLLECTOR_RUNTIME_SECONDS = 55.0
+"""Observed worst case for a full scan that prices everything due
+(54.6s). Idle runs are ~3.3s, but the deadline maths must assume the
+expensive case."""
+
+
+def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Findings, now: datetime) -> None:
+    """Trigger health, judged against football deadlines.
+
+    Reported PER TRIGGER on purpose: a conductor chain that has silently
+    stopped is invisible in an overall 'last run' figure whenever cron
+    happens to have fired recently -- and it is the conductor, not cron,
+    that protects CLOSING."""
+    print("\n## Trigger health")
+    beats = load_heartbeats(heartbeat_path(repo_dir, season))
+    print(f"  heartbeat rows                : {len(beats)}")
+    print(f"  primary trigger               : {TriggerType.EXTERNAL_SCHEDULE.value} (conductor chain)")
+    print(f"  fallback trigger              : {TriggerType.GITHUB_SCHEDULE.value} (*/10 cron)")
+    print(f"  emergency trigger             : {TriggerType.MANUAL.value} (workflow_dispatch)")
+
+    overall = last_successful_run(beats)
+    for trigger in (TriggerType.EXTERNAL_SCHEDULE, TriggerType.GITHUB_SCHEDULE, TriggerType.MANUAL):
+        stamp = last_successful_run(beats, trigger.value)
+        age = f"{(now - stamp).total_seconds() / 60:.0f} min ago" if stamp else "never"
+        print(f"  last success [{trigger.value:<17}]: {age}")
+    print(f"  last success [any trigger]    : "
+          f"{f'{(now - overall).total_seconds() / 60:.0f} min ago' if overall else 'never'}")
+
+    # Checkpoints for every supported game still ahead of us, from the corpus.
+    by_game: dict[str, dict] = {}
+    for row in rows:
+        obs = row.get("observation", {})
+        game_id = obs.get("game_id")
+        if not game_id:
+            continue
+        entry = by_game.setdefault(game_id, {"kickoff": None, "labels": set()})
+        kickoff = _parse_ts(row.get("kickoff_utc_at_capture"))
+        if kickoff:
+            entry["kickoff"] = kickoff
+        label = (obs.get("snapshot_timing") or {}).get("label")
+        if label:
+            entry["labels"].add(label)
+
+    checkpoints = []
+    for game_id, entry in by_game.items():
+        if entry["kickoff"] is None or entry["kickoff"] <= now:
+            continue
+        checkpoints.extend(checkpoints_for_kickoff(game_id, entry["kickoff"], entry["labels"]))
+
+    upcoming = next_checkpoint(checkpoints, now)
+    closing_next = next_checkpoint(checkpoints, now, only_unrecoverable=True)
+    ahead = sum(1 for e in by_game.values() if e["kickoff"] and e["kickoff"] > now)
+    print(f"  supported games ahead         : {ahead}")
+    if upcoming:
+        print(f"  next checkpoint               : {upcoming.label} ({upcoming.game_id})")
+        print(f"  time until it closes          : {upcoming.slack_seconds(now) / 60:.0f} min")
+    else:
+        print("  next checkpoint               : none pending")
+    if closing_next:
+        print(f"  next CLOSING deadline         : {closing_next.closes_at.isoformat()} "
+              f"({closing_next.slack_seconds(now) / 60:.0f} min)")
+        guard_at = closing_next.closes_at - timedelta(minutes=CLOSING_GUARD_LEAD_MINUTES)
+        print(f"  conductor guard engages       : {guard_at.isoformat()}")
+
+    health, detail = assess_trigger_health(
+        now=now,
+        last_successful_run=overall,
+        checkpoints=checkpoints,
+        trigger_interval_seconds=TIGHT_INTERVAL_SECONDS,
+        max_dispatch_latency_seconds=MAX_DISPATCH_LATENCY_SECONDS,
+        collector_runtime_seconds=FULL_COLLECTOR_RUNTIME_SECONDS,
+    )
+    print(f"  TRIGGER HEALTH                : {health.value}")
+    print(f"  reason                        : {detail}")
+    print(f"  closing-risk state            : "
+          f"{'AT RISK' if health in (TriggerHealth.HIGH, TriggerHealth.MISSED) else 'protected'}")
+
+    if health is TriggerHealth.MISSED:
+        findings.add(HIGH, "checkpoint_missed", detail)
+    elif health is TriggerHealth.HIGH:
+        findings.add(HIGH, "trigger_cannot_reach_checkpoint", detail)
+    elif health is TriggerHealth.WARN:
+        findings.add(MEDIUM, "trigger_cadence_missed", detail)
+
+    if beats and last_successful_run(beats, TriggerType.EXTERNAL_SCHEDULE.value) is None:
+        findings.add(
+            MEDIUM,
+            "conductor_never_succeeded",
+            "no successful conductor-triggered run recorded; the chain may never have started",
+        )
+
+
 def section_safety(findings: Findings) -> None:
     print("\n## Safety")
     from cfb_edge_finder.recommendation import card, eligibility, evidence, thresholds
@@ -388,6 +499,7 @@ def main() -> int:
     section_closing(rows, findings)
     section_settlement(args.data_repo_dir, args.season, findings)
     section_analytics(args.data_repo_dir, args.season, findings)
+    section_trigger(args.data_repo_dir, args.season, rows, findings, now)
     section_candidates(args.data_repo_dir, args.season, findings, now)
     section_safety(findings)
 

@@ -1,0 +1,92 @@
+name: Research Collection Conductor (trigger layer)
+
+# *** WHY THIS WORKFLOW EXISTS ***
+#
+# GitHub's cron scheduler is not dependable enough to protect CLOSING.
+# Measured 2026-08-27 against an HOURLY cron, consecutive scheduled
+# collector runs arrived at gaps of 64, 71, 52, 61, 54, 56, 66, 80, 49,
+# 95, 144, 171, 296 and 653 minutes; after the 10-minute cadence merged
+# at 18:08Z, zero scheduled runs fired for three hours.
+#
+# CLOSING is 14 minutes wide, strictly pre-kickoff, and gone forever once
+# the ball is kicked. A 95-minute gap destroys it silently.
+#
+# The audit's key observation: GitHub's SCHEDULER is unreliable, its
+# RUNNER is not -- every run that started completed normally. So this
+# workflow stops depending on many precise cron firings. A running job
+# drives the cadence itself and hands off to a successor, which a probe
+# on 2026-08-27T22:02Z proved possible with the built-in GITHUB_TOKEN
+# (run 33120829196, actor github-actions[bot]) -- no user-supplied
+# credential required.
+#
+# *** THIS IS A TRIGGER, NOT A COLLECTOR ***
+#
+# It dispatches research-capture.yml and nothing else. There is no second
+# capture path, no separate due-label logic, and no "external close"
+# implementation to drift out of step with the canonical one.
+
+on:
+  # Cron here is the RESTARTER, not the cadence. It only needs to relight
+  # the chain if it ever breaks -- a job the flaky scheduler can do,
+  # because being an hour late to restart a chain is survivable in a way
+  # that being an hour late to a 14-minute closing window is not.
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "CFBD season"
+        required: false
+        default: "2026"
+      dry_run:
+        description: "Plan only: dispatch nothing, sleep not at all"
+        required: false
+        default: "false"
+      self_continue:
+        description: "Hand off to a successor conductor on exit"
+        required: false
+        default: "true"
+
+# NOT research-data-write. This job spends most of its life asleep, and
+# putting it in the writers' group would let a sleeping conductor block
+# every collector run behind it -- turning the fix into the outage.
+# Collector runs it dispatches DO join research-data-write, so writes
+# stay serialized exactly as before.
+concurrency:
+  group: research-collection-conductor
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  conduct:
+    runs-on: ubuntu-latest
+    # Below GitHub's 6h ceiling so the successor handoff happens before a
+    # kill, never instead of it.
+    timeout-minutes: 350
+    permissions:
+      contents: read
+      # Dispatch the collector and the successor conductor. Deliberately
+      # NOT contents:write -- the conductor never writes research data;
+      # only the collector it dispatches does.
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+
+      - name: Conduct collection
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/collection_conductor.py \
+            --season "${{ github.event.inputs.season || '2026' }}" \
+            --ref "${{ github.ref_name }}" \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
+            ${{ github.event.inputs.self_continue == 'false' && '--no-self-continue' || '' }}
