@@ -288,3 +288,163 @@ def seconds_until_guard_needed(
     if not future:
         return None
     return max(0.0, (min(future) - now).total_seconds() - lead_minutes * 60.0)
+
+
+# --- positive schedule observability --------------------------------------
+#
+# *** WHY THIS EXISTS ***
+#
+# After the 2026-08-27 conductor incident, the repaired run was judged
+# healthy by INFERENCE: the old "SCHEDULE LOOKUP FAILED" line was absent
+# and the kickoff count was zero. Both of those were also true of the
+# BROKEN conductor, which had no credential, fetched nothing, and
+# reported zero. The two states were distinguishable only by reading raw
+# logs for a message that was missing.
+#
+# Absence of an error is not evidence of success. These types make the
+# success positive and structured: a healthy invocation states how many
+# games it fetched, how many are supported, when the next supported
+# kickoff is even when that is beyond the horizon, and which of the
+# possible zero-states it is in.
+
+
+class SchedulePlanningState(StrEnum):
+    """Why the conductor saw what it saw. Every zero is a DIFFERENT zero."""
+
+    FETCH_FAILED = "FETCH_FAILED"
+    """The schedule source could not be reached or refused the request.
+    The state the broken conductor was permanently in."""
+
+    FETCH_SUCCESS_EMPTY_SCHEDULE = "FETCH_SUCCESS_EMPTY_SCHEDULE"
+    """The request succeeded and returned no games at all. A season
+    always has games, so zero records from a successful call means the
+    source or the query is wrong -- operationally suspicious, and
+    deliberately NOT the same as 'no games are near'."""
+
+    FETCH_SUCCESS_NO_UPCOMING_GAMES = "FETCH_SUCCESS_NO_UPCOMING_GAMES"
+    """Games exist, but all of them have already kicked off. End of
+    season, or a stale schedule."""
+
+    FETCH_SUCCESS_NO_SUPPORTED_GAMES = "FETCH_SUCCESS_NO_SUPPORTED_GAMES"
+    """Upcoming games exist, but none are FBS-vs-FBS. Normal on a
+    weeknight of FCS-only fixtures; a coverage problem if it persists
+    through a Saturday."""
+
+    FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON = "FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON"
+    """Supported games exist but all lie beyond the protection horizon.
+    THE post-incident state: the next supported kickoff was ~40.6h away
+    against a 36h horizon. Healthy, and completely different from a
+    failed fetch, which the old output could not express."""
+
+    FETCH_SUCCESS_GUARDABLE_GAME_PRESENT = "FETCH_SUCCESS_GUARDABLE_GAME_PRESENT"
+    """At least one supported game is inside the horizon."""
+
+    @property
+    def fetch_succeeded(self) -> bool:
+        return self is not SchedulePlanningState.FETCH_FAILED
+
+    @property
+    def is_operationally_suspicious(self) -> bool:
+        """States that warrant a warning even though nothing errored."""
+        return self in (
+            SchedulePlanningState.FETCH_FAILED,
+            SchedulePlanningState.FETCH_SUCCESS_EMPTY_SCHEDULE,
+        )
+
+
+def classify_schedule(
+    *,
+    fetch_success: bool,
+    total_games: int,
+    upcoming_games: int,
+    supported_upcoming_games: int,
+    supported_inside_horizon: int,
+) -> SchedulePlanningState:
+    """Narrow the counts to exactly one state, most-severe first.
+
+    Note what is NOT here: any threshold on "too few games". The only
+    suspicious count is exactly zero from a successful request, which
+    needs no magic number to justify -- a season with no games at all is
+    degenerate by definition. Guessing an expected seasonal game count
+    would invent a constant that would then need maintaining."""
+    if not fetch_success:
+        return SchedulePlanningState.FETCH_FAILED
+    if total_games == 0:
+        return SchedulePlanningState.FETCH_SUCCESS_EMPTY_SCHEDULE
+    if upcoming_games == 0:
+        return SchedulePlanningState.FETCH_SUCCESS_NO_UPCOMING_GAMES
+    if supported_upcoming_games == 0:
+        return SchedulePlanningState.FETCH_SUCCESS_NO_SUPPORTED_GAMES
+    if supported_inside_horizon == 0:
+        return SchedulePlanningState.FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON
+    return SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT
+
+
+@dataclass(frozen=True)
+class ScheduleHealth:
+    """Positive proof of what one planning invocation actually saw."""
+
+    fetch_success: bool
+    total_games: int
+    upcoming_games: int
+    supported_upcoming_games: int
+    supported_inside_horizon: int
+    horizon_end: datetime
+    next_upcoming_kickoff: datetime | None = None
+    next_supported_kickoff: datetime | None = None
+    """The next supported kickoff ANYWHERE ahead, not only inside the
+    horizon. Carrying it past the horizon is the whole point: it is what
+    turns 'nothing to guard' into 'nothing yet, next one at 16:00Z'."""
+
+    next_supported_kickoff_inside_horizon: datetime | None = None
+    kickoffs_inside_horizon: tuple[datetime, ...] = ()
+    detail: str = ""
+
+    @property
+    def state(self) -> SchedulePlanningState:
+        return classify_schedule(
+            fetch_success=self.fetch_success,
+            total_games=self.total_games,
+            upcoming_games=self.upcoming_games,
+            supported_upcoming_games=self.supported_upcoming_games,
+            supported_inside_horizon=self.supported_inside_horizon,
+        )
+
+    def as_telemetry(self) -> dict[str, object]:
+        """Flat, log-and-heartbeat friendly. No raw game payloads: this
+        is operational telemetry, not a copy of the schedule."""
+        return {
+            "schedule_fetch_success": self.fetch_success,
+            "schedule_state": self.state.value,
+            "total_schedule_games": self.total_games,
+            "upcoming_games": self.upcoming_games,
+            "supported_upcoming_games": self.supported_upcoming_games,
+            "supported_inside_horizon": self.supported_inside_horizon,
+            "next_upcoming_kickoff": self.next_upcoming_kickoff.isoformat() if self.next_upcoming_kickoff else None,
+            "next_supported_kickoff": self.next_supported_kickoff.isoformat() if self.next_supported_kickoff else None,
+            "next_supported_kickoff_inside_horizon": (
+                self.next_supported_kickoff_inside_horizon.isoformat()
+                if self.next_supported_kickoff_inside_horizon
+                else None
+            ),
+            "horizon_end": self.horizon_end.isoformat(),
+            "detail": self.detail,
+        }
+
+    def render(self) -> str:
+        lines = [
+            f"schedule fetch         : {'PASS' if self.fetch_success else 'FAIL'}",
+            f"schedule state         : {self.state.value}",
+            f"games fetched          : {self.total_games}",
+            f"upcoming games         : {self.upcoming_games}",
+            f"supported upcoming     : {self.supported_upcoming_games}",
+            f"supported in horizon   : {self.supported_inside_horizon}",
+            f"horizon end            : {self.horizon_end.isoformat()}",
+            f"next upcoming kickoff  : "
+            f"{self.next_upcoming_kickoff.isoformat() if self.next_upcoming_kickoff else 'none'}",
+            f"next supported kickoff : "
+            f"{self.next_supported_kickoff.isoformat() if self.next_supported_kickoff else 'none'}",
+        ]
+        if self.detail:
+            lines.append(f"schedule detail        : {self.detail}")
+        return "\n".join(lines)

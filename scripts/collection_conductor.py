@@ -59,6 +59,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from cfb_edge_finder.research.trigger import (  # noqa: E402
     CLOSING_GUARD_LEAD_MINUTES,
     TIGHT_INTERVAL_SECONDS,
+    ScheduleHealth,
     guard_should_be_active,
     seconds_until_guard_needed,
 )
@@ -198,43 +199,108 @@ def dispatch_workflow(repo: str, workflow: str, ref: str, token: str, inputs: di
     )
 
 
-def supported_upcoming_kickoffs(season: int, now: datetime, horizon_hours: float = 36.0) -> list[datetime]:
-    """Kickoffs of supported (FBS-vs-FBS) games inside the horizon.
+def fetch_schedule_health(season: int, now: datetime, horizon_hours: float = 36.0) -> ScheduleHealth:
+    """Fetch the schedule and report POSITIVELY what was found.
 
-    Uses the same ingestion and classification the collector uses, so the
-    conductor cannot decide to guard a game the collector would not
-    capture."""
+    Returns counts and timestamps rather than just the in-horizon
+    kickoffs, so a caller can tell "fetched 3,550 games, next supported
+    kickoff in 40.6h, none inside the horizon" from "fetched nothing".
+    The old signature returned only the in-horizon list, which made those
+    two states identical -- exactly how the credential bug hid.
+
+    A fetch failure is returned as data, not raised: the trigger layer
+    must degrade to "cron is still the fallback" rather than crash, and
+    the caller needs the failure state to report it."""
+    horizon_end = now + timedelta(hours=horizon_hours)
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
-    import capture_kalshi_cfb_snapshot as milestone_d
 
-    from cfb_edge_finder.config import Settings
-    from cfb_edge_finder.data.cfbd_client import CFBDClient
+    # The imports live INSIDE the try with the fetch. A missing dependency
+    # is just another way the schedule can be unavailable, and it must
+    # degrade to FETCH_FAILED like any other -- not crash the trigger
+    # layer and take the conductor down with it.
+    try:
+        import capture_kalshi_cfb_snapshot as milestone_d
 
-    # from_env(), NOT Settings(): the bare constructor returns dataclass
-    # defaults with every key None, so the conductor silently ran with no
-    # CFBD credential, saw zero kickoffs, and concluded it had nothing to
-    # guard -- on every single invocation. The collector has always used
-    # from_env(); this line was the one place that diverged.
-    settings = Settings.from_env()
-    client = CFBDClient(api_key=settings.cfbd_api_key)
-    # The SAME schedule fetch and FBS/FCS classification the collector
-    # uses, so the conductor cannot decide to guard a game the collector
-    # would classify as unsupported and skip.
-    games, classification = milestone_d._fetch_candidate_games(season, client, now)  # noqa: SLF001
-    horizon = now + timedelta(hours=horizon_hours)
-    kickoffs = []
+        from cfb_edge_finder.config import Settings
+        from cfb_edge_finder.data.cfbd_client import CFBDClient
+
+        # from_env(), NOT Settings(): the bare constructor returns
+        # dataclass defaults with every key None, so the conductor
+        # silently ran with no CFBD credential, saw zero kickoffs, and
+        # concluded it had nothing to guard -- on every single
+        # invocation. The collector has always used from_env(); this line
+        # was the one place that diverged.
+        settings = Settings.from_env()
+        client = CFBDClient(api_key=settings.cfbd_api_key)
+        # The SAME schedule fetch and FBS/FCS classification the collector
+        # uses, so the conductor cannot decide to guard a game the
+        # collector would classify as unsupported and skip.
+        games, classification = milestone_d._fetch_candidate_games(season, client, now)  # noqa: SLF001
+    except Exception as exc:  # noqa: BLE001 -- a dead schedule source must not kill the trigger layer
+        return ScheduleHealth(
+            fetch_success=False,
+            total_games=0,
+            upcoming_games=0,
+            supported_upcoming_games=0,
+            supported_inside_horizon=0,
+            horizon_end=horizon_end,
+            detail=f"{type(exc).__name__}: {exc}",
+        )
+
+    upcoming: list[datetime] = []
+    supported: list[datetime] = []
     for game in games:
-        if game.kickoff_utc is None or not (now < game.kickoff_utc <= horizon):
+        kickoff = game.kickoff_utc
+        if kickoff is None or kickoff <= now:
             continue
-        if classification.get(game.game_id, (None, None)) != ("fbs", "fbs"):
-            continue
-        kickoffs.append(game.kickoff_utc)
-    return sorted(kickoffs)
+        upcoming.append(kickoff)
+        if classification.get(game.game_id, (None, None)) == ("fbs", "fbs"):
+            supported.append(kickoff)
+
+    upcoming.sort()
+    supported.sort()
+    inside = [k for k in supported if k <= horizon_end]
+
+    return ScheduleHealth(
+        fetch_success=True,
+        total_games=len(games),
+        upcoming_games=len(upcoming),
+        supported_upcoming_games=len(supported),
+        supported_inside_horizon=len(inside),
+        horizon_end=horizon_end,
+        next_upcoming_kickoff=upcoming[0] if upcoming else None,
+        next_supported_kickoff=supported[0] if supported else None,
+        next_supported_kickoff_inside_horizon=inside[0] if inside else None,
+        kickoffs_inside_horizon=tuple(inside),
+    )
+
+
+def supported_upcoming_kickoffs(season: int, now: datetime, horizon_hours: float = 36.0) -> list[datetime]:
+    """Backwards-compatible view: just the in-horizon supported kickoffs."""
+    return list(fetch_schedule_health(season, now, horizon_hours).kickoffs_inside_horizon)
 
 
 def plan(now: datetime, kickoffs: list[datetime]) -> tuple[bool, float | None]:
     """(guard active now, seconds until the next band opens)."""
     return guard_should_be_active(now, kickoffs), seconds_until_guard_needed(now, kickoffs)
+
+
+def _write_step_summary(health: ScheduleHealth, telemetry: dict) -> None:
+    """Surface the same facts in the Actions run summary, so normal state
+    is diagnosable without opening raw logs."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    verdict = "PASS" if health.fetch_success else "FAIL"
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(f"### Conductor — schedule {verdict} — {health.state.value}\n\n")
+            handle.write("| field | value |\n|---|---|\n")
+            for key, value in sorted(telemetry.items()):
+                handle.write(f"| {key} | {value} |\n")
+    except OSError:
+        # Telemetry must never fail the run that produced it.
+        return
 
 
 def main() -> int:
@@ -284,22 +350,40 @@ def main() -> int:
     print(f"guard lead             : {CLOSING_GUARD_LEAD_MINUTES:.0f} min before kickoff")
     print(f"token present          : {bool(token)}")
 
-    try:
-        kickoffs = supported_upcoming_kickoffs(args.season, started)
-    except Exception as exc:  # noqa: BLE001 -- schedule source down must not kill the trigger layer
-        print(f"SCHEDULE LOOKUP FAILED : {type(exc).__name__}: {exc}")
-        print("Falling back to a single collector dispatch; GitHub cron remains the fallback trigger.")
-        kickoffs = []
-
-    print(f"supported kickoffs (36h): {len(kickoffs)}")
+    # POSITIVE schedule telemetry. The post-incident run was judged
+    # healthy only because an error line was absent -- which was equally
+    # true of the broken conductor that fetched nothing. This states what
+    # was actually retrieved, so the two are never confusable again.
+    health = fetch_schedule_health(args.season, started)
+    print(health.render())
+    if not health.fetch_success:
+        print("Schedule unavailable; GitHub cron remains the fallback trigger.")
+    if health.state.is_operationally_suspicious:
+        print(f"WARNING: schedule state {health.state.value} -- treating as unguardable and stopping")
+    kickoffs = list(health.kickoffs_inside_horizon)
     for kickoff in kickoffs[:5]:
-        print(f"   {kickoff.isoformat()}  (T-{(kickoff - started).total_seconds() / 3600:.1f}h)")
+        print(f"   in-horizon kickoff  : {kickoff.isoformat()}  (T-{(kickoff - started).total_seconds() / 3600:.1f}h)")
 
     active, until_band = plan(started, kickoffs)
     print(f"guard active now       : {active}")
     print(f"next band opens in     : {'n/a' if until_band is None else f'{until_band / 60:.0f} min'}")
 
     if args.dry_run:
+        # A dry run is the supported way to prove schedule health without
+        # touching anything, so it emits the SAME structured telemetry a
+        # real run does -- otherwise the safe diagnostic would be the one
+        # that tells you least.
+        planning_only = {
+            **health.as_telemetry(),
+            "chain_id": lineage.chain_id,
+            "generation": lineage.generation,
+            "collector_dispatches": 0,
+            "successor_dispatched": False,
+            "decision": "DRY_RUN_NO_ACTION",
+            "decision_reason": "planning only",
+        }
+        print("\nCONDUCTOR " + json.dumps(planning_only, sort_keys=True))
+        _write_step_summary(health, planning_only)
         print("\nDRY RUN: nothing dispatched, nothing slept.")
         print("STATUS: trigger planning only. No pricing, no capture, no recommendation.")
         return 0
@@ -396,6 +480,22 @@ def main() -> int:
         print(f"successor generation   : {lineage.generation + 1}")
         if not successor.ok:
             print("NO SUCCESSOR -- the chain has stopped; GitHub cron is now the only trigger.")
+
+    # One machine-readable line so an operator (or a future tool) never
+    # has to infer health from prose or from a missing error message.
+    telemetry = {
+        **health.as_telemetry(),
+        "chain_id": lineage.chain_id,
+        "generation": lineage.generation,
+        "run_lifetime_seconds": round(lifetime, 1),
+        "collector_dispatches": dispatches,
+        "dispatch_failures": failures,
+        "successor_dispatched": bool(allowed),
+        "decision": "DISPATCH" if allowed else "STOP",
+        "decision_reason": decision,
+    }
+    print("\nCONDUCTOR " + json.dumps(telemetry, sort_keys=True))
+    _write_step_summary(health, telemetry)
 
     print("STATUS: trigger layer only. No pricing, staking, or trading action anywhere in this script.")
     return 0

@@ -54,6 +54,7 @@ from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa:
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
 from cfb_edge_finder.research.trigger import (  # noqa: E402
     CLOSING_GUARD_LEAD_MINUTES,
+    SchedulePlanningState,
     classify_trigger,
 )
 from cfb_edge_finder.schemas.capture_state import CaptureState, CaptureStateRecord  # noqa: E402
@@ -599,6 +600,14 @@ def main() -> int:
                 api_failures=telemetry.api_failure_count,
                 cfbd_healthy=report.games_scanned > 0,
                 kalshi_healthy=report.markets_scanned > 0 and telemetry.api_failure_count == 0,
+                schedule_fetch_success=True,
+                schedule_state=(
+                    SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT.value
+                    if supported_kickoffs
+                    else SchedulePlanningState.FETCH_SUCCESS_NO_SUPPORTED_GAMES.value
+                ),
+                total_schedule_games=len(games),
+                supported_upcoming_games=len(supported_kickoffs),
                 next_supported_kickoff=next_kickoff.isoformat() if next_kickoff else None,
                 next_critical_checkpoint="CLOSING" if next_kickoff else None,
                 next_critical_checkpoint_at=(
