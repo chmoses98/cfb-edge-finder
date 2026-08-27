@@ -164,6 +164,22 @@ jobs:
             --season "$SEASON" \
             --live
 
+      # TEMPORARY validation step, removed before this branch is finished.
+      # A brand-new workflow cannot be workflow_dispatch'd until it is on
+      # the default branch, so this is the only way to exercise the
+      # conductor's real planning logic against live CFBD data before the
+      # merge. Strictly --dry-run: plans, dispatches nothing, sleeps not
+      # at all.
+      - name: VALIDATE conductor plan (dry run, manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/collection_conductor.py \
+            --season "${{ github.event.inputs.schedule_season || '2026' }}" \
+            --dry-run
+
       - name: Scan and capture
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
