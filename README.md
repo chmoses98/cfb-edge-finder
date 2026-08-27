@@ -95,6 +95,9 @@ prints a notice -- no live 2026 data is fetched or implied.
   and why.
 - `docs/MLB_ARCHITECTURE_AUDIT.md` -- what was reused from edge-finder-api
   and what was deliberately left behind.
+- `docs/PROSPECTIVE_COLLECTION.md` -- the scheduled collection regime:
+  checkpoint schedule, closing definition and completeness accounting,
+  cadence, concurrency, persistence, health checks, reschedules.
 - `docs/PERFORMANCE.md` -- scanner performance: the per-ticker history
   re-read bottleneck, the one-load-per-run fix, output-equivalence proof,
   scale benchmarks, concurrency behaviour, remaining bottlenecks.

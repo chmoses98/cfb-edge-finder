@@ -115,3 +115,18 @@ jobs:
             --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
             --trigger-type "${{ github.event_name }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+
+      # Read-only, manual runs only: the mission-section-19 reality check
+      # that checkpoint windows line up with a real slate. Runs AFTER the
+      # scan deliberately -- by then `ensure_branch_checked_out` has put
+      # the working tree on research-data, so this reads the REAL corpus
+      # rather than the empty data/research of a code branch. Captures
+      # nothing. Kept off the scheduled path so the 10-minute cadence does
+      # not pay an extra CFBD call every run.
+      - name: Validate collection schedule (read-only, manual runs only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python scripts/validate_collection_schedule.py \
+            --schedule-season "${{ github.event.inputs.schedule_season || '2026' }}"
