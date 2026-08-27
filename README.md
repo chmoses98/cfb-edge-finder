@@ -95,6 +95,10 @@ prints a notice -- no live 2026 data is fetched or implied.
   and why.
 - `docs/MLB_ARCHITECTURE_AUDIT.md` -- what was reused from edge-finder-api
   and what was deliberately left behind.
+- `docs/SETTLEMENT.md` -- settlement and outcome attribution: result
+  source, exact winner/spread/total semantics, Kalshi cross-checking,
+  settlement states, research-unit P/L, closing linkage, incremental
+  workflow.
 - `docs/PROSPECTIVE_COLLECTION.md` -- the scheduled collection regime:
   checkpoint schedule, closing definition and completeness accounting,
   cadence, concurrency, persistence, health checks, reschedules.

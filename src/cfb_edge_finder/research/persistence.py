@@ -54,6 +54,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+from cfb_edge_finder.schemas.attribution import ObservationAttribution
 from cfb_edge_finder.schemas.capture_state import CaptureStateRecord
 from cfb_edge_finder.schemas.corpus_row import ResearchCorpusRow
 from cfb_edge_finder.schemas.settlement import MarketSettlement
@@ -63,6 +64,7 @@ T = TypeVar("T")
 OBSERVATIONS_SUBDIR = "observations"
 SETTLEMENTS_SUBDIR = "settlements"
 CAPTURE_STATE_SUBDIR = "capture_state"
+ATTRIBUTIONS_SUBDIR = "attributions"
 
 
 def canonical_path(base_dir: Path, subdir: str, season: int) -> Path:
@@ -333,6 +335,102 @@ def latest_settlements(rows: Iterable[MarketSettlement]) -> dict[tuple[str, str]
     for row in rows:
         latest[(row.game_id, row.kalshi_market_ticker)] = row
     return latest
+
+
+# --- Observation attributions -------------------------------------------
+# One row per CAPTURED OBSERVATION (not per market -- see
+# schemas/attribution.py for why collapsing checkpoints would destroy the
+# timing dimension). Dedup is on `attribution_key`, which embeds the
+# settlement code version, so re-running unchanged code is a no-op while a
+# genuine settlement-logic revision appends a new conclusion alongside the
+# old one instead of silently overwriting it.
+
+
+def attribution_key_of(obj: dict) -> str | None:
+    return obj.get("attribution_key")
+
+
+@dataclass
+class AttributionIndex:
+    """What one settlement run needs to know about work already done,
+    derived in a single pass over the attributions file.
+
+    Exists for the same reason `ObservationIndex` does: settlement must
+    not become another O(observations x settlements) nested scan. Loading
+    this once per run makes "which observations still need attributing?"
+    an O(1) set-membership test per observation instead of a re-read."""
+
+    keys: set[str] = field(default_factory=set)
+    settled_observation_keys: set[str] = field(default_factory=set)
+    row_count: int = 0
+    malformed_rows: int = 0
+    load_count: int = 0
+    load_seconds: float = 0.0
+
+    def already_attributed(self, observation_key: str, code_version: str) -> bool:
+        return f"{observation_key}|{code_version}" in self.keys
+
+
+def load_attribution_index(path: Path) -> AttributionIndex:
+    """Read the attributions file EXACTLY ONCE and derive every lookup a
+    settlement run needs. `load_count` is carried on the result so a test
+    can assert the once-per-run property rather than hoping for it."""
+    index = AttributionIndex()
+    started = time.perf_counter()
+    index.load_count = 1
+    if not path.exists():
+        index.load_seconds = time.perf_counter() - started
+        return index
+
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                index.malformed_rows += 1
+                continue
+            index.row_count += 1
+            key = attribution_key_of(obj)
+            if key is not None:
+                index.keys.add(key)
+            observation_key = obj.get("observation_key")
+            if isinstance(observation_key, str):
+                index.settled_observation_keys.add(observation_key)
+
+    index.load_seconds = time.perf_counter() - started
+    return index
+
+
+def append_attribution_rows(
+    path: Path,
+    rows: Iterable[ObservationAttribution],
+    *,
+    index: AttributionIndex | None = None,
+) -> AppendResult:
+    dicts = [r.model_dump(mode="json") for r in rows]
+    result = append_json_rows(
+        path,
+        dicts,
+        key_fn=attribution_key_of,
+        existing_keys=None if index is None else index.keys,
+    )
+    if index is not None:
+        written = set(result.keys_written)
+        index.keys |= written
+        index.row_count += result.written
+        for row in dicts:
+            if attribution_key_of(row) in written:
+                observation_key = row.get("observation_key")
+                if isinstance(observation_key, str):
+                    index.settled_observation_keys.add(observation_key)
+    return result
+
+
+def read_attribution_rows(path: Path) -> list[ObservationAttribution]:
+    return [ObservationAttribution.model_validate(obj) for obj in _read_all(path)]
 
 
 # --- Capture-state log ---------------------------------------------------
