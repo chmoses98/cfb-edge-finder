@@ -45,6 +45,7 @@ deduplicated.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -102,8 +103,26 @@ class GameProjectionCache:
     at construction, exactly mirroring how build_cfb_baseline.py's `lines`
     variable is fetched once and passed into every downstream call."""
 
-    def __init__(self, lines: list[TeamGameLine]) -> None:
-        self._lines = lines
+    def __init__(
+        self,
+        lines: list[TeamGameLine] | None = None,
+        *,
+        lines_provider: Callable[[], list[TeamGameLine]] | None = None,
+    ) -> None:
+        """`lines` may instead be supplied lazily via `lines_provider`,
+        called AT MOST ONCE and only when the first projection is actually
+        built.
+
+        This exists for the high-frequency collection cadence: fetching
+        four seasons of CFBD team-game lines is the single most expensive
+        thing a scan does (~30s and several API calls), and a scan that
+        finds no checkpoint due must not pay it. Eager `lines` is still
+        the default and every existing caller is unaffected."""
+        if lines is None and lines_provider is None:
+            raise ValueError("GameProjectionCache needs either `lines` or `lines_provider`")
+        self._lines: list[TeamGameLine] | None = lines
+        self._lines_provider = lines_provider
+        self.lines_fetch_count = 0
         self._cache: dict[GameProjectionRequest, CachedGameProjection] = {}
         self._ratings_and_pool_cache: dict[AsOf, tuple[RatingsSnapshot, np.ndarray]] = {}
         # Reuse counters. These make the one-projection-per-game property
@@ -118,6 +137,13 @@ class GameProjectionCache:
     def __len__(self) -> int:
         return len(self._cache)
 
+    def _resolve_lines(self) -> list[TeamGameLine]:
+        if self._lines is None:
+            assert self._lines_provider is not None  # guaranteed by __init__
+            self._lines = self._lines_provider()
+            self.lines_fetch_count += 1
+        return self._lines
+
     def _ratings_and_pool_for_as_of(self, as_of: AsOf) -> tuple[RatingsSnapshot, np.ndarray]:
         """`fit_fbs_efficiency_ratings`/`build_expanding_residual_pool`
         depend only on `(history, as_of)`, and `history` is itself
@@ -130,7 +156,7 @@ class GameProjectionCache:
         if cached is not None:
             return cached
         self.ratings_fits += 1
-        history = [ln for ln in self._lines if ln.as_of.is_strictly_before(as_of)]
+        history = [ln for ln in self._resolve_lines() if ln.as_of.is_strictly_before(as_of)]
         if not history:
             raise ValueError(f"no leakage-safe history strictly before {as_of!r}")
         ratings = fit_fbs_efficiency_ratings(history, as_of, ridge_lambda=DEFAULT_RIDGE_LAMBDA)

@@ -34,6 +34,12 @@ class ScanTelemetry:
     asserts it rather than trusting review to catch a reintroduced
     per-ticker read)."""
 
+    trigger_type: str = "local"
+    """'schedule', 'workflow_dispatch', or 'local'. Provenance only --
+    manual and scheduled runs share identical due-label logic and
+    duplicate protection (mission section 20), so this records HOW a run
+    started, never changes WHAT it does."""
+
     run_started_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     run_completed_at: str | None = None
     wall_clock_seconds: float = 0.0
@@ -46,8 +52,15 @@ class ScanTelemetry:
     distinct_games: int = 0
     game_projection_count: int = 0
     ratings_fit_count: int = 0
+    history_fetch_count: int = 0
+    """CFBD multi-season history fetches this run. 0 on a scan with
+    nothing due (the fetch is deferred to the first projection), 1
+    otherwise -- never more."""
+    history_fetch_seconds: float = 0.0
     priced_contract_count: int = 0
     unresolved_count: int = 0
+    closing_due_count: int = 0
+    closing_captured_count: int = 0
     duplicate_count: int = 0
     malformed_row_count: int = 0
     persistence_write_seconds: float = 0.0

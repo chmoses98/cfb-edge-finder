@@ -42,6 +42,9 @@ class CaptureHealthReport:
     missed_windows: int = 0
     mapping_failures: int = 0
     stale_schedule_failures: int = 0
+    closing_due: int = 0
+    closing_captured: int = 0
+    closing_missing: int = 0
     api_failures: int = 0
     persistence_failures: int = 0
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
@@ -133,6 +136,35 @@ def evaluate_collapse(current: CaptureHealthReport, baseline_supported_markets: 
                 f"expected {expected_new_writes} new writes (captures_due - already_present) but "
                 f"captures_written={current.captures_written}",
             )
+        )
+
+    # Closing is the most time-sensitive primitive the collector produces
+    # and the only one that can never be recovered after kickoff, so a
+    # closing capture that was DUE and did not land is escalated on its
+    # own rather than being averaged into the general capture counts.
+    if current.closing_due > 0 and current.closing_captured < current.closing_due:
+        missed = current.closing_due - current.closing_captured
+        diagnostics.append(
+            Diagnostic(
+                Severity.HIGH,
+                "closing_capture_shortfall",
+                f"{missed} of {current.closing_due} due CLOSING capture(s) did not land -- "
+                f"closing lines cannot be recovered after kickoff",
+            )
+        )
+    if current.closing_missing > 0:
+        diagnostics.append(
+            Diagnostic(
+                Severity.WARNING,
+                "closing_missing_recorded",
+                f"{current.closing_missing} market(s) in the closing window could not produce a CLOSING "
+                f"row; each has an explicit recorded reason in the capture-state log",
+            )
+        )
+
+    if current.api_failures > 0:
+        diagnostics.append(
+            Diagnostic(Severity.HIGH, "api_failures", f"{current.api_failures} data-source call(s) failed")
         )
 
     if current.persistence_failures > 0:
