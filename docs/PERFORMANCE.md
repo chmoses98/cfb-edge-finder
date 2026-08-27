@@ -204,6 +204,64 @@ bug during development: synthetic team names do not resolve through the
 real team registry, so the first version of the harness mapped no games
 and priced nothing. The harness now uses real registry FBS teams.
 
+## 5a. Live runtime result
+
+Genuine live scans on the same Kalshi/CFBD research path, dispatched via
+the real `research-capture` workflow against the real corpus and the same
+live market universe as the baseline run.
+
+| | Baseline `main@6015276` | Optimized `858001a` | Optimized `edbdf61` (final) |
+|---|---|---|---|
+| Run | [33075615623](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33075615623) | [33089062579](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33089062579) | [33089405230](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33089405230) |
+| **"Scan and capture" step** | **331 s** (5 m 31 s) | **73 s** | **45 s** |
+| In-process `wall_clock_seconds` | not instrumented | 71.46 s | 43.95 s |
+| **Speedup vs baseline** | — | **4.5x** | **7.4x** |
+| Markets/tickers discovered | 4,578 | 4,578 | 4,578 |
+| Corpus rows | 1,724 | 1,724 | 1,724 |
+| **History file loads** | **4,578** | **1** | **1** |
+| **History load time** | ~250 s (est.) | 0.0235 s | **0.0172 s** |
+| Distinct games projected | 102 | 102 | 102 |
+| Game projections | 102 | 102 | 102 |
+| Ratings fits | 3 | 3 | 3 |
+| `mapping_failures` | 1,401 | 1,401 | 1,401 |
+| Rows written / duplicates / malformed | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Persistence write time | — | 0.00008 s | 0.000078 s |
+
+**Speedup: 7.4x** on the live universe at the final head — past the
+"materially faster than the ~6.5-minute degraded run" bar and well under
+the ~2-minute target. (The 73 s vs 45 s spread between the two optimized
+runs is CFBD/Kalshi network variance, not code: the in-process phase
+timings differ almost entirely in `projection_seconds`, 10.3 s vs 5.4 s,
+and upstream CFBD fetching.)
+
+**Research semantics are visibly unchanged live**: identical markets
+discovered (4,578), identical `mapping_failures` (1,401), identical
+distinct games (102), identical projection and ratings-fit counts — the
+same research conclusions, reached 7.4x faster.
+
+Where the remaining ~44 s goes, from the run's own `PERF` line: CFBD
+schedule/history/FCS fetching in `main()` (~34 s, network), model
+projection 5.4 s, Kalshi market discovery 4.0 s (network), game mapping
+0.06 s, history load 0.017 s, persistence write 0.000078 s. Runtime is now
+dominated by **network data fetching and genuine model work** — history
+re-reading has gone from the dominant cost to a rounding error.
+
+**Corpus integrity after the live runs** (`origin/research-data`,
+`data/research/observations/2026.jsonl`):
+
+| Check | Result |
+|---|---|
+| Rows | 1,724 |
+| Unique canonical keys | 1,724 |
+| Duplicate keys | 0 |
+| Malformed rows | 0 |
+| Unique-key invariant | **holds** |
+
+Nothing was due for capture during the validation runs, so they correctly
+wrote zero rows and left the corpus byte-identical — which is precisely
+the case the old code was slowest on: it re-read the entire corpus 4,578
+times to conclude there was nothing to do.
+
 ## 6. Synthetic scale results
 
 `scripts/benchmark_research_scan.py` (run by hand, never a CI gate).
