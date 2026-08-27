@@ -95,6 +95,9 @@ prints a notice -- no live 2026 data is fetched or implied.
   and why.
 - `docs/MLB_ARCHITECTURE_AUDIT.md` -- what was reused from edge-finder-api
   and what was deliberately left behind.
+- `docs/ANALYTICS.md` -- research analytics: model-market gaps, side-aware
+  CLV, calibration and market comparison, fee-adjusted unit economics,
+  gap/price/timing slices, cluster-aware uncertainty, and limitations.
 - `docs/SETTLEMENT.md` -- settlement and outcome attribution: result
   source, exact winner/spread/total semantics, Kalshi cross-checking,
   settlement states, research-unit P/L, closing linkage, incremental
