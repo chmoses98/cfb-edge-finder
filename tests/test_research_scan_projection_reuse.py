@@ -136,4 +136,6 @@ def test_contracts_per_projection_distribution_is_reported(tmp_path, monkeypatch
     assert min(counts) > 1, f"some game priced only one contract from its projection: {counts}"
     # Every projection built must have been used by at least one contract.
     assert cache.projection_builds <= len(per_game)
-    assert telemetry.game_projection_count == 0  # set by main(), not _apply_scan
+    # distinct_games counts games that genuinely reached the model, so it
+    # is the correct denominator for the per-projection distribution.
+    assert telemetry.distinct_games == len(per_game) == cache.projection_builds

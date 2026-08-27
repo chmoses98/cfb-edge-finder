@@ -124,6 +124,11 @@ def _apply_scan(
 
     pending_rows: list[ResearchCorpusRow] = []
     capture_state_rows: list[CaptureStateRecord] = []
+    # Distinct games this run actually PROJECTED, not the size of the
+    # schedule -- the denominator for "contracts priced per projection"
+    # (mission section 7) only means anything if it counts games that
+    # genuinely reached the model.
+    projected_game_ids: set[str] = set()
 
     for series_ticker, family in milestone_d.CORE_V1_SERIES_TO_FAMILY.items():
         with telemetry.phase("market_discovery_seconds"):
@@ -173,6 +178,7 @@ def _apply_scan(
                         with telemetry.phase("projection_seconds"):
                             cached_projection = cache.get_or_build(request)
                         training_cutoff_str = training_cutoff_fn(request)
+                        projected_game_ids.add(matched_game.game_id)
                     except ValueError:
                         pass
 
@@ -305,6 +311,7 @@ def _apply_scan(
             state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
             persistence.append_capture_state_rows(state_path, capture_state_rows)
 
+    telemetry.distinct_games = len(projected_game_ids)
     telemetry.duplicate_count += result.skipped_duplicate
     report.captures_written += result.written
     report.captures_skipped_already_present += result.skipped_duplicate
@@ -351,7 +358,6 @@ def main() -> int:
 
     not_started_games = [g for g in games if g.status == "scheduled"]
     report.games_scanned = len(not_started_games)
-    telemetry.distinct_games = len(not_started_games)
 
     cache = GameProjectionCache(history_lines)
     kalshi_client = KalshiClient()
