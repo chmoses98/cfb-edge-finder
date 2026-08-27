@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -49,8 +49,13 @@ from cfb_edge_finder.research import (  # noqa: E402
     scan_logic,
     timing,
 )
+from cfb_edge_finder.research import heartbeat as heartbeat_mod  # noqa: E402
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
+from cfb_edge_finder.research.trigger import (  # noqa: E402
+    CLOSING_GUARD_LEAD_MINUTES,
+    classify_trigger,
+)
 from cfb_edge_finder.schemas.capture_state import CaptureState, CaptureStateRecord  # noqa: E402
 from cfb_edge_finder.schemas.corpus_row import CORPUS_SCHEMA_VERSION, ResearchCorpusRow  # noqa: E402
 from cfb_edge_finder.schemas.data_versions import DataVersionManifest  # noqa: E402
@@ -459,6 +464,15 @@ def main() -> int:
         "--no-push", action="store_true", help="Write locally only; skip the git commit/push step (rehearsal mode)."
     )
     parser.add_argument(
+        "--trigger-actor",
+        default=None,
+        help=(
+            "GitHub actor that started the run. Only used to tell a conductor dispatch "
+            "(github-actions) apart from a human pressing Run workflow, both of which arrive "
+            "as workflow_dispatch. Provenance ONLY."
+        ),
+    )
+    parser.add_argument(
         "--trigger-type",
         default="local",
         help=(
@@ -547,13 +561,63 @@ def main() -> int:
             telemetry=telemetry,
         )
 
+    resolved_trigger = classify_trigger(args.trigger_type, args.trigger_actor)
+    invoked_at = now
+
+    def apply_and_beat(repo_dir: Path) -> persistence.AppendResult:
+        """Scan, then record one heartbeat.
+
+        Both inside the same apply so the retry loop treats them as one
+        unit: on a push conflict the local commit is discarded by the hard
+        reset and this runs again, so a run leaves exactly one heartbeat
+        rather than one per attempt."""
+        result = apply_fn(repo_dir)
+        supported_kickoffs = sorted(
+            g.kickoff_utc
+            for g in not_started_games
+            if g.kickoff_utc is not None
+            and g.kickoff_utc > now
+            and classification_by_game_id.get(g.game_id, (None, None)) == ("fbs", "fbs")
+        )
+        next_kickoff = supported_kickoffs[0] if supported_kickoffs else None
+        heartbeat_mod.append_heartbeat(
+            repo_dir,
+            args.schedule_season,
+            heartbeat_mod.Heartbeat(
+                schema_version=heartbeat_mod.HEARTBEAT_SCHEMA_VERSION,
+                run_id=args.run_id,
+                trigger_type=resolved_trigger.value,
+                invoked_at=invoked_at.isoformat(),
+                started_at=invoked_at.isoformat(),
+                finished_at=datetime.now(UTC).isoformat(),
+                succeeded=True,
+                markets_discovered=report.markets_scanned,
+                labels_due=report.captures_due,
+                labels_captured=report.captures_written,
+                duplicates_skipped=report.captures_skipped_already_present,
+                malformed_rows=telemetry.malformed_row_count,
+                api_failures=telemetry.api_failure_count,
+                cfbd_healthy=report.games_scanned > 0,
+                kalshi_healthy=report.markets_scanned > 0 and telemetry.api_failure_count == 0,
+                next_supported_kickoff=next_kickoff.isoformat() if next_kickoff else None,
+                next_critical_checkpoint="CLOSING" if next_kickoff else None,
+                next_critical_checkpoint_at=(
+                    (next_kickoff - timedelta(minutes=CLOSING_GUARD_LEAD_MINUTES)).isoformat()
+                    if next_kickoff
+                    else None
+                ),
+                detail=f"trigger={resolved_trigger.value} raw_event={args.trigger_type!r}",
+            ),
+        )
+        return result
+
     if args.no_push:
-        apply_fn(args.data_repo_dir)
+        apply_and_beat(args.data_repo_dir)
     else:
         push_result = git_durable_store.commit_and_push_with_retry(
             args.data_repo_dir,
             args.data_branch,
-            apply_fn,
+            apply_and_beat,
             commit_message=(
                 f"research capture: season={args.schedule_season} run={args.run_id or 'local'} at={now.isoformat()}"
             ),
