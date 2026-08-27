@@ -96,6 +96,19 @@ _PARSERS = {
 }
 
 
+def _market_status_of(raw_market: dict) -> str | None:
+    """Kalshi's own `status` string, recorded verbatim (lower-cased only
+    for stability). Absent/blank becomes None rather than a guessed
+    default -- `closing_capture.is_executable_status` treats None as NOT
+    executable, so an unknown status can never be optimistically priced
+    as a closing quote."""
+    raw = raw_market.get("status")
+    if not isinstance(raw, str):
+        return None
+    normalized = raw.strip().lower()
+    return normalized or None
+
+
 def price_one_market(
     raw_market: dict,
     *,
@@ -226,6 +239,7 @@ def price_one_market(
         side=parsed.side,
         team=named_side,
         semantic_operator=parsed.operator,
+        market_status=_market_status_of(raw_market),
         model_probability=model_probability,
         executable_yes_price=extracted.executable_yes_price,
         executable_no_price=extracted.executable_no_price,

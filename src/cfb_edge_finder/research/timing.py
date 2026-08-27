@@ -8,8 +8,31 @@ MISSED_WINDOW forever (mission section 7: "do not fabricate a T_60
 snapshot later"). EARLY_OPEN has no numeric window -- it is due exactly
 once, the first time a market is observed pregame, regardless of which
 later windows have already opened or closed (mission section 5: "capture
-the first valid state"). CLOSING is intentionally NOT modeled as a fixed
-offset here -- see research/closing.py for its own, structural definition.
+the first valid state").
+
+*** CLOSING (prospective collection milestone) ***
+CLOSING used to be excluded from this module entirely: research/closing.py
+SELECTED a closing row after the fact from whatever the hourly scanner
+happened to have captured. That is not a closing line -- it is "the last
+snapshot we happened to take," which on an hourly cadence could be 59
+minutes stale. CLOSING is now a real, prospectively-captured checkpoint
+with its own window, defined here and enforced by
+research/closing_capture.py.
+
+Its window is deliberately NOT a symmetric target +/- half_width like the
+numeric buckets. It is anchored hard against kickoff:
+
+    0 < minutes_to_kickoff <= CLOSING_WINDOW_MINUTES
+
+- strictly pre-kickoff (a post-kickoff quote is never CLOSING, and CLOSING
+  is never backfilled once kickoff passes -- see `is_closing_due`);
+- disjoint from T_30, whose near edge is 15 minutes, so no scan can ever
+  owe both CLOSING and T_30 for the same market at the same instant
+  (mission section 21: tolerance windows must not cause overlapping
+  labels). The numeric buckets DO deliberately overlap each other for
+  outage catch-up -- see NUMERIC_TIMING_WINDOWS' own note -- but CLOSING
+  is held apart from all of them on purpose, because a CLOSING row is a
+  research primitive with stricter meaning than a catch-up snapshot.
 """
 
 from __future__ import annotations
@@ -57,11 +80,55 @@ deterministic key. `nearest_window_label` below is only used for
 diagnostic/reporting "which bucket is this closest to" purposes, never to
 suppress a genuinely-due capture."""
 
+CLOSING_WINDOW_MINUTES = 14.0
+"""CLOSING is due while kickoff is more than 0 and at most this many
+minutes away.
+
+14, not 15, so the window is strictly DISJOINT from T_30 (near edge 15.0
+min): at no instant can a market owe both. 14 is also wide enough to
+survive real GitHub Actions scheduler drift on a 10-minute collection
+cadence -- see docs/PROSPECTIVE_COLLECTION.md's cadence analysis -- while
+staying tight enough that the captured quote is a genuine closing line
+(research/closing.py grades anything within 10 minutes as EXACT)."""
+
+CLOSING_MIN_MINUTES = 0.0
+"""Strictly greater than zero: at or after kickoff, CLOSING is never due
+and never backfilled. This is the hard pre-kickoff enforcement."""
+
 ALL_NUMERIC_LABELS: tuple[str, ...] = tuple(w.label for w in NUMERIC_TIMING_WINDOWS)
-ALL_PREGAME_LABELS: tuple[str, ...] = (EARLY_OPEN, *ALL_NUMERIC_LABELS)
-"""CLOSING is deliberately excluded -- it is resolved by research/closing.py
-against the raw observation history, not scheduled as a due/missed bucket
-the way the others are."""
+ALL_PREGAME_LABELS: tuple[str, ...] = (EARLY_OPEN, *ALL_NUMERIC_LABELS, CLOSING)
+"""Every label the scheduler can owe for a pregame market, CLOSING now
+included. Ordering is intentional: EARLY_OPEN first, numeric buckets
+farthest-to-nearest, CLOSING last."""
+
+
+def minutes_before_kickoff(kickoff_utc: datetime, now: datetime) -> float:
+    return (kickoff_utc - now).total_seconds() / 60.0
+
+
+def is_closing_due(
+    *,
+    kickoff_utc: datetime | None,
+    now: datetime,
+    already_captured_labels: set[str],
+    game_started: bool = False,
+    window_minutes: float = CLOSING_WINDOW_MINUTES,
+) -> bool:
+    """CLOSING is due only inside the strictly-pre-kickoff closing window,
+    and only once.
+
+    Never due when: kickoff is unknown, the game has already started, the
+    clock is at or past kickoff, CLOSING was already captured, or kickoff
+    is still further out than the window. The "at or past kickoff" case is
+    what makes CLOSING un-backfillable: a late scan does NOT get to record
+    a CLOSING row from post-kickoff data, unlike the numeric buckets which
+    a late run may legitimately still catch."""
+    if game_started or kickoff_utc is None:
+        return False
+    if CLOSING in already_captured_labels:
+        return False
+    remaining = minutes_before_kickoff(kickoff_utc, now)
+    return CLOSING_MIN_MINUTES < remaining <= window_minutes
 
 
 def hours_before_kickoff(kickoff_utc: datetime, now: datetime) -> float:
@@ -96,6 +163,16 @@ def resolve_due_labels(
     ]
     numeric_due.sort(key=lambda w: abs(elapsed - w.target_hours_before_kickoff))
     due.extend(w.label for w in numeric_due)
+
+    # CLOSING last: its window is disjoint from every numeric bucket, so
+    # this can never append a label that duplicates one just added.
+    if is_closing_due(
+        kickoff_utc=kickoff_utc,
+        now=now,
+        already_captured_labels=already_captured_labels,
+        game_started=game_started,
+    ):
+        due.append(CLOSING)
     return due
 
 
@@ -116,6 +193,15 @@ def classify_bucket_state(
         return CaptureState.NOT_YET_DUE
     if label == EARLY_OPEN:
         return CaptureState.MISSED_WINDOW if game_started else CaptureState.NOT_YET_DUE
+
+    if label == CLOSING:
+        # CLOSING is MISSED the moment kickoff passes without a capture --
+        # there is no later scan that can still legitimately record it,
+        # which is exactly what distinguishes it from the numeric buckets.
+        remaining = minutes_before_kickoff(kickoff_utc, now)
+        if game_started or remaining <= CLOSING_MIN_MINUTES:
+            return CaptureState.MISSED_WINDOW
+        return CaptureState.NOT_YET_DUE
 
     window = next((w for w in NUMERIC_TIMING_WINDOWS if w.label == label), None)
     if window is None:

@@ -70,6 +70,17 @@ class KalshiResearchObservation(BaseModel):
     side: Side | None = None
     team: Side | None = Field(default=None, description="Side.HOME or Side.AWAY; required only for team_total")
     semantic_operator: str | None = Field(default=None, description="e.g. '>' -- see contract_semantics.py")
+    market_status: str | None = Field(
+        default=None,
+        description=(
+            "Kalshi's own status string for this market AT CAPTURE TIME (e.g. 'active', 'suspended', "
+            "'closed'), recorded verbatim and never normalized away. Required to tell a genuinely "
+            "missing quote apart from a market that was simply not tradeable at that moment -- see "
+            "research/closing_capture.py, which refuses to write a CLOSING row for a non-executable "
+            "status rather than fabricating one. None means the payload carried no status field, which "
+            "is deliberately NOT treated as executable."
+        ),
+    )
 
     model_probability: float | None = Field(default=None, ge=0.0, le=1.0)
     executable_yes_price: float | None = Field(default=None, ge=0.0, le=1.0)
