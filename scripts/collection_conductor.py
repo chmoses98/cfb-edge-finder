@@ -74,6 +74,16 @@ MAX_JOB_SECONDS = 5 * 3600 + 30 * 60
 """Stay clear of GitHub's 6-hour job ceiling, leaving room to hand off to
 a successor before being killed mid-sleep."""
 
+MIN_LIFETIME_FOR_HANDOFF_SECONDS = 600.0
+"""A conductor that lived under 10 minutes must not start another.
+
+Structural anti-runaway backstop, independent of why the run ended. On
+2026-08-27T23:01Z a logic error let every run hand off after ~20 seconds,
+producing roughly three runs a minute with no game within 41 hours. A
+correct conductor either guards for minutes or exits; nothing legitimate
+finishes in seconds AND needs a successor, so this floor cannot suppress
+real work."""
+
 MAX_IDLE_SLEEP_SECONDS = 30 * 60
 """Longest single wait when no band is open. Bounds how much runner time
 one conductor burns doing nothing, and how stale its schedule view gets."""
@@ -125,7 +135,12 @@ def supported_upcoming_kickoffs(season: int, now: datetime, horizon_hours: float
     from cfb_edge_finder.config import Settings
     from cfb_edge_finder.data.cfbd_client import CFBDClient
 
-    settings = Settings()
+    # from_env(), NOT Settings(): the bare constructor returns dataclass
+    # defaults with every key None, so the conductor silently ran with no
+    # CFBD credential, saw zero kickoffs, and concluded it had nothing to
+    # guard -- on every single invocation. The collector has always used
+    # from_env(); this line was the one place that diverged.
+    settings = Settings.from_env()
     client = CFBDClient(api_key=settings.cfbd_api_key)
     # The SAME schedule fetch and FBS/FCS classification the collector
     # uses, so the conductor cannot decide to guard a game the collector
@@ -200,11 +215,13 @@ def main() -> int:
 
     dispatches = 0
     failures = 0
+    handoff_reason: str | None = None
     while dispatches < MAX_DISPATCHES_PER_RUN:
         now = datetime.now(UTC)
         elapsed = (now - started).total_seconds()
         if elapsed > args.max_seconds:
             print(f"job budget reached after {elapsed / 60:.0f} min")
+            handoff_reason = "job budget reached with work still ahead"
             break
 
         active, until_band = plan(now, kickoffs)
@@ -226,6 +243,13 @@ def main() -> int:
                     return 1
             sleep_for = args.interval_seconds
         elif until_band is None:
+            # NOT a handoff. Nothing to guard means this conductor's work
+            # is done; the hourly cron restarts one when a game
+            # approaches. Dispatching a successor here is what produced
+            # the runaway observed at 2026-08-27T23:01Z: with the next
+            # kickoff 41h out (beyond the 36h horizon) every run exited
+            # in ~20s and immediately started another, ~3 runs/minute
+            # with no game anywhere near.
             print("no upcoming supported kickoff in horizon -- conductor has nothing to guard")
             break
         else:
@@ -238,13 +262,32 @@ def main() -> int:
         remaining_budget = args.max_seconds - (datetime.now(UTC) - started).total_seconds()
         if sleep_for >= remaining_budget:
             print("next wait would exceed the job budget -- handing off")
+            handoff_reason = "next wait exceeds the job budget"
             break
         time.sleep(sleep_for)
 
     print(f"\ndispatches issued      : {dispatches}")
     print(f"dispatch failures      : {failures}")
 
-    if not args.no_self_continue:
+    lifetime = (datetime.now(UTC) - started).total_seconds()
+    print(f"run lifetime           : {lifetime:.0f}s")
+    print(f"handoff reason         : {handoff_reason or 'none -- nothing left to guard'}")
+
+    # A successor is for CONTINUING work, never for "there was nothing to
+    # do". Both conditions are required, and the lifetime floor is a
+    # structural backstop that holds even if the reason logic is wrong
+    # again: a run that did nothing for less than MIN_LIFETIME_FOR_HANDOFF
+    # seconds can never start another, so a runaway cannot re-form.
+    if args.no_self_continue:
+        print("self-continue disabled by flag")
+    elif handoff_reason is None:
+        print("no successor: nothing left to guard. The hourly cron restarts a conductor when a game nears.")
+    elif lifetime < MIN_LIFETIME_FOR_HANDOFF_SECONDS:
+        print(
+            f"no successor: run lived {lifetime:.0f}s, under the {MIN_LIFETIME_FOR_HANDOFF_SECONDS:.0f}s floor "
+            f"-- refusing to chain at this rate"
+        )
+    else:
         successor = dispatch_workflow(
             args.repo, CONDUCTOR_WORKFLOW, args.ref, token, {"season": str(args.season)}
         )

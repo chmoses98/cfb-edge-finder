@@ -373,3 +373,59 @@ def test_no_secret_is_echoed_by_the_conductor():
     assert "print(token" not in source
     assert 'f"{token' not in source
     assert "token present          : {bool(token)}" in source or "bool(token)" in source
+
+
+# --- the 2026-08-27T23:01Z live-dispatch failures -------------------------
+#
+# The first dispatch of the merged conductor exposed two defects. One
+# manual dispatch at 23:01:00Z produced twelve runs by 23:04:59Z, each
+# finishing in ~20s and immediately starting the next. These pin both
+# root causes so neither can return.
+
+
+def test_conductor_reads_credentials_from_the_environment():
+    """Root cause 1: the conductor called `Settings()` -- the bare
+    dataclass constructor, whose fields all default to None -- instead of
+    `Settings.from_env()`. It therefore ran with no CFBD credential on
+    EVERY invocation, saw zero kickoffs, and concluded it had nothing to
+    guard. A conductor that can never see a kickoff can never guard one."""
+    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
+    assert "Settings.from_env()" in source
+    assert "settings = Settings()" not in source
+
+
+def test_settings_bare_constructor_really_is_empty():
+    """Guards the assumption above rather than trusting it."""
+    from cfb_edge_finder.config import Settings
+
+    assert Settings().cfbd_api_key is None
+
+
+def test_no_successor_when_there_is_nothing_to_guard():
+    """Root cause 2: the loop broke out on 'no upcoming supported kickoff'
+    and then fell through to an UNCONDITIONAL self-dispatch, so a
+    conductor with nothing to do started another one immediately."""
+    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
+    assert "handoff_reason" in source
+    assert "elif handoff_reason is None:" in source
+    assert "no successor: nothing left to guard" in source
+
+
+def test_short_lived_run_may_not_start_a_successor():
+    """The structural backstop. Independent of why a run ended: a
+    conductor that lived only seconds cannot chain. Had this existed, the
+    runaway could not have formed even with the reason logic wrong."""
+    from scripts.collection_conductor import MIN_LIFETIME_FOR_HANDOFF_SECONDS  # type: ignore
+
+    assert MIN_LIFETIME_FOR_HANDOFF_SECONDS >= 300, "floor too low to stop a fast chain"
+    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
+    assert "lifetime < MIN_LIFETIME_FOR_HANDOFF_SECONDS" in source
+
+
+def test_handoff_requires_both_a_reason_and_the_lifetime_floor():
+    """Two independent conditions, so one being wrong cannot alone
+    recreate an unbounded chain."""
+    source = (REPO_ROOT / "scripts" / "collection_conductor.py").read_text(encoding="utf-8")
+    handoff = source[source.index("lifetime = (datetime.now(UTC) - started)") :]
+    assert handoff.index("elif handoff_reason is None:") < handoff.index("elif lifetime <")
+    assert handoff.index("elif lifetime <") < handoff.index("successor = dispatch_workflow(")
