@@ -45,6 +45,7 @@ deduplicated.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -94,6 +95,40 @@ class CachedGameProjection:
     is_fbs_vs_fbs: bool
     training_rows: int
     teams_with_data: int
+
+    @property
+    def projection_snapshot_id(self) -> str:
+        """A stable identity for the ONE projection every contract of this
+        game was priced from.
+
+        Exists so downstream analysis can PROVE, rather than assume, that
+        a game's moneyline, spread ladder and total ladder all came from
+        the same simulated distribution. If two contracts on one game ever
+        carried different snapshot ids at the same timing label and model
+        version, their probabilities would not be mutually consistent and
+        no ladder ordering could be trusted.
+
+        Derived from the request alone (the frozen cache key), so it is
+        deterministic across processes -- unlike `id()` or a random uuid,
+        either of which would silently differ between runs and make the
+        check vacuous."""
+        request = self.request
+        payload = "|".join(
+            str(part)
+            for part in (
+                request.game_id,
+                request.home_id,
+                request.away_id,
+                request.home_classification,
+                request.away_classification,
+                request.is_neutral_site,
+                request.as_of_season,
+                request.as_of_week,
+                request.n_simulations,
+                request.seed,
+            )
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
 
 
 class GameProjectionCache:
