@@ -1,23 +1,62 @@
 name: Research Capture (scheduled scanner)
 
-# Milestone E, Part B/P. ONE scanner, not one workflow per game (mission
-# section 4): every run scans the whole not-started CFB slate and decides
-# which timing buckets are due (research/timing.py). Cadence: hourly
-# during the active season. GitHub Actions' own documented floor for
-# `schedule` is 5 minutes, and cron accuracy degrades under platform load
-# (GitHub's own docs note delays during high-demand periods) -- hourly is
-# comfortably above that floor, matches every numeric bucket's half-width
-# (>= 15 minutes, see research/timing.py), and keeps this well under
-# GitHub's per-repo concurrent-workflow fairness limits. A tighter cadence
-# (e.g. every 15 min near kickoff) is a documented future refinement, not
-# adopted here because it would require a second, kickoff-aware scheduling
-# mechanism this milestone deliberately keeps out of scope (mission
-# section 4: one scanner, not per-game infrastructure).
+# ONE scanner, not one workflow per game: every run scans the whole
+# not-started CFB slate and decides which timing buckets are due
+# (research/timing.py).
 #
-# `concurrency` serializes writers as the PRIMARY defense against a race
-# on the research-data branch; research/git_durable_store.py's fetch-
-# reset-retry loop is the secondary defense for the cases a concurrency
-# group doesn't cover (see that module's docstring).
+# *** CADENCE: 10 MINUTES (raised from hourly) ***
+# Hourly could not actually hit the late checkpoints this collection
+# regime exists to capture. Window widths vs. an hourly cadence:
+#
+#   T_90     60-120 min before kickoff   60 min wide  -> always hit
+#   T_60     45-75  min                  30 min wide  -> ~50% hit
+#   T_30     15-45  min                  30 min wide  -> ~50% hit
+#   CLOSING   0-14  min                  14 min wide  -> ~23% hit
+#
+# An hourly scanner would therefore have MISSED roughly half of all T_60
+# and T_30 checkpoints and over three quarters of all closing lines --
+# and a closing line, unlike every other checkpoint, can never be
+# recovered after kickoff. At a 10-minute cadence every window above is
+# strictly wider than the interval, so each is hit at least once even
+# with several minutes of GitHub scheduler drift (CLOSING's 14-minute
+# window tolerates ~4 minutes of lateness).
+#
+# Why 10 and not 5: GitHub's documented `schedule` floor is 5 minutes and
+# cron accuracy degrades under platform load, so 5 buys little real
+# margin while doubling API load. Why not a second "final approach only"
+# workflow: cron cannot be made conditional on kickoff proximity, so it
+# would fire just as often while adding a second writer to race with.
+#
+# *** WHY 6x THE RUNS IS NOT 6x THE COST ***
+# The scanner now defers both the multi-season CFBD history fetch and the
+# football model itself until a checkpoint is genuinely due (see
+# scripts/research_scan_and_capture.py's lazy-projection note). Most runs
+# at this cadence have nothing due and skip both entirely, so a typical
+# run is schedule + FCS + Kalshi discovery only. The expensive path runs
+# only on the runs that actually capture something.
+#
+# *** CONCURRENCY: ONE SHARED GROUP, QUEUE RATHER THAN CANCEL ***
+# Every workflow that can write the research corpus -- this one,
+# research-settlement, research-weekly-report -- shares the SINGLE group
+# `research-data-write`. A group dedicated to prospective collection
+# alone would serialize this workflow against itself but still let a
+# collection run and a settlement run interleave on the same branch, so
+# the shared group is the strictly stronger reading of "only one run may
+# write to the research corpus at a time".
+#
+# `cancel-in-progress: false` (queue, never cancel) is the safe choice
+# for immutable research capture: cancelling a run mid-flight could kill
+# it between its fsync'd append and its git push, and a checkpoint missed
+# because we cancelled ourselves is indistinguishable in the corpus from
+# one the market never offered. Queuing costs at most one delayed run;
+# cancelling costs an unrecoverable closing line. GitHub keeps at most
+# one pending run per group (a third displaces the pending one), which at
+# a ~45s runtime against a 10-minute interval leaves ~13x headroom -- a
+# backlog cannot form in practice.
+#
+# research/git_durable_store.py's fetch-reset-retry loop remains the
+# secondary defense for what concurrency groups don't cover (a manual
+# dispatch racing a scheduled run, a retried job attempt).
 #
 # Requires this workflow to exist on the repository's default branch to
 # be schedulable at all (see the ci: register manual ... commits already
@@ -28,7 +67,7 @@ name: Research Capture (scheduled scanner)
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       schedule_season:
@@ -67,6 +106,35 @@ jobs:
         run: |
           git config user.name "research-capture-bot"
           git config user.email "research-capture-bot@users.noreply.github.com"
+      # Read-only, manual runs only: the mission-section-19 reality check
+      # that checkpoint windows line up against a real slate. Captures
+      # nothing.
+      #
+      # Runs BEFORE the scan, and reads the corpus out of a temp directory
+      # rather than the working tree. A live run proved why: the scan's
+      # `ensure_branch_checked_out` switches the working tree to the
+      # `research-data` ORPHAN branch, which holds data and no code -- so
+      # a step placed after the scan cannot even find its own script
+      # (job 98618136387 failed exactly that way). Before the scan the
+      # code is present but data/research is not, hence materialising the
+      # corpus here with `git show`.
+      - name: Validate collection schedule (read-only, manual runs only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          SEASON: ${{ github.event.inputs.schedule_season || '2026' }}
+        run: |
+          set -euo pipefail
+          CORPUS_DIR="$RUNNER_TEMP/corpus"
+          mkdir -p "$CORPUS_DIR/data/research/observations"
+          git fetch origin research-data --depth=1 || true
+          git show "origin/research-data:data/research/observations/${SEASON}.jsonl" \
+            > "$CORPUS_DIR/data/research/observations/${SEASON}.jsonl" 2>/dev/null \
+            || echo "(no existing corpus for season ${SEASON}; validating against an empty corpus)"
+          python scripts/validate_collection_schedule.py \
+            --schedule-season "$SEASON" \
+            --data-repo-dir "$CORPUS_DIR"
+
       - name: Scan and capture
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
@@ -74,4 +142,6 @@ jobs:
           python scripts/research_scan_and_capture.py \
             --schedule-season "${{ github.event.inputs.schedule_season || '2026' }}" \
             --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            --trigger-type "${{ github.event_name }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+

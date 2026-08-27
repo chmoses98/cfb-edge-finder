@@ -40,7 +40,14 @@ from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest  # noqa: E402
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
-from cfb_edge_finder.research import git_durable_store, health, persistence, scan_logic, timing  # noqa: E402
+from cfb_edge_finder.research import (  # noqa: E402
+    closing_capture,
+    git_durable_store,
+    health,
+    persistence,
+    scan_logic,
+    timing,
+)
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
 from cfb_edge_finder.schemas.capture_state import CaptureState, CaptureStateRecord  # noqa: E402
@@ -132,7 +139,16 @@ def _apply_scan(
 
     for series_ticker, family in milestone_d.CORE_V1_SERIES_TO_FAMILY.items():
         with telemetry.phase("market_discovery_seconds"):
-            markets = milestone_d._fetch_active_markets_safe(kalshi_client, series_ticker)  # noqa: SLF001
+            markets, fetch_failed = milestone_d._fetch_active_markets_with_status(  # noqa: SLF001
+                kalshi_client, series_ticker
+            )
+        if fetch_failed:
+            # A failed series is NOT an empty series. Counting it makes the
+            # run fail loudly rather than under-reporting the market
+            # universe while looking healthy (see that helper's docstring
+            # for the live 429 that proved this).
+            report.api_failures += 1
+            telemetry.api_failure_count += 1
         report.markets_scanned += len(markets)
         telemetry.discovered_market_count += len(markets)
         markets_by_event: dict[str, list[dict]] = {}
@@ -156,13 +172,12 @@ def _apply_scan(
                 report.mapping_failures += len(event_markets)
 
             matched_game = games_by_id.get(mapping.game_id) if mapping.game_id else None
-            cached_projection = None
             home_cls = away_cls = None
-            training_cutoff_str = None
+            projection_request: GameProjectionRequest | None = None
             if matched_game is not None:
                 home_cls, away_cls = classification_by_game_id.get(matched_game.game_id, (None, None))
                 if home_cls == "fbs" and away_cls == "fbs":
-                    request = GameProjectionRequest(
+                    projection_request = GameProjectionRequest(
                         game_id=matched_game.game_id,
                         home_id=matched_game.home_team_id,
                         away_id=matched_game.away_team_id,
@@ -174,13 +189,46 @@ def _apply_scan(
                         n_simulations=n_simulations,
                         seed=seed,
                     )
-                    try:
-                        with telemetry.phase("projection_seconds"):
-                            cached_projection = cache.get_or_build(request)
-                        training_cutoff_str = training_cutoff_fn(request)
-                        projected_game_ids.add(matched_game.game_id)
-                    except ValueError:
-                        pass
+
+            # *** LAZY PROJECTION (prospective-collection milestone) ***
+            # The football model used to run for EVERY mapped event on
+            # EVERY scan, before anything checked whether a checkpoint was
+            # actually due -- ~102 projections and a full multi-season
+            # CFBD history fetch per run even when the run went on to
+            # write nothing at all. That was affordable hourly; at the
+            # 10-minute cadence the closing window requires it is not, and
+            # it is pure waste besides.
+            #
+            # Deferring is output-NEUTRAL: `cached_projection` is only
+            # ever consumed by `price_one_market`, which is only reached
+            # when `due_labels` is non-empty. Projection inputs do not
+            # depend on due-ness, so a row priced from a lazily-built
+            # projection is byte-identical to one priced from an eagerly-
+            # built one. GameProjectionCache still memoises per game, so
+            # a ladder of 30 contracts on one game still costs exactly one
+            # projection (see tests/test_research_scan_projection_reuse).
+            event_projection: list = []  # memo cell: [] = not attempted yet
+
+            def _projection_for_event(
+                request: GameProjectionRequest | None = projection_request,
+                memo: list = event_projection,
+                game: GameRecord | None = matched_game,
+            ) -> tuple[object | None, str | None]:
+                if memo:
+                    return memo[0]
+                if request is None:
+                    memo.append((None, None))
+                    return memo[0]
+                try:
+                    with telemetry.phase("projection_seconds"):
+                        built = cache.get_or_build(request)
+                    resolved = (built, training_cutoff_fn(request))
+                    if game is not None:
+                        projected_game_ids.add(game.game_id)
+                except ValueError:
+                    resolved = (None, None)
+                memo.append(resolved)
+                return resolved
 
             game_started = matched_game is not None and matched_game.status != "scheduled"
             kickoff = matched_game.kickoff_utc if matched_game is not None else None
@@ -213,8 +261,15 @@ def _apply_scan(
                     game_started=game_started,
                 )
                 report.captures_due += len(due_labels)
+                if timing.CLOSING in due_labels:
+                    report.closing_due += 1
+                    telemetry.closing_due_count += 1
                 if not due_labels:
                     continue
+
+                # Only now -- with at least one genuinely due checkpoint --
+                # is the expensive football model allowed to run.
+                cached_projection, training_cutoff_str = _projection_for_event()
 
                 for label in due_labels:
                     elapsed = timing.hours_before_kickoff(kickoff, now) if kickoff is not None else None
@@ -236,7 +291,46 @@ def _apply_scan(
                             training_cutoff=training_cutoff_str,
                             provenance=provenance,
                         )
+                    # *** CLOSING EXECUTABILITY GATE (defense in depth) ***
+                    # Market discovery already filters to status ==
+                    # "active", so a suspended/closed market normally
+                    # never reaches this point at all. That filter is the
+                    # PRIMARY protection; this gate is the secondary one,
+                    # and it exists because CLOSING is the one checkpoint
+                    # that cannot be recovered if we get it wrong. If a
+                    # market's status is anything but executable, or it
+                    # produced no executable quote, we record WHY rather
+                    # than writing a closing row that looks tradeable.
+                    if label == timing.CLOSING:
+                        eligibility = closing_capture.evaluate_closing_eligibility(
+                            market_status=observation.market_status,
+                            executable_yes_price=observation.executable_yes_price,
+                            executable_no_price=observation.executable_no_price,
+                            mapping_failed=observation.game_id is None,
+                            is_supported_population=(home_cls == "fbs" and away_cls == "fbs"),
+                            minutes_before_kickoff=(
+                                timing.minutes_before_kickoff(kickoff, now) if kickoff is not None else None
+                            ),
+                        )
+                        if not eligibility.eligible:
+                            report.closing_missing += 1
+                            capture_state_rows.append(
+                                CaptureStateRecord(
+                                    game_id=observation.game_id or "unmapped",
+                                    kalshi_market_ticker=ticker,
+                                    timing_label=timing.CLOSING,
+                                    state=CaptureState.OTHER_EXPLICIT_REASON,
+                                    observed_at=now,
+                                    detail=f"{eligibility.status.value}: {eligibility.detail}",
+                                    run_id=run_id,
+                                )
+                            )
+                            continue
+
                     telemetry.observation_count += 1
+                    if label == timing.CLOSING:
+                        report.closing_captured += 1
+                        telemetry.closing_captured_count += 1
                     if observation.pricing_status == "model_priced":
                         report.supported_markets += 1
                         telemetry.priced_contract_count += 1
@@ -273,6 +367,39 @@ def _apply_scan(
                             run_id=run_id,
                         )
                     )
+
+                # *** CLOSING COMPLETENESS ACCOUNTING (mission section 18) ***
+                # Whenever a market is inside (or has just passed) its
+                # closing window, record exactly one explicit closing
+                # outcome. Silence is never an option: a market that
+                # reaches kickoff without a CLOSING row must say WHY in
+                # the capture-state log, so a missing closing is always
+                # attributable rather than merely absent.
+                if kickoff is not None and matched_game is not None:
+                    minutes_out = timing.minutes_before_kickoff(kickoff, now)
+                    in_or_past_window = minutes_out <= timing.CLOSING_WINDOW_MINUTES
+                    already_closed = timing.CLOSING in already_captured_for_ticker
+                    if in_or_past_window and not already_closed and timing.CLOSING not in due_labels:
+                        eligibility = closing_capture.evaluate_closing_eligibility(
+                            market_status=str(market.get("status") or "") or None,
+                            executable_yes_price=None,
+                            executable_no_price=None,
+                            mapping_failed=mapping.game_id is None,
+                            is_supported_population=(home_cls == "fbs" and away_cls == "fbs"),
+                            minutes_before_kickoff=minutes_out,
+                        )
+                        report.closing_missing += 1
+                        capture_state_rows.append(
+                            CaptureStateRecord(
+                                game_id=mapping.game_id or "unmapped",
+                                kalshi_market_ticker=ticker,
+                                timing_label=timing.CLOSING,
+                                state=CaptureState.OTHER_EXPLICIT_REASON,
+                                observed_at=now,
+                                detail=f"{eligibility.status.value}: {eligibility.detail}",
+                                run_id=run_id,
+                            )
+                        )
 
                 if kickoff is not None:
                     seen_labels = already_captured_for_ticker | set(due_labels)
@@ -331,6 +458,15 @@ def main() -> int:
         "--no-push", action="store_true", help="Write locally only; skip the git commit/push step (rehearsal mode)."
     )
     parser.add_argument(
+        "--trigger-type",
+        default="local",
+        help=(
+            "How this run was triggered ('schedule', 'workflow_dispatch', 'local'). Recorded in telemetry "
+            "for provenance ONLY -- it never changes due-label resolution, duplicate protection, or what "
+            "gets written, so a manual run and a scheduled run produce compatible research artifacts."
+        ),
+    )
+    parser.add_argument(
         "--telemetry-json",
         type=Path,
         default=None,
@@ -346,20 +482,29 @@ def main() -> int:
     now = datetime.now(UTC)
     cfbd_client = CFBDClient(api_key=settings.cfbd_api_key)
     report = health.CaptureHealthReport()
-    telemetry = ScanTelemetry()
+    telemetry = ScanTelemetry(trigger_type=args.trigger_type)
 
     try:
         games, classification_by_game_id = milestone_d._fetch_candidate_games(args.schedule_season, cfbd_client, now)  # noqa: SLF001
-        history_lines = milestone_d._fetch_history_lines(args.history_seasons, cfbd_client, now)  # noqa: SLF001
         fcs_school_names = milestone_d._fetch_fcs_school_names(cfbd_client, args.schedule_season)  # noqa: SLF001
     except CFBDAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
+    def _fetch_history_lines():
+        """Deferred to first projection. At the 10-minute collection
+        cadence most scans have nothing due (checkpoint windows are
+        narrow), and this is the single most expensive call the scanner
+        makes -- four seasons of CFBD team-game lines. Paying it only when
+        a checkpoint is genuinely due is what keeps a frequent cadence
+        cheap; see docs/PROSPECTIVE_COLLECTION.md's cadence analysis."""
+        with telemetry.phase("history_fetch_seconds"):
+            return milestone_d._fetch_history_lines(args.history_seasons, cfbd_client, now)  # noqa: SLF001
+
     not_started_games = [g for g in games if g.status == "scheduled"]
     report.games_scanned = len(not_started_games)
 
-    cache = GameProjectionCache(history_lines)
+    cache = GameProjectionCache(lines_provider=_fetch_history_lines)
     kalshi_client = KalshiClient()
     model_version = ModelVersion(
         model_version=milestone_d.MODEL_VERSION,
@@ -408,6 +553,7 @@ def main() -> int:
 
     telemetry.game_projection_count = cache.projection_builds
     telemetry.ratings_fit_count = cache.ratings_fits
+    telemetry.history_fetch_count = cache.lines_fetch_count
     telemetry.finish()
 
     diagnostics = health.evaluate_collapse(report, baseline_supported_markets=None)

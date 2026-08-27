@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from cfb_edge_finder.research import timing
 from cfb_edge_finder.schemas.capture_state import CaptureState
 
@@ -112,5 +114,85 @@ def test_nearest_window_label_diagnostic():
     assert timing.nearest_window_label(168.0) == "T_7D"
 
 
-def test_closing_excluded_from_pregame_bucket_labels():
-    assert timing.CLOSING not in timing.ALL_PREGAME_LABELS
+def test_closing_is_now_a_scheduled_pregame_checkpoint():
+    """Supersedes the old `test_closing_excluded_from_pregame_bucket_labels`.
+
+    CLOSING used to be deliberately outside this module: research/closing.py
+    picked a closing row after the fact from whatever the hourly scanner
+    happened to have captured. The prospective-collection milestone makes
+    CLOSING a real, prospectively-scheduled checkpoint, so it now belongs
+    to ALL_PREGAME_LABELS and has its own strictly-pre-kickoff window."""
+    assert timing.CLOSING in timing.ALL_PREGAME_LABELS
+    assert timing.ALL_PREGAME_LABELS[-1] == timing.CLOSING
+
+
+def test_closing_window_is_disjoint_from_every_numeric_bucket():
+    """Mission section 21: tolerance windows must not cause overlapping
+    labels. The numeric buckets overlap EACH OTHER on purpose (outage
+    catch-up), but CLOSING must never co-fire with one -- otherwise a
+    single scan could owe both T_30 and CLOSING for one market and the
+    two rows would describe the same instant under different meanings."""
+    closing_upper_hours = timing.CLOSING_WINDOW_MINUTES / 60.0
+    nearest_numeric = min(w.lower_bound_hours for w in timing.NUMERIC_TIMING_WINDOWS)
+    assert closing_upper_hours < nearest_numeric, (
+        f"CLOSING window reaches {timing.CLOSING_WINDOW_MINUTES} min but the nearest numeric bucket "
+        f"opens at {nearest_numeric * 60:.0f} min -- they overlap"
+    )
+
+
+@pytest.mark.parametrize(
+    "minutes_out,expected_due",
+    [
+        (60.0, False),   # far outside
+        (20.0, False),   # T_30 territory, not CLOSING
+        (15.0, False),   # T_30's exact near edge -- still not CLOSING
+        (14.0, True),    # window upper edge, inclusive
+        (13.9, True),
+        (5.0, True),
+        (0.1, True),
+        (0.0, False),    # exactly kickoff -- never
+        (-1.0, False),   # after kickoff -- never backfilled
+        (-600.0, False),
+    ],
+)
+def test_closing_due_boundaries(minutes_out, expected_due):
+    kickoff = KICKOFF
+    now = kickoff - timedelta(minutes=minutes_out)
+    assert (
+        timing.is_closing_due(kickoff_utc=kickoff, now=now, already_captured_labels=set()) is expected_due
+    )
+
+
+def test_closing_is_never_due_twice():
+    now = KICKOFF - timedelta(minutes=5)
+    assert timing.is_closing_due(kickoff_utc=KICKOFF, now=now, already_captured_labels=set()) is True
+    assert timing.is_closing_due(kickoff_utc=KICKOFF, now=now, already_captured_labels={timing.CLOSING}) is False
+
+
+def test_closing_is_never_due_for_a_started_game():
+    now = KICKOFF - timedelta(minutes=5)
+    assert (
+        timing.is_closing_due(kickoff_utc=KICKOFF, now=now, already_captured_labels=set(), game_started=True)
+        is False
+    )
+
+
+def test_closing_appears_in_due_labels_inside_its_window():
+    now = KICKOFF - timedelta(minutes=8)
+    due = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=now, already_captured_labels={timing.EARLY_OPEN})
+    assert timing.CLOSING in due
+    assert "T_30" not in due, "T_30 must not co-fire with CLOSING"
+
+
+def test_closing_becomes_missed_window_once_kickoff_passes():
+    after = KICKOFF + timedelta(minutes=1)
+    states = timing.resolve_all_bucket_states(kickoff_utc=KICKOFF, now=after, already_captured_labels=set())
+    assert states[timing.CLOSING] == CaptureState.MISSED_WINDOW
+
+
+def test_captured_closing_stays_captured_after_kickoff():
+    after = KICKOFF + timedelta(hours=3)
+    states = timing.resolve_all_bucket_states(
+        kickoff_utc=KICKOFF, now=after, already_captured_labels={timing.CLOSING}
+    )
+    assert states[timing.CLOSING] == CaptureState.CAPTURED
