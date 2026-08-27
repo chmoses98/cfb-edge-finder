@@ -282,6 +282,42 @@ def _apply_scan(
                             training_cutoff=training_cutoff_str,
                             provenance=provenance,
                         )
+                    # *** CLOSING EXECUTABILITY GATE (defense in depth) ***
+                    # Market discovery already filters to status ==
+                    # "active", so a suspended/closed market normally
+                    # never reaches this point at all. That filter is the
+                    # PRIMARY protection; this gate is the secondary one,
+                    # and it exists because CLOSING is the one checkpoint
+                    # that cannot be recovered if we get it wrong. If a
+                    # market's status is anything but executable, or it
+                    # produced no executable quote, we record WHY rather
+                    # than writing a closing row that looks tradeable.
+                    if label == timing.CLOSING:
+                        eligibility = closing_capture.evaluate_closing_eligibility(
+                            market_status=observation.market_status,
+                            executable_yes_price=observation.executable_yes_price,
+                            executable_no_price=observation.executable_no_price,
+                            mapping_failed=observation.game_id is None,
+                            is_supported_population=(home_cls == "fbs" and away_cls == "fbs"),
+                            minutes_before_kickoff=(
+                                timing.minutes_before_kickoff(kickoff, now) if kickoff is not None else None
+                            ),
+                        )
+                        if not eligibility.eligible:
+                            report.closing_missing += 1
+                            capture_state_rows.append(
+                                CaptureStateRecord(
+                                    game_id=observation.game_id or "unmapped",
+                                    kalshi_market_ticker=ticker,
+                                    timing_label=timing.CLOSING,
+                                    state=CaptureState.OTHER_EXPLICIT_REASON,
+                                    observed_at=now,
+                                    detail=f"{eligibility.status.value}: {eligibility.detail}",
+                                    run_id=run_id,
+                                )
+                            )
+                            continue
+
                     telemetry.observation_count += 1
                     if label == timing.CLOSING:
                         report.closing_captured += 1

@@ -213,7 +213,17 @@ def install_fake_market_feed(monkeypatch, markets_by_series: dict[str, list[dict
 
     def _fake(_client, series_ticker: str) -> list[dict]:
         calls[series_ticker] = calls.get(series_ticker, 0) + 1
-        return list(markets_by_series.get(series_ticker, []))
+        # Mirrors the real `_fetch_active_markets_safe`, which filters to
+        # status == "active" CLIENT-side (Kalshi rejects status= as a query
+        # parameter -- see that function's docstring). Without this the
+        # fixture would be unfaithful in exactly the direction that hides
+        # bugs: suspended/closed markets would reach pricing in tests but
+        # never in production.
+        return [
+            m
+            for m in markets_by_series.get(series_ticker, [])
+            if str(m.get("status", "")).lower() == "active"
+        ]
 
     monkeypatch.setattr(milestone_d, "_fetch_active_markets_safe", _fake)
     return calls
