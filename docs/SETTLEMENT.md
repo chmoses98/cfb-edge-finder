@@ -250,9 +250,36 @@ mirror, overtime, spread strict boundary, spread ladder monotonicity,
 total strict boundary, unknown operator, missing threshold, all void/
 non-final states, mismatch, and both economics sides are covered.
 
-**Live.** See the mission report. Live settlement of a completed captured
-game is pending until the first captured game finishes; no live
-settlement is fabricated in the meantime.
+**Live.** Two consecutive real workflow runs against the live corpus,
+both green:
+
+| | Run 1 ([33103859696](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33103859696)) | Run 2 ([33103950959](https://github.com/chmoses98/cfb-edge-finder/actions/runs/33103950959)) |
+|---|---|---|
+| Observations scanned | 1,724 | 1,724 |
+| Unsettled eligible | 930 | 930 |
+| Games checked / newly final | 86 / 0 | 86 / 0 |
+| **Attributions written** | **794** | **0** |
+| **Duplicate attempts** | **0** | **0** |
+| `GAME_NOT_FINAL` (held, not persisted) | 930 | 930 |
+| `NOT_APPLICABLE_UNSUPPORTED_POPULATION` | 794 | 0 |
+| Settlement mismatches / API failures | 0 / 0 | 0 / 0 |
+| Runtime | 2.71 s | 2.89 s |
+
+Run 2 proves both idempotence and the incremental index at once: it wrote
+nothing, and `unsupported_population` fell from 794 to **0** because those
+rows were excluded from the pending set by the O(1) index lookup *before*
+being re-derived — not merely rejected at the append. The 930 eligible
+observations correctly stayed `GAME_NOT_FINAL` across both runs without
+consuming their attribution keys.
+
+Ledger after: 794 rows, 794 unique `attribution_key`s, 0 duplicates, 0
+malformed. The observation corpus is unchanged at 1,724 rows.
+
+**Live settlement of a completed captured game is PENDING.** The earliest
+captured kickoff is 2026-08-29; no captured game has finished, so
+`games_newly_final` is legitimately 0 and `settled_yes`/`settled_no` are
+both 0. No live settlement was fabricated to fill that gap — the
+scheduled 6-hourly workflow will produce it once Week 1 completes.
 
 ## 14. Known limitations
 
