@@ -95,6 +95,10 @@ prints a notice -- no live 2026 data is fetched or implied.
   and why.
 - `docs/MLB_ARCHITECTURE_AUDIT.md` -- what was reused from edge-finder-api
   and what was deliberately left behind.
+- `docs/MARKET_EXPRESSION.md` -- market-expression and correlation
+  framework: grouping hierarchy, proved exact equivalence, fee-aware
+  break-even, dominated equivalents, ladder coherence, exposure
+  primitives.
 - `docs/ANALYTICS.md` -- research analytics: model-market gaps, side-aware
   CLV, calibration and market comparison, fee-adjusted unit economics,
   gap/price/timing slices, cluster-aware uncertainty, and limitations.
