@@ -21,12 +21,34 @@ GIT-level half (surviving concurrent workflow runs without a race) lives
 in research.git_durable_store, which re-reads this exact file fresh from
 the latest fetched ref before every retry, so re-running this function
 against updated on-disk content is always safe and convergent.
+
+*** THE ONE-LOAD-PER-RUN CONTRACT (performance hardening) ***
+`ObservationIndex` below exists because the scanner used to re-derive
+"what is already in the corpus?" from disk once per MARKET TICKER --
+`read_observation_rows` (a FULL pydantic re-validation of every historical
+row) inside the per-ticker loop, plus another full JSON pass inside every
+`append_observation_rows` call. With T tickers and H history rows that is
+O(T x H) work per run, so runtime grew with the corpus even on runs that
+captured nothing at all. `load_observation_index` does ONE pass over the
+file and derives BOTH lookups the scanner needs (the canonical
+`observation_key` set for dedup, and captured timing labels per market
+ticker for scheduling), giving O(H + T). The index is a plain exact set /
+dict -- deterministic, no probabilistic structure, no weakening of the
+canonical key -- so dedup semantics are bit-for-bit what they were.
+
+Like `_load_existing_keys` (and for the same schema-drift reason stated on
+`append_json_rows`), the index is derived from the JSON-decoded dict, not
+from a re-validated typed model: a corpus row written under an older
+schema must never be able to break a NEW run's dedup. Lines that are not
+decodable JSON are counted in `malformed_rows` and reported by run
+telemetry rather than silently ignored.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -73,7 +95,13 @@ def _load_existing_keys(path: Path, key_fn: Callable[[dict], str | None]) -> set
     return keys
 
 
-def append_json_rows(path: Path, rows: list[dict], key_fn: Callable[[dict], str | None]) -> AppendResult:
+def append_json_rows(
+    path: Path,
+    rows: list[dict],
+    key_fn: Callable[[dict], str | None],
+    *,
+    existing_keys: set[str] | None = None,
+) -> AppendResult:
     """The single, generic append-only-with-dedup primitive. Every typed
     wrapper below (`append_observation_rows`, `append_settlement_rows`,
     `append_capture_state_rows`) reduces to this. `key_fn` is applied to
@@ -81,9 +109,17 @@ def append_json_rows(path: Path, rows: list[dict], key_fn: Callable[[dict], str 
     file never requires re-validating every historical row against the
     CURRENT schema (mission section 27: schema drift must never corrupt
     older rows -- a schema-version bump on new rows does not require
-    rewriting or re-validating old ones just to compute dedup keys)."""
+    rewriting or re-validating old ones just to compute dedup keys).
+
+    `existing_keys`, when supplied, is the ALREADY-LOADED set of keys
+    currently on disk for this file -- the caller promises it was derived
+    from this same file with this same `key_fn` (see
+    `load_observation_index`). It is a pure read-cache: passing it changes
+    only HOW MANY TIMES the file is read, never which rows are considered
+    duplicates. Omit it and the set is loaded from disk exactly as before,
+    which is what every non-scanner caller still does."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = _load_existing_keys(path, key_fn)
+    existing = _load_existing_keys(path, key_fn) if existing_keys is None else existing_keys
     seen_this_batch: set[str] = set()
     to_write: list[tuple[str, dict]] = []
     skipped = 0
@@ -121,9 +157,130 @@ def _read_all(path: Path) -> list[dict]:
 # --- Observations -----------------------------------------------------
 
 
-def append_observation_rows(path: Path, rows: Iterable[ResearchCorpusRow]) -> AppendResult:
+def observation_key_of(obj: dict) -> str | None:
+    """THE canonical dedup identity for an observation row -- the single
+    definition `append_observation_rows`, `read_observation_keys` and
+    `load_observation_index` all share, so an index can never drift from
+    the key the append path actually enforces."""
+    return obj.get("observation_key")
+
+
+def _observation_ticker_and_label(obj: dict) -> tuple[str, str] | None:
+    """The (market ticker, captured timing label) pair the SCHEDULER needs
+    from a historical row -- read straight off the decoded dict, never via
+    a typed re-validation (see this module's docstring)."""
+    observation = obj.get("observation")
+    if not isinstance(observation, dict):
+        return None
+    ticker = observation.get("kalshi_market_ticker")
+    timing = observation.get("snapshot_timing")
+    if not isinstance(ticker, str) or not isinstance(timing, dict):
+        return None
+    label = timing.get("label")
+    if not isinstance(label, str):
+        return None
+    return ticker, label
+
+
+@dataclass
+class ObservationIndex:
+    """Everything one scanner run needs to know about the EXISTING corpus,
+    derived in a single pass (see this module's docstring for the O(T x H)
+    -> O(H + T) reason this type exists).
+
+    Deliberately NOT frozen: `labels_by_ticker` is a LIVE view that the
+    scanner updates as it buffers new rows, exactly reproducing the old
+    read-it-back-from-disk behaviour for the (pathological but possible)
+    case of one ticker being visited twice in a single run. `keys` stays
+    the ON-DISK key set so it can be handed to `append_json_rows` as its
+    `existing_keys` without the batch deduplicating itself away."""
+
+    keys: set[str] = field(default_factory=set)
+    labels_by_ticker: dict[str, set[str]] = field(default_factory=dict)
+    row_count: int = 0
+    malformed_rows: int = 0
+    load_count: int = 0
+    load_seconds: float = 0.0
+
+    def captured_labels_for(self, ticker: str) -> set[str]:
+        """The timing labels already captured for `ticker` -- the exact
+        set the old per-ticker full-file read computed."""
+        return self.labels_by_ticker.get(ticker, set())
+
+    def register_pending(self, row: dict) -> None:
+        """Record a row the caller has BUFFERED but not yet written, so a
+        later lookup in the same run sees it just as it would have seen it
+        by re-reading the file mid-run. Deliberately does not touch
+        `keys`: dedup against disk is still decided by the append path."""
+        pair = _observation_ticker_and_label(row)
+        if pair is not None:
+            ticker, label = pair
+            self.labels_by_ticker.setdefault(ticker, set()).add(label)
+
+
+def load_observation_index(path: Path) -> ObservationIndex:
+    """Read the observations file EXACTLY ONCE and derive every lookup a
+    scanner run needs from that one pass. `load_count`/`load_seconds` are
+    carried on the result specifically so a test (and run telemetry) can
+    assert the once-per-run property rather than merely hoping for it."""
+    index = ObservationIndex()
+    started = time.perf_counter()
+    index.load_count = 1
+    if not path.exists():
+        index.load_seconds = time.perf_counter() - started
+        return index
+
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                # Same tolerance `_load_existing_keys` has always had, but
+                # counted here instead of invisible -- run telemetry
+                # reports it (mission section 12's "malformed rows").
+                index.malformed_rows += 1
+                continue
+            index.row_count += 1
+            key = observation_key_of(obj)
+            if key is not None:
+                index.keys.add(key)
+            pair = _observation_ticker_and_label(obj)
+            if pair is not None:
+                ticker, label = pair
+                index.labels_by_ticker.setdefault(ticker, set()).add(label)
+
+    index.load_seconds = time.perf_counter() - started
+    return index
+
+
+def append_observation_rows(
+    path: Path,
+    rows: Iterable[ResearchCorpusRow],
+    *,
+    index: ObservationIndex | None = None,
+) -> AppendResult:
+    """Appends with the usual exact-key dedup. When `index` is supplied,
+    its already-loaded `keys` are used instead of re-reading the file, and
+    the index is updated with whatever was actually written so it stays a
+    faithful picture of the file for the rest of the run."""
     dicts = [r.model_dump(mode="json") for r in rows]
-    return append_json_rows(path, dicts, key_fn=lambda obj: obj.get("observation_key"))
+    result = append_json_rows(
+        path,
+        dicts,
+        key_fn=observation_key_of,
+        existing_keys=None if index is None else index.keys,
+    )
+    if index is not None:
+        written_keys = set(result.keys_written)
+        index.keys |= written_keys
+        index.row_count += result.written
+        for row in dicts:
+            if observation_key_of(row) in written_keys:
+                index.register_pending(row)
+    return result
 
 
 def read_observation_rows(path: Path) -> list[ResearchCorpusRow]:
@@ -131,7 +288,7 @@ def read_observation_rows(path: Path) -> list[ResearchCorpusRow]:
 
 
 def read_observation_keys(path: Path) -> set[str]:
-    return _load_existing_keys(path, key_fn=lambda obj: obj.get("observation_key"))
+    return _load_existing_keys(path, key_fn=observation_key_of)
 
 
 # --- Settlements --------------------------------------------------------

@@ -42,7 +42,9 @@ from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, Ga
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
 from cfb_edge_finder.research import git_durable_store, health, persistence, scan_logic, timing  # noqa: E402
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
+from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
 from cfb_edge_finder.schemas.capture_state import CaptureState, CaptureStateRecord  # noqa: E402
+from cfb_edge_finder.schemas.corpus_row import ResearchCorpusRow  # noqa: E402
 from cfb_edge_finder.schemas.data_versions import DataVersionManifest  # noqa: E402
 from cfb_edge_finder.schemas.game import GameRecord  # noqa: E402
 from cfb_edge_finder.schemas.kalshi_observation import SnapshotTiming  # noqa: E402
@@ -82,24 +84,52 @@ def _apply_scan(
     schedule_source_timestamp: datetime,
     run_id: str | None,
     report: health.CaptureHealthReport,
+    telemetry: ScanTelemetry,
 ) -> persistence.AppendResult:
     """The per-attempt unit of work `commit_and_push_with_retry` calls --
-    reads the CURRENT on-disk canonical file fresh each retry (via
-    persistence.read_observation_keys), so re-running this after a reset
-    to the fresh remote tip correctly re-detects rows the other run
-    already wrote."""
+    reads the CURRENT on-disk canonical file fresh each retry, so
+    re-running this after a reset to the fresh remote tip correctly
+    re-detects rows the other run already wrote.
+
+    *** ONE HISTORY LOAD PER ATTEMPT (performance hardening) ***
+    That "fresh each retry" requirement is why `load_observation_index`
+    is called HERE, at the top of the per-attempt function, and not once
+    in `main()`: a retry runs against a hard-reset working tree whose
+    observations file has genuinely changed underneath us, so an index
+    hoisted out of this function would make the retry dedup against stale
+    content -- silently reintroducing exactly the duplicate-row race
+    research/git_durable_store.py exists to prevent. Once per ATTEMPT is
+    the correct scope; the bug being fixed was once per TICKER.
+
+    Every lookup the per-ticker loop used to derive by re-reading the
+    whole file (a full pydantic re-validation of the entire corpus, then
+    another full JSON pass inside every append) now comes off this one
+    index, and rows are BUFFERED and written in a single appending,
+    fsync'd batch at the end -- see the write-strategy note there."""
     base_dir = repo_dir / "data" / "research"
     provenance = DataProvenance(schedule_source="cfbd", data_timestamp=now)
     data_versions = _build_data_versions(model_version, now)
 
-    total_written = 0
-    total_skipped = 0
-    keys_written: list[str] = []
+    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    index = persistence.load_observation_index(obs_path)
+    telemetry.history_load_count += index.load_count
+    telemetry.history_load_seconds += index.load_seconds
+    telemetry.history_row_count = index.row_count
+    telemetry.malformed_row_count = index.malformed_rows
+
+    # `games` is scanned by game_id once per mapped event; at ~3.5k
+    # scheduled games and ~1.5k events that linear `next(...)` search was
+    # millions of comparisons per run for a lookup a dict does in O(1).
+    games_by_id = {g.game_id: g for g in games}
+
+    pending_rows: list[ResearchCorpusRow] = []
     capture_state_rows: list[CaptureStateRecord] = []
 
     for series_ticker, family in milestone_d.CORE_V1_SERIES_TO_FAMILY.items():
-        markets = milestone_d._fetch_active_markets_safe(kalshi_client, series_ticker)  # noqa: SLF001
+        with telemetry.phase("market_discovery_seconds"):
+            markets = milestone_d._fetch_active_markets_safe(kalshi_client, series_ticker)  # noqa: SLF001
         report.markets_scanned += len(markets)
+        telemetry.discovered_market_count += len(markets)
         markets_by_event: dict[str, list[dict]] = {}
         for market in markets:
             markets_by_event.setdefault(str(market.get("event_ticker", "")), []).append(market)
@@ -107,9 +137,10 @@ def _apply_scan(
         for event_ticker, event_markets in markets_by_event.items():
             probe_market = event_markets[0]
             evidence = milestone_d._evidence_from_market(probe_market, event_ticker)  # noqa: SLF001
-            mapping: KalshiGameMappingResult = map_kalshi_event_to_game(
-                evidence, games, fcs_school_names=fcs_school_names
-            )
+            with telemetry.phase("game_mapping_seconds"):
+                mapping: KalshiGameMappingResult = map_kalshi_event_to_game(
+                    evidence, games, fcs_school_names=fcs_school_names
+                )
             # See research.scan_logic.is_genuine_mapping_failure's own
             # docstring: a live rehearsal caught a cruder
             # `mapping.reason is not None` check here also counting
@@ -119,9 +150,7 @@ def _apply_scan(
             if scan_logic.is_genuine_mapping_failure(mapping.reason):
                 report.mapping_failures += len(event_markets)
 
-            matched_game = (
-                next((g for g in games if g.game_id == mapping.game_id), None) if mapping.game_id else None
-            )
+            matched_game = games_by_id.get(mapping.game_id) if mapping.game_id else None
             cached_projection = None
             home_cls = away_cls = None
             training_cutoff_str = None
@@ -141,7 +170,8 @@ def _apply_scan(
                         seed=seed,
                     )
                     try:
-                        cached_projection = cache.get_or_build(request)
+                        with telemetry.phase("projection_seconds"):
+                            cached_projection = cache.get_or_build(request)
                         training_cutoff_str = training_cutoff_fn(request)
                     except ValueError:
                         pass
@@ -162,13 +192,13 @@ def _apply_scan(
 
             for market in event_markets:
                 ticker = str(market.get("ticker", ""))
-                obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-                existing_rows = persistence.read_observation_rows(obs_path) if obs_path.exists() else []
-                already_captured_for_ticker = {
-                    r.observation.snapshot_timing.label
-                    for r in existing_rows
-                    if r.observation.kalshi_market_ticker == ticker
-                }
+                # WAS: a full `read_observation_rows(obs_path)` (pydantic-
+                # validating EVERY historical row) right here, once per
+                # ticker, to compute this one small set. The index built
+                # once above already holds it, and stays live as rows are
+                # buffered, so this is the same set the disk read returned
+                # -- including for a ticker visited twice in one run.
+                already_captured_for_ticker = set(index.captured_labels_for(ticker))
 
                 due_labels = timing.resolve_due_labels(
                     kickoff_utc=kickoff,
@@ -183,24 +213,29 @@ def _apply_scan(
                 for label in due_labels:
                     elapsed = timing.hours_before_kickoff(kickoff, now) if kickoff is not None else None
                     snapshot_timing = SnapshotTiming(label=label, hours_before_kickoff=elapsed)
-                    observation = price_one_market(
-                        market,
-                        family_hint=family,
-                        event_ticker=event_ticker,
-                        series_ticker=series_ticker,
-                        mapping=mapping,
-                        home_classification=home_cls,
-                        away_classification=away_cls,
-                        cached_projection=cached_projection,
-                        captured_at=now,
-                        snapshot_id=str(uuid.uuid4()),
-                        snapshot_timing=snapshot_timing,
-                        model_version=model_version,
-                        training_cutoff=training_cutoff_str,
-                        provenance=provenance,
-                    )
+                    with telemetry.phase("contract_pricing_seconds"):
+                        observation = price_one_market(
+                            market,
+                            family_hint=family,
+                            event_ticker=event_ticker,
+                            series_ticker=series_ticker,
+                            mapping=mapping,
+                            home_classification=home_cls,
+                            away_classification=away_cls,
+                            cached_projection=cached_projection,
+                            captured_at=now,
+                            snapshot_id=str(uuid.uuid4()),
+                            snapshot_timing=snapshot_timing,
+                            model_version=model_version,
+                            training_cutoff=training_cutoff_str,
+                            provenance=provenance,
+                        )
+                    telemetry.observation_count += 1
                     if observation.pricing_status == "model_priced":
                         report.supported_markets += 1
+                        telemetry.priced_contract_count += 1
+                    else:
+                        telemetry.unresolved_count += 1
 
                     row = scan_logic.build_corpus_row(
                         observation=observation,
@@ -211,10 +246,15 @@ def _apply_scan(
                         data_versions=data_versions,
                         run_id=run_id,
                     )
-                    result = persistence.append_observation_rows(obs_path, [row])
-                    total_written += result.written
-                    total_skipped += result.skipped_duplicate
-                    keys_written.extend(result.keys_written)
+                    # WAS: `append_observation_rows(obs_path, [row])` per
+                    # row -- each call re-read the whole file for dedup
+                    # keys and re-opened/fsync'd the file for one line.
+                    # Buffered instead and written in ONE appending,
+                    # fsync'd batch below; `register_pending` keeps the
+                    # index's scheduling view current in the meantime, so
+                    # nothing downstream can tell the difference.
+                    pending_rows.append(row)
+                    index.register_pending(row.model_dump(mode="json"))
 
                     capture_state_rows.append(
                         CaptureStateRecord(
@@ -248,15 +288,27 @@ def _apply_scan(
                                 )
                             )
 
-    if capture_state_rows:
-        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
-        persistence.append_capture_state_rows(state_path, capture_state_rows)
+    # *** WRITE STRATEGY ***
+    # ONE append per file per attempt, still strictly append-only and
+    # still fsync'd (research/persistence.py's `append_json_rows` is
+    # unchanged in that respect): existing lines are never rewritten,
+    # never reordered, and never re-serialized -- the corpus is not
+    # rewritten wholesale at any point, before or after this change.
+    # Batching only removes the repeated open/read/fsync per row; the
+    # durability boundary that actually matters is still the git commit
+    # in research/git_durable_store.py, which is all-or-nothing per
+    # attempt, so a crash mid-scan leaves the durable store exactly as
+    # untouched as it did before.
+    with telemetry.phase("persistence_write_seconds"):
+        result = persistence.append_observation_rows(obs_path, pending_rows, index=index)
+        if capture_state_rows:
+            state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+            persistence.append_capture_state_rows(state_path, capture_state_rows)
 
-    report.captures_written += total_written
-    report.captures_skipped_already_present += total_skipped
-    return persistence.AppendResult(
-        written=total_written, skipped_duplicate=total_skipped, keys_written=tuple(keys_written)
-    )
+    telemetry.duplicate_count += result.skipped_duplicate
+    report.captures_written += result.written
+    report.captures_skipped_already_present += result.skipped_duplicate
+    return result
 
 
 def main() -> int:
@@ -271,6 +323,12 @@ def main() -> int:
     parser.add_argument(
         "--no-push", action="store_true", help="Write locally only; skip the git commit/push step (rehearsal mode)."
     )
+    parser.add_argument(
+        "--telemetry-json",
+        type=Path,
+        default=None,
+        help="Also write this run's performance telemetry to a JSON file (it is always printed).",
+    )
     args = parser.parse_args()
 
     settings = Settings.from_env()
@@ -281,6 +339,7 @@ def main() -> int:
     now = datetime.now(UTC)
     cfbd_client = CFBDClient(api_key=settings.cfbd_api_key)
     report = health.CaptureHealthReport()
+    telemetry = ScanTelemetry()
 
     try:
         games, classification_by_game_id = milestone_d._fetch_candidate_games(args.schedule_season, cfbd_client, now)  # noqa: SLF001
@@ -292,6 +351,7 @@ def main() -> int:
 
     not_started_games = [g for g in games if g.status == "scheduled"]
     report.games_scanned = len(not_started_games)
+    telemetry.distinct_games = len(not_started_games)
 
     cache = GameProjectionCache(history_lines)
     kalshi_client = KalshiClient()
@@ -324,6 +384,7 @@ def main() -> int:
             schedule_source_timestamp=now,
             run_id=args.run_id,
             report=report,
+            telemetry=telemetry,
         )
 
     if args.no_push:
@@ -339,6 +400,10 @@ def main() -> int:
         )
         print(f"Pushed after {push_result.attempts} attempt(s).")
 
+    telemetry.game_projection_count = cache.projection_builds
+    telemetry.ratings_fit_count = cache.ratings_fits
+    telemetry.finish()
+
     diagnostics = health.evaluate_collapse(report, baseline_supported_markets=None)
     report_dict = {
         "games_scanned": report.games_scanned,
@@ -353,6 +418,14 @@ def main() -> int:
         "diagnostics": [{"severity": d.severity.value, "code": d.code, "detail": d.detail} for d in diagnostics],
     }
     print(json.dumps(report_dict, indent=2))
+    # One compact run-level record -- deliberately not per-ticker (see
+    # research/scan_telemetry.py). `history_load_count` must read 1 per
+    # scan attempt; anything higher means the per-ticker re-read
+    # regressed back in.
+    print("\nPERF " + json.dumps(telemetry.as_dict(), sort_keys=True))
+    if args.telemetry_json is not None:
+        args.telemetry_json.parent.mkdir(parents=True, exist_ok=True)
+        args.telemetry_json.write_text(json.dumps(telemetry.as_dict(), indent=2, sort_keys=True), encoding="utf-8")
     print("\nSTATUS: RESEARCH-ONLY. No bet recommendation, stake sizing, or trading action anywhere in this output.")
 
     return 1 if health.should_fail_run(diagnostics) else 0

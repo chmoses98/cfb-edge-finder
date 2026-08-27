@@ -106,6 +106,14 @@ class GameProjectionCache:
         self._lines = lines
         self._cache: dict[GameProjectionRequest, CachedGameProjection] = {}
         self._ratings_and_pool_cache: dict[AsOf, tuple[RatingsSnapshot, np.ndarray]] = {}
+        # Reuse counters. These make the one-projection-per-game property
+        # (this module's whole reason for existing) an ASSERTABLE fact in
+        # tests and a reportable number in run telemetry, instead of an
+        # architectural claim nothing actually checks. Pure observability:
+        # nothing here feeds a pricing or research decision.
+        self.projection_builds = 0
+        self.projection_cache_hits = 0
+        self.ratings_fits = 0
 
     def __len__(self) -> int:
         return len(self._cache)
@@ -121,6 +129,7 @@ class GameProjectionCache:
         cached = self._ratings_and_pool_cache.get(as_of)
         if cached is not None:
             return cached
+        self.ratings_fits += 1
         history = [ln for ln in self._lines if ln.as_of.is_strictly_before(as_of)]
         if not history:
             raise ValueError(f"no leakage-safe history strictly before {as_of!r}")
@@ -132,8 +141,10 @@ class GameProjectionCache:
     def get_or_build(self, request: GameProjectionRequest) -> CachedGameProjection:
         cached = self._cache.get(request)
         if cached is not None:
+            self.projection_cache_hits += 1
             return cached
 
+        self.projection_builds += 1
         as_of = AsOf(season=request.as_of_season, week=request.as_of_week)
         ratings, residual_pool = self._ratings_and_pool_for_as_of(as_of)
 
