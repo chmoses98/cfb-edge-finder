@@ -26,13 +26,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from cfb_edge_finder.decision.collection_protection import (  # noqa: E402
+    TriggerObservation,
+    assess_collection_protection,
+)
 from cfb_edge_finder.decision.ops_health import (  # noqa: E402
     OpsHealthReport,
     OpsState,
     check_closing_coverage,
-    check_collection_freshness,
+    check_collection_protection,
     check_corpus_integrity,
-    check_external_scheduler,
     check_natural_data,
     check_safety_locks,
 )
@@ -41,16 +44,9 @@ from cfb_edge_finder.research.heartbeat import (  # noqa: E402
     last_successful_run,
     load_heartbeats,
 )
-from cfb_edge_finder.research.trigger import TriggerType  # noqa: E402
 from cfb_edge_finder.schemas.settlement import MarketSettlementStatus  # noqa: E402
 
 CAPTURE_WORKFLOW = REPO_ROOT / ".github/workflows/research-capture.yml"
-
-EXTERNAL_EXPECTED_INTERVAL_MINUTES = 10.0
-"""What the external scheduler is configured to send, not a target this
-script invents. Kept beside the workflow cadence it mirrors; if the
-external job is reconfigured, this must move with it."""
-
 
 def cron_interval_minutes(workflow_path: Path) -> float | None:
     """Cadence read from the workflow file so this check cannot drift
@@ -67,6 +63,15 @@ def cron_interval_minutes(workflow_path: Path) -> float | None:
         elif minute_field.isdigit():
             intervals.append(60.0)
     return min(intervals) if intervals else None
+
+
+def _parse_ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _minutes_since(moment: datetime | None, now: datetime) -> float | None:
@@ -196,6 +201,56 @@ def sizing_is_disconnected() -> bool:
     return not sizing_import_offenders()
 
 
+def trigger_observations(heartbeats: list[dict]) -> list[TriggerObservation]:
+    """Heartbeat rows as trigger observations. Rows without a usable
+    timestamp are dropped rather than defaulted -- a fabricated time would
+    corrupt the measured interval, which is the one number this whole
+    assessment rests on."""
+    out: list[TriggerObservation] = []
+    for row in heartbeats:
+        moment = _parse_ts(row.get("invoked_at"))
+        if moment is None:
+            continue
+        out.append(
+            TriggerObservation(
+                invoked_at=moment,
+                trigger_type=str(row.get("trigger_type") or "UNKNOWN"),
+                succeeded=bool(row.get("succeeded")),
+            )
+        )
+    return out
+
+
+def next_critical_checkpoint(heartbeats: list[dict]) -> tuple[datetime | None, str | None]:
+    """The next critical checkpoint, taken from the most recent heartbeat
+    that recorded one.
+
+    Read from telemetry the collector already writes rather than
+    recomputed here: recomputing would need a live schedule fetch, and a
+    health command that silently depends on the network reports the
+    network's health as if it were the system's."""
+    for row in reversed(heartbeats):
+        at = _parse_ts(row.get("next_critical_checkpoint_at"))
+        label = row.get("next_critical_checkpoint")
+        if at is not None and label:
+            return at, str(label)
+    return None, None
+
+
+def assess_protection(heartbeats: list[dict], now: datetime):
+    at, label = next_critical_checkpoint(heartbeats)
+    return assess_collection_protection(
+        now=now,
+        last_successful_run=last_successful_run(heartbeats),
+        observations=trigger_observations(heartbeats),
+        next_checkpoint_at=at,
+        next_checkpoint_label=label,
+        # Manual Research Capture dispatch is always available to the
+        # owner; it is the documented emergency fallback.
+        manual_fallback_available=True,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-repo-dir", type=Path, default=REPO_ROOT)
@@ -216,22 +271,8 @@ def main() -> int:
     report = OpsHealthReport(generated_at=now)
 
     heartbeats = load_heartbeats(heartbeat_path(args.data_repo_dir, args.season))
-    cadence = cron_interval_minutes(CAPTURE_WORKFLOW) or 10.0
-
-    report.checks.append(
-        check_collection_freshness(
-            minutes_since_last_run=_minutes_since(last_successful_run(heartbeats), now),
-            cadence_minutes=cadence,
-        )
-    )
-    report.checks.append(
-        check_external_scheduler(
-            minutes_since_external_run=_minutes_since(
-                last_successful_run(heartbeats, TriggerType.EXTERNAL_SCHEDULE.value), now
-            ),
-            expected_interval_minutes=EXTERNAL_EXPECTED_INTERVAL_MINUTES,
-        )
-    )
+    protection = assess_protection(heartbeats, now)
+    report.checks.append(check_collection_protection(protection))
 
     rows = load_rows(
         args.data_repo_dir / "data" / "research" / "observations" / f"{args.season}.jsonl"
@@ -282,6 +323,22 @@ def main() -> int:
     )
     print(f"snapshot labels captured: {dict(sorted(label_counts.items(), key=lambda i: str(i[0])))}")
     print(f"settlement row statuses : {dict(sorted(settlement_statuses.items(), key=lambda i: str(i[0])))}")
+    github_cadence = cron_interval_minutes(CAPTURE_WORKFLOW)
+    print(
+        f"github fallback cron    : {github_cadence:.0f} min (secondary only -- measured at 1.7% "
+        f"delivery; never the primary clock)"
+        if github_cadence
+        else "github fallback cron    : UNREADABLE"
+    )
+    print(
+        "observed trigger interval: "
+        + (f"{protection.observed_interval_minutes:.0f} min "
+           f"(median of {protection.interval_sample_size} gap(s), MEASURED not configured)"
+           if protection.observed_interval_minutes is not None
+           else "not measurable (fewer than two recorded runs)")
+    )
+    if protection.tighten_by is not None:
+        print(f"tighten cadence by      : {protection.tighten_by.isoformat()}")
     print(f"games with status=settled: {settled_games}")
 
     if args.json_out:

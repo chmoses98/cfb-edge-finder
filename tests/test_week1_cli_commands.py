@@ -74,7 +74,9 @@ def test_ops_health_runs_and_reports_a_state(data_dir):
 
 def test_ops_health_blocks_when_nothing_has_ever_run(data_dir):
     """No heartbeats at all: collection has never run, and the exit code
-    must make that impossible to miss in a scheduled job."""
+    must make that impossible to miss in a scheduled job. Note this is
+    genuine failure, distinct from an intentionally wide quiet-period
+    interval, which is HEALTHY -- see tests/test_collection_protection.py."""
     result = run(OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00")
     assert result.returncode == 1
     assert "OVERALL: BLOCKED" in result.stdout
@@ -115,8 +117,7 @@ def test_ops_health_writes_a_machine_readable_payload(data_dir, tmp_path):
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["overall_state"] in {"HEALTHY", "WARN", "BLOCKED", "PENDING_NATURAL_DATA"}
     assert {c["check_id"] for c in payload["checks"]} >= {
-        "collection_freshness",
-        "external_scheduler",
+        "collection_protection",
         "corpus_integrity",
         "closing_coverage",
         "safety_locks",

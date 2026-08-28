@@ -21,7 +21,17 @@ running when you wake up, and never manufacture a data point you missed.
 
 ## 1. NIGHT BEFORE
 
-### 1.1 Run the ops health check
+### 1.1 Run the slate report
+
+```bash
+python3 scripts/run_cfb.py --data-repo-dir <path-to-data-checkout>
+```
+
+One command, every section: system health, slate, market structure,
+research state, collection state, analytics, model health, safety, and a
+GO / NO-GO verdict. Exits non-zero on `NO_GO`.
+
+For the narrower operational question alone:
 
 ```bash
 python3 scripts/week1_ops_health.py --data-repo-dir <path-to-data-checkout>
@@ -39,20 +49,41 @@ Read the OVERALL line:
 `PENDING_NATURAL_DATA` is the normal state before any game has finished.
 It is not a warning and it is not something to work around.
 
-### 1.2 Confirm the independent clock
+### 1.2 Confirm the trigger regime covers the next deadline
 
 GitHub's own cron delivered **1 of ~57 expected `*/10` runs** over a
-measured 573-minute window in this repository — 1.7%, with gaps of 95,
-144, 171, 296, 653 and 777 minutes. It is not a clock. The external
-scheduler (cron-job.org, see `docs/EXTERNAL_SCHEDULER.md`) is the
-primary trigger and GitHub's cron is only a backstop.
+measured 573-minute window — 1.7%, with gaps up to 777 minutes. It is a
+backstop, not a clock. The external scheduler (cron-job.org, see
+`docs/EXTERNAL_SCHEDULER.md`) is the primary trigger.
 
-The `external_scheduler` check must not be `BLOCKED`. If it is:
+**The external scheduler is deliberately run at a LOW cadence (~hours)
+during quiet periods**, to conserve private-repository Actions minutes.
+That is intentional policy, not a fault — roughly 6 runs/day at a
+3-hour cadence versus ~288/day at 5 minutes.
 
-1. Check the external job's own history for non-`204` responses.
-2. If the external scheduler cannot be restored tonight, dispatch the
-   capture workflow manually across each kickoff window. This is
-   tedious and it is still better than losing CLOSING.
+Health is therefore **deadline-aware**, not cadence-aware. The question
+is *"will the current regime cover the NEXT critical checkpoint?"*, not
+*"did it run every five minutes?"*:
+
+| State | Meaning | Action |
+|---|---|---|
+| `QUIET_PERIOD` | No critical checkpoint near. Wide interval is correct. | None. |
+| `COVERED_TIGHT_CADENCE` | Observed interval already fits inside the window. | None. |
+| `CHECKPOINT_APPROACHING` | Must tighten on THIS look. | Switch to ~5 min now. |
+| `CLOSING_AT_RISK` | Window opens within the guard lead and the interval is too wide. | Switch NOW and dispatch manually. |
+| `COLLECTION_STOPPED` | Silence far beyond the observed regime. | Investigate and dispatch. |
+
+The reports print a **`tighten cadence by`** timestamp — the moment the
+cadence must already be tight, derived as `CLOSING_GUARD_LEAD_MINUTES`
+(25) before the CLOSING window opens. Act on that clock.
+
+```bash
+python3 scripts/trigger_budget_report.py --data-repo-dir <path>
+```
+
+shows observed provenance, MEASURED cadence (the repository cannot see
+cron-job.org's configuration and never claims to), Actions-minute
+arithmetic, and whether the manual fallback should be armed.
 
 ### 1.3 Confirm the kickoff windows you care about
 
@@ -67,8 +98,9 @@ irreplaceable windows open and close.
 Check `week1_ops_health.py` between windows, not continuously. The
 things worth reacting to:
 
-- **`collection_freshness` BLOCKED** — collection has stopped. Dispatch
-  the capture workflow manually now, then find out why.
+- **`collection_protection` CLOSING_AT_RISK or COLLECTION_STOPPED** —
+  switch the external scheduler to ~5 minutes and dispatch the capture
+  workflow manually now, then find out why.
 - **`closing_coverage` BLOCKED or WARN** — CLOSING checkpoints were due
   and not captured. Those specific ones are gone. Fix the trigger so the
   *next* window is not also lost; do not try to recover the lost ones.
@@ -101,6 +133,27 @@ including games that have not kicked off — those carry
 `status=pending_not_final` and are **not** settled games. Counting rows,
 or counting their distinct `game_id`s, would report a sample that does
 not exist.
+
+### 3.2a Run the postgame research report
+
+```bash
+python3 scripts/postgame_research_report.py --date 2026-08-29 \
+    --data-repo-dir <path> --json-out postgame.json
+```
+
+Outcomes, prices by timing label, genuine CLOSING, CLV, fee-adjusted
+one-contract research P/L, descriptive gap buckets, missing closes. It
+refuses hindsight recommendations and refuses to fit a threshold to one
+slate. With zero settlements it says so and stops.
+
+### 3.2b Run the discovery engine (expect a refusal)
+
+```bash
+python3 scripts/research_threshold_candidates.py --data-repo-dir <path>
+```
+
+Expect `EMPIRICAL_THRESHOLD_RESEARCH_BLOCKED_ON_SAMPLE`. It cannot
+approve anything — approval is an absent capability, not a policy.
 
 ### 3.3 Produce the Research Decision Report
 
@@ -197,6 +250,18 @@ None of these open because a weekend went well. They open, if ever, by a
 deliberate human decision on evidence that does not exist yet.
 
 ---
+
+## 5a. The Week 1 cadence policy (temporary, hand-operated)
+
+| Phase | External scheduler | Why |
+|---|---|---|
+| Quiet period | ~3 hours | Conserve Actions minutes; nothing critical is near. |
+| Approaching a critical window | ~5 minutes | CLOSING's window is 14 minutes and unrecoverable. |
+| After the window | back to ~3 hours | Cost. |
+
+Switch it **by the `tighten cadence by` timestamp** the reports print.
+This is a deliberate temporary measure operated by hand, not the final
+automated architecture.
 
 ## 6. Escalation
 
