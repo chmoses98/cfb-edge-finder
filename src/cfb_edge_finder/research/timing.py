@@ -151,6 +151,19 @@ def resolve_due_labels(
     if game_started or kickoff_utc is None:
         return []
 
+    # *** NO PREGAME LABEL IS DUE AT OR PAST KICKOFF ***
+    # `game_started` comes from the schedule source's status field, which
+    # can lag a real kickoff. EARLY_OPEN is the only label with no window
+    # bounds of its own -- every numeric window's lower bound is strictly
+    # positive (T_30's is 0.25 h) and CLOSING has its own explicit
+    # pre-kickoff guard -- so a stale "scheduled" status was the one way a
+    # PREGAME-labelled row could be captured from post-kickoff market
+    # data. That is a leakage vector: the row would look like a pregame
+    # observation and carry information from after the game began.
+    # The clock is authoritative here, not the status field.
+    if now >= kickoff_utc:
+        return []
+
     due: list[str] = []
     if EARLY_OPEN not in already_captured_labels:
         due.append(EARLY_OPEN)
