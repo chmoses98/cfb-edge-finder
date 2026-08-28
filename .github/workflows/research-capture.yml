@@ -165,7 +165,11 @@ jobs:
         run: |
           set -euo pipefail
           CORPUS_DIR="$RUNNER_TEMP/corpus"
-          for kind in observations settlements attributions; do
+          # heartbeats included: the trigger-health section reads them via
+          # load_heartbeats(); omitting them made every manual readiness run
+          # report the false HIGH alarm "no successful collector run has
+          # ever been recorded" against a corpus that genuinely had them.
+          for kind in observations settlements attributions heartbeats; do
             mkdir -p "$CORPUS_DIR/data/research/$kind"
             git show "origin/research-data:data/research/$kind/${SEASON}.jsonl" \
               > "$CORPUS_DIR/data/research/$kind/${SEASON}.jsonl" 2>/dev/null || true

@@ -223,3 +223,144 @@ def test_missing_rules_primary_returns_none():
 
 def test_unrecognized_rules_primary_phrasing_returns_none():
     assert extract_matchup_from_rules_primary("Some unrelated rules text with no matchup phrase.") is None
+
+
+# --- live-observed VARIANT title grammars (job 98980713206, 2026-08-28) --
+#
+# Kalshi serves a second title style on the 2026-08-29/30 opening slate
+# (all three families) and on 18 winner events for later marquee games,
+# while rules_primary keeps the exact canonical phrasing. Every string
+# below is VERBATIM live payload evidence from that job's output --
+# these markets were 100% of the "52 not_priced, family=None" population
+# in the prospective corpus.
+
+_MEMUNLV_SPREAD_RULES = (
+    "If UNLV wins by more than 7.5 points in the Memphis vs UNLV college "
+    "football game originally scheduled for Aug 29, 2026, then the market resolves to Yes."
+)
+_MEMUNLV_TOTAL_RULES = (
+    "If the teams collectively score more than 79.5 points in the Memphis vs UNLV college "
+    "football game originally scheduled for Aug 29, 2026, then the market resolves to Yes."
+)
+_MEMUNLV_WINNER_RULES = (
+    "If Memphis wins the Memphis vs UNLV college football game originally scheduled "
+    "for Aug 29, 2026, then the market resolves to Yes."
+)
+_HAWSTAN_WINNER_RULES = (
+    "If Stanford wins the Hawai'i vs Stanford college football game originally scheduled "
+    "for Aug 29, 2026, then the market resolves to Yes."
+)
+
+
+def test_parses_live_variant_spread_title_with_corroborating_rules():
+    # KXNCAAFSPREAD-26AUG29MEMUNLV-UNLV8, verbatim.
+    parsed = parse_spread_market("UNLV wins by over 7.5 points?", 7.5, _MEMUNLV_SPREAD_RULES)
+    assert parsed.reason is None
+    assert parsed.market_family == MarketFamily.SPREAD
+    assert parsed.line == 7.5
+    assert parsed.operator == ">"
+    assert parsed.raw_team_name == "UNLV"
+    assert parsed.semantics_confidence == "confirmed_live"
+
+
+def test_variant_spread_title_without_rules_is_unresolved_never_guessed():
+    parsed = parse_spread_market("UNLV wins by over 7.5 points?", 7.5, None)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_variant_spread_title_with_disagreeing_rules_is_unresolved():
+    parsed = parse_spread_market("Memphis wins by over 7.5 points?", 7.5, _MEMUNLV_SPREAD_RULES)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+    parsed = parse_spread_market(
+        "UNLV wins by over 6.5 points?",
+        6.5,
+        _MEMUNLV_SPREAD_RULES,  # rules state 7.5
+    )
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_parses_live_variant_total_title_with_corroborating_rules():
+    # KXNCAAFTOTAL-26AUG29MEMUNLV-80, verbatim.
+    parsed = parse_total_market(
+        "Memphis vs UNLV college football game: Over 79.5 points scored?", 79.5, _MEMUNLV_TOTAL_RULES
+    )
+    assert parsed.reason is None
+    assert parsed.market_family == MarketFamily.TOTAL
+    assert parsed.side == Side.OVER
+    assert parsed.line == 79.5
+    assert parsed.semantics_confidence == "confirmed_live"
+
+
+def test_variant_total_title_without_rules_is_unresolved_never_guessed():
+    parsed = parse_total_market("Memphis vs UNLV college football game: Over 79.5 points scored?", 79.5, None)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_variant_total_title_with_disagreeing_rules_is_unresolved():
+    parsed = parse_total_market(
+        "Memphis vs UNLV college football game: Over 76.5 points scored?",
+        76.5,
+        _MEMUNLV_TOTAL_RULES,  # rules state 79.5
+    )
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_variant_total_title_still_checks_floor_strike():
+    parsed = parse_total_market(
+        "Memphis vs UNLV college football game: Over 79.5 points scored?",
+        76.5,  # payload floor_strike disagrees with title+rules
+        _MEMUNLV_TOTAL_RULES,
+    )
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_parses_live_variant_winner_prefixed_title():
+    # KXNCAAFGAME-26AUG29MEMUNLV-MEM, verbatim.
+    parsed = parse_winner_market(
+        "Memphis vs UNLV college football game: Memphis wins?", _MEMUNLV_WINNER_RULES
+    )
+    assert parsed.reason is None
+    assert parsed.market_family == MarketFamily.MONEYLINE
+    assert parsed.raw_team_name == "Memphis"
+    assert parsed.semantics_confidence == "confirmed_live"
+
+
+def test_parses_live_variant_winner_will_x_win_title_with_apostrophe_team():
+    # KXNCAAFGAME-26AUG29HAWSTAN-STAN, verbatim (matchup contains
+    # "Hawai'i" -- the apostrophe must survive both regexes).
+    parsed = parse_winner_market(
+        "Will Stanford win the Hawai'i vs Stanford college football game?", _HAWSTAN_WINNER_RULES
+    )
+    assert parsed.reason is None
+    assert parsed.raw_team_name == "Stanford"
+    assert parsed.semantics_confidence == "confirmed_live"
+
+
+def test_variant_winner_title_without_rules_is_unresolved_never_guessed():
+    parsed = parse_winner_market("Memphis vs UNLV college football game: Memphis wins?", None)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+    parsed = parse_winner_market("Will Stanford win the Hawai'i vs Stanford college football game?", None)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_variant_winner_title_with_disagreeing_rules_is_unresolved():
+    parsed = parse_winner_market(
+        "Will Memphis win the Memphis vs UNLV college football game?", _HAWSTAN_WINNER_RULES
+    )
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_unprefixed_question_winner_title_is_still_unresolved():
+    # "<TEAM> wins?" WITHOUT the matchup prefix has never been observed
+    # live -- it must not ride in on the variant grammar.
+    parsed = parse_winner_market("Memphis wins?", _MEMUNLV_WINNER_RULES)
+    assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+
+
+def test_original_exact_grammars_are_unchanged_by_variant_support():
+    # The pre-variant behavior must be byte-identical: exact grammar,
+    # no rules_primary requirement for spread/total.
+    parsed = parse_spread_market("Southern Utah wins by over 4.5 points", 4.5)
+    assert parsed.reason is None and parsed.semantics_confidence == "confirmed_live"
+    parsed = parse_total_market("Over 80.5 points scored", 80.5)
+    assert parsed.reason is None and parsed.semantics_confidence == "confirmed_live"
