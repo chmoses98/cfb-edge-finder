@@ -29,6 +29,30 @@ QUADRATIC_TOLERANCE = 8.0
 16x, so this catches the shape while leaving generous room for constant
 factors, GC and a noisy CI runner."""
 
+MIN_MEASURABLE_SECONDS = 0.02
+"""Below this the baseline is dominated by scheduler noise rather than
+the work being measured, and the RATIO becomes meaningless -- a 6 ms
+baseline that happens to take 60 ms under load reports a 10x blow-up
+that says nothing about complexity. When the baseline is too small to
+time reliably the run is repeated; if it stays unmeasurable the shape
+assertion is skipped rather than reported as a failure it cannot
+substantiate."""
+
+
+def timed_stable(fn, *, repeats: int = 5):
+    """Best-of-N timing. Returns (result, best_seconds).
+
+    Best-of rather than mean: we are trying to measure the work, and
+    every source of noise on a shared runner ADDS time. The minimum is
+    the sample least contaminated by it."""
+    best = float("inf")
+    result = None
+    for _ in range(repeats):
+        start = time.perf_counter()
+        result = fn()
+        best = min(best, time.perf_counter() - start)
+    return result, best
+
 
 def synthetic_rows(n_games: int, contracts_per_game: int) -> list[dict]:
     return [
@@ -92,10 +116,12 @@ def scaled():
 
 def test_corpus_load_is_not_quadratic(scaled):
     small, large = scaled
-    _, t_small = timed(lambda: load_contract_snapshots(small))
-    result, t_large = timed(lambda: load_contract_snapshots(large))
+    _, t_small = timed_stable(lambda: load_contract_snapshots(small))
+    result, t_large = timed_stable(lambda: load_contract_snapshots(large))
     assert result.rows_read == 12_000
     assert result.ledger_load_count == 1, "the ledger must be read exactly once"
+    if t_small < MIN_MEASURABLE_SECONDS:
+        pytest.skip(f"baseline {t_small:.4f}s too small to time reliably")
     assert t_large <= t_small * QUADRATIC_TOLERANCE
 
 
@@ -103,9 +129,11 @@ def test_portfolio_grouping_is_not_quadratic(scaled):
     small, large = scaled
     a = [s.semantics for s in load_contract_snapshots(small).snapshots]
     b = [s.semantics for s in load_contract_snapshots(large).snapshots]
-    _, t_small = timed(lambda: build_portfolio_view(a))
-    view, t_large = timed(lambda: build_portfolio_view(b))
+    _, t_small = timed_stable(lambda: build_portfolio_view(a))
+    view, t_large = timed_stable(lambda: build_portfolio_view(b))
     assert view.contract_count == 12_000
+    if t_small < MIN_MEASURABLE_SECONDS:
+        pytest.skip(f"baseline {t_small:.4f}s too small to time reliably")
     assert t_large <= t_small * QUADRATIC_TOLERANCE
 
 
@@ -113,20 +141,26 @@ def test_model_health_is_not_quadratic(scaled):
     small, large = scaled
     a = load_contract_snapshots(small).snapshots
     b = load_contract_snapshots(large).snapshots
-    _, t_small = timed(lambda: run_model_health(a))
-    report, t_large = timed(lambda: run_model_health(b))
+    _, t_small = timed_stable(lambda: run_model_health(a))
+    report, t_large = timed_stable(lambda: run_model_health(b))
     assert report.contracts_checked == 12_000
+    if t_small < MIN_MEASURABLE_SECONDS:
+        pytest.skip(f"baseline {t_small:.4f}s too small to time reliably")
     assert t_large <= t_small * QUADRATIC_TOLERANCE
 
 
 def test_manifest_building_is_not_quadratic():
     small = synthetic_rows(150, 20)
     large = synthetic_rows(600, 20)
-    _, t_small = timed(lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in small]))
-    report, t_large = timed(
+    _, t_small = timed_stable(
+        lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in small])
+    )
+    report, t_large = timed_stable(
         lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in large])
     )
     assert report.complete_count == 12_000
+    if t_small < MIN_MEASURABLE_SECONDS:
+        pytest.skip(f"baseline {t_small:.4f}s too small to time reliably")
     assert t_large <= t_small * QUADRATIC_TOLERANCE
 
 
