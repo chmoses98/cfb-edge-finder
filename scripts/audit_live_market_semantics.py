@@ -1,26 +1,26 @@
-"""Week 1 readiness audit: live, read-only payload probe for the
-persistently-unparsed market population.
+"""Live, read-only semantics audit: runs every ACTIVE market of every
+CORE_V1 series through the production contract-semantics parsers and
+reports, per event, whether anything fails to parse -- the standing
+diagnostic for "did Kalshi change a title/rules format under us?".
 
-*** WHY THIS EXISTS (evidence, not speculation) ***
-The prospective corpus (research-data branch, 2026 observations) shows a
-hard per-game split that no unit test reproduces:
+*** ORIGIN (the defect this first caught) ***
+The Week 1 readiness audit found the prospective corpus with EVERY
+market of EVERY 2026-08-29/30 opening-slate game not_priced with
+parse_status=unresolved across all three families, while Sep 3+ games
+priced normally. This probe's first run (job 98980713206) produced the
+live payload evidence: Kalshi serves VARIANT title grammars on part of
+the universe ("UNLV wins by over 7.5 points?", "Memphis vs UNLV college
+football game: Over 79.5 points scored?", "Will Stanford win the
+Hawai'i vs Stanford college football game?") while rules_primary keeps
+the canonical phrasing. contract_semantics.py now accepts those
+variants under mandatory rules_primary corroboration; the second run
+(job 98982367175) confirmed 0 parse failures across the live universe.
+Kept as a permanent dispatch option (like ambiguous_audit) so any
+future format drift is one manual run away from being seen.
 
-  - EVERY market of EVERY game kicking off 2026-08-29/30 -- the imminent
-    opening slate -- has pricing_status=not_priced with
-    parse_status=unresolved and family=None, across ALL THREE families
-    (KXNCAAFGAME / KXNCAAFSPREAD / KXNCAAFTOTAL), at every checkpoint
-    ever attempted (EARLY_OPEN, T_3D, T_24H).
-  - Games kicking off 2026-09-03+ price normally with the same code.
-  - A handful of later marquee/neutral games (e.g. CLEMLSU, OSU@Texas)
-    fail ONLY their KXNCAAFGAME (winner) contracts.
-
-A total market's title ("Over 80.5 points scored") contains no team
-names, so a per-game total-parse failure implies the PAYLOAD for those
-events differs structurally (title grammar, floor_strike convention, or
-missing fields) -- something only a live fetch can show. This dev
-environment's egress to Kalshi is policy-blocked, so this script runs
-from a GitHub Actions runner via workflow_dispatch, exactly like the
-other validate_* scripts.
+This dev environment's egress to Kalshi is policy-blocked, so this
+script runs from a GitHub Actions runner via workflow_dispatch, exactly
+like the other validate_* scripts.
 
 READ-ONLY: public unauthenticated GETs only; prints results; writes
 nothing; no trading endpoints; no credentials.

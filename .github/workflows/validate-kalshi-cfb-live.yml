@@ -105,10 +105,12 @@ jobs:
             --schedule-season ${{ github.event.inputs.schedule_season }}
       - name: Run live market-semantics payload audit
         if: ${{ github.event.inputs.script == 'semantics_audit' }}
-        # scripts/audit_live_market_semantics.py -- TEMPORARY Week-1
-        # readiness diagnostic (audit-branch only): read-only,
-        # credential-free payload probe of the persistently-unparsed
-        # market population. See its docstring for the corpus evidence.
+        # scripts/audit_live_market_semantics.py -- standing read-only,
+        # credential-free diagnostic: runs every active CORE_V1 market
+        # through the production parsers and reports per-event parse
+        # failures, so a Kalshi title/rules format change is one manual
+        # dispatch away from being seen. See its docstring for the
+        # opening-slate variant-grammar defect it first caught.
         run: python3 scripts/audit_live_market_semantics.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
