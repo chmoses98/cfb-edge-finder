@@ -605,6 +605,8 @@ def main() -> int:
                 markets_discovered=report.markets_scanned,
                 labels_due=report.captures_due,
                 labels_captured=report.captures_written,
+                closing_labels_due=report.closing_due,
+                closing_labels_captured=report.closing_captured,
                 duplicates_skipped=report.captures_skipped_already_present,
                 malformed_rows=telemetry.malformed_row_count,
                 api_failures=telemetry.api_failure_count,
