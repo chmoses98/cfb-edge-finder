@@ -28,6 +28,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+# *** EVERY cfb_edge_finder IMPORT BELOW MUST STAY AT MODULE LEVEL ***
+# `main` calls ensure_branch_checked_out BEFORE _apply_scan, and that
+# runs `git checkout -B research-data`, replacing the working tree --
+# this editable install's `src/` included -- with the research-data
+# branch's own stray `src/` snapshot, which predates
+# `research/preseason/` entirely. Modules already in sys.modules survive
+# that swap; a function-local import does not. A deferred
+# `research.preseason.corpus` import here is what silently disabled the
+# shadow sidecar on a live run (see _build_shadow_sidecar).
+
 # Reuse Milestone D's live-fetch/parse wiring verbatim rather than
 # duplicating it -- these are the same helpers scripts/capture_kalshi_cfb_
 # snapshot.py itself calls; this script only changes SCHEDULING (which
@@ -41,6 +51,7 @@ from cfb_edge_finder.kalshi.fee_schedule import KALSHI_FEE_SCHEDULE_2026_07_07_T
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest  # noqa: E402
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
+from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
 from cfb_edge_finder.research import (  # noqa: E402
     closing_capture,
     git_durable_store,
@@ -51,9 +62,18 @@ from cfb_edge_finder.research import (  # noqa: E402
 )
 from cfb_edge_finder.research import heartbeat as heartbeat_mod  # noqa: E402
 from cfb_edge_finder.research.identity import observation_key  # noqa: E402
+from cfb_edge_finder.research.preseason.corpus import (  # noqa: E402
+    build_feature_tables,
+    load_cache,
+)
 from cfb_edge_finder.research.preseason.shadow_sidecar import (  # noqa: E402
     ShadowSidecar,
     shadow_key,
+)
+from cfb_edge_finder.research.preseason.shadow_spec import (  # noqa: E402
+    CONTROL_SPEC_SHA256,
+    SHADOW_SPEC_SHA256,
+    assert_specs_frozen,
 )
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
@@ -154,23 +174,41 @@ def _emit_shadow_record(
             pass
 
 
-def _build_shadow_sidecar(repo_dir: Path, season: int, now: datetime) -> ShadowSidecar | None:
+def _build_shadow_sidecar(
+    repo_dir: Path, season: int, now: datetime
+) -> tuple[ShadowSidecar | None, str]:
     """Load the frozen talent inputs for the shadow sidecar.
 
-    Returns None on ANY problem -- missing cache, drifted spec, unparsable
-    file. Canonical capture then proceeds exactly as it did before this
-    module existed. A research side effect must never be able to cost a
-    prospective checkpoint, least of all a CLOSING one, which cannot be
-    recovered."""
-    try:
-        from cfb_edge_finder.modeling.leakage import AsOf
-        from cfb_edge_finder.research.preseason.corpus import build_feature_tables, load_cache
-        from cfb_edge_finder.research.preseason.shadow_spec import (
-            CONTROL_SPEC_SHA256,
-            SHADOW_SPEC_SHA256,
-            assert_specs_frozen,
-        )
+    Returns `(sidecar, state)`. The sidecar is None on ANY problem --
+    missing cache, drifted spec, unparsable file. Canonical capture then
+    proceeds exactly as it did before this module existed: a research
+    side effect must never be able to cost a prospective checkpoint,
+    least of all a CLOSING one, which cannot be recovered.
 
+    *** WHY THE STATE STRING EXISTS ***
+    Returning a bare None made "the sidecar could not be built" and "the
+    sidecar ran and nothing was eligible" produce byte-identical
+    telemetry -- every shadow counter reads 0 under both. A live run on
+    main did exactly that: 158 canonical captures, 0 shadow rows, 0
+    failures, and no way to tell from the log which of the two had
+    happened. The state is the difference.
+
+    *** WHY THE IMPORTS THIS NEEDS ARE AT MODULE LEVEL ***
+    They used to be function-local, which looked harmless and was not.
+    `main` calls `ensure_branch_checked_out` BEFORE `_apply_scan`, and
+    that runs `git checkout -B research-data`, replacing the working
+    tree -- including the editable install's `src/` -- with the
+    research-data branch's own stray `src/` snapshot, a fossil of the
+    old stray-source-tree incident that predates
+    `research/preseason/` entirely. Modules already in `sys.modules`
+    survive; a deferred import does not. So this function's
+    `research.preseason.corpus` import raised ModuleNotFoundError on
+    every real run, the broad `except` below swallowed it, and the
+    sidecar was silently None in production while every test passed --
+    because no test checks out the data branch mid-run. Keep them at
+    module level.
+    """
+    try:
         # Refuse to capture against a drifted candidate: a shadow row
         # written under a changed beta would silently contaminate the
         # prospective evidence it exists to create.
@@ -179,7 +217,7 @@ def _build_shadow_sidecar(repo_dir: Path, season: int, now: datetime) -> ShadowS
         cache_dir = repo_dir / "data" / "research_cache" / "preseason"
         seasons = load_cache(cache_dir)
         if season not in seasons:
-            return None
+            return None, f"UNAVAILABLE_NO_CACHE_FOR_SEASON_{season}"
         table = build_feature_tables(seasons)[season]
         target = AsOf(season=season, week=1)
         # Every value goes through table.get(), which calls
@@ -195,17 +233,22 @@ def _build_shadow_sidecar(repo_dir: Path, season: int, now: datetime) -> ShadowS
             if feature is not None and feature.value is not None:
                 talent[team] = float(feature.value)
         if not talent:
-            return None
-        return ShadowSidecar(
-            talent_by_team=talent,
-            talent_season=season,
-            talent_source_version="preseason_research_cache_v1",
-            talent_fetched_at=now.isoformat(),
-            code_sha=_code_sha(),
-            shadow_capture_started_at=now.isoformat(),
+            return None, "UNAVAILABLE_NO_TALENT_VALUES"
+        return (
+            ShadowSidecar(
+                talent_by_team=talent,
+                talent_season=season,
+                talent_source_version="preseason_research_cache_v1",
+                talent_fetched_at=now.isoformat(),
+                code_sha=_code_sha(),
+                shadow_capture_started_at=now.isoformat(),
+            ),
+            "ACTIVE",
         )
-    except Exception:  # noqa: BLE001
-        return None
+    except Exception as exc:  # noqa: BLE001
+        # The exception TYPE, never a bare count: "12 failures" is not a
+        # diagnosis, "12 ModuleNotFoundError" is.
+        return None, f"UNAVAILABLE_{type(exc).__name__}"
 
 
 def _code_sha() -> str | None:
@@ -293,7 +336,8 @@ def _apply_scan(
     # RESEARCH SIDECAR. Built once per attempt, never per ticker. If it
     # cannot be constructed at all the canonical capture proceeds exactly
     # as before -- the shadow is a side effect, never a dependency.
-    shadow_sidecar = _build_shadow_sidecar(repo_dir, season, now)
+    shadow_sidecar, shadow_sidecar_state = _build_shadow_sidecar(repo_dir, season, now)
+    telemetry.shadow_sidecar_state = shadow_sidecar_state
     pending_shadow_rows: list[dict] = []
     seen_shadow_keys: set[str] = set()
     # Distinct games this run actually PROJECTED, not the size of the
@@ -648,6 +692,8 @@ def _apply_scan(
         telemetry.shadow_game_transforms = shadow_sidecar.telemetry.shadow_game_transforms
         telemetry.shadow_games_offered = shadow_sidecar.telemetry.games_offered
         telemetry.shadow_failures = shadow_sidecar.telemetry.shadow_failures
+        telemetry.shadow_failure_types = dict(shadow_sidecar.telemetry.failure_types)
+        telemetry.shadow_unavailable_reasons = dict(shadow_sidecar.telemetry.unavailable_reasons)
 
     telemetry.distinct_games = len(projected_game_ids)
     telemetry.duplicate_count += result.skipped_duplicate

@@ -63,12 +63,22 @@ class ScanTelemetry:
     closing_due_count: int = 0
     closing_captured_count: int = 0
 
+    # "The sidecar could not be built" and "the sidecar ran and nothing
+    # was eligible" leave every counter below at 0. Without this field
+    # the two are indistinguishable in the log -- which is exactly how a
+    # silently-None sidecar survived a live run on main.
+    shadow_sidecar_state: str = "NOT_ATTEMPTED"
     shadow_rows_written: int = 0
     shadow_rows_duplicate: int = 0
     shadow_contracts_priced: int = 0
     shadow_game_transforms: int = 0
     shadow_games_offered: int = 0
     shadow_failures: int = 0
+    # A bare failure count is not a diagnosis. Carries the exception type
+    # names the sidecar actually caught, e.g. {"ModuleNotFoundError": 12}.
+    shadow_failure_types: dict[str, int] = field(default_factory=dict)
+    # Why a contract had no shadow, e.g. {"TALENT_MISSING_HOME": 4}.
+    shadow_unavailable_reasons: dict[str, int] = field(default_factory=dict)
     """Research-sidecar counters. Kept beside the canonical counters so
     shadow coverage is visible in the same heartbeat, and separate from
     them so a shadow failure can never be mistaken for a collection
