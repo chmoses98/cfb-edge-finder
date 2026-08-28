@@ -243,6 +243,26 @@ def main() -> int:
             if len(samples[category]) < args.max_samples:
                 samples[category].append(row)
             if category == FBS_VS_FBS_POTENTIAL_LEAK:
+                # Root-cause evidence, per mission section 4: is the game
+                # simply absent from the schedule (not our defect), or is
+                # it present under team_ids we failed to match (a real,
+                # deterministically fixable mapping bug)? Listing the
+                # schedule's own records for either side settles it
+                # without guessing.
+                wanted = {home.get("team_id"), away.get("team_id")} - {None}
+                nearby = [
+                    {
+                        "game_id": g.game_id,
+                        "home": f"{g.home_team_name} [{g.home_team_id}]",
+                        "away": f"{g.away_team_name} [{g.away_team_id}]",
+                        "kickoff": g.kickoff_utc.isoformat() if g.kickoff_utc else None,
+                    }
+                    for g in games
+                    if wanted & {g.home_team_id, g.away_team_id}
+                ]
+                row["wanted_team_ids"] = sorted(wanted)
+                row["schedule_games_for_either_team"] = nearby[:12]
+                row["schedule_game_count_for_either_team"] = len(nearby)
                 leak_samples.append(row)
             if category == DETERMINISTIC_ALIAS_MISSING:
                 for side in (home, away):
@@ -268,7 +288,11 @@ def main() -> int:
 
     print(f"\n=== FBS-vs-FBS POTENTIAL LEAKS: {len(leak_samples)} events ===")
     for row in leak_samples[: args.max_samples]:
-        print(f"    {row['event_ticker']}  {row['raw_away']} @ {row['raw_home']}  ({row['reason']})")
+        print(f"    {row['event_ticker']}  {row['raw_home']} / {row['raw_away']}  ({row['reason']})")
+        print(f"      wanted team_ids: {row.get('wanted_team_ids')}")
+        print(f"      schedule games involving either team: {row.get('schedule_game_count_for_either_team')}")
+        for g in row.get("schedule_games_for_either_team", []):
+            print(f"        {g['kickoff']}  {g['away']} @ {g['home']}")
 
     if alias_gap_tokens:
         print("\n=== UNKNOWN TOKENS (neither FBS registry nor FCS list), top 25 ===")
