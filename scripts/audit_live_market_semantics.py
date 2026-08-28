@@ -81,9 +81,9 @@ def _parse(family: MarketFamily, market: dict):
     floor_f = float(floor) if isinstance(floor, (int, float)) else None
     rules = market.get("rules_primary")
     if family == MarketFamily.SPREAD:
-        return parse_spread_market(title, floor_f)
+        return parse_spread_market(title, floor_f, rules)
     if family == MarketFamily.TOTAL:
-        return parse_total_market(title, floor_f)
+        return parse_total_market(title, floor_f, rules)
     return parse_winner_market(title, rules)
 
 
