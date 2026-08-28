@@ -43,6 +43,8 @@ from cfb_edge_finder.research.preseason.shadow_spec import (
     control_spec,
     shadow_spec,
 )
+from cfb_edge_finder.schemas.common import MarketFamily, Side
+from cfb_edge_finder.schemas.projection import GameDistribution
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC = REPO_ROOT / "src" / "cfb_edge_finder"
@@ -50,6 +52,11 @@ SRC = REPO_ROOT / "src" / "cfb_edge_finder"
 KICKOFF = datetime(2026, 8, 29, 16, 0, tzinfo=UTC)
 CAPTURED = KICKOFF - timedelta(hours=24)
 SAMPLES = np.array([-14.0, -7.0, -1.0, 0.0, 1.0, 7.0, 14.0, 21.0])
+
+
+CONTROL_DISTRIBUTION = GameDistribution(
+    home_mean=27.0, away_mean=24.0, home_sd=10.0, away_sd=9.5, correlation=0.1
+)
 
 
 def record(**kw):
@@ -72,6 +79,15 @@ def record(**kw):
         talent_source_version="preseason_research_cache_v1",
         both_fbs=True,
         capture_mode="PROSPECTIVE",
+        # v2: the shadow is priced per CONTRACT, through the canonical
+        # pricer, so the record needs the control distribution and the
+        # contract's own proposition -- exactly what the live scanner
+        # takes from the canonical observation.
+        control_distribution=CONTROL_DISTRIBUTION,
+        contract_family=MarketFamily.MONEYLINE,
+        contract_side=None,
+        contract_threshold=None,
+        named_team_side=Side.HOME,
     )
     base.update(kw)
     return build_shadow_record(**base)
@@ -203,14 +219,32 @@ def test_the_shadow_probability_moves_with_the_shifted_margin():
     produce an arm that contradicts itself."""
     out = record(talent_home=2000.0, talent_away=0.0)  # huge positive shift
     assert out.shadow_probability is not None
-    assert out.shadow_probability > out.control_probability
-    assert out.shadow_minus_control_probability > 0
+    assert out.control_probability_basis is not None
+    # Compared against the BASIS, not the canonical value: the basis is
+    # the same pricer on the same contract, so the difference is the
+    # talent shift and nothing else.
+    assert out.shadow_probability > out.control_probability_basis
+    assert out.shadow_minus_control_basis_probability > 0
 
 
-def test_a_zero_simulated_margin_counts_as_an_away_win():
-    """Matches research/settlement.py: strictly greater than zero."""
-    out = record(talent_home=800.0, talent_away=800.0, control_margin_samples=np.array([0.0, 0.0]))
-    assert out.shadow_probability == 0.0
+def test_an_away_side_contract_moves_the_opposite_way():
+    """The v1 defect this replaces: a single P(home wins) was written
+    onto every contract, so the away-side row of the same game carried
+    the home number and its delta compared P(home) with P(away)."""
+    home = record(talent_home=2000.0, talent_away=0.0, named_team_side=Side.HOME)
+    away = record(talent_home=2000.0, talent_away=0.0, named_team_side=Side.AWAY)
+    assert home.shadow_probability != away.shadow_probability
+    assert home.shadow_minus_control_basis_probability > 0
+    assert away.shadow_minus_control_basis_probability < 0
+
+
+def test_the_tie_convention_is_the_canonical_pricers_own():
+    """v1 read ties off simulated margin samples; v2 inherits whatever
+    the canonical pricer does, so the two arms cannot disagree about
+    ties by construction."""
+    out = record(talent_home=800.0, talent_away=800.0)  # zero differential
+    assert out.shadow_minus_control_basis_probability == 0.0
+    assert out.control_probability_basis == out.shadow_probability
 
 
 def test_the_shadow_is_deterministic():

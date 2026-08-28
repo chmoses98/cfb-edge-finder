@@ -190,6 +190,11 @@ class ShadowSidecar:
         control_expected_away: float | None,
         both_fbs: bool,
         capture_mode: str,
+        control_distribution=None,
+        contract_family=None,
+        contract_side=None,
+        contract_threshold: float | None = None,
+        named_team_side=None,
     ) -> ShadowObservation | None:
         """Build one contract's shadow record, or None on internal error.
 
@@ -260,6 +265,15 @@ class ShadowSidecar:
                 talent_away=self.talent_by_team.get(away_team_id),
                 talent_source_version=self.talent_source_version,
                 both_fbs=both_fbs, capture_mode=capture_mode,
+                # The contract's own proposition, taken from what the
+                # CANONICAL observation recorded, so the shadow prices
+                # what the control priced rather than a re-derivation
+                # that could drift from it.
+                control_distribution=control_distribution,
+                contract_family=contract_family,
+                contract_side=contract_side,
+                contract_threshold=contract_threshold,
+                named_team_side=named_team_side,
                 code_sha=self.code_sha,
             )
             if record.available:
