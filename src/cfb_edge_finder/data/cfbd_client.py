@@ -18,9 +18,25 @@ Free tier reported ~1,000 calls/month (see docs/DATA_SOURCES.md).
 
 from __future__ import annotations
 
+import time
+
 import requests
 
 DEFAULT_BASE_URL = "https://api.collegefootballdata.com"
+
+RETRY_ATTEMPTS = 4
+RETRY_BASE_DELAY_SECONDS = 1.0
+RETRY_MAX_DELAY_SECONDS = 8.0
+"""Bounded retry on genuinely transient statuses (429 and 5xx), mirroring
+KalshiClient's schedule: 1 initial + 3 retries, at most 1+2+4=7s asleep.
+
+*** LIVE EVIDENCE THIS IS BUILT FROM (run 33211233986, 2026-08-28) ***
+A one-off CFBD `502 Bad Gateway` on GET /games killed an entire
+collection-workflow run on the first request, with no retry -- the same
+failure mode KalshiClient's own docstring records for its live 429
+(job 98618136387). Ahead of a 14-minute closing window a transient 502
+must cost seconds, not the whole capture. A 4xx that is not 429 is a
+real client error and is still raised immediately."""
 
 
 class CFBDAuthError(RuntimeError):
@@ -46,14 +62,44 @@ class CFBDClient:
 
     def _get(self, path: str, params: dict[str, object]) -> list[dict]:
         api_key = self._require_key()
-        response = requests.get(
-            f"{self._base_url}{path}",
-            params={k: v for k, v in params.items() if v is not None},
-            headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
-            timeout=self._timeout_seconds,
-        )
-        response.raise_for_status()
-        return response.json()
+        last_error: requests.HTTPError | None = None
+        for attempt in range(RETRY_ATTEMPTS):
+            response = requests.get(
+                f"{self._base_url}{path}",
+                params={k: v for k, v in params.items() if v is not None},
+                headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+                timeout=self._timeout_seconds,
+            )
+            if response.status_code < 400:
+                return response.json()
+
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                last_error = exc
+
+            retryable = response.status_code == 429 or 500 <= response.status_code < 600
+            if not retryable or attempt == RETRY_ATTEMPTS - 1:
+                assert last_error is not None
+                raise last_error
+
+            time.sleep(self._retry_delay_seconds(response, attempt))
+
+        assert last_error is not None  # loop always raises or returns
+        raise last_error
+
+    @staticmethod
+    def _retry_delay_seconds(response: requests.Response, attempt: int) -> float:
+        """Server-provided `Retry-After` wins over our own backoff, capped
+        so a malformed header cannot stall a scheduled run -- same policy
+        as KalshiClient._retry_delay_seconds."""
+        header = response.headers.get("Retry-After")
+        if header:
+            try:
+                return min(float(header), RETRY_MAX_DELAY_SECONDS)
+            except ValueError:
+                pass
+        return min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS)
 
     def fetch_games(
         self, season: int, season_type: str | None = None, division: str = "fbs", week: int | None = None
