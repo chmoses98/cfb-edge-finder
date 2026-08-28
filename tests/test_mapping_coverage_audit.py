@@ -138,3 +138,65 @@ def test_audit_makes_no_mapping_or_alias_changes():
     source = (REPO_ROOT / "scripts" / "audit_mapping_coverage.py").read_text(encoding="utf-8")
     for banned in ("ALIASES[", "REGISTRY.append", "REGISTRY +=", "_BY_ID["):
         assert banned not in source
+
+
+# --- why the live audit found zero FBS alias defects ----------------------
+
+
+def test_registry_covers_the_whole_fbs_universe():
+    """The load-bearing argument behind the coverage verdict.
+
+    The registry is the COMPLETE 2026 FBS universe (138 teams), so a raw
+    name that fails to resolve cannot be an FBS team. That is what makes
+    DETERMINISTIC_ALIAS_MISSING provably free of FBS leakage: the live
+    run's unknown tokens (Albany, LIU, Winona St., Grambling St., ...)
+    are non-FBS by construction, not by inspection.
+
+    If the FBS count ever drifts from the real universe, this argument
+    stops holding and the audit's leak figure would understate -- so the
+    count is pinned here rather than assumed."""
+    from cfb_edge_finder.teams.registry import REGISTRY, Subdivision
+
+    fbs = [t for t in REGISTRY if t.subdivision is Subdivision.FBS]
+    assert len(fbs) == 138, (
+        "FBS registry size changed; the 'unknown token cannot be FBS' argument "
+        "behind the coverage verdict must be re-derived"
+    )
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        "University at Albany", "St. Thomas", "LIU", "Winona St.", "Grambling St.",
+        "Southern University", "Tennessee-Martin", "Central Connecticut St.",
+        "Nicholls St.", "Southeastern Louisiana",
+    ],
+)
+def test_live_unknown_tokens_are_not_fbs_teams(token):
+    """The exact tokens the live audit surfaced. Adding registry aliases
+    for these would be wrong -- they are FCS/D2/D3 schools, and an alias
+    would silently pull unsupported populations into pricing."""
+    from cfb_edge_finder.teams.registry import UnknownTeamAliasError, resolve_team_alias
+
+    with pytest.raises(UnknownTeamAliasError):
+        resolve_team_alias(token)
+
+
+def test_miami_fl_alias_already_resolves():
+    """The one FBS-vs-FBS event the audit flagged is NOT an alias defect:
+    both sides resolve cleanly. Its cause is that CFBD's schedule has no
+    Stanford-Miami fixture, so no candidate game carries that team pair.
+    Pinning the alias here keeps a future 'fix' from being aimed at the
+    wrong layer."""
+    from cfb_edge_finder.teams.registry import resolve_team_alias
+
+    assert resolve_team_alias("Miami (FL)") == "miami-fl"
+    assert resolve_team_alias("Stanford") == "stanford"
+
+
+def test_bare_miami_stays_ambiguous():
+    """And the guard that must NOT be relaxed to close that gap."""
+    from cfb_edge_finder.teams.registry import AmbiguousTeamAliasError, resolve_team_alias
+
+    with pytest.raises(AmbiguousTeamAliasError):
+        resolve_team_alias("Miami")
