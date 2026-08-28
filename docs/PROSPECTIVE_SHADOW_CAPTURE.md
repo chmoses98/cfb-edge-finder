@@ -268,6 +268,15 @@ from the stale tree.
    import time, and that the scanner contains **no** function-local
    `cfb_edge_finder` import — the shape of the bug, not just this
    instance of it.
+4. And the test that would actually have caught it: every check above
+   inspects the *current* process, where the working tree never moves —
+   which is exactly why 2,079 tests passed while the real workflow
+   failed. `test_sidecar_builds_after_a_real_data_branch_checkout` builds
+   a throwaway repo with a real remote, a code branch and an orphan data
+   branch carrying a stale `src/`, then in a subprocess imports the
+   scanner, calls the **real** `ensure_branch_checked_out`, and only then
+   builds the sidecar. Measured: pre-fix `SIDECAR=NONE`, post-fix
+   `SIDECAR=BUILT STATE=ACTIVE BETA=0.018993`.
 
 **Not fixed here:** the stale `src/` tree on `research-data` is still
 there. Removing it would be a separate, deliberate change to the data
