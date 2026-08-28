@@ -40,7 +40,7 @@ from cfb_edge_finder.config import Settings  # noqa: E402
 from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: E402
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason  # noqa: E402
-from cfb_edge_finder.kalshi.game_mapping import map_kalshi_event_to_game  # noqa: E402
+from cfb_edge_finder.kalshi.game_mapping import _split_title, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.teams.fcs_identity import is_known_fcs_school  # noqa: E402
 from cfb_edge_finder.teams.registry import (  # noqa: E402
     REGISTRY,
@@ -207,8 +207,21 @@ def main() -> int:
                 continue
 
             unresolved_markets += n
-            home = _side_identity(evidence.raw_home_name, fcs_school_names, fbs_ids)
-            away = _side_identity(evidence.raw_away_name, fcs_school_names, fbs_ids)
+            # Sides come from raw_home/away when present, else from the
+            # title -- the SAME order map_kalshi_event_to_game itself
+            # uses. A first pass read only the raw fields, which are unset
+            # for these events, so every market looked "malformed" and
+            # the whole population collapsed into one bucket.
+            if evidence.raw_home_name and evidence.raw_away_name:
+                raw_pair = (evidence.raw_home_name, evidence.raw_away_name)
+            else:
+                raw_pair = _split_title(evidence.title) if evidence.title else None
+            if raw_pair is None:
+                home = {"raw": None, "kind": "missing"}
+                away = {"raw": None, "kind": "missing"}
+            else:
+                home = _side_identity(raw_pair[0], fcs_school_names, fbs_ids)
+                away = _side_identity(raw_pair[1], fcs_school_names, fbs_ids)
             category, why = classify_unresolved(reason, home, away)
             category_counts[category] += n
 
