@@ -218,3 +218,67 @@ output is reconstructed and says so.
 No qualification, no ranking, no stake, no execution. The only question
 is **CONTROL vs TALENT SHADOW**. A test greps the shadow modules for
 qualification/stake/bankroll vocabulary and fails if any appears.
+
+## 9. The live wiring defect the first real run exposed
+
+The first Research Capture run on `main` after the sidecar merged
+(workflow run `33189458187`, head `52c0cf5`) wrote **158 canonical
+observations and 0 shadow rows**, reporting:
+
+```
+"shadow_games_offered": 0, "shadow_failures": 0,
+"shadow_contracts_priced": 0, "shadow_rows_written": 0
+```
+
+Every counter read 0, which is also exactly what a healthy run with
+nothing eligible produces. The log could not distinguish the two.
+
+**Root cause.** `main` calls `ensure_branch_checked_out` *before*
+`_apply_scan`. That runs `git checkout -B research-data`, which replaces
+the working tree — including the editable install's `src/` — with the
+`research-data` branch's own stray `src/` snapshot. That snapshot is a
+fossil of the old stray-source-tree incident: 82 files, carrying
+`research/` but **no `research/preseason/` package at all**.
+
+Modules already in `sys.modules` survive the swap. A function-local
+import does not. `_build_shadow_sidecar` imported
+`research.preseason.corpus` lazily, so on every real run that import
+raised `ModuleNotFoundError`, the broad `except` swallowed it, and the
+sidecar was silently `None` — while every test passed, because no test
+checks out the data branch mid-run.
+
+Measured: `cfb_edge_finder.research.preseason.corpus` is the one
+dependency not already bound at scanner import time, and it is absent
+from the stale tree.
+
+**Fixes.**
+
+1. Every `cfb_edge_finder` import in the scanner is now module-level, so
+   the modules bind while main's tree is still on disk. The cache *read*
+   stays where it was — that JSON exists only on `research-data`, and a
+   file read is not an import. Verified by simulating the swap: the
+   builder returns `ACTIVE` with 137 teams at beta 0.018993 where it
+   previously returned `None`.
+2. `_build_shadow_sidecar` now returns `(sidecar, state)`. A `None`
+   sidecar names its reason (`UNAVAILABLE_ModuleNotFoundError`,
+   `UNAVAILABLE_NO_CACHE_FOR_SEASON_2026`, …), surfaced as
+   `shadow_sidecar_state`. `shadow_failure_types` and
+   `shadow_unavailable_reasons` are surfaced too.
+3. Regression tests assert each required module is bound at scanner
+   import time, and that the scanner contains **no** function-local
+   `cfb_edge_finder` import — the shape of the bug, not just this
+   instance of it.
+4. And the test that would actually have caught it: every check above
+   inspects the *current* process, where the working tree never moves —
+   which is exactly why 2,079 tests passed while the real workflow
+   failed. `test_sidecar_builds_after_a_real_data_branch_checkout` builds
+   a throwaway repo with a real remote, a code branch and an orphan data
+   branch carrying a stale `src/`, then in a subprocess imports the
+   scanner, calls the **real** `ensure_branch_checked_out`, and only then
+   builds the sidecar. Measured: pre-fix `SIDECAR=NONE`, post-fix
+   `SIDECAR=BUILT STATE=ACTIVE BETA=0.018993`.
+
+**Not fixed here:** the stale `src/` tree on `research-data` is still
+there. Removing it would be a separate, deliberate change to the data
+branch; the import fix makes the scanner correct regardless of what that
+branch carries, which is the more robust guarantee.
