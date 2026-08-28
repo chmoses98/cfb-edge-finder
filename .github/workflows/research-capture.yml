@@ -164,6 +164,19 @@ jobs:
             --season "$SEASON" \
             --live
 
+      # TEMPORARY read-only audit step, removed before this branch is
+      # finished. A brand-new workflow cannot be workflow_dispatch'd
+      # until it is on the default branch, so this is the only way to
+      # classify the live unresolved population before the merge.
+      - name: AUDIT mapping coverage (read-only, manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python scripts/audit_mapping_coverage.py \
+            --schedule-season "${{ github.event.inputs.schedule_season || '2026' }}" \
+            --max-samples 40
+
       - name: Scan and capture
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
