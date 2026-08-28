@@ -10,9 +10,15 @@ path currently terminates in zero.
 *** THE 6/7 BOUNDARY ***
 `PortfolioBoundary` exists to make it visible that qualification and
 sizing are SEPARATE decisions. A qualified card says "these met the
-evidence bar"; it says nothing about how much of anything to commit. This
-repository implements neither side of that boundary's downstream: there is
-no sizing module, no allocation, and no execution.
+evidence bar"; it says nothing about how much of anything to commit.
+There is no allocation and no execution downstream of this boundary.
+
+A stake-arithmetic library now exists at `cfb_edge_finder.sizing`, but it
+is not downstream of anything: no module on this path imports it, which
+`tests/test_sizing_disconnection.py` enforces by parsing imports rather
+than trusting this sentence. Writing the arithmetic early and leaving it
+unwired is deliberate -- the alternative is writing it in a hurry, later,
+against a live slate.
 """
 
 from __future__ import annotations

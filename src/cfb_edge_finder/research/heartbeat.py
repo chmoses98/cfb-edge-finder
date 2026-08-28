@@ -51,6 +51,15 @@ class Heartbeat:
     malformed_rows: int = 0
     api_failures: int = 0
 
+    closing_labels_due: int = 0
+    closing_labels_captured: int = 0
+    """CLOSING specifically, split out from labels_due/labels_captured.
+    A missed CLOSING is unrecoverable -- its window is
+    0 < minutes_to_kickoff <= 14 and it is never backfilled -- so it
+    cannot be left buried inside an aggregate that a healthy T_24H count
+    can mask. Defaults of 0 mean 'this run predates the field', which the
+    ops check reads as 'nothing observed', never as 'nothing missed'."""
+
     cfbd_healthy: bool | None = None
     kalshi_healthy: bool | None = None
 

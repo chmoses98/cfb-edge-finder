@@ -67,6 +67,11 @@ class ContractSnapshot:
     a field the schema could not store from one it should have -- see
     schemas/schema_evolution.py. Defaults to None (ranked oldest) so an
     unstamped row is never credited with fields it may not carry."""
+    capture_mode: str | None = None
+    """PROSPECTIVE or RETROSPECTIVE_BACKFILL, carried from the row rather
+    than assumed. Defaults to None -- unknown, NOT prospective -- so a
+    snapshot built without this field cannot slip past a prospective-only
+    gate by omission. See schemas/corpus_row.py's CaptureMode."""
 
     @property
     def model_probability_no_side(self) -> float | None:
