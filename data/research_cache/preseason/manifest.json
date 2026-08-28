@@ -2,230 +2,38 @@
   "api_key_present": true,
   "cache_version": "preseason_research_cache_v1",
   "endpoints": {
-    "2019": {
+    "2026": {
       "/coaches": {
-        "kept_rows": 134,
-        "raw_rows": 134,
+        "kept_rows": 138,
+        "raw_rows": 138,
         "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2019 only; per-season outcome stats DROPPED as postgame",
+        "timing_semantics": "identity/school for 2026 only; per-season outcome stats DROPPED as postgame",
         "verdict": "USABLE"
       },
       "/games": {
-        "kept_rows": 1577,
-        "raw_rows": 1577,
+        "kept_rows": 3676,
+        "raw_rows": 3676,
         "schema_fingerprint": "990f79c4221383fd",
         "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
         "verdict": "USABLE"
       },
       "/player/returning": {
-        "kept_rows": 130,
-        "raw_rows": 130,
+        "kept_rows": 136,
+        "raw_rows": 136,
         "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2019, describing production returning FROM 2018",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 1774,
-        "raw_rows": 1774,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
+        "timing_semantics": "published pre-season 2026, describing production returning FROM 2025",
         "verdict": "USABLE"
       },
       "/talent": {
-        "kept_rows": 231,
-        "raw_rows": 231,
+        "kept_rows": 138,
+        "raw_rows": 138,
         "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2019, settled in the 2018 signing cycle",
-        "verdict": "USABLE"
-      }
-    },
-    "2021": {
-      "/coaches": {
-        "kept_rows": 152,
-        "raw_rows": 152,
-        "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2021 only; per-season outcome stats DROPPED as postgame",
-        "verdict": "USABLE"
-      },
-      "/games": {
-        "kept_rows": 2408,
-        "raw_rows": 2408,
-        "schema_fingerprint": "990f79c4221383fd",
-        "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
-        "verdict": "USABLE"
-      },
-      "/player/returning": {
-        "kept_rows": 128,
-        "raw_rows": 128,
-        "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2021, describing production returning FROM 2020",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 1774,
-        "raw_rows": 1774,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
-        "verdict": "USABLE"
-      },
-      "/talent": {
-        "kept_rows": 224,
-        "raw_rows": 224,
-        "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2021, settled in the 2020 signing cycle",
-        "verdict": "USABLE"
-      }
-    },
-    "2022": {
-      "/coaches": {
-        "kept_rows": 147,
-        "raw_rows": 146,
-        "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2022 only; per-season outcome stats DROPPED as postgame",
-        "verdict": "USABLE"
-      },
-      "/games": {
-        "kept_rows": 3657,
-        "raw_rows": 3657,
-        "schema_fingerprint": "990f79c4221383fd",
-        "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
-        "verdict": "USABLE"
-      },
-      "/player/returning": {
-        "kept_rows": 130,
-        "raw_rows": 130,
-        "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2022, describing production returning FROM 2021",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 2918,
-        "raw_rows": 2918,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
-        "verdict": "USABLE"
-      },
-      "/talent": {
-        "kept_rows": 233,
-        "raw_rows": 233,
-        "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2022, settled in the 2021 signing cycle",
-        "verdict": "USABLE"
-      }
-    },
-    "2023": {
-      "/coaches": {
-        "kept_rows": 143,
-        "raw_rows": 143,
-        "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2023 only; per-season outcome stats DROPPED as postgame",
-        "verdict": "USABLE"
-      },
-      "/games": {
-        "kept_rows": 3595,
-        "raw_rows": 3595,
-        "schema_fingerprint": "990f79c4221383fd",
-        "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
-        "verdict": "USABLE"
-      },
-      "/player/returning": {
-        "kept_rows": 131,
-        "raw_rows": 131,
-        "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2023, describing production returning FROM 2022",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 2984,
-        "raw_rows": 2984,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
-        "verdict": "USABLE"
-      },
-      "/talent": {
-        "kept_rows": 238,
-        "raw_rows": 238,
-        "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2023, settled in the 2022 signing cycle",
-        "verdict": "USABLE"
-      }
-    },
-    "2024": {
-      "/coaches": {
-        "kept_rows": 152,
-        "raw_rows": 152,
-        "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2024 only; per-season outcome stats DROPPED as postgame",
-        "verdict": "USABLE"
-      },
-      "/games": {
-        "kept_rows": 3747,
-        "raw_rows": 3747,
-        "schema_fingerprint": "990f79c4221383fd",
-        "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
-        "verdict": "USABLE"
-      },
-      "/player/returning": {
-        "kept_rows": 133,
-        "raw_rows": 133,
-        "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2024, describing production returning FROM 2023",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 3212,
-        "raw_rows": 3212,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
-        "verdict": "USABLE"
-      },
-      "/talent": {
-        "kept_rows": 134,
-        "raw_rows": 134,
-        "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2024, settled in the 2023 signing cycle",
-        "verdict": "USABLE"
-      }
-    },
-    "2025": {
-      "/coaches": {
-        "kept_rows": 161,
-        "raw_rows": 161,
-        "schema_fingerprint": "5fed3018fc38eda8",
-        "timing_semantics": "identity/school for 2025 only; per-season outcome stats DROPPED as postgame",
-        "verdict": "USABLE"
-      },
-      "/games": {
-        "kept_rows": 3745,
-        "raw_rows": 3745,
-        "schema_fingerprint": "990f79c4221383fd",
-        "timing_semantics": "scores POSTGAME (target variable only); schedule metadata pregame",
-        "verdict": "USABLE"
-      },
-      "/player/returning": {
-        "kept_rows": 134,
-        "raw_rows": 134,
-        "schema_fingerprint": "67aaf2c6d11f078d",
-        "timing_semantics": "published pre-season 2025, describing production returning FROM 2024",
-        "verdict": "USABLE"
-      },
-      "/stats/game/advanced": {
-        "kept_rows": 3316,
-        "raw_rows": 3316,
-        "schema_fingerprint": "6cbacfa2c723110a",
-        "timing_semantics": "POSTGAME; pace only, usable for strictly-prior games",
-        "verdict": "USABLE"
-      },
-      "/talent": {
-        "kept_rows": 134,
-        "raw_rows": 134,
-        "schema_fingerprint": "c75ae8a63a1c583b",
-        "timing_semantics": "recruiting composite entering 2025, settled in the 2024 signing cycle",
+        "timing_semantics": "recruiting composite entering 2026, settled in the 2025 signing cycle",
         "verdict": "USABLE"
       }
     }
   },
-  "fetched_at": "2026-08-28T14:54:33.430285+00:00",
+  "fetched_at": "2026-08-28T15:11:36.158908+00:00",
   "not_fetched": {
     "/ratings/*": "pre/post-week timing unconfirmed",
     "/roster": "retroactively revised; no as-of snapshot",
@@ -234,12 +42,7 @@
     "weather": "only realised conditions retrievable, not pregame forecast"
   },
   "seasons": [
-    2019,
-    2021,
-    2022,
-    2023,
-    2024,
-    2025
+    2026
   ],
   "source": "https://api.collegefootballdata.com"
 }
