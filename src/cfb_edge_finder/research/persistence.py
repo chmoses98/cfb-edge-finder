@@ -65,6 +65,13 @@ OBSERVATIONS_SUBDIR = "observations"
 SETTLEMENTS_SUBDIR = "settlements"
 CAPTURE_STATE_SUBDIR = "capture_state"
 ATTRIBUTIONS_SUBDIR = "attributions"
+SHADOW_SUBDIR = "shadow"
+"""Linked talent-shadow research records. A SEPARATE directory from
+`observations` on purpose: canonical prospective observations stay
+byte-identical and a reader that knows nothing about shadows never sees
+them. Append-only, keyed by observation_key|shadow_model_version, so a
+retry dedupes and a future candidate version coexists rather than
+overwriting the evidence this one is collecting."""
 
 
 def canonical_path(base_dir: Path, subdir: str, season: int) -> Path:

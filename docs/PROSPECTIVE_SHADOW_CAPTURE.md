@@ -139,7 +139,81 @@ under-projects most. **Not a bet, edge, play, or recommendation.**
 
 ---
 
-## 7. What this does not do
+## 7. Live scanner wiring
+
+`research_scan_and_capture.py` now emits a linked shadow record after each
+canonical observation is built.
+
+### Sidecar, not a dependency
+
+| Guarantee | Mechanism |
+|---|---|
+| Canonical capture never blocked | `_build_shadow_sidecar` returns `None` on any problem; the hook is guarded on it |
+| Shadow failure never propagates | `for_contract` catches everything and returns `None` |
+| Failures stay diagnosable | The exception **type** is recorded, not just a count |
+| Canonical rows written first | Shadow persistence runs after `append_observation_rows`, and is itself wrapped |
+
+During development the broad `except` swallowed an `AttributeError` from a
+typo, and only the failure counter revealed anything was wrong — which is
+exactly why `failure_types` now exists.
+
+### One transform per game, not per ticker
+
+Measured on the real 2026 corpus: **94 game transforms for 1,115
+contracts** (0.084 per contract). Overhead **0.028 ms/contract**, 0.031 s
+total. The scanner already builds one `CorrectedGameProjection` per game;
+the shadow mirrors that exactly.
+
+### Transformation order, traced not assumed
+
+The historical runner built margins as `raw + margin_delta` and then
+added the talent delta, so the delta is applied **after** the C.2 margin
+correction. That ordering could not be distinguished historically — C.2
+was a **no-op for every evaluated season** (artifact cutoff
+`AsOf(2026, 0)`; measured mean `|margin_delta| = 0.000`). For 2026 it
+becomes active, so the order was resolved from what the code *did*.
+
+### A real inconsistency in the historical winner channel
+
+The historical CONTROL probability came from `prob_home_win()`, which
+splits simulated ties 50/50; the SHADOW used `mean(margin > 0)`, where
+ties resolve to AWAY. Measured gap: **mean |Δp| = 0.0095**, exactly half
+the 1.89% simulated tie mass — and it ran **against** the shadow, so the
+historical log-loss gain was achieved despite a small handicap.
+
+Live capture therefore records **three** probabilities: the canonical
+control value (unchanged, tie-split), a comparison **basis** control
+value computed the same way as the shadow, and the shadow value. Paired
+comparisons use basis-vs-shadow so the arms differ only by the talent
+delta.
+
+### Append-only dedup
+
+Key: `observation_key | shadow_model_version`. A retry writes **0**
+duplicate rows; a future candidate version coexists rather than
+overwriting this one's evidence. Shadow rows live in
+`data/research/shadow/` — a separate file, so canonical observations stay
+byte-identical.
+
+### Deployment boundary
+
+`shadow_capture_started_at` is stamped on every record. Absence before
+deployment is **expected, not missing data**.
+
+## 8. Reconstructed vs captured evidence
+
+| Provenance | Admissible as headline prospective evidence |
+|---|---|
+| `PROSPECTIVE_SHADOW_CAPTURE` | **YES** — written by the live scanner before the game |
+| `RECONSTRUCTED_RESEARCH` | **NO** — re-derived after the fact |
+
+`compare()` drops reconstructed rows by default. A reconstructed value
+was computed after the outcome existed and could have been computed
+differently; letting it stand beside captured rows would quietly convert
+the prospective test into a retrospective one. `shadow_snapshot.py`
+output is reconstructed and says so.
+
+## 9. What this does not do
 
 No qualification, no ranking, no stake, no execution. The only question
 is **CONTROL vs TALENT SHADOW**. A test greps the shadow modules for

@@ -50,6 +50,11 @@ from cfb_edge_finder.research import (  # noqa: E402
     timing,
 )
 from cfb_edge_finder.research import heartbeat as heartbeat_mod  # noqa: E402
+from cfb_edge_finder.research.identity import observation_key  # noqa: E402
+from cfb_edge_finder.research.preseason.shadow_sidecar import (  # noqa: E402
+    ShadowSidecar,
+    shadow_key,
+)
 from cfb_edge_finder.research.scan_logic import StaleScheduleGuardError  # noqa: E402
 from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
 from cfb_edge_finder.research.trigger import (  # noqa: E402
@@ -66,6 +71,153 @@ from cfb_edge_finder.schemas.provenance import DataProvenance, ModelVersion  # n
 
 FEATURE_VERSION = "features_v1_c2_ratings"
 MAPPING_VERSION = "kalshi_game_mapping_v1"
+
+
+def _emit_shadow_record(
+    *,
+    sidecar,
+    observation,
+    cached_projection,
+    mapping,
+    matched_game,
+    kickoff,
+    season: int,
+    now: datetime,
+    home_cls,
+    away_cls,
+    pending: list[dict],
+    seen: set[str],
+) -> None:
+    """Append one linked shadow record for a canonical observation.
+
+    Dedupes on observation_key|shadow_model_version, so a retry writes
+    zero duplicate rows and a future candidate version can coexist rather
+    than overwriting this one's evidence. Never raises: the canonical row
+    is already built and must not be endangered by research code."""
+    try:
+        projection = cached_projection.projection
+        raw = projection.raw
+        corrected_margins = (raw.home_scores - raw.away_scores) + projection.margin_delta
+
+        key = observation_key(
+            season=season,
+            game_id=observation.game_id or "unmapped",
+            market_ticker=observation.kalshi_market_ticker,
+            timing_label=observation.snapshot_timing.label,
+            model_version=(
+                observation.model_version.model_version if observation.model_version else "unpriced"
+            ),
+        )
+        dedup = shadow_key(key)
+        if dedup in seen:
+            return
+
+        record = sidecar.for_contract(
+            observation_key=key,
+            game_id=observation.game_id or "unmapped",
+            timing_label=observation.snapshot_timing.label,
+            captured_at=observation.captured_at,
+            kickoff_utc=kickoff,
+            market_ticker=observation.kalshi_market_ticker,
+            market_family=observation.family.value if observation.family else None,
+            executable_yes_price=observation.executable_yes_price,
+            executable_no_price=observation.executable_no_price,
+            control_model_version=(
+                observation.model_version.model_version if observation.model_version else None
+            ),
+            control_probability=observation.model_probability,
+            projection_snapshot_id=cached_projection.projection_snapshot_id,
+            home_team_id=(matched_game.home_team_id if matched_game else ""),
+            away_team_id=(matched_game.away_team_id if matched_game else ""),
+            corrected_margin_samples=corrected_margins,
+            control_margin_corrected=projection.expected_margin,
+            control_expected_home=projection.expected_home_points,
+            control_expected_away=projection.expected_away_points,
+            both_fbs=(home_cls == "fbs" and away_cls == "fbs"),
+            capture_mode="PROSPECTIVE",
+        )
+        if record is None:
+            return
+        payload = record.to_dict()
+        payload["shadow_key"] = dedup
+        payload["projection_snapshot_id"] = cached_projection.projection_snapshot_id
+        payload["talent_season"] = sidecar.talent_season
+        payload["talent_fetched_at"] = sidecar.talent_fetched_at
+        payload["shadow_capture_started_at"] = sidecar.shadow_capture_started_at
+        seen.add(dedup)
+        pending.append(payload)
+    except Exception:  # noqa: BLE001
+        # Counted, not silent -- but never fatal to canonical capture.
+        try:
+            sidecar.telemetry.shadow_failures += 1
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _build_shadow_sidecar(repo_dir: Path, season: int, now: datetime) -> ShadowSidecar | None:
+    """Load the frozen talent inputs for the shadow sidecar.
+
+    Returns None on ANY problem -- missing cache, drifted spec, unparsable
+    file. Canonical capture then proceeds exactly as it did before this
+    module existed. A research side effect must never be able to cost a
+    prospective checkpoint, least of all a CLOSING one, which cannot be
+    recovered."""
+    try:
+        from cfb_edge_finder.modeling.leakage import AsOf
+        from cfb_edge_finder.research.preseason.corpus import build_feature_tables, load_cache
+        from cfb_edge_finder.research.preseason.shadow_spec import (
+            CONTROL_SPEC_SHA256,
+            SHADOW_SPEC_SHA256,
+            assert_specs_frozen,
+        )
+
+        # Refuse to capture against a drifted candidate: a shadow row
+        # written under a changed beta would silently contaminate the
+        # prospective evidence it exists to create.
+        assert_specs_frozen(control_sha256=CONTROL_SPEC_SHA256, shadow_sha256=SHADOW_SPEC_SHA256)
+
+        cache_dir = repo_dir / "data" / "research_cache" / "preseason"
+        seasons = load_cache(cache_dir)
+        if season not in seasons:
+            return None
+        table = build_feature_tables(seasons)[season]
+        target = AsOf(season=season, week=1)
+        # Every value goes through table.get(), which calls
+        # PreseasonFeature.validate_for() and RAISES on a season
+        # misalignment. Reading the index directly would be faster and
+        # would silently skip the leakage guard -- the one check that
+        # stops a talent row being applied to the season it was derived
+        # from.
+        teams = {team for (team, name) in table._by_key if name == "talent_composite"}
+        talent: dict[str, float] = {}
+        for team in sorted(teams):
+            feature = table.get(team, "talent_composite", target=target)
+            if feature is not None and feature.value is not None:
+                talent[team] = float(feature.value)
+        if not talent:
+            return None
+        return ShadowSidecar(
+            talent_by_team=talent,
+            talent_season=season,
+            talent_source_version="preseason_research_cache_v1",
+            talent_fetched_at=now.isoformat(),
+            code_sha=_code_sha(),
+            shadow_capture_started_at=now.isoformat(),
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _code_sha() -> str | None:
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10
+        )
+        return out.stdout.strip() or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _build_data_versions(model_version: ModelVersion, captured_at: datetime) -> DataVersionManifest:
@@ -138,6 +290,12 @@ def _apply_scan(
 
     pending_rows: list[ResearchCorpusRow] = []
     capture_state_rows: list[CaptureStateRecord] = []
+    # RESEARCH SIDECAR. Built once per attempt, never per ticker. If it
+    # cannot be constructed at all the canonical capture proceeds exactly
+    # as before -- the shadow is a side effect, never a dependency.
+    shadow_sidecar = _build_shadow_sidecar(repo_dir, season, now)
+    pending_shadow_rows: list[dict] = []
+    seen_shadow_keys: set[str] = set()
     # Distinct games this run actually PROJECTED, not the size of the
     # schedule -- the denominator for "contracts priced per projection"
     # (mission section 7) only means anything if it counts games that
@@ -344,6 +502,28 @@ def _apply_scan(
                     else:
                         telemetry.unresolved_count += 1
 
+                    # ------------------------------------------------
+                    # RESEARCH SIDECAR: linked talent-shadow record.
+                    # Runs AFTER the canonical observation exists and can
+                    # only add a row; it never edits, blocks or replaces
+                    # one. Anything unexpected inside returns None.
+                    # ------------------------------------------------
+                    if shadow_sidecar is not None and cached_projection is not None:
+                        _emit_shadow_record(
+                            sidecar=shadow_sidecar,
+                            observation=observation,
+                            cached_projection=cached_projection,
+                            mapping=mapping,
+                            matched_game=matched_game,
+                            kickoff=kickoff,
+                            season=season,
+                            now=now,
+                            home_cls=home_cls,
+                            away_cls=away_cls,
+                            pending=pending_shadow_rows,
+                            seen=seen_shadow_keys,
+                        )
+
                     row = scan_logic.build_corpus_row(
                         observation=observation,
                         season=season,
@@ -444,6 +624,30 @@ def _apply_scan(
         if capture_state_rows:
             state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
             persistence.append_capture_state_rows(state_path, capture_state_rows)
+        # Shadow rows are written AFTER the canonical observations and in
+        # their own file. Ordering matters: if this raised, the canonical
+        # rows are already durable. It is wrapped anyway, because a
+        # research side effect must never fail a prospective capture.
+        if pending_shadow_rows:
+            try:
+                shadow_path = persistence.canonical_path(
+                    base_dir, persistence.SHADOW_SUBDIR, season
+                )
+                shadow_result = persistence.append_json_rows(
+                    shadow_path,
+                    pending_shadow_rows,
+                    key_fn=lambda row: row.get("shadow_key"),
+                )
+                telemetry.shadow_rows_written = shadow_result.written
+                telemetry.shadow_rows_duplicate = shadow_result.skipped_duplicate
+            except Exception:  # noqa: BLE001
+                telemetry.shadow_rows_written = 0
+
+    if shadow_sidecar is not None:
+        telemetry.shadow_contracts_priced = shadow_sidecar.telemetry.shadow_contracts_priced
+        telemetry.shadow_game_transforms = shadow_sidecar.telemetry.shadow_game_transforms
+        telemetry.shadow_games_offered = shadow_sidecar.telemetry.games_offered
+        telemetry.shadow_failures = shadow_sidecar.telemetry.shadow_failures
 
     telemetry.distinct_games = len(projected_game_ids)
     telemetry.duplicate_count += result.skipped_duplicate

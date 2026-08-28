@@ -62,6 +62,17 @@ class ScanTelemetry:
     api_failure_count: int = 0
     closing_due_count: int = 0
     closing_captured_count: int = 0
+
+    shadow_rows_written: int = 0
+    shadow_rows_duplicate: int = 0
+    shadow_contracts_priced: int = 0
+    shadow_game_transforms: int = 0
+    shadow_games_offered: int = 0
+    shadow_failures: int = 0
+    """Research-sidecar counters. Kept beside the canonical counters so
+    shadow coverage is visible in the same heartbeat, and separate from
+    them so a shadow failure can never be mistaken for a collection
+    failure."""
     duplicate_count: int = 0
     malformed_row_count: int = 0
     persistence_write_seconds: float = 0.0

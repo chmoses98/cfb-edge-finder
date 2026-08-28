@@ -79,6 +79,25 @@ class EvidenceState(StrEnum):
     MEASURED = "MEASURED"
 
 
+class EvidenceProvenance(StrEnum):
+    """WHERE a control-vs-shadow comparison's shadow numbers came from.
+
+    The distinction is load-bearing. `shadow_snapshot.py` can RECONSTRUCT
+    a shadow value for any past observation by re-applying the frozen
+    beta -- useful for a research table, and worthless as prospective
+    evidence, because it was computed after the fact and could have been
+    computed differently. Only rows the live scanner wrote at capture
+    time are prospective."""
+
+    PROSPECTIVE_SHADOW_CAPTURE = "PROSPECTIVE_SHADOW_CAPTURE"
+    """Written by the live scanner at capture time, before the game.
+    The ONLY provenance admissible for headline prospective validation."""
+
+    RECONSTRUCTED_RESEARCH = "RECONSTRUCTED_RESEARCH"
+    """Re-derived after the fact from a stored control observation.
+    Fine for exploration; never headline evidence."""
+
+
 def hypothesis_hash() -> str:
     payload = {
         "version": HYPOTHESIS_VERSION,
@@ -112,6 +131,7 @@ def hypothesis_manifest() -> dict:
 class SettledShadowPair:
     """One settled game with both arms' predictions."""
 
+    provenance: EvidenceProvenance
     game_id: str
     week: int
     timing_label: str
@@ -165,13 +185,27 @@ def _log_loss(prob: float, won: bool) -> float:
     return -math.log(p if won else 1 - p)
 
 
-def compare(pairs: list[SettledShadowPair]) -> ShadowComparison:
+def compare(
+    pairs: list[SettledShadowPair],
+    *,
+    require_prospective_capture: bool = True,
+) -> ShadowComparison:
     """Compare the two arms on settled games.
 
-    With no settled games this returns INSUFFICIENT_NATURAL_EVIDENCE and
-    no numbers at all -- reporting a delta of 0.0 or an empty-set mean
-    would invite a reader to treat absence of measurement as a measured
-    null."""
+    `require_prospective_capture` defaults True: reconstructed rows are
+    DROPPED from the headline comparison. A reconstructed shadow value
+    was computed after the outcome existed and could have been computed
+    differently; letting it stand beside genuinely captured rows would
+    quietly convert the prospective test into a retrospective one.
+
+    With no admissible pairs this returns INSUFFICIENT_NATURAL_EVIDENCE
+    and no numbers at all -- reporting a delta of 0.0 would invite a
+    reader to treat absence of measurement as a measured null."""
+    if require_prospective_capture:
+        pairs = [
+            p for p in pairs
+            if p.provenance is EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE
+        ]
     if not pairs:
         return ShadowComparison(
             state=EvidenceState.INSUFFICIENT_NATURAL_EVIDENCE,

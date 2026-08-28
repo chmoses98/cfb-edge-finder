@@ -19,6 +19,7 @@ from cfb_edge_finder.research.preseason.shadow_analytics import (
     PRIMARY_HYPOTHESIS,
     PROHIBITED,
     SETTLED_2026_GAMES_AT_REGISTRATION,
+    EvidenceProvenance,
     EvidenceState,
     SettledShadowPair,
     compare,
@@ -301,6 +302,7 @@ def test_at_zero_settled_games_nothing_is_measured():
 def test_with_settled_games_both_arms_are_compared_pairwise():
     pairs = [
         SettledShadowPair(
+            provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
             game_id=f"g{i}", week=1, timing_label="T_24H",
             control_probability=0.6, shadow_probability=0.65,
             control_margin=3.0, shadow_margin=6.0, actual_home_margin=7,
@@ -317,6 +319,7 @@ def test_with_settled_games_both_arms_are_compared_pairwise():
 
 def test_a_zero_margin_is_an_away_win_in_the_comparison():
     pair = SettledShadowPair(
+        provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
         game_id="g", week=1, timing_label="T_24H",
         control_probability=0.5, shadow_probability=0.5,
         control_margin=0.0, shadow_margin=0.0, actual_home_margin=0,
@@ -388,6 +391,7 @@ def test_end_to_end_the_control_values_are_carried_through_unchanged():
 def test_end_to_end_settlement_is_identical_for_both_arms():
     """One game, one outcome. The arms differ only in prediction."""
     pair = SettledShadowPair(
+        provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
         game_id="g", week=1, timing_label="CLOSING",
         control_probability=0.60, shadow_probability=0.70,
         control_margin=3.0, shadow_margin=6.0, actual_home_margin=10,
@@ -398,3 +402,44 @@ def test_end_to_end_settlement_is_identical_for_both_arms():
     # Same realised outcome drives both arms' errors.
     assert result.control_margin_mae == pytest.approx(7.0)
     assert result.shadow_margin_mae == pytest.approx(4.0)
+
+
+# ------------------------- reconstructed vs captured provenance
+
+
+def _pair(provenance):
+    return SettledShadowPair(
+        provenance=provenance, game_id="g", week=1, timing_label="T_24H",
+        control_probability=0.6, shadow_probability=0.65,
+        control_margin=3.0, shadow_margin=6.0, actual_home_margin=7,
+    )
+
+
+def test_reconstructed_rows_are_excluded_from_headline_evidence():
+    """A reconstructed shadow value was computed after the outcome
+    existed and could have been computed differently. Letting it stand
+    beside captured rows would quietly convert the prospective test into
+    a retrospective one."""
+    reconstructed = [_pair(EvidenceProvenance.RECONSTRUCTED_RESEARCH)] * 30
+    result = compare(reconstructed)
+    assert result.state is EvidenceState.INSUFFICIENT_NATURAL_EVIDENCE
+    assert result.n_games == 0
+
+
+def test_captured_rows_are_admissible():
+    captured = [_pair(EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE)] * 30
+    assert compare(captured).state is EvidenceState.MEASURED
+
+
+def test_a_mixed_set_keeps_only_the_captured_rows():
+    mixed = [_pair(EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE)] * 10 + [
+        _pair(EvidenceProvenance.RECONSTRUCTED_RESEARCH)
+    ] * 40
+    assert compare(mixed).n_games == 10
+
+
+def test_reconstructed_rows_can_be_explored_only_by_explicit_opt_in():
+    reconstructed = [_pair(EvidenceProvenance.RECONSTRUCTED_RESEARCH)] * 30
+    result = compare(reconstructed, require_prospective_capture=False)
+    assert result.state is EvidenceState.MEASURED
+    assert result.n_games == 30

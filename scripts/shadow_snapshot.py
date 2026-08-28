@@ -180,6 +180,10 @@ def main() -> int:
     print("\n  SETTLED-DATA COMPARISON")
     print(f"    state  : {comparison.state.value}")
     print(f"    detail : {comparison.detail}")
+    print("    NOTE   : this snapshot RECONSTRUCTS shadow values from stored control")
+    print("             observations. Reconstructed rows are RECONSTRUCTED_RESEARCH and")
+    print("             are excluded from headline prospective evidence -- only rows the")
+    print("             live scanner wrote at capture time count for that.")
 
     print("\n  No ranking, no stake, no recommendation is produced by this snapshot.")
 
