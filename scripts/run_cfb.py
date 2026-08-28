@@ -223,6 +223,30 @@ def main() -> int:
         for finding in health.by_severity(severity)[:5]:
             print(f"    [{severity.value}] {finding.check_id}: {finding.detail[:110]}")
 
+    # ------------------------------------------ TALENT SHADOW RESEARCH
+    section("TALENT SHADOW RESEARCH (research only -- not a recommendation)")
+    try:
+        from cfb_edge_finder.research.preseason.shadow_spec import (
+            CONTROL_SPEC_SHA256,
+            SHADOW_SPEC_SHA256,
+            assert_specs_frozen,
+            shadow_spec,
+        )
+
+        assert_specs_frozen(control_sha256=CONTROL_SPEC_SHA256, shadow_sha256=SHADOW_SPEC_SHA256)
+        spec = shadow_spec()
+        print(f"  shadow model version           : {spec.model_version}")
+        print(f"  shadow spec sha256             : {spec.content_hash()[:32]}...")
+        print(f"  beta (frozen, never refit)     : {spec.payload['beta']}")
+        print(f"  may be refit on 2026           : {spec.payload['may_be_refit_on_2026']}")
+        print("  CONTROL remains canonical; model_probability is unchanged.")
+        print("  Per-game CONTROL/SHADOW/DELTA: scripts/shadow_snapshot.py")
+        print("  Rows there sort by game_id, never by delta -- a delta-sorted table")
+        print("  would be an opportunity ranking wearing a research header.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  shadow specification UNAVAILABLE: {type(exc).__name__}: {exc}")
+        print("  Control reporting above is unaffected.")
+
     # ------------------------------------------------------- SAFETY
     section("SAFETY")
     print(f"  qualification disabled         : {locks['qualification_disabled']}")
