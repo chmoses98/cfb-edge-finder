@@ -131,6 +131,12 @@ jobs:
       # corpus here with `git show`.
       - name: Validate collection schedule (read-only, manual runs only)
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        # Diagnostics must never cost a capture: a transient CFBD 502 in
+        # this read-only step aborted an entire collection run before the
+        # scan step ever ran (run 33211233986) -- and every
+        # conductor-dispatched collection is a workflow_dispatch event, so
+        # this step runs ahead of genuinely deadline-critical captures.
+        continue-on-error: true
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           SEASON: ${{ github.event.inputs.schedule_season || '2026' }}
@@ -159,6 +165,9 @@ jobs:
       # only check that would notice before the games.
       - name: Week 1 readiness (read-only, manual runs only)
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        # Same rationale as above: read-only diagnostic, never allowed to
+        # block the capture behind it.
+        continue-on-error: true
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           SEASON: ${{ github.event.inputs.schedule_season || '2026' }}
