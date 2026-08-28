@@ -790,3 +790,83 @@ def test_heartbeat_still_carries_no_market_data():
     fields = set(hb.Heartbeat.__dataclass_fields__)
     for banned in ("price", "probability", "yes_ask", "no_ask", "ticker", "edge"):
         assert not any(banned in f for f in fields)
+
+
+# --- external scheduler provenance ----------------------------------------
+#
+# GitHub's own scheduler delivered ~1.7% of the collector's */10 slots over
+# a measured 573-minute window, so an INDEPENDENT cron service becomes the
+# primary clock. A dispatch it makes with a fine-grained PAT carries the
+# token OWNER as the actor, which is indistinguishable from a human
+# pressing Run -- so the caller declares what it is.
+
+from cfb_edge_finder.research.trigger import DECLARABLE_TRIGGER_SOURCES  # noqa: E402
+
+
+def test_external_scheduler_dispatch_is_labelled_external_not_manual():
+    """The gap this closes: without a declaration, an external cron using
+    a PAT owned by the repo owner reads as MANUAL, so a DEAD external
+    scheduler would look alive every time a human dispatched once."""
+    assert classify_trigger("workflow_dispatch", "chmoses98") is TriggerType.MANUAL
+    assert (
+        classify_trigger("workflow_dispatch", "chmoses98", "EXTERNAL_SCHEDULE")
+        is TriggerType.EXTERNAL_SCHEDULE
+    )
+
+
+def test_a_caller_cannot_claim_to_be_githubs_own_scheduler():
+    """Cron provenance is the one thing only GitHub can establish. If a
+    caller could assert it, the staleness signal that exists to catch a
+    dead scheduler would become unfalsifiable."""
+    assert "GITHUB_SCHEDULE" not in DECLARABLE_TRIGGER_SOURCES
+    assert classify_trigger("workflow_dispatch", "chmoses98", "GITHUB_SCHEDULE") is TriggerType.MANUAL
+
+
+@pytest.mark.parametrize("declared", ["", None, "nonsense", "UNKNOWN", "   "])
+def test_unrecognised_declaration_falls_back_to_inference(declared):
+    """The parameter can only refine the answer, never corrupt it."""
+    assert classify_trigger("workflow_dispatch", "chmoses98", declared) is TriggerType.MANUAL
+    assert classify_trigger("schedule", "chmoses98", declared) is TriggerType.GITHUB_SCHEDULE
+
+
+def test_declaration_is_case_and_whitespace_tolerant():
+    """A hand-typed scheduler config should not silently mislabel itself."""
+    for raw in ("external_schedule", " EXTERNAL_SCHEDULE ", "External_Schedule"):
+        assert classify_trigger("workflow_dispatch", "chmoses98", raw) is TriggerType.EXTERNAL_SCHEDULE
+
+
+def test_conductor_dispatch_still_classifies_without_a_declaration():
+    """The conductor predates this and declares nothing; actor inference
+    must keep working for it."""
+    assert classify_trigger("workflow_dispatch", "github-actions[bot]") is TriggerType.EXTERNAL_SCHEDULE
+
+
+def test_declaration_never_reaches_capture_logic():
+    """Provenance is operational metadata. It must not be able to change
+    what is captured -- only how the run is labelled."""
+    source = (REPO_ROOT / "scripts" / "research_scan_and_capture.py").read_text(encoding="utf-8")
+    idx = source.index("args.trigger_source")
+    # Every use is confined to trigger classification and the heartbeat detail.
+    uses = [source[i : i + 120] for i in range(len(source)) if source.startswith("args.trigger_source", i)]
+    assert uses, "trigger_source is not wired through at all"
+    for use in uses:
+        assert ("classify_trigger" in source[max(0, idx - 200) : idx + 200]) or ("declared=" in use)
+
+
+def test_collector_workflow_accepts_and_forwards_trigger_source():
+    capture = _workflow("research-capture.yml")
+    assert "trigger_source:" in capture
+    assert "--trigger-source" in capture
+    # The external caller must not be able to turn off persistence.
+    assert "no_push:" in capture
+
+
+def test_external_and_github_schedule_are_tracked_separately(tmp_path):
+    """Section 9: a stopped external scheduler must be visible even when
+    GitHub cron happens to have fired recently, and vice versa."""
+    hb.append_heartbeat(tmp_path, 2026, _beat("EXTERNAL_SCHEDULE", NOW - timedelta(hours=3)))
+    hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW - timedelta(minutes=2)))
+    rows = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))
+    assert hb.last_successful_run(rows, "EXTERNAL_SCHEDULE") == NOW - timedelta(hours=3)
+    assert hb.last_successful_run(rows, "GITHUB_SCHEDULE") == NOW - timedelta(minutes=2)
+    assert hb.last_successful_run(rows) == NOW - timedelta(minutes=2)

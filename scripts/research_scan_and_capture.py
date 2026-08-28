@@ -474,6 +474,16 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--trigger-source",
+        default=None,
+        help=(
+            "Self-declared trigger provenance from the caller (EXTERNAL_SCHEDULE | MANUAL). "
+            "Used only to label an external scheduler's dispatch, which is otherwise "
+            "indistinguishable from a human one. Provenance ONLY -- it never affects "
+            "due-label resolution, duplicate protection, or what gets written."
+        ),
+    )
+    parser.add_argument(
         "--trigger-type",
         default="local",
         help=(
@@ -562,7 +572,7 @@ def main() -> int:
             telemetry=telemetry,
         )
 
-    resolved_trigger = classify_trigger(args.trigger_type, args.trigger_actor)
+    resolved_trigger = classify_trigger(args.trigger_type, args.trigger_actor, args.trigger_source)
     invoked_at = now
 
     def apply_and_beat(repo_dir: Path) -> persistence.AppendResult:
@@ -615,7 +625,10 @@ def main() -> int:
                     if next_kickoff
                     else None
                 ),
-                detail=f"trigger={resolved_trigger.value} raw_event={args.trigger_type!r}",
+                detail=(
+                    f"trigger={resolved_trigger.value} raw_event={args.trigger_type!r} "
+                    f"declared={args.trigger_source or 'none'}"
+                ),
             ),
         )
         return result
