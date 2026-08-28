@@ -172,3 +172,40 @@ def test_flag_mismatch_no_flag_when_official_absent():
     flagged = flag_mismatch(settlement, official=None)
     assert flagged.settlement_mismatch_flagged is False
     assert flagged.official_kalshi_settlement is None
+
+
+def test_tied_final_score_never_settles_a_moneyline_and_records_no_winner():
+    """A tied FINAL is structurally impossible under normal CFB rules but a
+    weather-shortened game declared final mid-play can end level. The old
+    `else Side.AWAY` recorded a tie as an away win and settled moneylines
+    on a rule Kalshi has never been observed to state."""
+    tied = _result(home=17, away=17)
+
+    ml = settle_market(
+        make_observation(family=MarketFamily.MONEYLINE, team=Side.HOME, threshold=None, semantic_operator=None),
+        tied,
+        settled_at=NOW,
+    )
+    assert ml.status == MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS
+    assert ml.actual_winner is None
+    assert ml.derived_contract_settlement is None
+
+    # Spread and total stay settleable by the strict-">" math: at a tie
+    # neither team covered any positive half-point line, and the total is
+    # a plain sum.
+    spread = settle_market(
+        make_observation(family=MarketFamily.SPREAD, team=Side.HOME, threshold=3.5, semantic_operator=">"),
+        tied,
+        settled_at=NOW,
+    )
+    assert spread.status == MarketSettlementStatus.SETTLED
+    assert spread.derived_contract_settlement == Side.NO
+    assert spread.actual_winner is None
+
+    total = settle_market(
+        make_observation(family=MarketFamily.TOTAL, side=Side.OVER, team=None, threshold=33.5, semantic_operator=">"),
+        tied,
+        settled_at=NOW,
+    )
+    assert total.status == MarketSettlementStatus.SETTLED
+    assert total.derived_contract_settlement == Side.YES

@@ -26,6 +26,7 @@ on:
           - fees_browser
           - ambiguous_audit
           - snapshot
+          - semantics_audit
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
         required: false
@@ -102,6 +103,15 @@ jobs:
         run: |
           python3 scripts/audit_ambiguous_team_mappings.py \
             --schedule-season ${{ github.event.inputs.schedule_season }}
+      - name: Run live market-semantics payload audit
+        if: ${{ github.event.inputs.script == 'semantics_audit' }}
+        # scripts/audit_live_market_semantics.py -- standing read-only,
+        # credential-free diagnostic: runs every active CORE_V1 market
+        # through the production parsers and reports per-event parse
+        # failures, so a Kalshi title/rules format change is one manual
+        # dispatch away from being seen. See its docstring for the
+        # opening-slate variant-grammar defect it first caught.
+        run: python3 scripts/audit_live_market_semantics.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:

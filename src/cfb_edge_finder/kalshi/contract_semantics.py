@@ -99,6 +99,55 @@ _SPREAD_TITLE_RE = re.compile(r"^(?P<team>.+?) wins by over (?P<threshold>-?\d+(
 _TOTAL_TITLE_RE = re.compile(r"^Over (?P<threshold>-?\d+(?:\.\d+)?) points? scored$", re.IGNORECASE)
 _WINNER_TITLE_RE = re.compile(r"^(?P<team>.+?) wins$", re.IGNORECASE)
 _WINNER_RULES_TEAM_RE = re.compile(r"^If (?P<team>.+?) wins the ", re.IGNORECASE)
+
+# --- VARIANT title grammars (live evidence: GH Actions job 98980713206,
+# 2026-08-28, scripts/audit_live_market_semantics.py) ---------------------
+#
+# Kalshi serves a SECOND title style on part of the live universe -- every
+# 2026-08-29/30 opening-slate event plus 18 winner events on later marquee
+# games -- while `rules_primary` keeps the exact canonical phrasing the
+# original grammar was built from, and `floor_strike` stays consistent.
+# Observed verbatim:
+#
+#   spread: "UNLV wins by over 7.5 points?"                (trailing "?")
+#   total:  "Memphis vs UNLV college football game: Over 79.5 points
+#            scored?"                                      (prefix + "?")
+#   winner: "Memphis vs UNLV college football game: Memphis wins?"
+#   winner: "Will Stanford win the Hawai'i vs Stanford college football
+#            game?"
+#
+# Every one of those markets' own rules_primary still reads canonically
+# ("If UNLV wins by more than 7.5 points in the Memphis vs UNLV college
+# football game...", "If the teams collectively score more than 79.5
+# points in...", "If Stanford wins the ..."), so the variant grammars
+# below are accepted ONLY when that same-market rules_primary
+# deterministically corroborates the parsed team and/or threshold --
+# a variant title with absent, unparseable, or disagreeing rules text is
+# PARSE_UNRESOLVED, exactly like every other inconsistent-payload case in
+# this module. The ORIGINAL exact grammars keep their existing behavior
+# (no rules requirement for spread/total) so nothing previously confirmed
+# changes shape.
+_PREFIXED = r"^(?:.+? college football game: )?"
+_SPREAD_TITLE_VARIANT_RE = re.compile(
+    _PREFIXED + r"(?P<team>.+?) wins by over (?P<threshold>-?\d+(?:\.\d+)?) points?\?$", re.IGNORECASE
+)
+_TOTAL_TITLE_VARIANT_RE = re.compile(
+    _PREFIXED + r"Over (?P<threshold>-?\d+(?:\.\d+)?) points? scored\?$", re.IGNORECASE
+)
+_WINNER_TITLE_VARIANT_RES = (
+    # "<matchup> college football game: <TEAM> wins?" -- prefix required
+    # here (an un-prefixed "<TEAM> wins?" has not been observed live and
+    # would otherwise be accepted without its distinguishing evidence).
+    re.compile(r"^.+? college football game: (?P<team>.+?) wins\?$", re.IGNORECASE),
+    # "Will <TEAM> win the <matchup> college football game?"
+    re.compile(r"^Will (?P<team>.+?) win the .+? college football game\?$", re.IGNORECASE),
+)
+_SPREAD_RULES_RE = re.compile(
+    r"^If (?P<team>.+?) wins by more than (?P<threshold>-?\d+(?:\.\d+)?) points in the ", re.IGNORECASE
+)
+_TOTAL_RULES_RE = re.compile(
+    r"^If the teams collectively score more than (?P<threshold>-?\d+(?:\.\d+)?) points in the ", re.IGNORECASE
+)
 """Milestone D hardening pass, mission item 7: the confirmed winner/
 moneyline grammar, from the SAME live rules_primary evidence
 `_MATCHUP_IN_RULES_RE` already relies on (job 97711133675): "If Cornell
@@ -206,19 +255,87 @@ class ParsedContract:
     module docstring's winner-market caveat)."""
 
 
-def parse_spread_market(title: str, floor_strike: float | None) -> ParsedContract:
+def _corroborate_spread_variant(variant: re.Match, rules_primary: str | None) -> ParsedContract | None:
+    """Returns None when `rules_primary` deterministically corroborates a
+    variant-grammar spread title (same team, same threshold), or the
+    PARSE_UNRESOLVED result to return otherwise."""
+    if not rules_primary:
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail="variant spread title with no rules_primary to corroborate it -- never accepted on faith",
+        )
+    rules_match = _SPREAD_RULES_RE.match(rules_primary.strip())
+    if rules_match is None:
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail="variant spread title whose rules_primary does not match the canonical "
+            "'If <TEAM> wins by more than <X> points in the ...' phrasing",
+        )
+    if rules_match.group("team").strip() != variant.group("team").strip() or float(
+        rules_match.group("threshold")
+    ) != float(variant.group("threshold")):
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail=(
+                f"variant spread title names {variant.group('team').strip()!r} at {variant.group('threshold')} but "
+                f"rules_primary states {rules_match.group('team').strip()!r} at {rules_match.group('threshold')} "
+                f"-- inconsistent payload, never guessed"
+            ),
+        )
+    return None
+
+
+def _corroborate_total_variant(variant: re.Match, rules_primary: str | None) -> ParsedContract | None:
+    """As `_corroborate_spread_variant`, for the total family (threshold
+    only -- a total title names no team)."""
+    if not rules_primary:
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail="variant total title with no rules_primary to corroborate it -- never accepted on faith",
+        )
+    rules_match = _TOTAL_RULES_RE.match(rules_primary.strip())
+    if rules_match is None:
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail="variant total title whose rules_primary does not match the canonical "
+            "'If the teams collectively score more than <X> points in the ...' phrasing",
+        )
+    if float(rules_match.group("threshold")) != float(variant.group("threshold")):
+        return ParsedContract(
+            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+            detail=(
+                f"variant total title states {variant.group('threshold')} but rules_primary states "
+                f"{rules_match.group('threshold')} -- inconsistent payload, never guessed"
+            ),
+        )
+    return None
+
+
+def parse_spread_market(title: str, floor_strike: float | None, rules_primary: str | None = None) -> ParsedContract:
     """`title` example: "Southern Utah wins by over 4.5 points". `side`
     is always Side.HOME or Side.AWAY -- resolving WHICH one the named
     team is requires the caller's own game mapping (this module has no
     notion of home/away identity), so `team` here is left as None and
     `raw_team_name` carries the unresolved string for the caller to
-    resolve via teams.registry + the mapped GameRecord."""
+    resolve via teams.registry + the mapped GameRecord.
+
+    A VARIANT title ("UNLV wins by over 7.5 points?" -- see the variant-
+    grammar block above for the live evidence) is accepted only when
+    `rules_primary` independently states the SAME team and threshold in
+    its canonical "If <TEAM> wins by more than <X> points in the ..."
+    phrasing; otherwise PARSE_UNRESOLVED, never a guess."""
     match = _SPREAD_TITLE_RE.match(title.strip())
     if match is None:
-        return ParsedContract(
-            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
-            detail=f"spread title {title!r} did not match the confirmed 'X wins by over Y points' grammar",
-        )
+        variant = _SPREAD_TITLE_VARIANT_RE.match(title.strip())
+        if variant is None:
+            return ParsedContract(
+                reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                detail=f"spread title {title!r} did not match the confirmed 'X wins by over Y points' grammar",
+            )
+        corroboration = _corroborate_spread_variant(variant, rules_primary)
+        if corroboration is not None:
+            return corroboration
+        match = variant
     threshold = float(match.group("threshold"))
     if floor_strike is not None and abs(threshold - floor_strike) > 1e-9:
         return ParsedContract(
@@ -236,19 +353,32 @@ def parse_spread_market(title: str, floor_strike: float | None) -> ParsedContrac
     )
 
 
-def parse_total_market(title: str, floor_strike: float | None) -> ParsedContract:
+def parse_total_market(title: str, floor_strike: float | None, rules_primary: str | None = None) -> ParsedContract:
     """`title` example: "Over 80.5 points scored". Always Side.OVER --
     Kalshi's own NO side on this same contract is the executable way to
     price UNDER (see kalshi/game_projection_cache.py + the pricing layer
     docstrings for why the model computes P(over) directly rather than a
     separate "under" primitive: P(under) = 1 - P(over) exactly, since
-    both sides settle the SAME binary contract)."""
+    both sides settle the SAME binary contract).
+
+    A VARIANT title ("<matchup> college football game: Over 79.5 points
+    scored?" -- see the variant-grammar block above for the live
+    evidence) is accepted only when `rules_primary` independently states
+    the SAME threshold in its canonical "If the teams collectively score
+    more than <X> points in the ..." phrasing; otherwise
+    PARSE_UNRESOLVED, never a guess."""
     match = _TOTAL_TITLE_RE.match(title.strip())
     if match is None:
-        return ParsedContract(
-            reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
-            detail=f"total title {title!r} did not match the confirmed 'Over X points scored' grammar",
-        )
+        variant = _TOTAL_TITLE_VARIANT_RE.match(title.strip())
+        if variant is None:
+            return ParsedContract(
+                reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                detail=f"total title {title!r} did not match the confirmed 'Over X points scored' grammar",
+            )
+        corroboration = _corroborate_total_variant(variant, rules_primary)
+        if corroboration is not None:
+            return corroboration
+        match = variant
     threshold = float(match.group("threshold"))
     if floor_strike is not None and abs(threshold - floor_strike) > 1e-9:
         return ParsedContract(
@@ -293,6 +423,48 @@ def parse_winner_market(title: str, rules_primary: str | None = None) -> ParsedC
     stripped = title.strip()
     match = _WINNER_TITLE_RE.match(stripped)
     if match is None:
+        for variant_re in _WINNER_TITLE_VARIANT_RES:
+            variant = variant_re.match(stripped)
+            if variant is None:
+                continue
+            # A variant winner title (see the variant-grammar block above
+            # for both live-observed forms) is accepted ONLY with the
+            # rules_primary cross-check the plain grammar treats as a
+            # confidence upgrade -- here it is mandatory, because the
+            # variant grammar itself is the newer, less-established
+            # evidence.
+            team = variant.group("team").strip()
+            if not rules_primary:
+                return ParsedContract(
+                    reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                    detail="variant winner title with no rules_primary to corroborate it -- never accepted on faith",
+                )
+            rules_match = _WINNER_RULES_TEAM_RE.match(rules_primary.strip())
+            if rules_match is None:
+                return ParsedContract(
+                    reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                    detail="variant winner title whose rules_primary does not match the canonical "
+                    "'If <TEAM> wins the ...' phrasing",
+                )
+            rules_team = rules_match.group("team").strip()
+            if rules_team != team:
+                return ParsedContract(
+                    reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
+                    detail=(
+                        f"variant winner title names {team!r} but rules_primary names {rules_team!r} as the "
+                        f"winning team -- inconsistent payload, never guessed"
+                    ),
+                )
+            return ParsedContract(
+                reason=None,
+                detail=(
+                    f"parsed: {team!r} via a live-observed variant winner-title grammar, confirmed by "
+                    f"rules_primary's 'If {team} wins the ...' text -- deterministic correspondence"
+                ),
+                market_family=MarketFamily.MONEYLINE,
+                raw_team_name=team,
+                semantics_confidence="confirmed_live",
+            )
         return ParsedContract(
             reason=KalshiCfbCoverageReason.PARSE_UNRESOLVED,
             detail=f"winner title {title!r} did not match the confirmed '<TEAM> wins' grammar",

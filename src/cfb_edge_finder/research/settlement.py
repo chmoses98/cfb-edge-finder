@@ -101,7 +101,17 @@ def settle_market(
 
     home_margin = float(game_result.home_points - game_result.away_points)
     total_points = float(game_result.home_points + game_result.away_points)
-    actual_winner = Side.HOME if home_margin > 0 else Side.AWAY
+    # A tied FINAL is structurally impossible under normal CFB rules
+    # (overtime resolves it), but a weather-shortened game declared final
+    # mid-play can genuinely end level. actual_winner must then be None,
+    # never a coin-flip: the earlier bare `else Side.AWAY` would have
+    # recorded a tie as an away win and settled every moneyline contract
+    # on a rule Kalshi has never been observed to state.
+    actual_winner: Side | None = None
+    if home_margin > 0:
+        actual_winner = Side.HOME
+    elif home_margin < 0:
+        actual_winner = Side.AWAY
     common = dict(actual_winner=actual_winner, actual_home_margin=home_margin, actual_total_points=total_points)
 
     if observation.semantic_operator is not None and observation.semantic_operator != ">":
@@ -117,6 +127,12 @@ def settle_market(
             return MarketSettlement(
                 **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
                 detail="moneyline observation missing resolved team side",
+            )
+        if actual_winner is None:
+            return MarketSettlement(
+                **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
+                detail="game declared final at a tied score -- no observed Kalshi rule for a moneyline tie, "
+                "never guessed",
             )
         contract_settlement = Side.YES if observation.team == actual_winner else Side.NO
         return MarketSettlement(

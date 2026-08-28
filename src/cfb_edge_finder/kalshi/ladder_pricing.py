@@ -90,8 +90,16 @@ def _resolve_named_team_side(
 
 
 _PARSERS = {
-    MarketFamily.SPREAD: lambda title, floor_strike, rules_primary: parse_spread_market(title, floor_strike),
-    MarketFamily.TOTAL: lambda title, floor_strike, rules_primary: parse_total_market(title, floor_strike),
+    # rules_primary reaches every family: spread/total need it to
+    # corroborate the live-observed VARIANT title grammars (see
+    # contract_semantics' variant-grammar block -- job 98980713206), not
+    # just winner's title/team cross-check.
+    MarketFamily.SPREAD: lambda title, floor_strike, rules_primary: parse_spread_market(
+        title, floor_strike, rules_primary
+    ),
+    MarketFamily.TOTAL: lambda title, floor_strike, rules_primary: parse_total_market(
+        title, floor_strike, rules_primary
+    ),
     MarketFamily.MONEYLINE: lambda title, floor_strike, rules_primary: parse_winner_market(title, rules_primary),
 }
 
