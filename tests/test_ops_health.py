@@ -9,14 +9,17 @@ from datetime import UTC, datetime
 
 import pytest
 
+from cfb_edge_finder.decision.collection_protection import (
+    ProtectionAssessment,
+    ProtectionState,
+)
 from cfb_edge_finder.decision.ops_health import (
     HealthCheck,
     OpsHealthReport,
     OpsState,
     check_closing_coverage,
-    check_collection_freshness,
+    check_collection_protection,
     check_corpus_integrity,
-    check_external_scheduler,
     check_natural_data,
     check_safety_locks,
 )
@@ -69,77 +72,34 @@ def test_pending_natural_data_is_never_masked_by_healthy_checks():
 
 def test_every_state_is_reachable_from_the_real_check_functions():
     """A state nobody can produce is decoration."""
+
+    def protection(state):
+        return check_collection_protection(
+            ProtectionAssessment(state=state, detail="d")
+        ).state
+
     produced = {
-        check_collection_freshness(minutes_since_last_run=5, cadence_minutes=10).state,
-        check_collection_freshness(minutes_since_last_run=70, cadence_minutes=10).state,
-        check_collection_freshness(minutes_since_last_run=None, cadence_minutes=10).state,
+        protection(ProtectionState.QUIET_PERIOD),
+        protection(ProtectionState.CHECKPOINT_APPROACHING),
+        protection(ProtectionState.CLOSING_AT_RISK),
         check_natural_data(settled_games=0, minimum_for_research=None).state,
     }
     assert produced == set(OpsState)
 
 
-# ------------------------------------------- collection freshness
+def test_every_protection_state_maps_to_an_ops_state():
+    """No protection state may fall through unmapped -- a KeyError here
+    at runtime would take the whole health command down."""
+    for state in ProtectionState:
+        assert check_collection_protection(ProtectionAssessment(state=state, detail="d")).state in OpsState
 
 
-def test_never_run_is_blocked():
-    result = check_collection_freshness(minutes_since_last_run=None, cadence_minutes=10)
-    assert result.state is OpsState.BLOCKED
-    assert result.remedy
-
-
-def test_freshness_thresholds_are_multiples_of_the_cadence():
-    """Multiples, so tightening the cadence tightens the check instead of
-    leaving a stale constant behind."""
-    assert check_collection_freshness(minutes_since_last_run=59, cadence_minutes=10).state is (
-        OpsState.HEALTHY
-    )
-    assert check_collection_freshness(minutes_since_last_run=61, cadence_minutes=10).state is OpsState.WARN
-    assert check_collection_freshness(minutes_since_last_run=301, cadence_minutes=10).state is (
-        OpsState.BLOCKED
-    )
-    # Same ages, a slower cadence: no longer alarming.
-    assert check_collection_freshness(minutes_since_last_run=61, cadence_minutes=60).state is (
-        OpsState.HEALTHY
-    )
-
-
-def test_boundaries_are_exact():
-    assert check_collection_freshness(minutes_since_last_run=60, cadence_minutes=10).state is (
-        OpsState.HEALTHY
-    )
-    assert check_collection_freshness(minutes_since_last_run=300, cadence_minutes=10).state is OpsState.WARN
-
-
-@pytest.mark.parametrize("cadence", [0, -10])
-def test_an_unusable_cadence_is_blocked_not_ignored(cadence):
-    assert check_collection_freshness(minutes_since_last_run=1, cadence_minutes=cadence).state is (
-        OpsState.BLOCKED
-    )
-
-
-# -------------------------------------------- external scheduler
-
-
-def test_a_silent_external_scheduler_is_blocked_not_warned():
-    """GitHub's own cron delivered 1.7% of expected runs here. Falling
-    back to it is not a degraded mode, it is no clock at all."""
-    result = check_external_scheduler(minutes_since_external_run=None, expected_interval_minutes=10)
-    assert result.state is OpsState.BLOCKED
-
-    stopped = check_external_scheduler(minutes_since_external_run=61, expected_interval_minutes=10)
-    assert stopped.state is OpsState.BLOCKED
-
-
-def test_a_late_external_trigger_warns():
-    assert check_external_scheduler(
-        minutes_since_external_run=21, expected_interval_minutes=10
-    ).state is OpsState.WARN
-
-
-def test_a_recent_external_trigger_is_healthy():
-    assert check_external_scheduler(
-        minutes_since_external_run=9, expected_interval_minutes=10
-    ).state is OpsState.HEALTHY
+# NOTE: the old collection-freshness and external-scheduler checks were
+# removed in favour of the deadline-aware model. They compared the
+# observed trigger interval against an assumed fixed cadence, which the
+# repository cannot observe and which reported an intentional
+# quiet-period configuration as BLOCKED. Their replacement is tested in
+# tests/test_collection_protection.py.
 
 
 # ------------------------------------------------ corpus integrity

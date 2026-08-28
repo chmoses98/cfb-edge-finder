@@ -24,6 +24,16 @@ blocked, or WARN for a condition no action can clear. Neither is true.
 Time is the only remedy, and saying so plainly is what stops the absence
 of data from being quietly filled in with something else.
 
+*** COLLECTION HEALTH IS DEADLINE-AWARE, NOT CADENCE-AWARE ***
+
+An earlier version compared the external trigger interval against an
+assumed fixed cadence and reported BLOCKED whenever it was longer. That
+was wrong: the repository cannot see the external scheduler's
+configuration, and a deliberately wide quiet-period interval is a
+cost-saving decision, not a failure. `check_collection_protection` now
+asks whether the NEXT critical checkpoint is covered by the regime we can
+actually measure -- see `decision/collection_protection.py`.
+
 *** ORDERING ***
 
 BLOCKED > WARN > PENDING_NATURAL_DATA > HEALTHY. A broken machine
@@ -39,6 +49,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+
+from cfb_edge_finder.decision.collection_protection import ProtectionAssessment, ProtectionState
 
 
 class OpsState(StrEnum):
@@ -120,89 +132,32 @@ class OpsHealthReport:
         return "\n".join(lines) + "\n"
 
 
-def check_collection_freshness(
-    *, minutes_since_last_run: float | None, cadence_minutes: float
-) -> HealthCheck:
-    """Has the collector run recently enough for the configured cadence?
+def check_collection_protection(assessment: ProtectionAssessment) -> HealthCheck:
+    """Map a deadline-aware protection assessment onto an ops state.
 
-    Multiples, not absolute minutes, so tightening the cadence tightens
-    this automatically instead of leaving a stale constant behind."""
-    if cadence_minutes <= 0:
-        return HealthCheck(
-            "collection_freshness",
-            OpsState.BLOCKED,
-            f"cadence_minutes={cadence_minutes} is not a usable cadence",
-            "Fix the workflow schedule before Week 1.",
-        )
-    if minutes_since_last_run is None:
-        return HealthCheck(
-            "collection_freshness",
-            OpsState.BLOCKED,
-            "No successful collection run has ever been recorded.",
-            "Dispatch the capture workflow once and confirm a heartbeat lands.",
-        )
-    if minutes_since_last_run > cadence_minutes * 30:
-        return HealthCheck(
-            "collection_freshness",
-            OpsState.BLOCKED,
-            f"Last successful run was {minutes_since_last_run:.0f} min ago "
-            f"(>30x the {cadence_minutes:.0f} min cadence). Collection has stopped.",
-            "Check the workflow run log and the external scheduler, then dispatch manually.",
-        )
-    if minutes_since_last_run > cadence_minutes * 6:
-        return HealthCheck(
-            "collection_freshness",
-            OpsState.WARN,
-            f"Last successful run was {minutes_since_last_run:.0f} min ago "
-            f"(>6x the {cadence_minutes:.0f} min cadence).",
-            "Watch the next two cycles; GitHub's scheduler drifts, but not usually this far.",
-        )
+    This REPLACES two earlier checks that compared the observed trigger
+    interval against an assumed fixed cadence. That comparison was
+    unsound: the repository cannot observe the external scheduler's
+    configuration, and a wide interval during a quiet period is the
+    intended cost-saving policy, not a fault. See
+    `decision/collection_protection.py` for the derivation.
+
+    The mapping keeps CLOSING protection at full strength -- an
+    unrecoverable window with an interval too wide to cover it is BLOCKED
+    regardless of how deliberate the quiet period was."""
+    state = {
+        ProtectionState.QUIET_PERIOD: OpsState.HEALTHY,
+        ProtectionState.COVERED_TIGHT_CADENCE: OpsState.HEALTHY,
+        ProtectionState.CHECKPOINT_APPROACHING: OpsState.WARN,
+        ProtectionState.UNKNOWN_NO_TELEMETRY: OpsState.WARN,
+        ProtectionState.CLOSING_AT_RISK: OpsState.BLOCKED,
+        ProtectionState.COLLECTION_STOPPED: OpsState.BLOCKED,
+    }[assessment.state]
     return HealthCheck(
-        "collection_freshness",
-        OpsState.HEALTHY,
-        f"Last successful run {minutes_since_last_run:.0f} min ago "
-        f"(cadence {cadence_minutes:.0f} min).",
-    )
-
-
-def check_external_scheduler(
-    *, minutes_since_external_run: float | None, expected_interval_minutes: float
-) -> HealthCheck:
-    """Is the INDEPENDENT clock still firing?
-
-    GitHub's own cron delivered ~1.7% of expected runs in this
-    repository's measured window, which is why an external scheduler
-    exists at all. If the external clock stops, the fallback is the one
-    that was already proven unreliable -- so its silence is BLOCKED, not
-    a warning."""
-    if minutes_since_external_run is None:
-        return HealthCheck(
-            "external_scheduler",
-            OpsState.BLOCKED,
-            "No EXTERNAL_SCHEDULE-triggered run has ever been recorded.",
-            "Verify the external scheduler job is enabled and its request returns HTTP 204.",
-        )
-    if minutes_since_external_run > expected_interval_minutes * 6:
-        return HealthCheck(
-            "external_scheduler",
-            OpsState.BLOCKED,
-            f"Last external trigger was {minutes_since_external_run:.0f} min ago "
-            f"(expected every ~{expected_interval_minutes:.0f} min). The independent clock "
-            f"has stopped; only GitHub's unreliable cron remains.",
-            "Check the external scheduler's job history for non-204 responses.",
-        )
-    if minutes_since_external_run > expected_interval_minutes * 2:
-        return HealthCheck(
-            "external_scheduler",
-            OpsState.WARN,
-            f"Last external trigger was {minutes_since_external_run:.0f} min ago "
-            f"(expected every ~{expected_interval_minutes:.0f} min).",
-            "Confirm the external scheduler is not rate-limited.",
-        )
-    return HealthCheck(
-        "external_scheduler",
-        OpsState.HEALTHY,
-        f"External trigger seen {minutes_since_external_run:.0f} min ago.",
+        "collection_protection",
+        state,
+        f"[{assessment.state.value}] {assessment.detail}",
+        assessment.remedy,
     )
 
 
