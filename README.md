@@ -112,6 +112,10 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/PERFORMANCE.md` -- scanner performance: the per-ticker history
   re-read bottleneck, the one-load-per-run fix, output-equivalence proof,
   scale benchmarks, concurrency behaviour, remaining bottlenecks.
+- `docs/MAPPING_COVERAGE.md` -- what the ~1,400 unresolved Kalshi
+  markets actually are: the reconciling classification, why 87% are
+  populations we decline on purpose, and the one FBS-vs-FBS matchup
+  absent from the schedule source.
 - `docs/COLLECTION_TRIGGER.md` -- how the collector is invoked: the
   conductor chain, the cron fallback, the manual emergency path, the
   trigger SLA derived from the 14-minute closing window, heartbeats, and
