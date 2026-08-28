@@ -153,6 +153,59 @@ generation cap and chain lease cannot be enforced at all. The metadata is
 small and lives only in workflow inputs and run logs; nothing
 high-volume is persisted.
 
+## Positive schedule observability
+
+The repaired conductor was first judged healthy by inference: the old
+`SCHEDULE LOOKUP FAILED` line was absent and the kickoff count was zero.
+Both were equally true of the **broken** conductor, which had no
+credential, fetched nothing, and reported zero. The two were
+distinguishable only by a message that was missing — and absence of an
+error is not evidence of success.
+
+Every planning invocation now states positively what it retrieved:
+`schedule_fetch_success`, total games fetched, upcoming games, supported
+upcoming games, supported games inside the horizon, next upcoming
+kickoff, next supported kickoff (**even when beyond the horizon**), the
+horizon end, and the decision with its reason. It is printed in readable
+form, as one machine-readable `CONDUCTOR {...}` JSON line, and into the
+Actions step summary so normal state needs no raw-log reading.
+
+### Every zero is a different zero
+
+| State | Meaning |
+|---|---|
+| `FETCH_FAILED` | source unreachable or refused — the broken conductor's permanent state |
+| `FETCH_SUCCESS_EMPTY_SCHEDULE` | request succeeded, zero games returned — **suspicious**, warned |
+| `FETCH_SUCCESS_NO_UPCOMING_GAMES` | games exist, all already kicked off |
+| `FETCH_SUCCESS_NO_SUPPORTED_GAMES` | upcoming games exist, none FBS-vs-FBS |
+| `FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON` | supported games exist, all beyond the horizon |
+| `FETCH_SUCCESS_GUARDABLE_GAME_PRESENT` | a supported game is inside the horizon |
+
+The post-incident run — next supported kickoff ~40.6h out against a 36h
+horizon — now classifies as `FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON`,
+carrying the kickoff timestamp with it, rather than as an
+indistinguishable "nothing to guard".
+
+There is deliberately **no threshold on "too few games"**. The only
+suspicious count is exactly zero from a successful request, which needs
+no magic number: a season with no games at all is degenerate by
+definition. Guessing an expected seasonal count would invent a constant
+that then needs maintaining.
+
+An import or dependency failure is treated as just another way the
+schedule can be unavailable — it degrades to `FETCH_FAILED` rather than
+crashing the trigger layer.
+
+### Where it is persisted
+
+The conductor holds `contents: read` and deliberately cannot write
+research data, so it does not persist its own heartbeat; its telemetry
+lives in the run log and step summary. The heartbeat *schema* carries the
+same fields, populated by the collector, and `week1_readiness.py` reports
+them. A heartbeat predating these fields reads as **NOT RECORDED**, never
+as a failed fetch — the same legacy-versus-defect distinction the corpus
+schema makes.
+
 ## Trigger SLA
 
 | | |

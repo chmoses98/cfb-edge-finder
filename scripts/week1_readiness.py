@@ -379,6 +379,31 @@ def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Fin
     print(f"  fallback trigger              : {TriggerType.GITHUB_SCHEDULE.value} (*/10 cron)")
     print(f"  emergency trigger             : {TriggerType.MANUAL.value} (workflow_dispatch)")
 
+    # Positive schedule health from the most recent run that recorded it.
+    # Read from the heartbeat rather than inferred from missing errors --
+    # the inference is exactly what hid the conductor credential bug.
+    with_schedule = [b for b in beats if b.get("schedule_fetch_success") is not None]
+    print("\n  -- schedule health (most recent run that recorded it) --")
+    if not with_schedule:
+        print("  schedule fetch                : NOT RECORDED (runs predate schedule telemetry)")
+    else:
+        latest = with_schedule[-1]
+        ok = latest.get("schedule_fetch_success")
+        print(f"  schedule fetch                : {'PASS' if ok else 'FAIL'}")
+        print(f"  schedule state                : {latest.get('schedule_state')}")
+        print(f"  games fetched                 : {latest.get('total_schedule_games')}")
+        print(f"  supported upcoming            : {latest.get('supported_upcoming_games')}")
+        print(f"  next supported kickoff        : {latest.get('next_supported_kickoff')}")
+        print(f"  conductor guard engages       : {latest.get('next_critical_checkpoint_at')}")
+        if ok is False:
+            findings.add(HIGH, "schedule_fetch_failed", f"last recorded fetch failed: {latest.get('detail')}")
+        elif latest.get("schedule_state") == "FETCH_SUCCESS_EMPTY_SCHEDULE":
+            findings.add(
+                HIGH,
+                "schedule_returned_empty",
+                "the schedule source answered successfully but returned zero games",
+            )
+
     overall = last_successful_run(beats)
     for trigger in (TriggerType.EXTERNAL_SCHEDULE, TriggerType.GITHUB_SCHEDULE, TriggerType.MANUAL):
         stamp = last_successful_run(beats, trigger.value)

@@ -300,7 +300,9 @@ def test_conductor_survives_a_dead_schedule_source():
     GitHub cron is still the fallback underneath."""
     result = _conductor("--dry-run", "--season", "2026")
     assert result.returncode == 0
-    assert "SCHEDULE LOOKUP FAILED" in result.stdout
+    # Positive statement of the failure, not a bare absence of success.
+    assert "schedule fetch         : FAIL" in result.stdout
+    assert "FETCH_FAILED" in result.stdout
     assert "fallback" in result.stdout.lower()
 
 
@@ -571,3 +573,220 @@ def test_worst_case_chain_duration_is_bounded():
     runaway could possibly take, versus ~20s per generation observed."""
     floor = conductor.MIN_LIFETIME_FOR_HANDOFF_SECONDS
     assert conductor.MAX_CHAIN_GENERATIONS * floor >= 4 * 3600
+
+
+# --- positive schedule telemetry ------------------------------------------
+#
+# The post-incident run was judged healthy because an error line was
+# ABSENT and the kickoff count was zero -- both equally true of the
+# broken conductor that fetched nothing. These pin the positive proof
+# that makes the two distinguishable.
+
+from cfb_edge_finder.research.trigger import (  # noqa: E402
+    ScheduleHealth,
+    SchedulePlanningState,
+    classify_schedule,
+)
+
+HORIZON_END = NOW + timedelta(hours=36)
+
+
+def _sched(**over):
+    kwargs = dict(
+        fetch_success=True,
+        total_games=3550,
+        upcoming_games=3131,
+        supported_upcoming_games=102,
+        supported_inside_horizon=4,
+        horizon_end=HORIZON_END,
+        next_upcoming_kickoff=NOW + timedelta(hours=1),
+        next_supported_kickoff=NOW + timedelta(hours=2),
+        next_supported_kickoff_inside_horizon=NOW + timedelta(hours=2),
+        kickoffs_inside_horizon=(NOW + timedelta(hours=2),),
+    )
+    kwargs.update(over)
+    return ScheduleHealth(**kwargs)
+
+
+def test_fetch_failure_is_its_own_state():
+    health = _sched(fetch_success=False, total_games=0, upcoming_games=0,
+                     supported_upcoming_games=0, supported_inside_horizon=0,
+                     next_upcoming_kickoff=None, next_supported_kickoff=None,
+                     next_supported_kickoff_inside_horizon=None, kickoffs_inside_horizon=())
+    assert health.state is SchedulePlanningState.FETCH_FAILED
+    assert health.state.fetch_succeeded is False
+    assert health.state.is_operationally_suspicious
+
+
+def test_successful_but_empty_schedule_is_suspicious_not_quiet():
+    """A season always has games. Zero records from a SUCCESSFUL request
+    means the source or query is wrong, and must not read as 'nothing on
+    tonight'."""
+    health = _sched(total_games=0, upcoming_games=0, supported_upcoming_games=0,
+                     supported_inside_horizon=0, kickoffs_inside_horizon=())
+    assert health.state is SchedulePlanningState.FETCH_SUCCESS_EMPTY_SCHEDULE
+    assert health.state.fetch_succeeded is True
+    assert health.state.is_operationally_suspicious
+
+
+def test_no_upcoming_games():
+    health = _sched(upcoming_games=0, supported_upcoming_games=0, supported_inside_horizon=0,
+                     kickoffs_inside_horizon=())
+    assert health.state is SchedulePlanningState.FETCH_SUCCESS_NO_UPCOMING_GAMES
+    assert not health.state.is_operationally_suspicious
+
+
+def test_upcoming_games_but_none_supported():
+    health = _sched(supported_upcoming_games=0, supported_inside_horizon=0, kickoffs_inside_horizon=())
+    assert health.state is SchedulePlanningState.FETCH_SUCCESS_NO_SUPPORTED_GAMES
+
+
+def test_guardable_game_present():
+    assert _sched().state is SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT
+
+
+def test_states_are_mutually_exclusive_and_ordered_most_severe_first():
+    """A failed fetch that also has zero games must report FETCH_FAILED,
+    not a benign empty state."""
+    assert classify_schedule(
+        fetch_success=False, total_games=0, upcoming_games=0,
+        supported_upcoming_games=0, supported_inside_horizon=0,
+    ) is SchedulePlanningState.FETCH_FAILED
+
+
+# --- THE incident regression fixture --------------------------------------
+
+
+def test_incident_pattern_supported_kickoff_outside_horizon():
+    """The exact post-incident shape: credentials present, fetch
+    succeeded, a real supported kickoff exists ~40.6h out, horizon is
+    36h. Previously indistinguishable from 'fetched nothing'."""
+    next_supported = NOW + timedelta(hours=40.6)
+    health = _sched(
+        supported_inside_horizon=0,
+        next_supported_kickoff=next_supported,
+        next_supported_kickoff_inside_horizon=None,
+        kickoffs_inside_horizon=(),
+    )
+    assert health.state is SchedulePlanningState.FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON
+
+    telemetry = health.as_telemetry()
+    # Positive fetch proof, not an absent error message.
+    assert telemetry["schedule_fetch_success"] is True
+    assert telemetry["total_schedule_games"] == 3550
+    assert telemetry["supported_upcoming_games"] == 102
+    # The kickoff is reported even though it is beyond the horizon.
+    assert telemetry["next_supported_kickoff"] == next_supported.isoformat()
+    assert telemetry["next_supported_kickoff_inside_horizon"] is None
+    assert telemetry["horizon_end"] == HORIZON_END.isoformat()
+
+    # And the conductor still stops, with zero successors.
+    allowed, reason = conductor.may_dispatch_successor(
+        self_continue_enabled=True,
+        handoff_reason=None,
+        run_lifetime_seconds=2.0,
+        lineage=_lineage(),
+        now=NOW,
+        guard_still_needed=False,
+    )
+    assert allowed is False
+    assert "nothing left to guard" in reason
+
+
+def test_broken_settings_style_failure_is_now_detectable():
+    """The credential bug produced total_games=0 with fetch_success=False.
+    That is now a named, warned state rather than an unremarkable zero."""
+    broken = _sched(fetch_success=False, total_games=0, upcoming_games=0,
+                     supported_upcoming_games=0, supported_inside_horizon=0,
+                     next_upcoming_kickoff=None, next_supported_kickoff=None,
+                     next_supported_kickoff_inside_horizon=None, kickoffs_inside_horizon=())
+    healthy_but_quiet = _sched(supported_inside_horizon=0, kickoffs_inside_horizon=(),
+                                next_supported_kickoff_inside_horizon=None)
+    assert broken.state is not healthy_but_quiet.state
+    assert broken.as_telemetry()["schedule_fetch_success"] is False
+    assert healthy_but_quiet.as_telemetry()["schedule_fetch_success"] is True
+
+
+# --- conductor integration ------------------------------------------------
+
+
+def test_fetch_schedule_health_reports_counts_not_just_kickoffs(monkeypatch):
+    """Behavioural: a real schedule with one in-horizon and one distant
+    supported game must produce full counts and both kickoffs."""
+    from cfb_edge_finder.schemas.game import GameRecord
+
+    def _game(gid, hours):
+        return GameRecord.model_construct(game_id=gid, kickoff_utc=NOW + timedelta(hours=hours))
+
+    games = [_game("in", 5), _game("out", 40), _game("fcs", 6), _game("past", -3)]
+    classification = {"in": ("fbs", "fbs"), "out": ("fbs", "fbs"), "fcs": ("fbs", "fcs"), "past": ("fbs", "fbs")}
+
+    monkeypatch.setenv("CFBD_API_KEY", "k")
+    monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (games, classification))
+
+    health = conductor.fetch_schedule_health(2026, NOW)
+    assert health.fetch_success is True
+    assert health.total_games == 4
+    assert health.upcoming_games == 3
+    assert health.supported_upcoming_games == 2
+    assert health.supported_inside_horizon == 1
+    assert health.next_supported_kickoff == NOW + timedelta(hours=5)
+    assert health.state is SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT
+
+
+def test_fetch_schedule_health_returns_failure_as_data(monkeypatch):
+    """A dead schedule source must degrade the trigger layer, not raise."""
+    monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
+    health = conductor.fetch_schedule_health(2026, NOW)
+    assert health.fetch_success is False
+    assert health.state is SchedulePlanningState.FETCH_FAILED
+    assert "cfbd down" in health.detail
+
+
+def test_render_states_fetch_result_explicitly():
+    text = _sched().render()
+    assert "schedule fetch         : PASS" in text
+    assert "games fetched          : 3550" in text
+    assert "next supported kickoff" in text
+
+
+# --- heartbeat + readiness integration ------------------------------------
+
+
+def test_heartbeat_carries_positive_schedule_telemetry(tmp_path):
+    beat = hb.Heartbeat(
+        schema_version=hb.HEARTBEAT_SCHEMA_VERSION, run_id="r", trigger_type="GITHUB_SCHEDULE",
+        invoked_at=NOW.isoformat(), started_at=NOW.isoformat(), finished_at=NOW.isoformat(),
+        succeeded=True, schedule_fetch_success=True,
+        schedule_state=SchedulePlanningState.FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON.value,
+        total_schedule_games=3550, supported_upcoming_games=102,
+        next_supported_kickoff="2026-08-29T16:00:00+00:00",
+    )
+    hb.append_heartbeat(tmp_path, 2026, beat)
+    row = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))[0]
+    assert row["schedule_fetch_success"] is True
+    assert row["total_schedule_games"] == 3550
+    assert row["next_supported_kickoff"] == "2026-08-29T16:00:00+00:00"
+    assert row["schedule_state"] == "FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON"
+
+
+def test_heartbeat_absent_schedule_field_is_not_a_failure():
+    """A legacy heartbeat must read as 'not recorded', never as 'fetch
+    failed' -- the same legacy-vs-defect distinction the corpus schema
+    already makes."""
+    beat = hb.Heartbeat(
+        schema_version=hb.HEARTBEAT_SCHEMA_VERSION, run_id="r", trigger_type="MANUAL",
+        invoked_at=NOW.isoformat(), started_at=NOW.isoformat(), finished_at=NOW.isoformat(),
+        succeeded=True,
+    )
+    assert beat.schedule_fetch_success is None
+
+
+def test_heartbeat_still_carries_no_market_data():
+    fields = set(hb.Heartbeat.__dataclass_fields__)
+    for banned in ("price", "probability", "yes_ask", "no_ask", "ticker", "edge"):
+        assert not any(banned in f for f in fields)

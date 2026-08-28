@@ -54,6 +54,21 @@ class Heartbeat:
     cfbd_healthy: bool | None = None
     kalshi_healthy: bool | None = None
 
+    schedule_fetch_success: bool | None = None
+    """Positive proof the schedule source answered. None means the run
+    predates this field -- NOT that the fetch failed. After the
+    2026-08-27 incident the distinction matters: a missing value and a
+    failed fetch were previously indistinguishable, which is how a
+    conductor with no credential looked healthy."""
+
+    schedule_state: str | None = None
+    """research/trigger.py SchedulePlanningState. Says WHICH zero a zero
+    is -- empty schedule, nothing upcoming, nothing supported, supported
+    but beyond the horizon, or a real failure."""
+
+    total_schedule_games: int | None = None
+    supported_upcoming_games: int | None = None
+
     next_supported_kickoff: str | None = None
     next_critical_checkpoint: str | None = None
     next_critical_checkpoint_at: str | None = None
