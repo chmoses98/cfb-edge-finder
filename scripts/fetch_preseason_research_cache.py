@@ -61,6 +61,7 @@ RETURNING_FIELDS = (
 passing share; the broader splits are Candidate A."""
 
 TALENT_FIELDS = ("year", "school", "talent")
+"""Retained for reference. /talent is NOT compacted -- see below."""
 
 COACH_FIELDS = ("firstName", "lastName", "school", "year")
 """Identity and season ONLY. The per-season win/loss and ranking fields
@@ -201,7 +202,14 @@ def main() -> int:
         )
 
         talent = client.fetch_talent(season=season)
-        kept_talent = compact(talent, TALENT_FIELDS)
+        # /talent is kept WHOLE, not compacted. The first fetch compacted
+        # it to ("year", "school", "talent") and every school came back
+        # None: CFBD serves the team name under a key that guess did not
+        # cover, so compaction silently discarded the JOIN KEY while
+        # keeping the values -- 231 rows of orphaned numbers per season.
+        # The endpoint is ~230 tiny rows, so retaining it whole costs
+        # almost nothing and removes the guess entirely.
+        kept_talent = [r for r in talent if isinstance(r, dict)]
         season_payload["talent"] = kept_talent
         record(
             "/talent", talent, kept_talent,

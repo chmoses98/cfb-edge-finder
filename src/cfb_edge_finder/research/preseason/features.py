@@ -122,7 +122,16 @@ def talent_features(rows: list[dict], *, applies_to_season: int) -> list[Preseas
     S, settled during the S-1 signing cycle -- hence derived_from S-1."""
     out: list[PreseasonFeature] = []
     for row in rows:
-        team = row.get("school") or row.get("team")
+        # CFBD has served the team name under several keys across API
+        # versions. Try each rather than guess one: an unmatched key
+        # yields a row with no join target, which is how the first fetch
+        # produced 231 rows of orphaned talent values per season.
+        team = (
+            row.get("school")
+            or row.get("team")
+            or row.get("teamName")
+            or row.get("team_name")
+        )
         if not team:
             continue
         raw = row.get("talent")
