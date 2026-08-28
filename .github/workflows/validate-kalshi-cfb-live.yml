@@ -26,6 +26,7 @@ on:
           - fees_browser
           - ambiguous_audit
           - snapshot
+          - semantics_audit
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
         required: false
@@ -102,6 +103,13 @@ jobs:
         run: |
           python3 scripts/audit_ambiguous_team_mappings.py \
             --schedule-season ${{ github.event.inputs.schedule_season }}
+      - name: Run live market-semantics payload audit
+        if: ${{ github.event.inputs.script == 'semantics_audit' }}
+        # scripts/audit_live_market_semantics.py -- TEMPORARY Week-1
+        # readiness diagnostic (audit-branch only): read-only,
+        # credential-free payload probe of the persistently-unparsed
+        # market population. See its docstring for the corpus evidence.
+        run: python3 scripts/audit_live_market_semantics.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:
