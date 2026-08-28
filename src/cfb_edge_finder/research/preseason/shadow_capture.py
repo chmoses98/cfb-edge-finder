@@ -43,12 +43,38 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from cfb_edge_finder.research.preseason.shadow_contract_pricing import (
+    COMPARISON_BASIS,
+    PROBABILITY_SEMANTICS_VERSION,
+    price_contract_both_arms,
+)
 from cfb_edge_finder.research.preseason.shadow_prior import (
     SHADOW_MODEL_VERSION,
     TALENT_BETA,
 )
 
-SHADOW_RECORD_SCHEMA_VERSION = "shadow_observation_v1"
+SHADOW_RECORD_SCHEMA_VERSION = "shadow_observation_v2"
+"""INSTRUMENTATION version. The MODEL version is unchanged.
+
+v1 -- the first 12 genuine prospective rows, and they stay exactly as
+written. Their margin channel (talent inputs, beta, control margin,
+shadow margin, margin delta) is valid and remains eligible for the
+PRIMARY margin hypothesis. Their probability channel is not: a single
+P(home wins) was written onto every contract on the game regardless of
+family or side, so `shadow_probability` and
+`shadow_minus_control_probability` are only meaningful on a home-side
+winner contract.
+
+v2 -- probability is priced per contract, through the canonical pricer,
+on a talent-shifted distribution, and the canonical / basis / shadow
+triple is persisted. See shadow_contract_pricing.py.
+
+Rows are NEVER rewritten between versions. The version is how a reader
+tells which probability semantics produced a number."""
+
+SHADOW_RECORD_SCHEMA_VERSION_V1 = "shadow_observation_v1"
+"""The superseded instrumentation version. Named so analytics can
+exclude its probability channel explicitly rather than by magic string."""
 
 PROSPECTIVE = "PROSPECTIVE"
 
@@ -101,6 +127,7 @@ class ShadowObservation:
     shadow_probability: float | None
     shadow_projected_margin: float | None
 
+
     talent_home: float | None
     talent_away: float | None
     talent_differential: float | None
@@ -110,11 +137,29 @@ class ShadowObservation:
     shadow_minus_control_probability: float | None
     shadow_minus_control_margin: float | None
 
-    available: bool
-    unavailable_reason: str | None
-    capture_mode: str
-    code_sha: str | None
-    provenance: str
+    available: bool = True
+    unavailable_reason: str | None = None
+    capture_mode: str = PROSPECTIVE
+    code_sha: str | None = None
+    provenance: str = "prospective shadow capture"
+
+    # *** THE THREE PROBABILITY CHANNELS (v2) ***
+    # canonical: what production actually wrote as model_probability.
+    #   Kept for audit against the live model, never as the experimental
+    #   counterfactual.
+    # basis: the control distribution priced through the IDENTICAL
+    #   pricer, contract and side as the shadow, so the two arms differ
+    #   only by the talent shift.
+    # shadow: the same, on the talent-shifted distribution.
+    # The clean paired delta is shadow MINUS BASIS.
+    control_probability_canonical: float | None = None
+    control_probability_basis: float | None = None
+    shadow_minus_control_basis_probability: float | None = None
+    probability_semantics_version: str | None = None
+    comparison_basis: str | None = None
+    contract_side: str | None = None
+    contract_threshold: float | None = None
+    probability_detail: str | None = None
 
     @property
     def is_canonical(self) -> bool:
@@ -146,6 +191,14 @@ class ShadowObservation:
             "beta": self.beta,
             "shadow_minus_control_probability": self.shadow_minus_control_probability,
             "shadow_minus_control_margin": self.shadow_minus_control_margin,
+            "control_probability_canonical": self.control_probability_canonical,
+            "control_probability_basis": self.control_probability_basis,
+            "shadow_minus_control_basis_probability": self.shadow_minus_control_basis_probability,
+            "probability_semantics_version": self.probability_semantics_version,
+            "comparison_basis": self.comparison_basis,
+            "contract_side": self.contract_side,
+            "contract_threshold": self.contract_threshold,
+            "probability_detail": self.probability_detail,
             "available": self.available,
             "unavailable_reason": self.unavailable_reason,
             "capture_mode": self.capture_mode,
@@ -197,6 +250,11 @@ def build_shadow_record(
     talent_source_version: str,
     both_fbs: bool,
     capture_mode: str,
+    control_distribution=None,
+    contract_family=None,
+    contract_side=None,
+    contract_threshold: float | None = None,
+    named_team_side=None,
     code_sha: str | None = None,
     provenance: str = "prospective shadow capture",
 ) -> ShadowObservation:
@@ -265,12 +323,24 @@ def build_shadow_record(
     delta = TALENT_BETA * differential
     shadow_margin_value = control_projected_margin + delta
 
-    shadow_probability = None
-    if control_margin_samples is not None and len(control_margin_samples):
-        import numpy as np
+    # *** CONTRACT-ORIENTED PROBABILITY (v2) ***
+    # v1 computed one P(home wins) per game and wrote it onto every
+    # contract, so an away-side row compared P(home) with P(away) and a
+    # spread or total row received a winner probability outright. Both
+    # arms are now priced through the canonical pricer, with the same
+    # parsed contract and the same resolved side, differing only by the
+    # talent-shifted distribution.
+    probabilities = price_contract_both_arms(
+        control_distribution=control_distribution,
+        delta=delta,
+        family=contract_family,
+        side=contract_side,
+        threshold=contract_threshold,
+        named_team_side=named_team_side,
+    ) if control_distribution is not None else None
 
-        shifted = np.asarray(control_margin_samples, dtype=float) + delta
-        shadow_probability = float(np.mean(shifted > 0))
+    shadow_probability = None if probabilities is None else probabilities.shadow
+    basis_probability = None if probabilities is None else probabilities.basis
 
     return ShadowObservation(
         **base,
@@ -283,10 +353,29 @@ def build_shadow_record(
         talent_away=float(talent_away),
         talent_differential=differential,
         beta=TALENT_BETA,
+        # Deliberately NOT the headline delta. Canonical and shadow are
+        # the same pricer here, but keeping the basis delta as the
+        # experimental number means the comparison stays honest even if
+        # the production probability convention ever moves again.
         shadow_minus_control_probability=(
-            None if shadow_probability is None else shadow_probability - control_probability
+            None
+            if shadow_probability is None or control_probability is None
+            else shadow_probability - control_probability
         ),
         shadow_minus_control_margin=delta,
+        control_probability_canonical=control_probability,
+        control_probability_basis=basis_probability,
+        shadow_minus_control_basis_probability=(
+            None if probabilities is None else probabilities.shadow_minus_basis
+        ),
+        probability_semantics_version=PROBABILITY_SEMANTICS_VERSION,
+        comparison_basis=COMPARISON_BASIS,
+        contract_side=(
+            named_team_side.value if named_team_side is not None
+            else (contract_side.value if contract_side is not None else None)
+        ),
+        contract_threshold=contract_threshold,
+        probability_detail=None if probabilities is None else probabilities.detail,
         available=True,
         unavailable_reason=None,
     )

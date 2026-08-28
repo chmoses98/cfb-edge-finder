@@ -282,3 +282,110 @@ from the stale tree.
 there. Removing it would be a separate, deliberate change to the data
 branch; the import fix makes the scanner correct regardless of what that
 branch carries, which is the more robust guarantee.
+
+## 10. Probability semantics: v1 defect, v2 repair
+
+The first 12 genuine prospective rows exposed a second defect — this one
+in what the shadow's probability *meant*.
+
+### The defect
+
+v1 computed one number per game:
+
+```python
+shadow_probability = mean(control_margin_samples + delta > 0)   # P(HOME wins)
+```
+
+and wrote it onto **every contract on that game**. Real captured rows:
+
+| game | control | shadow (v1) |
+|---|---|---|
+| boise-state-at-oregon | 0.1185 / 0.8699 | **0.9315 / 0.9315** |
+| texas-state-at-texas | 0.0452 / 0.9491 | **0.9790 / 0.9790** |
+
+So on an away-side row `shadow_minus_control_probability` compared
+P(home wins) with P(away wins) — not a paired delta.
+
+Reproducing across families showed the blast radius was **wider than the
+moneyline** where it was first spotted. Every contract received the
+winner probability:
+
+```
+GAME-HOME    control=0.7900  shadow=0.8566
+GAME-AWAY    control=0.2000  shadow=0.8566
+SPREAD-HOME  control=0.5500  shadow=0.8566
+SPREAD-AWAY  control=0.4400  shadow=0.8566
+TOTAL-OVER   control=0.5000  shadow=0.8566
+TOTAL-UNDER  control=0.4900  shadow=0.8566
+```
+
+Only the home-side winner contract was ever correct.
+
+### The repair
+
+The canonical arm prices analytically, not by Monte Carlo:
+
+```python
+distribution = cached_projection.projection.to_game_distribution()
+price_parsed_contract(parsed, distribution, named_team_side=side)
+```
+
+`price_parsed_contract` already encodes every supported proposition —
+P(named team wins), P(named team wins by strictly more than T) with the
+spread sign derivation, P(total over/under T) — each with the same
+continuity correction. So the shadow re-implements none of it: it builds
+the **same** `GameDistribution` with the talent delta applied and calls
+the **same** function with the **same** parsed contract and resolved
+side. Orientation, tie handling, threshold semantics and market inputs
+are identical *by construction*.
+
+The delta is applied exactly the way `CorrectedGameProjection` applies
+the C.2 correction — `home_mean += delta/2`, `away_mean -= delta/2`, SDs
+and correlation untouched — so a talent shift and a margin correction
+mean the same thing to the rest of the system.
+
+### The three channels
+
+| field | meaning |
+|---|---|
+| `control_probability_canonical` | what production wrote. Audit only, never the counterfactual. |
+| `control_probability_basis` | control priced through the identical pricer/contract/side as the shadow. |
+| `shadow_probability` | the same, on the talent-shifted distribution. |
+| `shadow_minus_control_basis_probability` | **the experimental delta.** |
+
+### Totals are unchanged — a result, not an oversight
+
+The frozen candidate moves margin and preserves total, so it makes **no
+prediction about totals**: a total contract's shadow probability equals
+its basis probability exactly. Asserted by test.
+
+### Versioning
+
+`shadow_model_version` stays `shadow-preseason-talent-v1`. Beta stays
+0.018993. This is **instrumentation** versioning:
+
+| version | margin channel | probability channel |
+|---|---|---|
+| `shadow_observation_v1` | **valid** | **defective** for every orientation except home-side winner |
+| `shadow_observation_v2` | valid | contract-oriented; canonical/basis/shadow triple persisted |
+
+The first 12 rows are **never rewritten**. The dedup key
+(`observation_key\|shadow_model_version`) is unchanged, so no v2 duplicate
+can be created for them either.
+
+### Channel-aware analytics
+
+`compare()` now decides eligibility **per channel**, because the v1
+defect never touched the margin:
+
+```
+n_margin_paired       : 3
+n_probability_paired  : 1
+probability_state     : MEASURED
+probability_exclusions: {"PROBABILITY_SEMANTICS_V1": 2}
+```
+
+Excluded rows are counted and named, never silently dropped. With no
+eligible probability rows the channel returns
+`INSUFFICIENT_NATURAL_EVIDENCE` and no numbers — the margin channel still
+reports.

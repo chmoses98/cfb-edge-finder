@@ -32,6 +32,13 @@ import statistics
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from cfb_edge_finder.research.preseason.shadow_capture import (
+    SHADOW_RECORD_SCHEMA_VERSION_V1,
+)
+from cfb_edge_finder.research.preseason.shadow_contract_pricing import (
+    PROBABILITY_SEMANTICS_VERSION,
+)
+
 HYPOTHESIS_VERSION = "prospective_shadow_hypothesis_v1"
 
 REGISTERED_AT = "2026-08-28"
@@ -140,10 +147,21 @@ class SettledShadowPair:
     control_margin: float
     shadow_margin: float
     actual_home_margin: int
+    probability_semantics_version: str | None = None
+    """Which capture instrumentation produced `shadow_probability`.
+
+    None or the v1 value means the probability channel is NOT usable:
+    v1 wrote one P(home wins) per game onto every contract regardless of
+    family or side. The MARGIN channel of those same rows is unaffected
+    and stays eligible."""
 
     @property
     def home_won(self) -> bool:
         return self.actual_home_margin > 0
+
+    @property
+    def probability_channel_eligible(self) -> bool:
+        return self.probability_semantics_version == PROBABILITY_SEMANTICS_VERSION
 
 
 @dataclass
@@ -159,6 +177,12 @@ class ShadowComparison:
     shadow_log_loss: float | None = None
     control_brier: float | None = None
     shadow_brier: float | None = None
+    # Channel-aware evidence accounting. The margin and probability
+    # channels of the SAME row can have different eligibility, because
+    # the v1 probability defect never touched the margin.
+    n_probability_games: int = 0
+    probability_state: EvidenceState = EvidenceState.INSUFFICIENT_NATURAL_EVIDENCE
+    probability_exclusions: dict[str, int] = field(default_factory=dict)
     segments: dict[str, dict] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -176,6 +200,10 @@ class ShadowComparison:
             "shadow_log_loss": self.shadow_log_loss,
             "control_brier": self.control_brier,
             "shadow_brier": self.shadow_brier,
+            "n_margin_paired": self.n_games,
+            "n_probability_paired": self.n_probability_games,
+            "probability_state": self.probability_state.value,
+            "probability_exclusions": dict(sorted(self.probability_exclusions.items())),
             "segments": dict(sorted(self.segments.items())),
         }
 
@@ -234,12 +262,50 @@ def compare(
         shadow_margin_mae=statistics.fmean(shadow_err),
         paired_margin_delta=mean_diff,
         margin_ci=ci,
-        control_log_loss=statistics.fmean(_log_loss(p.control_probability, p.home_won) for p in pairs),
-        shadow_log_loss=statistics.fmean(_log_loss(p.shadow_probability, p.home_won) for p in pairs),
-        control_brier=statistics.fmean(
-            (p.control_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in pairs
-        ),
-        shadow_brier=statistics.fmean(
-            (p.shadow_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in pairs
-        ),
+        **_probability_metrics(pairs),
     )
+
+
+def _probability_metrics(pairs: list[SettledShadowPair]) -> dict:
+    """Winner metrics on the probability-eligible subset only.
+
+    The v1 capture wrote one P(home wins) per game onto every contract,
+    so its probability channel cannot enter a headline comparison. Its
+    MARGIN channel is untouched and stays in, which is why eligibility is
+    decided per channel rather than per row. Excluded rows are COUNTED
+    and named, never silently dropped."""
+    eligible = [p for p in pairs if p.probability_channel_eligible]
+    exclusions: dict[str, int] = {}
+    for p in pairs:
+        if p.probability_channel_eligible:
+            continue
+        key = (
+            "PROBABILITY_SEMANTICS_V1"
+            if p.probability_semantics_version in (None, SHADOW_RECORD_SCHEMA_VERSION_V1)
+            else f"PROBABILITY_SEMANTICS_{p.probability_semantics_version}"
+        )
+        exclusions[key] = exclusions.get(key, 0) + 1
+
+    if not eligible:
+        return {
+            "n_probability_games": 0,
+            "probability_state": EvidenceState.INSUFFICIENT_NATURAL_EVIDENCE,
+            "probability_exclusions": exclusions,
+        }
+    return {
+        "n_probability_games": len(eligible),
+        "probability_state": EvidenceState.MEASURED,
+        "probability_exclusions": exclusions,
+        "control_log_loss": statistics.fmean(
+            _log_loss(p.control_probability, p.home_won) for p in eligible
+        ),
+        "shadow_log_loss": statistics.fmean(
+            _log_loss(p.shadow_probability, p.home_won) for p in eligible
+        ),
+        "control_brier": statistics.fmean(
+            (p.control_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in eligible
+        ),
+        "shadow_brier": statistics.fmean(
+            (p.shadow_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in eligible
+        ),
+    }

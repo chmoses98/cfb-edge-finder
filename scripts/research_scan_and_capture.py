@@ -146,6 +146,16 @@ def _emit_shadow_record(
                 observation.model_version.model_version if observation.model_version else None
             ),
             control_probability=observation.model_probability,
+            # The canonical observation already recorded the contract's
+            # proposition (family, threshold, over/under side, and the
+            # RESOLVED named team side). Reusing those fields is what
+            # makes the shadow price the same proposition as the control
+            # instead of one probability per game.
+            control_distribution=cached_projection.projection.to_game_distribution(),
+            contract_family=observation.family,
+            contract_side=observation.side,
+            contract_threshold=observation.threshold,
+            named_team_side=observation.team,
             projection_snapshot_id=cached_projection.projection_snapshot_id,
             home_team_id=(matched_game.home_team_id if matched_game else ""),
             away_team_id=(matched_game.away_team_id if matched_game else ""),
