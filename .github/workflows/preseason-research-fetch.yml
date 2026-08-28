@@ -1,0 +1,105 @@
+name: Preseason Research Cache Fetch (manual)
+
+# MANUAL ONLY. No schedule, no cron. This workflow exists so a human can
+# deliberately spend a bounded number of real, rate-limited CFBD calls
+# (four per season: /games, /player/returning, /talent, /coaches) to build
+# the leakage-safe historical cache that preseason-prior research needs.
+# The dev environment cannot reach CFBD, so a GitHub-hosted runner is the
+# only place this can happen -- the same constraint documented since
+# Milestone B.
+#
+# READ-ONLY AGAINST CFBD. It fetches and writes a compact research cache.
+# It does not price anything, does not touch the production model, does
+# not qualify or recommend anything, and has no execution path.
+#
+# The API key is passed as a secret and is never printed: the fetch script
+# hands it straight to the client and records only whether a key was
+# present.
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Space-separated seasons, e.g. '2019 2021 2022 2023 2024 2025'"
+        required: true
+        default: "2019 2021 2022 2023 2024 2025"
+      include_advanced:
+        description: "Also fetch /stats/game/advanced (pace). One extra call per season."
+        required: false
+        default: "false"
+      no_push:
+        description: "Build the cache but skip the durable push (dry run)"
+        required: false
+        default: "false"
+
+# Least-privilege default: nothing beyond reading the code.
+permissions:
+  contents: read
+
+# Shares the research-data write group with the collector so the two can
+# never interleave a fetch and a push against the same orphan branch.
+# `group:` must stay on the line directly after `concurrency:` --
+# tests/test_research_workflow_concurrency.py matches that shape.
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    # Scoped write: this job pushes ONLY to the dedicated research-data
+    # orphan branch, which holds data and no code. Never to main.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+
+      - name: Fetch preseason research cache
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python3 scripts/fetch_preseason_research_cache.py \
+            --seasons ${{ github.event.inputs.seasons }} \
+            --out-dir "$RUNNER_TEMP/preseason" \
+            ${{ github.event.inputs.include_advanced == 'true' && '--include-advanced' || '' }}
+
+      - name: Report cache size
+        run: |
+          echo "Cache contents:"
+          ls -la "$RUNNER_TEMP/preseason"
+          du -sh "$RUNNER_TEMP/preseason"
+
+      - name: Push cache to the research-data orphan branch
+        if: ${{ github.event.inputs.no_push != 'true' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The research-data branch is an ORPHAN carrying data and no
+          # code, so a worktree checkout of it can never disturb main.
+          git fetch origin research-data --depth=1
+          rm -rf /tmp/rd && git worktree add /tmp/rd origin/research-data --detach
+
+          mkdir -p /tmp/rd/data/research_cache/preseason
+          cp "$RUNNER_TEMP/preseason"/*.json /tmp/rd/data/research_cache/preseason/
+
+          cd /tmp/rd
+          git add data/research_cache/preseason
+          if git diff --cached --quiet; then
+            echo "cache unchanged; nothing to push"
+            exit 0
+          fi
+          git commit -m "Preseason research cache: seasons ${{ github.event.inputs.seasons }}
+
+          Fetched read-only from CFBD on a GitHub-hosted runner by
+          .github/workflows/preseason-research-fetch.yml. Compact: only
+          audited fields are retained. See manifest.json for per-endpoint
+          row counts, schema fingerprints and timing semantics.
+
+          No API key is present in this data."
+          git push origin HEAD:research-data

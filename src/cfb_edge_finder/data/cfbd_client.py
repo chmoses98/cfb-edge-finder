@@ -125,6 +125,41 @@ class CFBDClient:
         """
         return self._get("/player/returning", {"year": season, "team": team})
 
+    def fetch_talent(self, season: int) -> list[dict]:
+        """Raw CFBD GET /talent response -- team recruiting-talent composite
+        for a season.
+
+        PRESEASON-SAFE TIMING: the composite for season S is settled by the
+        S-1 signing cycle and published before S begins, so it is genuine
+        preseason information. Milestone C's data audit classified it
+        available and leakage-safe but deliberately left it unwired,
+        to avoid piling features onto an unvalidated baseline.
+
+        Shape (per primary-source docs): year, school, talent. NOT
+        live-verified before this milestone -- the first fetch records a
+        schema fingerprint so a shape change is detectable rather than
+        silently mis-parsed.
+        """
+        return self._get("/talent", {"year": season})
+
+    def fetch_coaches(self, season: int) -> list[dict]:
+        """Raw CFBD GET /coaches response -- coaching records by season.
+
+        PRESEASON-SAFE TIMING: a hire is public before the season starts,
+        and the endpoint is season-scoped, so comparing season S against
+        S-1 identifies a head-coach change using only information that
+        predates S.
+
+        Shape (per primary-source docs): first_name, last_name, and a
+        nested `seasons` list carrying school/year/games and outcome
+        stats. ONLY the identity/school/year fields are preseason-safe --
+        the per-season win/loss and ranking fields inside `seasons` are
+        POSTGAME for their own season and must never be read as preseason
+        information. Milestone C listed /coaches as not separately
+        audited, so the schema is fingerprinted on first fetch.
+        """
+        return self._get("/coaches", {"year": season})
+
     def fetch_lines(self, season: int, week: int | None = None, season_type: str | None = None) -> list[dict]:
         """Raw CFBD GET /lines response -- historical closing betting lines
         by provider. EVALUATION-ONLY in this codebase: used to compare the
