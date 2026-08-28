@@ -28,6 +28,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from cfb_edge_finder.ingestion.team_matching import resolve_team_id_for_game
 from cfb_edge_finder.research.preseason.features import (
     FeatureTable,
     PreseasonFeature,
@@ -48,9 +49,21 @@ RETURNING_SPLITS = (
 already uses as its QB proxy; the rest are the incremental question."""
 
 
+CFBD_SOURCE = "cfbd"
+
+
 @dataclass(frozen=True)
 class HistoricalGame:
-    """One completed game, from the cache."""
+    """One completed game, from the cache.
+
+    `home_team`/`away_team` are RESOLVED team ids (e.g. "georgia-tech"),
+    not raw CFBD display names. This matters more than it looks: the
+    ratings snapshot is keyed by resolved id, so passing a raw name to
+    `project_game` silently misses every lookup and hands every team the
+    league-average rating -- which produces a model that projects every
+    game as a coin flip and looks like a broken control rather than a
+    broken join. `raw_home_name`/`raw_away_name` are retained for
+    reporting."""
 
     game_id: str
     season: int
@@ -62,6 +75,8 @@ class HistoricalGame:
     neutral_site: bool
     home_classification: str | None
     away_classification: str | None
+    raw_home_name: str = ""
+    raw_away_name: str = ""
 
     @property
     def both_fbs(self) -> bool:
@@ -118,13 +133,29 @@ def load_season(path: Path) -> SeasonCache:
         home, away = row.get("homeTeam"), row.get("awayTeam")
         if home_points is None or away_points is None or week is None or not home or not away:
             continue
+        # Resolve to the same ids the ratings fit is keyed by, using the
+        # SAME resolver and the same fail-loud-on-ambiguity policy as
+        # modeling/corpus.py. An unresolvable or ambiguous name (bare
+        # "Miami") is skipped, never guessed -- matching how those games
+        # are already excluded from the ratings fit itself.
+        try:
+            home_id = resolve_team_id_for_game(
+                str(home), CFBD_SOURCE, row.get("homeClassification")
+            )
+            away_id = resolve_team_id_for_game(
+                str(away), CFBD_SOURCE, row.get("awayClassification")
+            )
+        except Exception:
+            continue
         games.append(
             HistoricalGame(
                 game_id=str(row.get("id")),
                 season=season,
                 week=week,
-                home_team=str(home),
-                away_team=str(away),
+                home_team=home_id,
+                away_team=away_id,
+                raw_home_name=str(home),
+                raw_away_name=str(away),
                 home_points=home_points,
                 away_points=away_points,
                 neutral_site=bool(row.get("neutralSite")),
@@ -156,6 +187,40 @@ def load_cache(cache_dir: Path) -> dict[int, SeasonCache]:
     return seasons
 
 
+def _resolve(name: object) -> str | None:
+    """Map a CFBD display name to the resolved team id the ratings fit
+    and the game rows use.
+
+    Without this the feature tables stay keyed by display names
+    ("Alabama") while games carry slugs ("alabama"), so EVERY feature
+    lookup misses and every candidate silently reports insufficient
+    coverage -- a failure that looks like absent data rather than a
+    broken join."""
+    if not name:
+        return None
+    try:
+        return resolve_team_id_for_game(str(name), CFBD_SOURCE, "fbs")
+    except Exception:
+        return None
+
+
+def _rekey(rows: list[dict], *keys: str) -> list[dict]:
+    """Rewrite each row's team field to the resolved id, dropping rows
+    whose name cannot be resolved unambiguously."""
+    out: list[dict] = []
+    for row in rows:
+        raw = next((row.get(k) for k in keys if row.get(k)), None)
+        resolved = _resolve(raw)
+        if resolved is None:
+            continue
+        item = dict(row)
+        for k in keys:
+            item.pop(k, None)
+        item["team"] = resolved
+        out.append(item)
+    return out
+
+
 def build_feature_tables(seasons: dict[int, SeasonCache]) -> dict[int, FeatureTable]:
     """Build one leakage-guarded feature table per season.
 
@@ -165,7 +230,11 @@ def build_feature_tables(seasons: dict[int, SeasonCache]) -> dict[int, FeatureTa
     None for a team with no prior record, and a wholly missing prior
     season simply produces no comparison."""
     coaches_by_season = {
-        s: {str(r.get("school")): str(r.get("coach")) for r in cache.coach_rows if r.get("school")}
+        s: {
+            str(r["team"]): str(r.get("coach"))
+            for r in _rekey(cache.coach_rows, "school", "team")
+            if r.get("coach")
+        }
         for s, cache in seasons.items()
     }
 
@@ -174,10 +243,14 @@ def build_feature_tables(seasons: dict[int, SeasonCache]) -> dict[int, FeatureTa
         features: list[PreseasonFeature] = []
         features.extend(
             returning_production_features(
-                cache.returning_rows, applies_to_season=season, splits=RETURNING_SPLITS
+                _rekey(cache.returning_rows, "team"),
+                applies_to_season=season,
+                splits=RETURNING_SPLITS,
             )
         )
-        features.extend(talent_features(cache.talent_rows, applies_to_season=season))
+        features.extend(
+            talent_features(_rekey(cache.talent_rows, "school", "team"), applies_to_season=season)
+        )
         features.extend(
             coaching_change_features(coaches_by_season, applies_to_season=season)
         )
