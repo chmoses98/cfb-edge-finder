@@ -56,12 +56,38 @@ class TriggerType(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-def classify_trigger(event_name: str | None, actor: str | None) -> TriggerType:
-    """Map a GitHub event + actor onto a trigger type.
+DECLARABLE_TRIGGER_SOURCES: frozenset[str] = frozenset(
+    {TriggerType.EXTERNAL_SCHEDULE.value, TriggerType.MANUAL.value}
+)
+"""The only trigger types a CALLER may assert about itself.
 
-    `workflow_dispatch` is ambiguous on its own -- the conductor and a
-    human both use it -- so the actor disambiguates: a dispatch made with
-    the workflow's own GITHUB_TOKEN is attributed to `github-actions`."""
+Deliberately excludes GITHUB_SCHEDULE: cron provenance is something only
+GitHub can establish, via the `schedule` event. If an external caller
+could declare it, the health report could no longer tell "cron is alive"
+from "something claimed cron was alive", and the staleness signal that
+exists to catch a dead scheduler would become unfalsifiable."""
+
+
+def classify_trigger(
+    event_name: str | None, actor: str | None, declared_source: str | None = None
+) -> TriggerType:
+    """Map a GitHub event + actor (+ an optional self-declared source)
+    onto a trigger type.
+
+    `workflow_dispatch` is ambiguous on its own -- the conductor, a human,
+    and an external scheduler all use it. The actor disambiguates the
+    conductor, whose dispatch is made with the workflow's own
+    GITHUB_TOKEN and so appears as `github-actions`.
+
+    It cannot disambiguate an EXTERNAL scheduler: a dispatch made with a
+    fine-grained PAT carries the token OWNER as the actor, so an
+    independent cron service is indistinguishable from a human pressing
+    Run. `declared_source` closes that gap -- the caller states what it
+    is, restricted to DECLARABLE_TRIGGER_SOURCES so nothing can claim to
+    be GitHub's own scheduler. An unrecognised or absent value falls back
+    to inference, so the parameter can only ever refine the answer."""
+    if declared_source and declared_source.strip().upper() in DECLARABLE_TRIGGER_SOURCES:
+        return TriggerType(declared_source.strip().upper())
     if event_name == "schedule":
         return TriggerType.GITHUB_SCHEDULE
     if event_name in ("workflow_dispatch", "repository_dispatch"):

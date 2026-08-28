@@ -78,6 +78,17 @@ on:
         description: "Write locally only, skip the durable push (dry run)"
         required: false
         default: "false"
+      # Set to EXTERNAL_SCHEDULE by the independent cron service. A
+      # dispatch made with a fine-grained PAT carries the token OWNER as
+      # the actor, so an external scheduler is otherwise indistinguishable
+      # from a human pressing Run -- which would hide a dead external
+      # scheduler behind an occasional manual dispatch. Only
+      # EXTERNAL_SCHEDULE and MANUAL are accepted; a caller cannot claim
+      # to be GitHub's own cron.
+      trigger_source:
+        description: "Self-declared trigger provenance (EXTERNAL_SCHEDULE | MANUAL)"
+        required: false
+        default: ""
 
 concurrency:
   group: research-data-write
@@ -173,5 +184,6 @@ jobs:
             --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
             --trigger-type "${{ github.event_name }}" \
             --trigger-actor "${{ github.actor }}" \
+            --trigger-source "${{ github.event.inputs.trigger_source }}" \
             ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
 

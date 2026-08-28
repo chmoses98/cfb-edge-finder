@@ -116,6 +116,10 @@ prints a notice -- no live 2026 data is fetched or implied.
   markets actually are: the reconciling classification, why 87% are
   populations we decline on purpose, and the one FBS-vs-FBS matchup
   absent from the schedule source.
+- `docs/EXTERNAL_SCHEDULER.md` -- why GitHub's schedule service stopped
+  being the primary clock (1.7% delivery measured), the independent
+  scheduler that replaces it, the exact fine-grained token permission,
+  and the setup steps.
 - `docs/COLLECTION_TRIGGER.md` -- how the collector is invoked: the
   conductor chain, the cron fallback, the manual emergency path, the
   trigger SLA derived from the 14-minute closing window, heartbeats, and
