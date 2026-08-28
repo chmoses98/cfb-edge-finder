@@ -1,0 +1,26 @@
+name: Audit Live Market Semantics (manual, temporary)
+
+# TEMPORARY Week-1 readiness diagnostic (same pattern as the temporary
+# live-audit steps used in PRs #16/#19). Read-only: unauthenticated GETs
+# against Kalshi's public market-data API only; prints evidence; never
+# writes, commits, or touches a trading endpoint. Dispatched manually
+# from the audit branch; removed before merge or shortly after the
+# defect is fixed.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live market-semantics audit
+        run: python3 scripts/audit_live_market_semantics.py
