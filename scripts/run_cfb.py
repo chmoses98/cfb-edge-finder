@@ -223,6 +223,70 @@ def main() -> int:
         for finding in health.by_severity(severity)[:5]:
             print(f"    [{severity.value}] {finding.check_id}: {finding.detail[:110]}")
 
+    # ------------------------------------------ TALENT SHADOW RESEARCH
+    section("TALENT SHADOW RESEARCH (research only -- not a recommendation)")
+    shadow_rows = load_rows(base / "shadow" / f"{args.season}.jsonl")
+    shadow_rows_captured = len([r for r in shadow_rows if not r.get("__malformed__")])
+    shadow_table = []
+    for row in sorted(
+        (r for r in shadow_rows if not r.get("__malformed__")),
+        key=lambda r: str(r.get("game_id")),
+    ):
+        available = row.get("available")
+        shadow_table.append({
+            "game_id": str(row.get("game_id") or ""),
+            "control": (
+                f"{row['control_probability']:.4f}"
+                if row.get("control_probability") is not None else "-"
+            ),
+            "shadow": (
+                f"{row['shadow_probability']:.4f}"
+                if row.get("shadow_probability") is not None else "-"
+            ),
+            "delta": (
+                f"{row['shadow_minus_control_margin']:+.2f}"
+                if row.get("shadow_minus_control_margin") is not None else "-"
+            ),
+            "status": "available" if available else (row.get("unavailable_reason") or "unavailable"),
+        })
+    try:
+        from cfb_edge_finder.research.preseason.shadow_spec import (
+            CONTROL_SPEC_SHA256,
+            SHADOW_SPEC_SHA256,
+            assert_specs_frozen,
+            shadow_spec,
+        )
+
+        assert_specs_frozen(control_sha256=CONTROL_SPEC_SHA256, shadow_sha256=SHADOW_SPEC_SHA256)
+        spec = shadow_spec()
+        print(f"  shadow model version           : {spec.model_version}")
+        print(f"  shadow spec sha256             : {spec.content_hash()[:32]}...")
+        print(f"  beta (frozen, never refit)     : {spec.payload['beta']}")
+        print(f"  may be refit on 2026           : {spec.payload['may_be_refit_on_2026']}")
+        print(f"  captured shadow rows           : {shadow_rows_captured}")
+        print("  CONTROL remains canonical; model_probability is unchanged.")
+        print()
+        if shadow_rows_captured:
+            print(f"  {'game':<46} {'CONTROL':>9} {'SHADOW':>9} {'DELTA':>8}  status")
+            for row in shadow_table[:20]:
+                print(
+                    f"  {row['game_id'][:46]:<46} "
+                    f"{row['control']:>9} {row['shadow']:>9} {row['delta']:>8}  {row['status']}"
+                )
+            if len(shadow_table) > 20:
+                print(f"  ... {len(shadow_table) - 20} more (sorted by game_id, never by delta)")
+        else:
+            print("  No captured shadow rows yet. Shadow collection begins only after the")
+            print("  wired scanner runs; absence before deployment is expected, not missing")
+            print("  data. Reconstructed research view: scripts/shadow_snapshot.py")
+        print()
+        print("  Rows sort by game_id, never by delta -- a delta-sorted table would be")
+        print("  an opportunity ranking wearing a research header. A large delta is a")
+        print("  model difference, not an edge.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  shadow specification UNAVAILABLE: {type(exc).__name__}: {exc}")
+        print("  Control reporting above is unaffected.")
+
     # ------------------------------------------------------- SAFETY
     section("SAFETY")
     print(f"  qualification disabled         : {locks['qualification_disabled']}")
