@@ -72,6 +72,15 @@ class ContractSnapshot:
     than assumed. Defaults to None -- unknown, NOT prospective -- so a
     snapshot built without this field cannot slip past a prospective-only
     gate by omission. See schemas/corpus_row.py's CaptureMode."""
+    observation_key: str | None = None
+    """The row's deterministic identity key, carried so a downstream view
+    can join this snapshot to its LINKED sidecar records (e.g. the talent
+    shadow row written for the same capture) without re-deriving identity.
+    Defaults to None -- an unkeyed snapshot simply has no joinable sidecar."""
+    kickoff_utc_at_capture: str | None = None
+    """The game's kickoff as the SCHEDULE stated it at capture time,
+    carried verbatim from the row. Defaults to None -- unknown, which a
+    pregame-only consumer must treat as NOT provably pregame."""
 
     @property
     def model_probability_no_side(self) -> float | None:

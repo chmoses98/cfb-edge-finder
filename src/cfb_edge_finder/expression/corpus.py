@@ -110,6 +110,8 @@ def load_contract_snapshots(
                 series_ticker=ticker.split("-", 1)[0] or None,
                 schema_version=row.get("schema_version"),
                 capture_mode=row.get("capture_mode"),
+                observation_key=row.get("observation_key"),
+                kickoff_utc_at_capture=row.get("kickoff_utc_at_capture"),
             )
 
             existing = chosen.get(ticker)
