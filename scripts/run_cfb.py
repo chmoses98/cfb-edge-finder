@@ -13,6 +13,13 @@ There is no ordering by attractiveness anywhere: games sort by kickoff
 then game_id, contracts by ticker. A report that ranked by disagreement
 would be a betting card with a research header.
 
+The ONLY exception is the explicitly-requested `--paper-card` mode, which
+prints research/paper_card.py's separate PAPER CARD view: an explicitly
+descriptive, prominently-labeled RESEARCH ONLY ranking of unvalidated
+model-market disagreement, with no stake, no ceiling, no qualification
+and no execution surface. It never runs unless asked for by flag; the
+default report above is byte-for-byte unaffected.
+
 Sections: SYSTEM HEALTH, CURRENT SLATE, MARKET STRUCTURE, RESEARCH STATE,
 COLLECTION STATE, ANALYTICS, SAFETY, GO/NO-GO.
 
@@ -80,11 +87,54 @@ def main() -> int:
     parser.add_argument("--now", type=str, default=None)
     parser.add_argument("--json-out", type=Path, default=None)
     parser.add_argument("--max-games", type=int, default=25, help="games listed in the slate table")
+    parser.add_argument(
+        "--paper-card",
+        action="store_true",
+        help="print the RESEARCH-ONLY paper card (unvalidated model-market "
+        "disagreement) instead of the standard report",
+    )
+    parser.add_argument(
+        "--paper-card-limit",
+        type=int,
+        default=None,
+        help="paper-card rows to display (display parameter only; requires --paper-card)",
+    )
+    parser.add_argument(
+        "--paper-card-json",
+        type=Path,
+        default=None,
+        help="also write the paper card as JSON to this path (requires --paper-card)",
+    )
     args = parser.parse_args()
+
+    if (args.paper_card_limit is not None or args.paper_card_json is not None) and not args.paper_card:
+        parser.error("--paper-card-limit/--paper-card-json require --paper-card")
 
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
     base = args.data_repo_dir / "data" / "research"
     obs_path = base / "observations" / f"{args.season}.jsonl"
+
+    if args.paper_card:
+        from cfb_edge_finder.research.paper_card import (
+            DEFAULT_LIMIT,
+            build_paper_card,
+            render_paper_card,
+        )
+
+        card = build_paper_card(
+            obs_path,
+            base / "shadow" / f"{args.season}.jsonl",
+            now=now,
+            limit=args.paper_card_limit if args.paper_card_limit is not None else DEFAULT_LIMIT,
+        )
+        print(render_paper_card(card))
+        if args.paper_card_json:
+            args.paper_card_json.parent.mkdir(parents=True, exist_ok=True)
+            args.paper_card_json.write_text(
+                json.dumps(card.to_payload(), indent=2, sort_keys=True, default=str) + "\n"
+            )
+            print(f"\nwrote {args.paper_card_json}")
+        return 0
 
     rows = load_rows(obs_path)
     real_rows = [r for r in rows if not r.get("__malformed__")]
