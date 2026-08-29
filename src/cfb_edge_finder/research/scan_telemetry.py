@@ -67,6 +67,24 @@ class ScanTelemetry:
     # was eligible" leave every counter below at 0. Without this field
     # the two are indistinguishable in the log -- which is exactly how a
     # silently-None sidecar survived a live run on main.
+    # --- Two-lane architecture (football-state decoupling) ---
+    football_state_source: str = "not_resolved"
+    """Where this run's football inputs came from: 'cache' (ZERO CFBD
+    requests), 'live_full_refresh', 'live_schedule_refresh',
+    'cache_after_refresh_failure', or 'unavailable' (fail-closed run)."""
+    football_state_freshness: str = "unknown"
+    football_state_schedule_age_minutes: float = 0.0
+    cfbd_requests: int = 0
+    """Live CFBD HTTP requests attempted by this run's football-state
+    resolution. The headline decoupling invariant: 0 whenever the durable
+    state was fresh."""
+    kickoff_uncertain_games: int = 0
+    """Games skipped fail-closed because a mapped Kalshi market's own
+    close_time disagreed with the cached kickoff beyond tolerance."""
+    reconciled_missed_checkpoints: int = 0
+    """Terminal MISSED_WINDOW rows written by after-the-fact
+    reconciliation this run (accounting only, never backfill)."""
+
     shadow_sidecar_state: str = "NOT_ATTEMPTED"
     shadow_rows_written: int = 0
     shadow_rows_duplicate: int = 0

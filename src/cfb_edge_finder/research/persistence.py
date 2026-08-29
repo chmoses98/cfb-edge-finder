@@ -206,6 +206,13 @@ class ObservationIndex:
 
     keys: set[str] = field(default_factory=set)
     labels_by_ticker: dict[str, set[str]] = field(default_factory=dict)
+    ticker_game_ids: dict[str, str] = field(default_factory=dict)
+    """ticker -> game_id, from the same single pass. Consumed by
+    checkpoint reconciliation so it never needs a second file read."""
+    ticker_kickoffs: dict[str, tuple[str, str]] = field(default_factory=dict)
+    """ticker -> (captured_at, kickoff_utc_at_capture) of the LATEST row
+    that stated a kickoff -- later captures supersede earlier ones, so a
+    recorded reschedule wins. Strings, parsed only by the consumer."""
     row_count: int = 0
     malformed_rows: int = 0
     load_count: int = 0
@@ -260,6 +267,16 @@ def load_observation_index(path: Path) -> ObservationIndex:
             if pair is not None:
                 ticker, label = pair
                 index.labels_by_ticker.setdefault(ticker, set()).add(label)
+                observation = obj.get("observation") or {}
+                game_id = observation.get("game_id")
+                if isinstance(game_id, str) and game_id:
+                    index.ticker_game_ids.setdefault(ticker, game_id)
+                kickoff = obj.get("kickoff_utc_at_capture")
+                captured_at = str(observation.get("captured_at") or "")
+                if isinstance(kickoff, str) and kickoff:
+                    prior = index.ticker_kickoffs.get(ticker)
+                    if prior is None or captured_at >= prior[0]:
+                        index.ticker_kickoffs[ticker] = (captured_at, kickoff)
 
     index.load_seconds = time.perf_counter() - started
     return index

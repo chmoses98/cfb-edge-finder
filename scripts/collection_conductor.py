@@ -237,15 +237,60 @@ def fetch_schedule_health(season: int, now: datetime, horizon_hours: float = 36.
         # collector would classify as unsupported and skip.
         games, classification = milestone_d._fetch_candidate_games(season, client, now)  # noqa: SLF001
     except Exception as exc:  # noqa: BLE001 -- a dead schedule source must not kill the trigger layer
-        return ScheduleHealth(
-            fetch_success=False,
-            total_games=0,
-            upcoming_games=0,
-            supported_upcoming_games=0,
-            supported_inside_horizon=0,
-            horizon_end=horizon_end,
-            detail=f"{type(exc).__name__}: {exc}",
-        )
+        # *** DURABLE-STATE FALLBACK (two-lane architecture) ***
+        # The 2026-08-29 CFBD-429 storm took the conductor's planning down
+        # with the collector, even though a perfectly valid schedule
+        # snapshot existed on the research-data branch. Planning now falls
+        # back to that durable football-state artifact -- read-only via
+        # `git show`, provenance carried in the artifact's own manifest --
+        # provided its schedule is still inside the SAME hard staleness
+        # bound the capture guard enforces. Beyond that bound the failure
+        # stays a failure: a conductor must never plan closing coverage
+        # from a schedule the collector itself would refuse to capture
+        # against.
+        fallback_detail = f"{type(exc).__name__}: {exc}"
+        try:
+            from cfb_edge_finder.research import football_state as football_state_mod
+
+            state, verdict = football_state_mod.load_football_state_from_git(
+                REPO_ROOT, "research-data", season
+            )
+            if state is not None and state.schedule_age_hours(now) <= football_state_mod.SCHEDULE_HARD_MAX_HOURS:
+                inputs = state.to_scan_inputs(now)
+                games = inputs.games
+                classification = inputs.classification_by_game_id
+                fallback_detail = (
+                    f"live schedule fetch failed ({type(exc).__name__}); planning from durable "
+                    f"football-state artifact fetched {state.schedule_fetched_at.isoformat()} "
+                    f"({state.schedule_age_hours(now):.1f}h old, within the "
+                    f"{football_state_mod.SCHEDULE_HARD_MAX_HOURS:.0f}h capture bound)"
+                )
+            else:
+                return ScheduleHealth(
+                    fetch_success=False,
+                    total_games=0,
+                    upcoming_games=0,
+                    supported_upcoming_games=0,
+                    supported_inside_horizon=0,
+                    horizon_end=horizon_end,
+                    detail=(
+                        f"{type(exc).__name__}: {exc}; durable football-state fallback "
+                        f"unavailable ({verdict if state is None else 'schedule beyond hard staleness bound'})"
+                    ),
+                )
+        except Exception as fallback_exc:  # noqa: BLE001
+            return ScheduleHealth(
+                fetch_success=False,
+                total_games=0,
+                upcoming_games=0,
+                supported_upcoming_games=0,
+                supported_inside_horizon=0,
+                horizon_end=horizon_end,
+                detail=f"{type(exc).__name__}: {exc}; fallback also failed: {type(fallback_exc).__name__}",
+            )
+        exc_detail = fallback_detail
+    else:
+        exc_detail = None
 
     upcoming: list[datetime] = []
     supported: list[datetime] = []
@@ -272,6 +317,7 @@ def fetch_schedule_health(season: int, now: datetime, horizon_hours: float = 36.
         next_supported_kickoff=supported[0] if supported else None,
         next_supported_kickoff_inside_horizon=inside[0] if inside else None,
         kickoffs_inside_horizon=tuple(inside),
+        detail=exc_detail or "",
     )
 
 

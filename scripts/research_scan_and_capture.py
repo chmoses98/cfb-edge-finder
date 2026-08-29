@@ -45,7 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import capture_kalshi_cfb_snapshot as milestone_d  # noqa: E402
 
 from cfb_edge_finder.config import Settings  # noqa: E402
-from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: E402
+from cfb_edge_finder.data.cfbd_client import CFBDClient  # noqa: E402
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.fee_schedule import KALSHI_FEE_SCHEDULE_2026_07_07_TAKER  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kalshi_event_to_game  # noqa: E402
@@ -53,7 +53,9 @@ from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, Ga
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
 from cfb_edge_finder.research import (  # noqa: E402
+    checkpoint_reconciliation,
     closing_capture,
+    football_state,
     git_durable_store,
     health,
     persistence,
@@ -452,6 +454,42 @@ def _apply_scan(
             game_started = matched_game is not None and matched_game.status != "scheduled"
             kickoff = matched_game.kickoff_utc if matched_game is not None else None
 
+            # *** KICKOFF SANITY CROSS-CHECK (two-lane decoupling) ***
+            # With the schedule served from the durable artifact (up to
+            # 6h old under the existing staleness guard), a game moved
+            # EARLIER is the one drift direction the clock guard cannot
+            # catch on its own. Kalshi's own close_time for a mapped
+            # market is an independent, already-captured signal of the
+            # real deadline: a disagreement beyond tolerance marks the
+            # game KICKOFF-UNCERTAIN and captures NOTHING for it this
+            # run -- fail closed, explicitly accounted. An absent
+            # close_time skips the check (the freshness bound, the clock
+            # guard, and Kalshi's active-status requirement remain in
+            # force).
+            kickoff_uncertain = False
+            if kickoff is not None and matched_game is not None and evidence.reference_timestamp is not None:
+                drift_minutes = abs((evidence.reference_timestamp - kickoff).total_seconds()) / 60.0
+                if drift_minutes > football_state.KICKOFF_SANITY_TOLERANCE_MINUTES:
+                    kickoff_uncertain = True
+                    telemetry.kickoff_uncertain_games += 1
+                    capture_state_rows.append(
+                        CaptureStateRecord(
+                            game_id=matched_game.game_id,
+                            kalshi_market_ticker=str(probe_market.get("ticker", "")),
+                            timing_label="ALL_PREGAME",
+                            state=CaptureState.OTHER_EXPLICIT_REASON,
+                            observed_at=now,
+                            detail=(
+                                f"kickoff_uncertain: cached kickoff {kickoff.isoformat()} vs Kalshi "
+                                f"close_time {evidence.reference_timestamp.isoformat()} "
+                                f"({drift_minutes:.0f} min apart) -- captures withheld fail-closed"
+                            ),
+                            run_id=run_id,
+                        )
+                    )
+            if kickoff_uncertain:
+                continue
+
             try:
                 if matched_game is not None:
                     scan_logic.guard_capture_allowed(
@@ -675,9 +713,16 @@ def _apply_scan(
     # untouched as it did before.
     with telemetry.phase("persistence_write_seconds"):
         result = persistence.append_observation_rows(obs_path, pending_rows, index=index)
+        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
         if capture_state_rows:
-            state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
             persistence.append_capture_state_rows(state_path, capture_state_rows)
+        # After-the-fact reconciliation: durable-data-only accounting for
+        # windows that provably passed uncaptured (e.g. during a
+        # collector or dependency outage). Idempotent via the existing
+        # capture-state dedup key; never creates an observation.
+        telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
+            obs_path, state_path, now=now, run_id=run_id, index=index
+        )
         # Shadow rows are written AFTER the canonical observations and in
         # their own file. Ordering matters: if this raised, the canonical
         # rows are already durable. It is wrapped anyway, because a
@@ -710,6 +755,72 @@ def _apply_scan(
     report.captures_written += result.written
     report.captures_skipped_already_present += result.skipped_duplicate
     return result
+
+
+def _fail_closed_no_football_state(args, outcome, resolved_trigger, now: datetime, telemetry) -> int:
+    """No provable football state and no way to refresh it: capture
+    NOTHING, but leave durable evidence that the run happened and why it
+    stopped -- a failed heartbeat plus the no-network reconciliation pass
+    -- so an outage can never again be a silent gap. Before this path
+    existed, the equivalent condition was an unhandled exception: the
+    process died before any accounting and the durable store showed
+    nothing at all (the exact shape of the 2026-08-29 CFBD-429 outage)."""
+    season = args.schedule_season
+
+    def account_only(repo_dir: Path) -> persistence.AppendResult:
+        base_dir = repo_dir / "data" / "research"
+        obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+        telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
+            obs_path, state_path, now=now, run_id=args.run_id
+        )
+        heartbeat_mod.append_heartbeat(
+            repo_dir,
+            season,
+            heartbeat_mod.Heartbeat(
+                schema_version=heartbeat_mod.HEARTBEAT_SCHEMA_VERSION,
+                run_id=args.run_id,
+                trigger_type=resolved_trigger.value,
+                invoked_at=now.isoformat(),
+                started_at=now.isoformat(),
+                finished_at=datetime.now(UTC).isoformat(),
+                succeeded=False,
+                schedule_fetch_success=False,
+                schedule_state=SchedulePlanningState.FETCH_FAILED.value,
+                detail=(
+                    f"FAIL-CLOSED: football state {outcome.freshness} and refresh failed "
+                    f"({outcome.refresh_error or 'no error detail'}); no captures attempted; "
+                    f"reconciled_missed_checkpoints={telemetry.reconciled_missed_checkpoints}"
+                ),
+            ),
+        )
+        return persistence.AppendResult(written=0, skipped_duplicate=0)
+
+    if args.no_push:
+        account_only(args.data_repo_dir)
+    else:
+        git_durable_store.commit_and_push_with_retry(
+            args.data_repo_dir,
+            args.data_branch,
+            account_only,
+            commit_message=(
+                f"research capture FAIL-CLOSED (football state unavailable): season={season} "
+                f"run={args.run_id or 'local'} at={now.isoformat()}"
+            ),
+        )
+    telemetry.finish()
+    print(json.dumps({
+        "fail_closed": True,
+        "football_state_freshness": outcome.freshness,
+        "football_state_source": outcome.source,
+        "refresh_error": outcome.refresh_error,
+        "captures_due": 0,
+        "captures_written": 0,
+        "reconciled_missed_checkpoints": telemetry.reconciled_missed_checkpoints,
+    }, indent=2))
+    print("\nPERF " + json.dumps(telemetry.as_dict(), sort_keys=True))
+    print("\nSTATUS: RESEARCH-ONLY. Fail-closed: no football state, no captures, accounting only.")
+    return 1
 
 
 def main() -> int:
@@ -753,6 +864,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--refresh-football-state",
+        action="store_true",
+        help=(
+            "Force a full live CFBD refresh of the durable football-state artifact this run, "
+            "even if the cached state is fresh. Never required for correctness -- the slow lane "
+            "refreshes automatically on its freshness schedule."
+        ),
+    )
+    parser.add_argument(
         "--telemetry-json",
         type=Path,
         default=None,
@@ -769,28 +889,58 @@ def main() -> int:
     cfbd_client = CFBDClient(api_key=settings.cfbd_api_key)
     report = health.CaptureHealthReport()
     telemetry = ScanTelemetry(trigger_type=args.trigger_type)
+    resolved_trigger = classify_trigger(args.trigger_type, args.trigger_actor, args.trigger_source)
 
-    try:
-        games, classification_by_game_id = milestone_d._fetch_candidate_games(args.schedule_season, cfbd_client, now)  # noqa: SLF001
-        fcs_school_names = milestone_d._fetch_fcs_school_names(cfbd_client, args.schedule_season)  # noqa: SLF001
-    except CFBDAuthError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    # *** TWO-LANE ARCHITECTURE (football-state decoupling) ***
+    # The durable football-state artifact lives on the data branch, so
+    # the checkout that used to happen just before _apply_scan now
+    # happens FIRST. Module-level imports already guard against the
+    # branch-swap working-tree replacement (see _build_shadow_sidecar's
+    # docstring for the live incident that established that rule).
+    git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
 
-    def _fetch_history_lines():
-        """Deferred to first projection. At the 10-minute collection
-        cadence most scans have nothing due (checkpoint windows are
-        narrow), and this is the single most expensive call the scanner
-        makes -- four seasons of CFBD team-game lines. Paying it only when
-        a checkpoint is genuinely due is what keeps a frequent cadence
-        cheap; see docs/PROSPECTIVE_COLLECTION.md's cadence analysis."""
+    outcome = football_state.resolve_football_state(
+        args.data_repo_dir,
+        cfbd_client,
+        season=args.schedule_season,
+        history_seasons=list(args.history_seasons),
+        now=now,
+        force_refresh=args.refresh_football_state,
+    )
+    telemetry.football_state_source = outcome.source
+    telemetry.football_state_freshness = outcome.freshness
+    telemetry.cfbd_requests = outcome.cfbd_requests
+    if outcome.refresh_error:
+        print(f"NOTE: football-state refresh failed ({outcome.refresh_error}); "
+              f"source={outcome.source} freshness={outcome.freshness}")
+
+    if outcome.state is None:
+        # FAIL CLOSED: no captures without provable football state. But
+        # the outage itself must still leave durable evidence -- a
+        # heartbeat that says the run happened and failed, and the
+        # no-network reconciliation pass so windows that died in silence
+        # get their explicit terminal accounting.
+        return _fail_closed_no_football_state(args, outcome, resolved_trigger, now, telemetry)
+
+    state = outcome.state
+    telemetry.football_state_schedule_age_minutes = round(state.schedule_age_hours(now) * 60.0, 1)
+    inputs = state.to_scan_inputs(now)
+    games = inputs.games
+    classification_by_game_id = inputs.classification_by_game_id
+    fcs_school_names = inputs.fcs_school_names
+
+    def _load_history_lines():
+        """Deferred to first projection, exactly as the live fetch was --
+        but now a LOCAL rebuild from the durable artifact: zero network,
+        so a 429 during a closing window can no longer cost a
+        projection."""
         with telemetry.phase("history_fetch_seconds"):
-            return milestone_d._fetch_history_lines(args.history_seasons, cfbd_client, now)  # noqa: SLF001
+            return inputs.lines_loader()
 
     not_started_games = [g for g in games if g.status == "scheduled"]
     report.games_scanned = len(not_started_games)
 
-    cache = GameProjectionCache(lines_provider=_fetch_history_lines)
+    cache = GameProjectionCache(lines_provider=_load_history_lines)
     kalshi_client = KalshiClient()
     model_version = ModelVersion(
         model_version=milestone_d.MODEL_VERSION,
@@ -801,16 +951,10 @@ def main() -> int:
     def training_cutoff_fn(request: GameProjectionRequest) -> str:
         return f"strictly before season={request.as_of_season} week={request.as_of_week}"
 
-    # A rehearsal must rehearse against the REAL corpus. Skipping this
-    # entirely under --no-push made the dry run scan an empty ledger, so
-    # every already-captured label looked due again: the same slate that
-    # a real run correctly reported as 0 captures due came back as 1,337
-    # (observed across runs 23 and 24 on 2026-08-27). A rehearsal whose
-    # answer differs that much from the real thing is worse than none.
-    #
-    # Read-only either way here: --no-push still refuses to commit or
-    # push below, it just stops pretending the corpus is empty.
-    git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
+    # (The rehearsal-vs-real corpus note that used to sit here still
+    # applies: ensure_branch_checked_out ran above, before football-state
+    # resolution, so --no-push rehearsals continue to scan the REAL
+    # corpus rather than an empty ledger.)
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
         return _apply_scan(
@@ -826,13 +970,15 @@ def main() -> int:
             n_simulations=args.n_simulations,
             seed=args.seed,
             now=now,
-            schedule_source_timestamp=now,
+            # The artifact's own fetch time -- guard_capture_allowed
+            # enforces the 6h staleness bound against exactly this value,
+            # so schedule freshness is proven per captured row.
+            schedule_source_timestamp=state.schedule_fetched_at,
             run_id=args.run_id,
             report=report,
             telemetry=telemetry,
         )
 
-    resolved_trigger = classify_trigger(args.trigger_type, args.trigger_actor, args.trigger_source)
     invoked_at = now
 
     def apply_and_beat(repo_dir: Path) -> persistence.AppendResult:
@@ -872,7 +1018,7 @@ def main() -> int:
                 api_failures=telemetry.api_failure_count,
                 cfbd_healthy=report.games_scanned > 0,
                 kalshi_healthy=report.markets_scanned > 0 and telemetry.api_failure_count == 0,
-                schedule_fetch_success=True,
+                schedule_fetch_success=outcome.source in ("cache", "live_full_refresh", "live_schedule_refresh"),
                 schedule_state=(
                     SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT.value
                     if supported_kickoffs
@@ -889,7 +1035,8 @@ def main() -> int:
                 ),
                 detail=(
                     f"trigger={resolved_trigger.value} raw_event={args.trigger_type!r} "
-                    f"declared={args.trigger_source or 'none'}"
+                    f"declared={args.trigger_source or 'none'} "
+                    f"football_state={outcome.source} cfbd_requests={outcome.cfbd_requests}"
                 ),
             ),
         )

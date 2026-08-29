@@ -78,6 +78,10 @@ on:
         description: "Write locally only, skip the durable push (dry run)"
         required: false
         default: "false"
+      refresh_football_state:
+        description: "Force a full live CFBD refresh of the durable football-state artifact"
+        required: false
+        default: "false"
       # Set to EXTERNAL_SCHEDULE by the independent cron service. A
       # dispatch made with a fine-grained PAT carries the token OWNER as
       # the actor, so an external scheduler is otherwise indistinguishable
@@ -198,5 +202,6 @@ jobs:
             --trigger-type "${{ github.event_name }}" \
             --trigger-actor "${{ github.actor }}" \
             --trigger-source "${{ github.event.inputs.trigger_source }}" \
-            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }} \
+            ${{ github.event.inputs.refresh_football_state == 'true' && '--refresh-football-state' || '' }}
 
