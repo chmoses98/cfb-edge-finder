@@ -65,13 +65,24 @@ jobs:
         run: |
           git config user.name "research-settlement-bot"
           git config user.email "research-settlement-bot@users.noreply.github.com"
+      # A --no-push dry run never calls ensure_branch_checked_out, so it
+      # needs the durable data (observation ledger + schedule identity
+      # for the fail-closed ESPN fallback) checked out separately --
+      # otherwise it would "validate" against an empty corpus.
+      - name: Check out durable research-data for dry-run reads
+        if: ${{ github.event.inputs.no_push == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: research-data
+          path: research-data-checkout
+
       - name: Settle markets (outcome facts)
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: |
           python scripts/research_settle.py \
             --season "${{ github.event.inputs.season || '2026' }}" \
-            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+            ${{ github.event.inputs.no_push == 'true' && '--no-push --data-repo-dir research-data-checkout' || '' }}
 
       # *** WHY THE CODE IS RE-CHECKED-OUT HERE ***
       # The previous step's `ensure_branch_checked_out` switches the
@@ -106,4 +117,4 @@ jobs:
             --season "${{ github.event.inputs.season || '2026' }}" \
             --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
             --trigger-type "${{ github.event_name }}" \
-            ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+            ${{ github.event.inputs.no_push == 'true' && '--no-push --data-repo-dir research-data-checkout' || '' }}

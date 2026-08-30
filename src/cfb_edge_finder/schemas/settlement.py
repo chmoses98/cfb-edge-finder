@@ -28,10 +28,12 @@ class GameFinalStatus(StrEnum):
 
 
 class GameResult(BaseModel):
-    """Genuine authoritative final score, from CFBD -- see
-    research.settlement.extract_game_result(). Never inferred from generic
-    sportsbook rules; ties are structurally impossible in CFB (overtime
-    resolves them), so `status == FINAL` implies a strict winner."""
+    """Genuine authoritative final score -- from CFBD (primary; see
+    research.settlement.extract_game_result()) or, only when CFBD is
+    recoverably unavailable, from the strictly-validated ESPN fallback
+    (research/result_provider.py). Never inferred from generic sportsbook
+    rules; ties are structurally impossible in CFB (overtime resolves
+    them), so `status == FINAL` implies a strict winner."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -43,8 +45,21 @@ class GameResult(BaseModel):
     went_to_overtime: bool | None = Field(
         default=None, description="True/False if determinable from the source; None if genuinely unknown."
     )
-    source: str = "cfbd"
+    source: str = Field(
+        default="cfbd",
+        description="'cfbd' (primary) or 'espn_fallback' -- which provider supplied THIS result fact.",
+    )
     source_game_id: str | None = None
+    fallback_reason: str | None = Field(
+        default=None,
+        description="Set only on fallback-sourced results: why the primary source was unavailable "
+        "(e.g. the exact CFBD HTTP failure). None on primary-sourced results.",
+    )
+    status_evidence: str | None = Field(
+        default=None,
+        description="Set only on fallback-sourced results: the provider's verbatim finality evidence "
+        "(e.g. ESPN status.type name/state/completed/detail) this fact's status was derived from.",
+    )
     captured_at: AwareDatetime
 
 

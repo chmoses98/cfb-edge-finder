@@ -40,11 +40,12 @@ from cfb_edge_finder.research import (  # noqa: E402
     git_durable_store,
     kalshi_settlement_check,
     persistence,
+    result_provider,
     settlement_health,
 )
-from cfb_edge_finder.research.settlement import extract_game_result, settle_market  # noqa: E402
-from cfb_edge_finder.schemas.attribution import AttributionState  # noqa: E402
-from cfb_edge_finder.schemas.settlement import GameFinalStatus  # noqa: E402
+from cfb_edge_finder.research.settlement import flag_mismatch, settle_market  # noqa: E402
+from cfb_edge_finder.schemas.attribution import PENDING_ATTRIBUTION_STATES, AttributionState  # noqa: E402
+from cfb_edge_finder.schemas.settlement import GameFinalStatus, GameResult  # noqa: E402
 
 CLOSING_LABEL = "CLOSING"
 
@@ -57,11 +58,25 @@ def _series_ticker_of(market_ticker: str) -> str | None:
     return head or None
 
 
+def _settleable_game_ids(repo_dir: Path, season: int) -> set[str]:
+    """The games whose pending observations this run could attribute --
+    what the fallback provider needs results for. Same settleable-
+    population filter `_apply_attribution` uses."""
+    obs_path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season)
+    if not obs_path.exists():
+        return set()
+    return {
+        row.observation.game_id
+        for row in persistence.read_observation_rows(obs_path)
+        if row.observation.game_id and attribution_mod.is_settleable_population(row)
+    }
+
+
 def _apply_attribution(
     repo_dir: Path,
     *,
     season: int,
-    raw_games_by_game_id: dict[str, dict],
+    results_by_game_id: dict[str, GameResult],
     now: datetime,
     report: settlement_health.SettlementHealthReport,
     kalshi_client: KalshiClient | None,
@@ -115,15 +130,15 @@ def _apply_attribution(
 
         if game_id and attribution_mod.is_settleable_population(row):
             if game_id not in result_cache:
-                raw_game = raw_games_by_game_id.get(game_id)
+                # The provider already resolved every game this run has a canonical result for
+                # (CFBD primary, or the strictly-validated ESPN fallback). A game it FAILED
+                # CLOSED on is simply absent here -- its observations stay pending, exactly
+                # like a game CFBD had no row for.
+                result = results_by_game_id.get(game_id)
                 report.games_checked += 1
-                if raw_game is None:
-                    result_cache[game_id] = None
-                else:
-                    result = extract_game_result(raw_game, game_id=game_id, season=season, captured_at=now)
-                    if result.status is GameFinalStatus.FINAL:
-                        report.games_newly_final += 1
-                    result_cache[game_id] = result
+                if result is not None and result.status is GameFinalStatus.FINAL:
+                    report.games_newly_final += 1
+                result_cache[game_id] = result
             result = result_cache[game_id]
 
             if result is not None:
@@ -142,8 +157,6 @@ def _apply_attribution(
                     if outcome.fetch_failed:
                         report.api_failures += 1
                     elif outcome.official_settlement is not None:
-                        from cfb_edge_finder.research.settlement import flag_mismatch
-
                         settlement = flag_mismatch(settlement, outcome.official_settlement)
                         settlement_cache[cache_key] = settlement
                     market_is_final = outcome.is_finalized
@@ -191,8 +204,6 @@ def _apply_attribution(
     # not a research fact -- it is "ask again later" -- and writing it
     # would permanently consume that observation's attribution key,
     # preventing the real settlement from ever being recorded.
-    from cfb_edge_finder.schemas.attribution import PENDING_ATTRIBUTION_STATES
-
     durable = [a for a in attributions if a.state not in PENDING_ATTRIBUTION_STATES]
     result = persistence.append_attribution_rows(attr_path, durable, index=index)
     report.attributions_written = result.written
@@ -225,32 +236,38 @@ def main() -> int:
     report = settlement_health.SettlementHealthReport()
 
     cfbd_client = CFBDClient(api_key=settings.cfbd_api_key)
+
+    # Durable data first: the fallback provider needs the observation
+    # ledger and the durable schedule identity BEFORE any network result
+    # fetch. With --no-push the checkout is skipped, so --data-repo-dir
+    # must already contain the durable data.
+    if not args.no_push:
+        git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
+
+    needed_game_ids = _settleable_game_ids(args.data_repo_dir, args.season)
+
     try:
-        raw_games = cfbd_client.fetch_games(season=args.season, season_type=None)
+        provider_outcome = result_provider.resolve_game_results(
+            season=args.season,
+            now=now,
+            cfbd_client=cfbd_client,
+            repo_dir=args.data_repo_dir,
+            needed_game_ids=needed_game_ids,
+        )
     except CFBDAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-
-    from cfb_edge_finder.ingestion.game_normalization import GameNormalizationError, normalize_cfbd_game
-
-    raw_games_by_game_id: dict[str, dict] = {}
-    for raw in raw_games:
-        try:
-            game = normalize_cfbd_game(raw, observed_at=now)
-        except GameNormalizationError:
-            continue
-        raw_games_by_game_id[game.game_id] = raw
+    except result_provider.ResultProviderUnavailable as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
     kalshi_client = None if args.skip_kalshi_crosscheck else KalshiClient()
-
-    if not args.no_push:
-        git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
         return _apply_attribution(
             repo_dir,
             season=args.season,
-            raw_games_by_game_id=raw_games_by_game_id,
+            results_by_game_id=provider_outcome.results_by_game_id,
             now=now,
             report=report,
             kalshi_client=kalshi_client,
@@ -275,6 +292,7 @@ def main() -> int:
 
     summary = {
         "trigger_type": args.trigger_type,
+        **provider_outcome.summary_dict(),
         "observations_scanned": report.observations_scanned,
         "unsettled_eligible": report.unsettled_eligible,
         "games_checked": report.games_checked,
