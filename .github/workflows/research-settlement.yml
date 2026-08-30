@@ -105,6 +105,17 @@ jobs:
           git config user.name "research-settlement-bot"
           git config user.email "research-settlement-bot@users.noreply.github.com"
 
+      # The restore step's `git clean -ffdx` deletes the nested dry-run
+      # data checkout (observed live: run 33331025881 attributed against
+      # an empty corpus, "observations_scanned": 0), so it must be
+      # checked out AGAIN for the attribution step's dry-run reads.
+      - name: Re-check out durable research-data for dry-run reads
+        if: ${{ github.event.inputs.no_push == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: research-data
+          path: research-data-checkout
+
       # Per-observation attribution: resolves each captured checkpoint to
       # its market's outcome with its own entry price, fee, hypothetical
       # research-unit economics and CLOSING linkage. Exits non-zero on a
