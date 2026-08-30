@@ -27,6 +27,7 @@ on:
           - ambiguous_audit
           - snapshot
           - semantics_audit
+          - espn_probe
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
         required: false
@@ -112,6 +113,11 @@ jobs:
         # dispatch away from being seen. See its docstring for the
         # opening-slate variant-grammar defect it first caught.
         run: python3 scripts/audit_live_market_semantics.py
+      - name: Run live ESPN result-source probe
+        if: ${{ github.event.inputs.script == 'espn_probe' }}
+        # scripts/validate_espn_results_live.py -- read-only, keyless
+        # schema evidence for the fail-closed ESPN settlement fallback.
+        run: python3 scripts/validate_espn_results_live.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:
