@@ -53,6 +53,7 @@ from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, Ga
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
 from cfb_edge_finder.research import (  # noqa: E402
+    cfbd_access,
     checkpoint_reconciliation,
     closing_capture,
     football_state,
@@ -757,7 +758,49 @@ def _apply_scan(
     return result
 
 
-def _fail_closed_no_football_state(args, outcome, resolved_trigger, now: datetime, telemetry) -> int:
+def _actions_step_summary_path():
+    """GitHub's per-job markdown summary file, when running in Actions.
+    None locally. Section-I visibility only -- never load-bearing."""
+    import os
+
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    return Path(path) if path else None
+
+
+def _append_actions_step_summary(access, access_record: dict, outcome) -> None:
+    """Make quota state and recovery visually obvious in the Actions UI
+    (job summary panel) without any new notification infrastructure."""
+    path = _actions_step_summary_path()
+    if path is None:
+        return
+    lines: list[str] = []
+    state = access_record.get("access_state")
+    if access.recovery_detected:
+        lines.append("## :zap: CFBD_RECOVERED")
+        lines.append("Quota restored -- football-state bootstrap ran this very run via the normal slow lane.")
+    if state == cfbd_access.CFBD_QUOTA_EXHAUSTED:
+        lines.append("## :no_entry: CFBD_QUOTA_EXHAUSTED")
+        lines.append(f"- `next_probe_at` = `{access_record.get('cfbd_next_probe_at')}` (unmetered /info probe)")
+        if access_record.get("cfbd_quota_resets_at"):
+            resets = access_record.get("cfbd_quota_resets_at")
+            lines.append(f"- `quota_resets_at` = `{resets}` (authoritative, from CFBD /info)")
+        lines.append("- metered CFBD calls gated off; capture stays fail-closed unless a valid cached artifact serves")
+    if getattr(outcome, "source", "") == "live_full_refresh":
+        lines.append("## :white_check_mark: FOOTBALL_STATE_READY")
+        lines.append("- full `football_state_v1` artifact rebuilt and durably saved this run")
+        lines.append("- subsequent captures use `source=cache` with `cfbd_requests=0`")
+    if not lines:
+        return
+    try:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+    except OSError:
+        pass  # summary is cosmetic; never fail a run over it
+
+
+def _fail_closed_no_football_state(
+    args, outcome, resolved_trigger, now: datetime, telemetry, access_record: dict
+) -> int:
     """No provable football state and no way to refresh it: capture
     NOTHING, but leave durable evidence that the run happened and why it
     stopped -- a failed heartbeat plus the no-network reconciliation pass
@@ -771,9 +814,16 @@ def _fail_closed_no_football_state(args, outcome, resolved_trigger, now: datetim
         base_dir = repo_dir / "data" / "research"
         obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
         state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+        cfbd_access.save_state(repo_dir, access_record)
         telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
             obs_path, state_path, now=now, run_id=args.run_id
         )
+        gate_note = ""
+        if access_record.get("access_state") == cfbd_access.CFBD_QUOTA_EXHAUSTED:
+            gate_note = (
+                f" | CFBD_QUOTA_EXHAUSTED next_probe_at={access_record.get('cfbd_next_probe_at')}"
+                f" quota_resets_at={access_record.get('cfbd_quota_resets_at')}"
+            )
         heartbeat_mod.append_heartbeat(
             repo_dir,
             season,
@@ -787,10 +837,16 @@ def _fail_closed_no_football_state(args, outcome, resolved_trigger, now: datetim
                 succeeded=False,
                 schedule_fetch_success=False,
                 schedule_state=SchedulePlanningState.FETCH_FAILED.value,
+                cfbd_access_state=access_record.get("access_state"),
+                cfbd_quota_limit=access_record.get("cfbd_quota_limit"),
+                cfbd_quota_remaining=access_record.get("cfbd_quota_remaining"),
+                cfbd_quota_resets_at=access_record.get("cfbd_quota_resets_at"),
+                cfbd_next_probe_at=access_record.get("cfbd_next_probe_at"),
                 detail=(
-                    f"FAIL-CLOSED: football state {outcome.freshness} and refresh failed "
+                    f"FAIL-CLOSED: football state {outcome.freshness} and refresh "
+                    f"{'gated' if outcome.cfbd_requests == 0 else 'failed'} "
                     f"({outcome.refresh_error or 'no error detail'}); no captures attempted; "
-                    f"reconciled_missed_checkpoints={telemetry.reconciled_missed_checkpoints}"
+                    f"reconciled_missed_checkpoints={telemetry.reconciled_missed_checkpoints}{gate_note}"
                 ),
             ),
         )
@@ -814,6 +870,10 @@ def _fail_closed_no_football_state(args, outcome, resolved_trigger, now: datetim
         "football_state_freshness": outcome.freshness,
         "football_state_source": outcome.source,
         "refresh_error": outcome.refresh_error,
+        "cfbd_access_state": access_record.get("access_state"),
+        "cfbd_quota_remaining": access_record.get("cfbd_quota_remaining"),
+        "cfbd_quota_resets_at": access_record.get("cfbd_quota_resets_at"),
+        "cfbd_next_probe_at": access_record.get("cfbd_next_probe_at"),
         "captures_due": 0,
         "captures_written": 0,
         "reconciled_missed_checkpoints": telemetry.reconciled_missed_checkpoints,
@@ -899,6 +959,21 @@ def main() -> int:
     # docstring for the live incident that established that rule).
     git_durable_store.ensure_branch_checked_out(args.data_repo_dir, args.data_branch)
 
+    # *** CFBD QUOTA GATE (research/cfbd_access.py) ***
+    # Decided BEFORE any metered CFBD request. While the durable state
+    # says the quota is exhausted, this run makes at most ONE unmetered
+    # /info probe (and usually zero) instead of the doomed full-build
+    # attempt that used to burn ~1,150 429'd requests/day. The first
+    # probe showing remainingCalls > 0 un-gates this very run, so the
+    # existing slow lane bootstraps the artifact immediately.
+    # --refresh-football-state stays an explicit operator override.
+    access = cfbd_access.assess(
+        args.data_repo_dir, cfbd_client, now=now, force_allow=args.refresh_football_state
+    )
+    telemetry.cfbd_access_state = access.access_state
+    for line in cfbd_access.summary_lines(access):
+        print(f"CFBD-ACCESS {line}")
+
     outcome = football_state.resolve_football_state(
         args.data_repo_dir,
         cfbd_client,
@@ -906,6 +981,7 @@ def main() -> int:
         history_seasons=list(args.history_seasons),
         now=now,
         force_refresh=args.refresh_football_state,
+        allow_cfbd=access.allow_cfbd,
     )
     telemetry.football_state_source = outcome.source
     telemetry.football_state_freshness = outcome.freshness
@@ -914,13 +990,21 @@ def main() -> int:
         print(f"NOTE: football-state refresh failed ({outcome.refresh_error}); "
               f"source={outcome.source} freshness={outcome.freshness}")
 
+    # The durable state this run leaves behind (written inside the apply
+    # functions below so the push-retry loop persists it atomically with
+    # everything else). Also drives heartbeat fields and the Actions
+    # step summary.
+    access_record = cfbd_access.record_outcome(access, outcome, cfbd_client, now=now)
+    telemetry.cfbd_access_state = access_record.get("access_state", access.access_state)
+    _append_actions_step_summary(access, access_record, outcome)
+
     if outcome.state is None:
         # FAIL CLOSED: no captures without provable football state. But
         # the outage itself must still leave durable evidence -- a
         # heartbeat that says the run happened and failed, and the
         # no-network reconciliation pass so windows that died in silence
         # get their explicit terminal accounting.
-        return _fail_closed_no_football_state(args, outcome, resolved_trigger, now, telemetry)
+        return _fail_closed_no_football_state(args, outcome, resolved_trigger, now, telemetry, access_record)
 
     state = outcome.state
     telemetry.football_state_schedule_age_minutes = round(state.schedule_age_hours(now) * 60.0, 1)
@@ -988,6 +1072,7 @@ def main() -> int:
         unit: on a push conflict the local commit is discarded by the hard
         reset and this runs again, so a run leaves exactly one heartbeat
         rather than one per attempt."""
+        cfbd_access.save_state(repo_dir, access_record)
         result = apply_fn(repo_dir)
         supported_kickoffs = sorted(
             g.kickoff_utc
@@ -1018,6 +1103,11 @@ def main() -> int:
                 api_failures=telemetry.api_failure_count,
                 cfbd_healthy=report.games_scanned > 0,
                 kalshi_healthy=report.markets_scanned > 0 and telemetry.api_failure_count == 0,
+                cfbd_access_state=access_record.get("access_state"),
+                cfbd_quota_limit=access_record.get("cfbd_quota_limit"),
+                cfbd_quota_remaining=access_record.get("cfbd_quota_remaining"),
+                cfbd_quota_resets_at=access_record.get("cfbd_quota_resets_at"),
+                cfbd_next_probe_at=access_record.get("cfbd_next_probe_at"),
                 schedule_fetch_success=outcome.source in ("cache", "live_full_refresh", "live_schedule_refresh"),
                 schedule_state=(
                     SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT.value

@@ -20,7 +20,6 @@ or any Authorization header. It spends AT MOST ONE metered call (the
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 
@@ -77,9 +76,11 @@ def main() -> int:
     try:
         a = r_info.json() or {}
         b = r_info2.json() or {}
+        unchanged = a.get("remainingCalls") == b.get("remainingCalls")
+        verdict = "UNCHANGED: /info is unmetered" if unchanged else "DECREASED: /info IS metered"
         print(
             f"\nunmetered check: remainingCalls {a.get('remainingCalls')} -> {b.get('remainingCalls')} "
-            f"({'UNCHANGED: /info is unmetered' if a.get('remainingCalls') == b.get('remainingCalls') else 'DECREASED: /info IS metered'})"
+            f"({verdict})"
         )
     except ValueError:
         print("\nunmetered check: /info body not JSON -- cannot compare")

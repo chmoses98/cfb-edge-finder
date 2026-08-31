@@ -63,6 +63,20 @@ class Heartbeat:
     cfbd_healthy: bool | None = None
     kalshi_healthy: bool | None = None
 
+    cfbd_access_state: str | None = None
+    """research/cfbd_access.py state: CFBD_ACCESS_OK /
+    CFBD_QUOTA_EXHAUSTED / CFBD_ACCESS_UNKNOWN. None means the run
+    predates quota observability -- never 'healthy'."""
+    cfbd_quota_limit: int | None = None
+    cfbd_quota_remaining: int | None = None
+    cfbd_quota_resets_at: str | None = None
+    """Authoritative reset instant from CFBD's own unmetered GET /info
+    (first of the next calendar month, 00:00 UTC -- live-verified, run
+    33349348575). None when no /info evidence exists -- never derived
+    from billing conventions."""
+    cfbd_next_probe_at: str | None = None
+    """While quota-gated: when the next unmetered recovery probe is due."""
+
     schedule_fetch_success: bool | None = None
     """Positive proof the schedule source answered. None means the run
     predates this field -- NOT that the fetch failed. After the

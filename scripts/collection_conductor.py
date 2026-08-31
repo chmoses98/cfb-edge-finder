@@ -223,6 +223,19 @@ def fetch_schedule_health(season: int, now: datetime, horizon_hours: float = 36.
 
         from cfb_edge_finder.config import Settings
         from cfb_edge_finder.data.cfbd_client import CFBDClient
+        from cfb_edge_finder.research import cfbd_access
+
+        # *** CFBD QUOTA GATE (read-only) ***
+        # If the collector's durable access state says the quota is
+        # exhausted and the next recovery-probe window has not arrived,
+        # this live fetch is DOOMED (429 x retries) -- skip it and go
+        # straight to the durable-artifact fallback below instead of
+        # hammering CFBD once an hour from the conductor too. The
+        # collector owns probing and recovery; the conductor only reads.
+        if cfbd_access.gate_says_exhausted(cfbd_access.read_state_from_git(REPO_ROOT, "research-data"), now=now):
+            raise RuntimeError(
+                "cfbd gated (durable access state says CFBD_QUOTA_EXHAUSTED): live fetch skipped"
+            )
 
         # from_env(), NOT Settings(): the bare constructor returns
         # dataclass defaults with every key None, so the conductor

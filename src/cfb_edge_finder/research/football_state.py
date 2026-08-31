@@ -269,10 +269,14 @@ class RefreshOutcome:
     state: FootballState | None
     source: str
     """'cache' | 'live_full_refresh' | 'live_schedule_refresh' |
-    'cache_after_refresh_failure' | 'unavailable'"""
+    'cache_after_refresh_failure' | 'cache_cfbd_gated' | 'unavailable'"""
     cfbd_requests: int = 0
     refresh_error: str | None = None
     freshness: str = FOOTBALL_STATE_MISSING
+    refresh_http_status: int | None = None
+    """HTTP status of the failed refresh, when the failure was an HTTP
+    error -- lets the quota gate distinguish a real 429 from a 5xx or
+    transport failure without string-matching the error text."""
 
 
 # --------------------------------------------------------------- building
@@ -412,6 +416,7 @@ def resolve_football_state(
     history_seasons: list[int],
     now: datetime,
     force_refresh: bool = False,
+    allow_cfbd: bool = True,
 ) -> RefreshOutcome:
     """The slow-lane decision procedure the fast loop calls once per run.
 
@@ -422,7 +427,15 @@ def resolve_football_state(
     HARD-stale / missing   -> attempt a live build; on failure return
                               state=None (callers fail closed).
     A successful refresh is saved to disk here so the surrounding durable
-    commit persists it."""
+    commit persists it.
+
+    `allow_cfbd=False` (the quota gate -- see research/cfbd_access.py):
+    behave exactly as if every live attempt had failed, but WITHOUT
+    making a single request. A fresh cache still serves normally; a
+    within-hard-bound cache degrades exactly like a failed refresh; a
+    missing/hard-stale state fails closed. Freshness policy, hard
+    bounds, and every downstream guard are untouched -- the gate only
+    removes doomed requests, never loosens what counts as usable state."""
     cached, _verdict = load_football_state(repo_dir, season)
     if cached is not None and list(cached.history_seasons) != list(history_seasons):
         cached = None  # config changed: rebuild
@@ -435,6 +448,23 @@ def resolve_football_state(
         or force_refresh
         or cached.history_age_hours(now) > HISTORY_SOFT_REFRESH_HOURS
     )
+    if not allow_cfbd:
+        gated_error = "cfbd gated (quota exhausted per durable access state): no live attempt made"
+        if cached is not None and cached.freshness(now) != FOOTBALL_STATE_STALE_HARD:
+            return RefreshOutcome(
+                state=cached,
+                source="cache_cfbd_gated",
+                cfbd_requests=0,
+                refresh_error=gated_error,
+                freshness=cached.freshness(now),
+            )
+        return RefreshOutcome(
+            state=None,
+            source="unavailable",
+            cfbd_requests=0,
+            refresh_error=gated_error,
+            freshness=FOOTBALL_STATE_STALE_HARD if cached is not None else FOOTBALL_STATE_MISSING,
+        )
     try:
         if needs_full:
             fresh = build_football_state(cfbd_client, season=season, history_seasons=history_seasons, now=now)
@@ -450,6 +480,7 @@ def resolve_football_state(
         )
     except Exception as exc:  # noqa: BLE001 -- any live failure degrades identically
         error = f"{type(exc).__name__}: {exc}"
+        http_status = getattr(getattr(exc, "response", None), "status_code", None)
         if cached is not None and cached.freshness(now) != FOOTBALL_STATE_STALE_HARD:
             return RefreshOutcome(
                 state=cached,
@@ -457,6 +488,7 @@ def resolve_football_state(
                 cfbd_requests=1 if not needs_full else 2 + 2 * len(history_seasons),
                 refresh_error=error,
                 freshness=cached.freshness(now),
+                refresh_http_status=http_status if isinstance(http_status, int) else None,
             )
         return RefreshOutcome(
             state=None,
@@ -464,4 +496,5 @@ def resolve_football_state(
             cfbd_requests=1 if not needs_full else 2 + 2 * len(history_seasons),
             refresh_error=error,
             freshness=FOOTBALL_STATE_STALE_HARD if cached is not None else FOOTBALL_STATE_MISSING,
+            refresh_http_status=http_status if isinstance(http_status, int) else None,
         )
