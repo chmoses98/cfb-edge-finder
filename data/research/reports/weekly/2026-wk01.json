@@ -1,0 +1,134 @@
+{
+  "schema_version": "research_report_v1",
+  "season": 2026,
+  "week_label": "wk01",
+  "generated_at": "2026-08-31T16:44:27.780787Z",
+  "games_captured": 50,
+  "contracts_captured": 1074,
+  "timing_bucket_coverage": [
+    {
+      "label": "EARLY_OPEN",
+      "captured": 1074,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_7D",
+      "captured": 679,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_3D",
+      "captured": 387,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_24H",
+      "captured": 387,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_6H",
+      "captured": 196,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_90",
+      "captured": 0,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_60",
+      "captured": 0,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "T_30",
+      "captured": 52,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    },
+    {
+      "label": "CLOSING",
+      "captured": 52,
+      "missed_window": 0,
+      "not_yet_due": 0,
+      "other": 0
+    }
+  ],
+  "family_coverage": {
+    "moneyline": 166,
+    "spread": 848,
+    "total": 646
+  },
+  "missing_windows": 0,
+  "mapping_errors": 1167,
+  "gap_bucket_distribution": [
+    {
+      "bucket": "<2%",
+      "contract_level_n": 108,
+      "game_level_n": 32,
+      "settled_n": 37,
+      "settlement_hit_rate": 0.6756756756756757,
+      "avg_closing_price_movement": null,
+      "avg_fee_adjusted_research_gap": -0.01666162408861415
+    },
+    {
+      "bucket": "2-5%",
+      "contract_level_n": 135,
+      "game_level_n": 43,
+      "settled_n": 54,
+      "settlement_hit_rate": 0.6851851851851852,
+      "avg_closing_price_movement": null,
+      "avg_fee_adjusted_research_gap": -0.02476761042343053
+    },
+    {
+      "bucket": "5-8%",
+      "contract_level_n": 137,
+      "game_level_n": 44,
+      "settled_n": 55,
+      "settlement_hit_rate": 0.6909090909090909,
+      "avg_closing_price_movement": null,
+      "avg_fee_adjusted_research_gap": -0.029544636681957413
+    },
+    {
+      "bucket": "8-12%",
+      "contract_level_n": 158,
+      "game_level_n": 46,
+      "settled_n": 43,
+      "settlement_hit_rate": 0.6744186046511628,
+      "avg_closing_price_movement": null,
+      "avg_fee_adjusted_research_gap": -0.038458397443513696
+    },
+    {
+      "bucket": "12%+",
+      "contract_level_n": 564,
+      "game_level_n": 53,
+      "settled_n": 111,
+      "settlement_hit_rate": 0.5405405405405406,
+      "avg_closing_price_movement": null,
+      "avg_fee_adjusted_research_gap": -0.28276688360372604
+    }
+  ],
+  "closing_capture_exact": 52,
+  "closing_capture_near": 0,
+  "closing_capture_missed": 0,
+  "settled_observations": 1044,
+  "settlement_calibration_note": "no qualification/recommendation logic evaluated -- research counts only",
+  "avg_research_clv": null,
+  "sample_size_note": "counts are contract-level; see game_level_n/family_level_n in gap_bucket_distribution for correlation-aware denominators"
+}
