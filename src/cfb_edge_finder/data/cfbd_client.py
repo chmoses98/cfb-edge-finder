@@ -101,6 +101,26 @@ class CFBDClient:
                 pass
         return min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS)
 
+    def fetch_account_info(self) -> dict:
+        """Raw CFBD GET /info response -- the authenticated account/quota
+        surface. LIVE-VERIFIED 2026-08-31 during the real quota outage
+        (run 33349348575): returns HTTP 200 even while every metered
+        endpoint is 429, with shape {patronLevel, tierName, monthlyLimit,
+        remainingCalls, usedCalls, resetAt, sharedPool, products,
+        features}; resetAt is the first of the NEXT calendar month at
+        00:00:00 UTC (confirmed against the public server source,
+        github.com/CFBD/cfb-api-v2 src/app/info/service.ts).
+
+        UNMETERED: /info sits in the quota middleware's ignoredPaths
+        (server source src/config/middleware/quotas.ts), and the live run
+        proved remainingCalls does not decrease across consecutive calls
+        -- so this is safe to use as the quota-recovery probe without
+        spending quota."""
+        result = self._get("/info", {})
+        if not isinstance(result, dict):
+            raise ValueError(f"unexpected /info response shape: {type(result).__name__}")
+        return result
+
     def fetch_games(
         self, season: int, season_type: str | None = None, division: str = "fbs", week: int | None = None
     ) -> list[dict]:

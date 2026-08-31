@@ -28,6 +28,7 @@ on:
           - snapshot
           - semantics_audit
           - espn_probe
+          - cfbd_quota_probe
       schedule_season:
         description: "(snapshot only) CFBD season to fetch candidate games from"
         required: false
@@ -118,6 +119,15 @@ jobs:
         # scripts/validate_espn_results_live.py -- read-only, keyless
         # schema evidence for the fail-closed ESPN settlement fallback.
         run: python3 scripts/validate_espn_results_live.py
+      - name: Run live CFBD quota/account probe
+        if: ${{ github.event.inputs.script == 'cfbd_quota_probe' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        # scripts/validate_cfbd_quota_live.py -- read-only evidence for
+        # the quota recovery monitor: is GET /info deployed and unmetered,
+        # does it carry remainingCalls/resetAt, and what does the real
+        # quota-429 look like. Never prints the key.
+        run: python3 scripts/validate_cfbd_quota_live.py
       - name: Run first genuine prospective Kalshi CFB snapshot capture
         if: ${{ github.event.inputs.script == 'snapshot' }}
         env:

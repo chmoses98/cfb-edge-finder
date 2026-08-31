@@ -81,6 +81,10 @@ class ScanTelemetry:
     kickoff_uncertain_games: int = 0
     """Games skipped fail-closed because a mapped Kalshi market's own
     close_time disagreed with the cached kickoff beyond tolerance."""
+    cfbd_access_state: str = "not_assessed"
+    """research/cfbd_access.py gate state this run: CFBD_ACCESS_OK,
+    CFBD_QUOTA_EXHAUSTED (metered calls gated off), or
+    CFBD_ACCESS_UNKNOWN."""
     reconciled_missed_checkpoints: int = 0
     """Terminal MISSED_WINDOW rows written by after-the-fact
     reconciliation this run (accounting only, never backfill)."""
