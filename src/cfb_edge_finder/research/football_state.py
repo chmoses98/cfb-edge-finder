@@ -67,9 +67,11 @@ Kickoff-change safety is layered, not single-source:
   3. Kalshi's own `status == "active"` requirement (discovery drops a
      started game's markets);
   4. the fast loop's close-time sanity check (scan side): a mapped
-     market whose Kalshi `close_time` disagrees with the cached kickoff
+     market whose Kalshi `close_time` is EARLIER than the cached kickoff
      by more than KICKOFF_SANITY_TOLERANCE_MINUTES marks the game
-     KICKOFF-UNCERTAIN and captures nothing for it, fail-closed.
+     KICKOFF-UNCERTAIN and captures nothing for it, fail-closed --
+     directional, because Kalshi's close_time is kickoff+48h by rule
+     (see KICKOFF_SANITY_TOLERANCE_MINUTES).
 """
 
 from __future__ import annotations
@@ -90,7 +92,7 @@ from cfb_edge_finder.ingestion.game_normalization import (
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines
 from cfb_edge_finder.research.scan_logic import MAX_SCHEDULE_STALENESS_HOURS
 from cfb_edge_finder.schemas.game import GameRecord
-from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set
+from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set, build_non_fbs_school_name_set
 
 FOOTBALL_STATE_SCHEMA_VERSION = "football_state_v1"
 FOOTBALL_STATE_SUBDIR = "football_state"
@@ -115,12 +117,19 @@ game days. A day-old fit is the SAME fit unless games finished since.
 The hard cap only exists so a forgotten artifact cannot serve forever."""
 
 KICKOFF_SANITY_TOLERANCE_MINUTES = 30.0
-"""Fast-lane cross-check threshold: cached kickoff vs the mapped Kalshi
-market's own close_time. Beyond this the game is KICKOFF-UNCERTAIN and
-nothing is captured for it. Tolerant enough for ordinary clock skew and
-Kalshi closing a few minutes around kickoff; tight enough that a genuine
-reschedule/postponement (which moves close_time by hours) always trips
-it."""
+"""Fast-lane cross-check threshold: a mapped Kalshi market whose
+close_time is EARLIER than the cached kickoff by more than this marks
+the game KICKOFF-UNCERTAIN and nothing is captured for it. Directional
+by live evidence, not symmetric: Kalshi sets close_time to kickoff+48h
+for every CFB single-game market (2026-09-01 audit), so a later
+close_time is the universal normal case and carries no evidence the
+game moved earlier -- a symmetric |drift| version of this check
+withheld the ENTIRE mapped universe fail-closed from the moment it
+shipped. The earlier direction is the one the clock guard cannot catch;
+the delayed/started directions are covered by the clock guard, Kalshi's
+active-status requirement, and the freshness bound. Tolerant enough for
+ordinary clock skew; tight enough that a genuine earlier reschedule
+(hours) always trips it."""
 
 # Freshness verdict vocabulary (strings, mirroring the repo's
 # state-string style in e.g. shadow sidecar states).
@@ -231,6 +240,7 @@ class FootballState:
             classification[game.game_id] = (home_classification(raw), away_classification(raw))
 
         fcs_names = build_fcs_school_name_set(self.all_division_teams)
+        non_fbs_names = build_non_fbs_school_name_set(self.all_division_teams)
 
         def lines_loader() -> list[TeamGameLine]:
             lines: list[TeamGameLine] = []
@@ -248,6 +258,7 @@ class FootballState:
             games=games,
             classification_by_game_id=classification,
             fcs_school_names=fcs_names,
+            non_fbs_school_names=non_fbs_names,
             schedule_source_timestamp=self.schedule_fetched_at,
             lines_loader=lines_loader,
         )
@@ -260,6 +271,11 @@ class ScanInputs:
     fcs_school_names: frozenset[str]
     schedule_source_timestamp: datetime
     lines_loader: object  # zero-arg callable -> list[TeamGameLine]
+    non_fbs_school_names: frozenset[str] = frozenset()
+    """Exact-match-normalized names of every known non-FBS program
+    (fcs/ii/iii, per CFBD /teams) -- see
+    teams.fcs_identity.build_non_fbs_school_name_set. Defaults empty so
+    pre-existing constructions keep their legacy mapping behavior."""
 
 
 @dataclass

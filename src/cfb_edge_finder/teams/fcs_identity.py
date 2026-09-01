@@ -68,3 +68,67 @@ def is_known_fcs_school(raw_name: str | None, fcs_school_names: frozenset[str]) 
     if not raw_name:
         return False
     return normalize_school_name(raw_name) in fcs_school_names
+
+
+KNOWN_NON_FBS_NAME_VARIANTS: dict[str, str] = {
+    "southeastern louisiana": "se louisiana",
+    "university at albany": "ualbany",
+    "nicholls st.": "nicholls",
+    "liu": "long island university",
+    "st. thomas": "st. thomas (mn)",
+    "southern university": "southern",
+    "tennessee-martin": "ut martin",
+    "grambling st.": "grambling",
+    "central connecticut st.": "central connecticut",
+    "penn": "pennsylvania",
+}
+"""Deterministic, exact-match spelling variants Kalshi uses for non-FBS
+programs whose CFBD school name differs (normalized variant -> normalized
+CFBD school name). Every entry was verified against BOTH sources in the
+2026-09-01 live forensic audit (GH Actions run 33556291244): the left
+side is the verbatim Kalshi rules_primary token, the right side is the
+verbatim CFBD /teams school name, and each pair is unquestionably the
+same single program (e.g. Kalshi "Grambling St." / CFBD "Grambling";
+Kalshi "Penn" / CFBD "Pennsylvania" -- Penn State is a different program
+that resolves through the FBS registry and never reaches this table).
+This is an identity table for CLASSIFICATION only: nothing here feeds
+`teams.registry`, so no entry can ever pull a game into pricing. A
+variant is honored only when its canonical CFBD name is actually present
+in the season's fetched /teams data (see build_non_fbs_school_name_set),
+so a program leaving CFBD's non-FBS universe deactivates its variant
+automatically instead of asserting a stale identity."""
+
+
+def build_non_fbs_school_name_set(cfbd_teams: list[dict]) -> frozenset[str]:
+    """As `build_fcs_school_name_set`, but for EVERY non-FBS
+    classification CFBD's /teams data carries (fcs, ii, iii) -- because
+    "this event involves a program that is provably not FBS" is exactly
+    as classification-relevant for a Division II school as for an FCS
+    one, and Kalshi lists single-game markets for both. Same exact-match,
+    identity-only philosophy: no aliases into the FBS registry, no fuzzy
+    matching, no modeling. Includes the same deterministic "<X> State" ->
+    "<X> St." abbreviated form, plus the verified
+    KNOWN_NON_FBS_NAME_VARIANTS spellings whose canonical CFBD name is
+    present in `cfbd_teams`."""
+    names: set[str] = set()
+    for team in cfbd_teams:
+        classification = str(team.get("classification", "")).casefold()
+        if classification in ("", "fbs") or not team.get("school"):
+            continue
+        normalized = normalize_school_name(team["school"])
+        names.add(normalized)
+        if normalized.endswith(" state"):
+            names.add(normalized[: -len(" state")] + " st.")
+    for variant, canonical in KNOWN_NON_FBS_NAME_VARIANTS.items():
+        if canonical in names:
+            names.add(variant)
+    return frozenset(names)
+
+
+def is_known_non_fbs_school(raw_name: str | None, non_fbs_school_names: frozenset[str]) -> bool:
+    """Exact match only (post-normalization), like `is_known_fcs_school`.
+    A name absent from the set is never guessed as non-FBS -- the caller's
+    fail-closed handling of genuinely unknown names is unaffected."""
+    if not raw_name:
+        return False
+    return normalize_school_name(raw_name) in non_fbs_school_names

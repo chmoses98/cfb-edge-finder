@@ -29,6 +29,21 @@ def is_genuine_mapping_failure(reason: KalshiCfbCoverageReason | None) -> bool:
         return False
     return to_coverage_outcome(reason) == CoverageOutcome.TICKER_UNRESOLVED
 
+
+def is_unsupported_population(reason: KalshiCfbCoverageReason | None) -> bool:
+    """True for a reason that resolves to
+    `CoverageOutcome.UNSUPPORTED_MARKET` -- a correctly-classified,
+    deliberately-declined population (FCS_VS_FCS, NON_FBS_PARTICIPANT,
+    mapped-but-unsupported family/population, futures). Mutually
+    exclusive with `is_genuine_mapping_failure` by construction (each
+    reason maps to exactly one CoverageOutcome), so the health report can
+    account every scanned market as exactly one of mapped / unsupported /
+    genuinely failed."""
+    if reason is None:
+        return False
+    return to_coverage_outcome(reason) == CoverageOutcome.UNSUPPORTED_MARKET
+
+
 MAX_SCHEDULE_STALENESS_HOURS = 6.0
 """mission section 9: source schedule timestamp must be "fresh enough."
 6 hours is generous relative to an hourly scanner cadence (comfortably

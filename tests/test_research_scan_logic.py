@@ -129,3 +129,24 @@ def test_every_coverage_reason_is_classified_without_error():
     # reason -- never raises, always returns a bool.
     for reason in KalshiCfbCoverageReason:
         assert isinstance(scan_logic.is_genuine_mapping_failure(reason), bool)
+
+
+def test_non_fbs_participant_is_not_a_genuine_mapping_failure():
+    # 2026-09-01 forensic audit: FBS-vs-FCS and other deterministically
+    # identified non-FBS fixtures are declined populations, not failures.
+    assert scan_logic.is_genuine_mapping_failure(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) is False
+
+
+def test_unsupported_population_classifier_is_exclusive_with_failure():
+    # Every reason is exactly one of: mapped, unsupported population,
+    # genuine failure, or another explicit non-population outcome --
+    # never both a failure and an unsupported population, so the health
+    # report's accounting cannot double-count a market.
+    for reason in KalshiCfbCoverageReason:
+        assert not (
+            scan_logic.is_genuine_mapping_failure(reason) and scan_logic.is_unsupported_population(reason)
+        )
+    assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) is True
+    assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.FCS_VS_FCS) is True
+    assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING) is False
+    assert scan_logic.is_unsupported_population(None) is False

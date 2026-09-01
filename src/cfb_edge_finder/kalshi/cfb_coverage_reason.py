@@ -68,6 +68,19 @@ class KalshiCfbCoverageReason(StrEnum):
     genuinely unresolved market -- even though no game_id is produced.
     See mission hardening notes in game_mapping.py."""
 
+    NON_FBS_PARTICIPANT = "non_fbs_participant"
+    """At least one side of the matchup is deterministically identified
+    (exact-match only, via CFBD's own /teams classification metadata --
+    see teams.fcs_identity.build_non_fbs_school_name_set) as a non-FBS
+    program (FCS, Division II, or Division III), so the event can never
+    be a supported FBS-vs-FBS population regardless of what the other
+    side is. Game identity is not further resolved (teams.registry is
+    FBS-only by design). A real, understood, unsupported population --
+    the general form of FCS_VS_FCS, added after the 2026-09-01 live
+    forensic audit found ~84% of a 45% "mapping failure" alarm was
+    FBS-vs-known-FCS fixtures mislabeled AMBIGUOUS_TEAM_MAPPING (the
+    FCS_VS_FCS carve-out requires BOTH sides to be FCS)."""
+
     AMBIGUOUS_GAME_MAPPING = "ambiguous_game_mapping"
     """Team identities resolved, but more than one (or zero) candidate
     CFBD game matches the extracted date/team-pair evidence -- e.g. two
@@ -114,6 +127,7 @@ _REASON_TO_COVERAGE_OUTCOME: dict[KalshiCfbCoverageReason, CoverageOutcome] = {
     KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY: CoverageOutcome.UNSUPPORTED_MARKET,
     KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION: CoverageOutcome.UNSUPPORTED_MARKET,
     KalshiCfbCoverageReason.FCS_VS_FCS: CoverageOutcome.UNSUPPORTED_MARKET,
+    KalshiCfbCoverageReason.NON_FBS_PARTICIPANT: CoverageOutcome.UNSUPPORTED_MARKET,
     KalshiCfbCoverageReason.AMBIGUOUS_GAME_MAPPING: CoverageOutcome.TICKER_UNRESOLVED,
     KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING: CoverageOutcome.TICKER_UNRESOLVED,
     KalshiCfbCoverageReason.PARSE_UNRESOLVED: CoverageOutcome.TICKER_UNRESOLVED,

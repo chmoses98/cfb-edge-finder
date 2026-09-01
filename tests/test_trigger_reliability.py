@@ -297,13 +297,29 @@ def test_conductor_dry_run_dispatches_nothing():
 
 def test_conductor_survives_a_dead_schedule_source():
     """CFBD being down must degrade the trigger layer, not kill it --
-    GitHub cron is still the fallback underneath."""
+    GitHub cron is still the fallback underneath.
+
+    Since the two-lane architecture there are TWO correct degraded
+    outcomes for a dead live fetch, and which one this end-to-end
+    subprocess hits depends on durable state the test cannot pin:
+    whether origin/research-data currently carries a fresh
+    football-state artifact. (It genuinely did from 2026-09-01 -- the
+    post-quota-recovery bootstrap -- which is what exposed the old
+    single-outcome assertion as environment-dependent.) Either way the
+    conductor must stay alive and exit 0; the hermetic unit tests below
+    pin each branch individually."""
     result = _conductor("--dry-run", "--season", "2026")
     assert result.returncode == 0
-    # Positive statement of the failure, not a bare absence of success.
-    assert "schedule fetch         : FAIL" in result.stdout
-    assert "FETCH_FAILED" in result.stdout
-    assert "fallback" in result.stdout.lower()
+    degraded_no_artifact = (
+        "schedule fetch         : FAIL" in result.stdout
+        and "FETCH_FAILED" in result.stdout
+        and "fallback" in result.stdout.lower()
+    )
+    planned_from_artifact = (
+        "live schedule fetch failed" in result.stdout
+        and "planning from durable football-state artifact" in result.stdout
+    )
+    assert degraded_no_artifact or planned_from_artifact
 
 
 def test_conductor_refuses_to_dispatch_without_credentials():
@@ -390,6 +406,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import capture_kalshi_cfb_snapshot as _milestone_d  # noqa: E402,F401  (import registers it for monkeypatching)
 
 import scripts.collection_conductor as conductor  # noqa: E402
+from cfb_edge_finder.research import football_state as football_state_mod  # noqa: E402
 
 # --- root cause 1: configuration must actually propagate ------------------
 
@@ -737,14 +754,76 @@ def test_fetch_schedule_health_reports_counts_not_just_kickoffs(monkeypatch):
 
 
 def test_fetch_schedule_health_returns_failure_as_data(monkeypatch):
-    """A dead schedule source must degrade the trigger layer, not raise."""
+    """A dead schedule source WITH no usable durable artifact must degrade
+    the trigger layer, not raise. The artifact fallback is stubbed out --
+    without that, this test's outcome silently depended on whether the
+    real origin/research-data branch happened to carry a fresh
+    football-state artifact at run time (from 2026-09-01 it did, and the
+    fallback legitimately succeeded)."""
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
     monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
                         lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.football_state.load_football_state_from_git",
+        lambda repo_dir, branch, season: (None, football_state_mod.FOOTBALL_STATE_MISSING),
+    )
     health = conductor.fetch_schedule_health(2026, NOW)
     assert health.fetch_success is False
     assert health.state is SchedulePlanningState.FETCH_FAILED
     assert "cfbd down" in health.detail
+
+
+def test_fetch_schedule_health_plans_from_fresh_durable_artifact(monkeypatch):
+    """Two-lane architecture: a dead live fetch with a FRESH durable
+    football-state artifact plans read-only from the artifact -- the
+    exact lane that kept the conductor alive through the 2026-08-29
+    CFBD-429 storm, pinned here hermetically."""
+    monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
+    fresh_state = football_state_mod.FootballState(
+        season=2026,
+        history_seasons=(),
+        schedule_fetched_at=NOW - timedelta(hours=1),
+        teams_fetched_at=NOW - timedelta(hours=1),
+        history_fetched_at=NOW - timedelta(hours=1),
+        schedule_games=[],
+        all_division_teams=[],
+        history={},
+    )
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.football_state.load_football_state_from_git",
+        lambda repo_dir, branch, season: (fresh_state, "LOADED"),
+    )
+    health = conductor.fetch_schedule_health(2026, NOW)
+    assert health.fetch_success is True
+    assert "planning from durable football-state artifact" in health.detail
+
+
+def test_fetch_schedule_health_refuses_a_stale_durable_artifact(monkeypatch):
+    """Beyond the same hard staleness bound the capture guard enforces,
+    the fallback must stay a failure: the conductor never plans coverage
+    from a schedule the collector itself would refuse."""
+    monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
+    stale_state = football_state_mod.FootballState(
+        season=2026,
+        history_seasons=(),
+        schedule_fetched_at=NOW - timedelta(hours=999),
+        teams_fetched_at=NOW - timedelta(hours=999),
+        history_fetched_at=NOW - timedelta(hours=999),
+        schedule_games=[],
+        all_division_teams=[],
+        history={},
+    )
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.football_state.load_football_state_from_git",
+        lambda repo_dir, branch, season: (stale_state, "LOADED"),
+    )
+    health = conductor.fetch_schedule_health(2026, NOW)
+    assert health.fetch_success is False
+    assert health.state is SchedulePlanningState.FETCH_FAILED
 
 
 def test_render_states_fetch_result_explicitly():

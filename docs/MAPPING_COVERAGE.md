@@ -127,3 +127,34 @@ If `FBS_VS_FBS_POTENTIAL_LEAK` shows a matchup whose fixture **is** in the
 schedule, that is a real mapping defect and should be fixed. If the count
 rises while every entry is still schedule-absent, the schedule source is
 the thing to investigate — not the mapper.
+
+## 2026-09-01 follow-up: the 45% HIGH alarm and `NON_FBS_PARTICIPANT`
+
+The scenario this document predicted arrived: Week 0's completed games
+left the denominator while the declined populations persisted, and the
+scheduled collector's `mapping_failures / markets_scanned` crossed the
+40% HIGH threshold (1,775 / 3,923 markets; 185 / 439 events — GH Actions
+run 33556291244, replayed with
+`scripts/audit_production_mapping_replay.py`, which maps against the
+production not-started pool with zero CFBD requests). Decomposition:
+
+| Bucket | Markets |
+|---|---|
+| FBS-vs-known-FCS (`AMBIGUOUS_TEAM_MAPPING` mislabel) | 1,485 |
+| Non-FBS programs under variant/D2/D3/mascot names | 246 |
+| Miami (FL)/Stanford schedule-source discrepancy | 44 |
+
+Zero mapping defects — the numerator, not the mapper, was wrong: the
+`FCS_VS_FCS` carve-out requires **both** sides to be FCS, so an
+FBS-vs-FCS fixture counted as a genuine failure.
+
+The fix generalizes the carve-out: `NON_FBS_PARTICIPANT` (one side
+deterministically identified as a non-FBS program via CFBD /teams, exact
+match only — `teams.fcs_identity.build_non_fbs_school_name_set`, which
+also carries a small table of live-verified Kalshi spelling variants such
+as "Grambling St." for CFBD "Grambling"). These markets are accounted as
+`markets_unsupported_population`, and the health report now also carries
+`events_scanned` / `events_mapping_failed` so a single unresolved
+ladder's fan-out is visible. The HIGH threshold, denominator, and
+fail-closed behavior for genuinely unidentifiable names (and for the
+Miami/Stanford-style schedule-absent FBS pair) are unchanged.

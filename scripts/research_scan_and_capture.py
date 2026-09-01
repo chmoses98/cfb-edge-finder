@@ -296,6 +296,7 @@ def _apply_scan(
     games: list[GameRecord],
     classification_by_game_id: dict[str, tuple[str | None, str | None]],
     fcs_school_names: frozenset[str],
+    non_fbs_school_names: frozenset[str] = frozenset(),
     cache: GameProjectionCache,
     kalshi_client: KalshiClient,
     model_version: ModelVersion,
@@ -378,20 +379,29 @@ def _apply_scan(
             markets_by_event.setdefault(str(market.get("event_ticker", "")), []).append(market)
 
         for event_ticker, event_markets in markets_by_event.items():
+            report.events_scanned += 1
             probe_market = event_markets[0]
             evidence = milestone_d._evidence_from_market(probe_market, event_ticker)  # noqa: SLF001
             with telemetry.phase("game_mapping_seconds"):
                 mapping: KalshiGameMappingResult = map_kalshi_event_to_game(
-                    evidence, games, fcs_school_names=fcs_school_names
+                    evidence, games, fcs_school_names=fcs_school_names,
+                    non_fbs_school_names=non_fbs_school_names,
                 )
             # See research.scan_logic.is_genuine_mapping_failure's own
             # docstring: a live rehearsal caught a cruder
             # `mapping.reason is not None` check here also counting
             # FCS_VS_FCS (a correctly-classified, understood population)
             # as a failure, making a routine ~45% FCS-involved early-
-            # season slate look like a 72% mapping failure rate.
+            # season slate look like a 72% mapping failure rate. The
+            # 2026-09-01 forensic audit found the same shape one level
+            # up -- FBS-vs-FCS and other non-FBS fixtures landing in
+            # AMBIGUOUS_TEAM_MAPPING -- hence NON_FBS_PARTICIPANT and
+            # the explicit unsupported-population accounting here.
             if scan_logic.is_genuine_mapping_failure(mapping.reason):
+                report.events_mapping_failed += 1
                 report.mapping_failures += len(event_markets)
+            elif scan_logic.is_unsupported_population(mapping.reason):
+                report.markets_unsupported_population += len(event_markets)
 
             matched_game = games_by_id.get(mapping.game_id) if mapping.game_id else None
             home_cls = away_cls = None
@@ -459,20 +469,32 @@ def _apply_scan(
             # With the schedule served from the durable artifact (up to
             # 6h old under the existing staleness guard), a game moved
             # EARLIER is the one drift direction the clock guard cannot
-            # catch on its own. Kalshi's own close_time for a mapped
-            # market is an independent, already-captured signal of the
-            # real deadline: a disagreement beyond tolerance marks the
-            # game KICKOFF-UNCERTAIN and captures NOTHING for it this
-            # run -- fail closed, explicitly accounted. An absent
-            # close_time skips the check (the freshness bound, the clock
-            # guard, and Kalshi's active-status requirement remain in
-            # force).
+            # catch on its own. A mapped market whose Kalshi close_time
+            # is EARLIER than the cached kickoff beyond tolerance is
+            # evidence of exactly that: the game is marked
+            # KICKOFF-UNCERTAIN and NOTHING is captured for it this run
+            # -- fail closed, explicitly accounted.
+            #
+            # DIRECTIONAL, not symmetric, on live evidence: Kalshi sets
+            # close_time to kickoff + 48h for every CFB single-game
+            # market (2026-09-01 forensic audit -- all 160 mapped
+            # events sat exactly 2880-2881 min "adrift", and the
+            # symmetric |drift| check silently withheld the ENTIRE
+            # mapped universe from the moment it shipped, including the
+            # Sep 3 T_3D windows the reconciler then recorded as
+            # missed). A close_time AFTER the cached kickoff carries no
+            # evidence the game moved earlier, and the delayed/started
+            # directions are already covered by the clock guard,
+            # Kalshi's active-status requirement, and the freshness
+            # bound. An absent close_time skips the check (those same
+            # protections remain in force).
             kickoff_uncertain = False
             if kickoff is not None and matched_game is not None and evidence.reference_timestamp is not None:
-                drift_minutes = abs((evidence.reference_timestamp - kickoff).total_seconds()) / 60.0
-                if drift_minutes > football_state.KICKOFF_SANITY_TOLERANCE_MINUTES:
+                closes_early_minutes = (kickoff - evidence.reference_timestamp).total_seconds() / 60.0
+                if closes_early_minutes > football_state.KICKOFF_SANITY_TOLERANCE_MINUTES:
                     kickoff_uncertain = True
                     telemetry.kickoff_uncertain_games += 1
+                    report.kickoff_uncertain_events += 1
                     capture_state_rows.append(
                         CaptureStateRecord(
                             game_id=matched_game.game_id,
@@ -481,9 +503,10 @@ def _apply_scan(
                             state=CaptureState.OTHER_EXPLICIT_REASON,
                             observed_at=now,
                             detail=(
-                                f"kickoff_uncertain: cached kickoff {kickoff.isoformat()} vs Kalshi "
-                                f"close_time {evidence.reference_timestamp.isoformat()} "
-                                f"({drift_minutes:.0f} min apart) -- captures withheld fail-closed"
+                                f"kickoff_uncertain: Kalshi close_time {evidence.reference_timestamp.isoformat()} "
+                                f"is {closes_early_minutes:.0f} min EARLIER than cached kickoff "
+                                f"{kickoff.isoformat()} -- possible earlier reschedule; captures withheld "
+                                f"fail-closed"
                             ),
                             run_id=run_id,
                         )
@@ -1047,6 +1070,7 @@ def main() -> int:
             games=not_started_games,
             classification_by_game_id=classification_by_game_id,
             fcs_school_names=fcs_school_names,
+            non_fbs_school_names=inputs.non_fbs_school_names,
             cache=cache,
             kalshi_client=kalshi_client,
             model_version=model_version,
@@ -1154,12 +1178,16 @@ def main() -> int:
     report_dict = {
         "games_scanned": report.games_scanned,
         "markets_scanned": report.markets_scanned,
+        "events_scanned": report.events_scanned,
+        "events_mapping_failed": report.events_mapping_failed,
+        "markets_unsupported_population": report.markets_unsupported_population,
         "supported_markets": report.supported_markets,
         "captures_due": report.captures_due,
         "captures_written": report.captures_written,
         "captures_skipped_already_present": report.captures_skipped_already_present,
         "missed_windows": report.missed_windows,
         "mapping_failures": report.mapping_failures,
+        "kickoff_uncertain_events": report.kickoff_uncertain_events,
         "stale_schedule_failures": report.stale_schedule_failures,
         "diagnostics": [{"severity": d.severity.value, "code": d.code, "detail": d.detail} for d in diagnostics],
     }

@@ -103,3 +103,80 @@ def test_report_is_mutable_accumulator():
     report.markets_scanned += 100
     assert report.games_scanned == 5
     assert report.markets_scanned == 100
+
+
+# --- 2026-09-01 forensic-audit closure: event-level context + accounting ---
+
+
+def test_week1_like_unsupported_heavy_slate_is_not_a_false_high_alarm():
+    # The exact live shape that tripped the 2026-09-01 false alarm, as it
+    # accounts AFTER the NON_FBS_PARTICIPANT classification: a large
+    # deliberately-declined population (FBS-vs-FCS ladders, D2/D3
+    # fixtures) explicitly accounted as unsupported, with only a small
+    # genuine-failure residue (e.g. a schedule-source discrepancy).
+    report = CaptureHealthReport(
+        games_scanned=3438,
+        markets_scanned=3923,
+        events_scanned=439,
+        events_mapping_failed=23,
+        markets_unsupported_population=2039,
+        mapping_failures=232,
+        captures_due=0,
+        supported_markets=0,
+    )
+    diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
+    assert not any(d.code == "mapping_failure_rate_high" for d in diagnostics)
+    assert not should_fail_run(diagnostics)
+
+
+def test_captures_due_zero_with_zero_supported_markets_is_not_a_collapse():
+    # supported_markets only increments when a due checkpoint prices a
+    # market, so a run with nothing due legitimately reports 0. With no
+    # baseline (the scheduled scanner passes None), that must never read
+    # as a discovery/mapping collapse.
+    report = CaptureHealthReport(
+        games_scanned=3438, markets_scanned=3923, events_scanned=439,
+        captures_due=0, supported_markets=0, mapping_failures=0,
+    )
+    diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
+    assert diagnostics == []
+    assert not should_fail_run(diagnostics)
+
+
+def test_genuine_large_scale_mapping_failure_still_fails_high_and_loud():
+    # If mapping genuinely breaks (a Kalshi grammar change, a registry
+    # regression), the failures land in mapping_failures regardless of
+    # the new unsupported-population accounting -- the HIGH alarm and the
+    # nonzero exit must survive the metric refinement unchanged.
+    report = CaptureHealthReport(
+        games_scanned=3438,
+        markets_scanned=3923,
+        events_scanned=439,
+        events_mapping_failed=439,
+        markets_unsupported_population=0,
+        mapping_failures=3923,
+    )
+    diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
+    assert any(d.code == "mapping_failure_rate_high" and d.severity == Severity.HIGH for d in diagnostics)
+    assert should_fail_run(diagnostics)
+
+
+def test_mapping_diagnostics_carry_event_level_context():
+    report = CaptureHealthReport(
+        games_scanned=10, markets_scanned=100, events_scanned=20,
+        events_mapping_failed=10, markets_unsupported_population=5, mapping_failures=50,
+    )
+    diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
+    high = next(d for d in diagnostics if d.code == "mapping_failure_rate_high")
+    assert "10/20" in high.detail
+    assert "markets_unsupported_population=5" in high.detail
+
+
+def test_event_level_fields_default_to_zero_and_change_no_legacy_behavior():
+    # Reports built without the new fields (every pre-existing caller)
+    # must evaluate exactly as before.
+    report = CaptureHealthReport(games_scanned=10, markets_scanned=100, mapping_failures=50)
+    diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
+    high = next(d for d in diagnostics if d.code == "mapping_failure_rate_high")
+    assert high.severity == Severity.HIGH
+    assert "events:" not in high.detail

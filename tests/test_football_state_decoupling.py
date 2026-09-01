@@ -308,20 +308,25 @@ def test_unknown_kickoff_captures_nothing(tmp_path, monkeypatch):
     assert result.written == 0
 
 
-def test_kalshi_close_time_drift_marks_kickoff_uncertain_and_captures_nothing(tmp_path, monkeypatch):
-    state = _make_state(tmp_path, kickoff_hours_ahead=0.5, n_games=1)
+def test_close_time_earlier_than_kickoff_marks_kickoff_uncertain_and_captures_nothing(tmp_path, monkeypatch):
+    # The one direction the clock guard cannot catch: the market closing
+    # HOURS BEFORE the cached kickoff evidences a game moved earlier.
+    state = _make_state(tmp_path, kickoff_hours_ahead=6.0, n_games=1)
     inputs = state.to_scan_inputs(NOW)
     games = inputs.games
     markets = make_markets(games)
-    drifted = (games[0].kickoff_utc + timedelta(hours=3)).isoformat()
+    drifted = (games[0].kickoff_utc - timedelta(hours=3)).isoformat()
     for series_markets in markets.values():
         for market in series_markets:
             market["close_time"] = drifted
-    result, telemetry, _report, _g = _run_scan_from_state(
+    result, telemetry, report, _g = _run_scan_from_state(
         tmp_path, state, monkeypatch, markets=markets
     )
     assert result.written == 0
     assert telemetry.kickoff_uncertain_games >= 1
+    assert report.kickoff_uncertain_events >= 1
+    diagnostics = health.evaluate_collapse(report, baseline_supported_markets=None)
+    assert any(d.code == "kickoff_uncertain_events" for d in diagnostics)
     state_rows = [json.loads(line) for line in _state_path(tmp_path).read_text().splitlines() if line.strip()]
     assert any(
         r["state"] == CaptureState.OTHER_EXPLICIT_REASON.value and "kickoff_uncertain" in r["detail"]
@@ -329,11 +334,32 @@ def test_kalshi_close_time_drift_marks_kickoff_uncertain_and_captures_nothing(tm
     )
 
 
+def test_kalshi_standard_48h_late_close_time_still_captures(tmp_path, monkeypatch):
+    # Live regression (2026-09-01 forensic audit): Kalshi sets close_time
+    # to kickoff + 48h on EVERY CFB single-game market. A symmetric
+    # |drift| check treated that universal shape as kickoff-uncertain and
+    # silently withheld the entire mapped universe -- all 160 mapped
+    # events, including the Sep 3 T_3D windows later reconciled as
+    # missed. A later close_time is not evidence the game moved earlier
+    # and must not withhold anything.
+    state = _make_state(tmp_path, kickoff_hours_ahead=0.5, n_games=1)
+    inputs = state.to_scan_inputs(NOW)
+    markets = make_markets(inputs.games)
+    late = (inputs.games[0].kickoff_utc + timedelta(hours=48)).isoformat()
+    for series_markets in markets.values():
+        for market in series_markets:
+            market["close_time"] = late
+    result, telemetry, report, _g = _run_scan_from_state(tmp_path, state, monkeypatch, markets=markets)
+    assert result.written > 0
+    assert telemetry.kickoff_uncertain_games == 0
+    assert report.kickoff_uncertain_events == 0
+
+
 def test_close_time_within_tolerance_still_captures(tmp_path, monkeypatch):
     state = _make_state(tmp_path, kickoff_hours_ahead=0.5, n_games=1)
     inputs = state.to_scan_inputs(NOW)
     markets = make_markets(inputs.games)
-    near = (inputs.games[0].kickoff_utc + timedelta(minutes=5)).isoformat()
+    near = (inputs.games[0].kickoff_utc - timedelta(minutes=5)).isoformat()
     for series_markets in markets.values():
         for market in series_markets:
             market["close_time"] = near
