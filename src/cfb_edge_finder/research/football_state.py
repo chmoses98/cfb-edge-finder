@@ -67,9 +67,11 @@ Kickoff-change safety is layered, not single-source:
   3. Kalshi's own `status == "active"` requirement (discovery drops a
      started game's markets);
   4. the fast loop's close-time sanity check (scan side): a mapped
-     market whose Kalshi `close_time` disagrees with the cached kickoff
+     market whose Kalshi `close_time` is EARLIER than the cached kickoff
      by more than KICKOFF_SANITY_TOLERANCE_MINUTES marks the game
-     KICKOFF-UNCERTAIN and captures nothing for it, fail-closed.
+     KICKOFF-UNCERTAIN and captures nothing for it, fail-closed --
+     directional, because Kalshi's close_time is kickoff+48h by rule
+     (see KICKOFF_SANITY_TOLERANCE_MINUTES).
 """
 
 from __future__ import annotations
@@ -115,12 +117,19 @@ game days. A day-old fit is the SAME fit unless games finished since.
 The hard cap only exists so a forgotten artifact cannot serve forever."""
 
 KICKOFF_SANITY_TOLERANCE_MINUTES = 30.0
-"""Fast-lane cross-check threshold: cached kickoff vs the mapped Kalshi
-market's own close_time. Beyond this the game is KICKOFF-UNCERTAIN and
-nothing is captured for it. Tolerant enough for ordinary clock skew and
-Kalshi closing a few minutes around kickoff; tight enough that a genuine
-reschedule/postponement (which moves close_time by hours) always trips
-it."""
+"""Fast-lane cross-check threshold: a mapped Kalshi market whose
+close_time is EARLIER than the cached kickoff by more than this marks
+the game KICKOFF-UNCERTAIN and nothing is captured for it. Directional
+by live evidence, not symmetric: Kalshi sets close_time to kickoff+48h
+for every CFB single-game market (2026-09-01 audit), so a later
+close_time is the universal normal case and carries no evidence the
+game moved earlier -- a symmetric |drift| version of this check
+withheld the ENTIRE mapped universe fail-closed from the moment it
+shipped. The earlier direction is the one the clock guard cannot catch;
+the delayed/started directions are covered by the clock guard, Kalshi's
+active-status requirement, and the freshness bound. Tolerant enough for
+ordinary clock skew; tight enough that a genuine earlier reschedule
+(hours) always trips it."""
 
 # Freshness verdict vocabulary (strings, mirroring the repo's
 # state-string style in e.g. shadow sidecar states).

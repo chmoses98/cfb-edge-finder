@@ -57,6 +57,13 @@ class CaptureHealthReport:
     captures_skipped_already_present: int = 0
     missed_windows: int = 0
     mapping_failures: int = 0
+    kickoff_uncertain_events: int = 0
+    """Mapped events whose captures were withheld fail-closed because the
+    Kalshi close_time evidenced an EARLIER kickoff than the cached
+    schedule (possible earlier reschedule). Surfaced as a WARNING so a
+    systematic withholding can never again be silent: the 2026-09-01
+    audit found a symmetric version of this check quietly withholding
+    the entire mapped universe while every health field read healthy."""
     stale_schedule_failures: int = 0
     closing_due: int = 0
     closing_captured: int = 0
@@ -199,6 +206,16 @@ def evaluate_collapse(current: CaptureHealthReport, baseline_supported_markets: 
         diagnostics.append(
             Diagnostic(
                 Severity.HIGH, "persistence_failures", f"{current.persistence_failures} persistence write failure(s)"
+            )
+        )
+    if current.kickoff_uncertain_events > 0:
+        diagnostics.append(
+            Diagnostic(
+                Severity.WARNING,
+                "kickoff_uncertain_events",
+                f"{current.kickoff_uncertain_events} mapped event(s) withheld fail-closed on "
+                f"earlier-kickoff evidence (Kalshi close_time before cached kickoff); each has an "
+                f"explicit reason in the capture-state log",
             )
         )
     if current.stale_schedule_failures > 0:
