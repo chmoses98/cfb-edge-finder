@@ -35,6 +35,22 @@ class CaptureHealthReport:
 
     games_scanned: int = 0
     markets_scanned: int = 0
+    events_scanned: int = 0
+    """Distinct Kalshi events discovered across the scanned series. One
+    unresolved EVENT fans its failure across every contract in its ladder
+    (mapping_failures counts markets), so event-level counts are the
+    companion metric that says how much of the universe actually failed
+    rather than how many contracts sat under the failures."""
+    events_mapping_failed: int = 0
+    """Events whose identity mapping was a genuine failure
+    (scan_logic.is_genuine_mapping_failure) -- the event-level numerator
+    matching mapping_failures' market-level one."""
+    markets_unsupported_population: int = 0
+    """Markets under events classified as deliberately-declined
+    populations (FCS_VS_FCS / NON_FBS_PARTICIPANT --
+    scan_logic.is_unsupported_population): counted so the report
+    accounts them explicitly instead of leaving them implied by
+    subtraction, and NEVER counted in mapping_failures."""
     supported_markets: int = 0
     captures_due: int = 0
     captures_written: int = 0
@@ -110,12 +126,24 @@ def evaluate_collapse(current: CaptureHealthReport, baseline_supported_markets: 
 
     if current.markets_scanned > 0:
         mapping_failure_rate = current.mapping_failures / current.markets_scanned
+        event_context = ""
+        if current.events_scanned > 0:
+            # Companion event-level rate: one failed event fans out
+            # across its whole contract ladder, so the market-level rate
+            # alone cannot say whether 40% of the universe failed or one
+            # big ladder did. Context only -- the threshold decision
+            # stays on the market-level rate, unchanged.
+            event_rate = current.events_mapping_failed / current.events_scanned
+            event_context = (
+                f" (events: {current.events_mapping_failed}/{current.events_scanned} = {event_rate:.0%}; "
+                f"markets_unsupported_population={current.markets_unsupported_population})"
+            )
         if mapping_failure_rate >= MAPPING_FAILURE_RATE_HIGH:
             diagnostics.append(
                 Diagnostic(
                     Severity.HIGH,
                     "mapping_failure_rate_high",
-                    f"mapping_failures/markets_scanned = {mapping_failure_rate:.0%}",
+                    f"mapping_failures/markets_scanned = {mapping_failure_rate:.0%}{event_context}",
                 )
             )
         elif mapping_failure_rate >= MAPPING_FAILURE_RATE_WARN:
@@ -123,7 +151,7 @@ def evaluate_collapse(current: CaptureHealthReport, baseline_supported_markets: 
                 Diagnostic(
                     Severity.WARNING,
                     "mapping_failure_rate_elevated",
-                    f"mapping_failures/markets_scanned = {mapping_failure_rate:.0%}",
+                    f"mapping_failures/markets_scanned = {mapping_failure_rate:.0%}{event_context}",
                 )
             )
 

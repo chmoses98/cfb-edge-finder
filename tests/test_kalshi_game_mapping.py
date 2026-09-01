@@ -392,3 +392,105 @@ def test_university_at_albany_matchup_is_fcs_vs_fcs_not_ambiguous():
         make_evidence("New Hampshire vs University at Albany"), [], fcs_school_names=fcs_names
     )
     assert result.reason == KalshiCfbCoverageReason.FCS_VS_FCS
+
+
+# --- NON_FBS_PARTICIPANT: the 2026-09-01 forensic-audit closure ----------
+# Live evidence (GH Actions run 33556291244): 1,485 of 1,775 "mapping
+# failure" markets were FBS-vs-known-FCS fixtures ("Montana St. vs
+# Nevada"), and most of the rest involved Division II/III programs or
+# verified Kalshi name variants -- all deliberately-declined populations
+# that landed in AMBIGUOUS_TEAM_MAPPING because the FCS_VS_FCS carve-out
+# requires BOTH sides to be FCS.
+
+NON_FBS_SCHOOL_NAMES = frozenset(
+    {"cornell", "colgate", "montana st.", "montana state", "edward waters", "grambling st.", "grambling"}
+)
+
+
+def test_fbs_vs_known_fcs_is_non_fbs_participant_not_a_mapping_failure():
+    # "Montana St. vs Nevada": Nevada resolves in the FBS registry,
+    # Montana St. is a known FCS program -- the fixture can never be a
+    # supported FBS-vs-FBS population, so it must be classified, not
+    # counted as a failure.
+    result = map_kalshi_event_to_game(
+        make_evidence("Montana St. vs Nevada"),
+        candidate_games=[],
+        fcs_school_names=frozenset({"montana st.", "montana state"}),
+        non_fbs_school_names=NON_FBS_SCHOOL_NAMES,
+    )
+    assert result.reason == KalshiCfbCoverageReason.NON_FBS_PARTICIPANT
+    assert result.game_id is None
+
+
+def test_known_non_fbs_side_with_unknown_opponent_is_non_fbs_participant():
+    # One side provably non-FBS is enough: whatever the unknown opponent
+    # is, the fixture is not a supported population. (Live example:
+    # "Edward Waters Tigers vs Jackson St." -- the D2 side's
+    # mascot-suffixed name is unknown, the FCS side is known.)
+    result = map_kalshi_event_to_game(
+        make_evidence("Some Unknown Opponent vs Edward Waters"),
+        candidate_games=[],
+        fcs_school_names=frozenset(),
+        non_fbs_school_names=NON_FBS_SCHOOL_NAMES,
+    )
+    assert result.reason == KalshiCfbCoverageReason.NON_FBS_PARTICIPANT
+
+
+def test_both_sides_unknown_stays_ambiguous_team_mapping_fail_closed():
+    # Neither side deterministically identified -> the event stays a
+    # genuine mapping failure. No guessing, ever.
+    result = map_kalshi_event_to_game(
+        make_evidence("Webber International Warriors vs Kentucky Christian Knights"),
+        candidate_games=[],
+        fcs_school_names=FCS_SCHOOL_NAMES,
+        non_fbs_school_names=NON_FBS_SCHOOL_NAMES,
+    )
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_ambiguous_fbs_name_never_reclassified_by_non_fbs_set():
+    # Bare "Miami" is a genuine FBS-registry collision
+    # (AmbiguousTeamAliasError). Even if a same-named school appeared in
+    # the non-FBS set, ambiguity must win: only an UNKNOWN side is
+    # eligible for the non-FBS identity check.
+    result = map_kalshi_event_to_game(
+        make_evidence("Florida State at Miami"),
+        candidate_games=[],
+        fcs_school_names=frozenset(),
+        non_fbs_school_names=frozenset({"miami"}),
+    )
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_fcs_vs_fcs_still_takes_precedence_over_non_fbs_participant():
+    # Both sides known FCS keeps the more specific, pre-existing reason.
+    result = map_kalshi_event_to_game(
+        make_evidence("Cornell vs Colgate"),
+        candidate_games=[],
+        fcs_school_names=FCS_SCHOOL_NAMES,
+        non_fbs_school_names=NON_FBS_SCHOOL_NAMES,
+    )
+    assert result.reason == KalshiCfbCoverageReason.FCS_VS_FCS
+
+
+def test_without_non_fbs_school_names_supplied_behavior_is_unchanged():
+    # Default (empty) set must reproduce the exact prior behavior.
+    result = map_kalshi_event_to_game(
+        make_evidence("Montana St. vs Nevada"), candidate_games=[], fcs_school_names=frozenset()
+    )
+    assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+
+
+def test_unmappable_fbs_vs_fbs_event_remains_fail_closed():
+    # Miami (FL) vs Stanford: both sides resolve cleanly in the FBS
+    # registry but CFBD's schedule carries no such fixture -- must stay a
+    # genuine, loud PARSE_UNRESOLVED (schedule-source discrepancy), never
+    # be absorbed by the unsupported-population classification.
+    result = map_kalshi_event_to_game(
+        make_evidence("Miami (FL) vs Stanford"),
+        candidate_games=[make_game()],
+        fcs_school_names=FCS_SCHOOL_NAMES,
+        non_fbs_school_names=NON_FBS_SCHOOL_NAMES,
+    )
+    assert result.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
+    assert result.game_id is None

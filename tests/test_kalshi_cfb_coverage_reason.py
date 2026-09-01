@@ -63,3 +63,13 @@ def test_reason_values_carry_no_betting_language():
 def test_to_coverage_outcome_rejects_non_member():
     with pytest.raises(KeyError):
         to_coverage_outcome("not_a_real_reason")  # type: ignore[arg-type]
+
+
+def test_non_fbs_participant_is_unsupported_market_not_ticker_unresolved():
+    # 2026-09-01 forensic audit: a deterministically identified non-FBS
+    # participant is a declined population, never a mapping failure.
+    assert to_coverage_outcome(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) == CoverageOutcome.UNSUPPORTED_MARKET
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT)
+        != to_coverage_outcome(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING)
+    )

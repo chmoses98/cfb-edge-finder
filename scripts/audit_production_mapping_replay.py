@@ -46,7 +46,11 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import _split_title, map_kalshi_event_to_game  # noqa: E402
 from cfb_edge_finder.research import football_state, scan_logic  # noqa: E402
-from cfb_edge_finder.teams.fcs_identity import is_known_fcs_school, normalize_school_name  # noqa: E402
+from cfb_edge_finder.teams.fcs_identity import (  # noqa: E402
+    is_known_fcs_school,
+    is_known_non_fbs_school,
+    normalize_school_name,
+)
 from cfb_edge_finder.teams.registry import (  # noqa: E402
     AmbiguousTeamAliasError,
     UnknownTeamAliasError,
@@ -66,7 +70,12 @@ def _load_capture_module():
     return module
 
 
-def _side_status(raw_name: str | None, fcs_school_names: frozenset[str], cls_by_school: dict[str, str]) -> str:
+def _side_status(
+    raw_name: str | None,
+    fcs_school_names: frozenset[str],
+    non_fbs_school_names: frozenset[str],
+    cls_by_school: dict[str, str],
+) -> str:
     """What ONE raw Kalshi side deterministically is. Exact match only."""
     if not raw_name:
         return "missing"
@@ -82,6 +91,8 @@ def _side_status(raw_name: str | None, fcs_school_names: frozenset[str], cls_by_
     division = cls_by_school.get(normalize_school_name(raw_name))
     if division:
         return f"known_division_{division}"
+    if is_known_non_fbs_school(raw_name, non_fbs_school_names):
+        return "known_non_fbs_variant"
     return "unknown"
 
 
@@ -105,6 +116,7 @@ def main() -> int:
     games = inputs.games
     not_started = [g for g in games if g.status == "scheduled"]
     fcs_school_names = inputs.fcs_school_names
+    non_fbs_school_names = inputs.non_fbs_school_names
     cls_by_school = {
         normalize_school_name(str(row.get("school"))): str(row.get("classification"))
         for row in state.all_division_teams
@@ -129,8 +141,16 @@ def main() -> int:
             by_event.setdefault(str(market.get("event_ticker", "")), []).append(market)
         for event_ticker, event_markets in by_event.items():
             evidence = capture._evidence_from_market(event_markets[0], event_ticker)  # noqa: SLF001
-            mapping = map_kalshi_event_to_game(evidence, not_started, fcs_school_names=fcs_school_names)
-            mapping_full = map_kalshi_event_to_game(evidence, games, fcs_school_names=fcs_school_names)
+            mapping = map_kalshi_event_to_game(
+                evidence, not_started,
+                fcs_school_names=fcs_school_names,
+                non_fbs_school_names=non_fbs_school_names,
+            )
+            mapping_full = map_kalshi_event_to_game(
+                evidence, games,
+                fcs_school_names=fcs_school_names,
+                non_fbs_school_names=non_fbs_school_names,
+            )
             if evidence.raw_home_name and evidence.raw_away_name:
                 raw_pair = (evidence.raw_home_name, evidence.raw_away_name)
             else:
@@ -150,8 +170,8 @@ def main() -> int:
                     "detail": mapping.detail[:220],
                     "side_a": side_a,
                     "side_b": side_b,
-                    "side_a_status": _side_status(side_a, fcs_school_names, cls_by_school),
-                    "side_b_status": _side_status(side_b, fcs_school_names, cls_by_school),
+                    "side_a_status": _side_status(side_a, fcs_school_names, non_fbs_school_names, cls_by_school),
+                    "side_b_status": _side_status(side_b, fcs_school_names, non_fbs_school_names, cls_by_school),
                     "game_id": mapping.game_id,
                 }
             )

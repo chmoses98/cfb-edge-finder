@@ -296,6 +296,7 @@ def _apply_scan(
     games: list[GameRecord],
     classification_by_game_id: dict[str, tuple[str | None, str | None]],
     fcs_school_names: frozenset[str],
+    non_fbs_school_names: frozenset[str] = frozenset(),
     cache: GameProjectionCache,
     kalshi_client: KalshiClient,
     model_version: ModelVersion,
@@ -378,20 +379,29 @@ def _apply_scan(
             markets_by_event.setdefault(str(market.get("event_ticker", "")), []).append(market)
 
         for event_ticker, event_markets in markets_by_event.items():
+            report.events_scanned += 1
             probe_market = event_markets[0]
             evidence = milestone_d._evidence_from_market(probe_market, event_ticker)  # noqa: SLF001
             with telemetry.phase("game_mapping_seconds"):
                 mapping: KalshiGameMappingResult = map_kalshi_event_to_game(
-                    evidence, games, fcs_school_names=fcs_school_names
+                    evidence, games, fcs_school_names=fcs_school_names,
+                    non_fbs_school_names=non_fbs_school_names,
                 )
             # See research.scan_logic.is_genuine_mapping_failure's own
             # docstring: a live rehearsal caught a cruder
             # `mapping.reason is not None` check here also counting
             # FCS_VS_FCS (a correctly-classified, understood population)
             # as a failure, making a routine ~45% FCS-involved early-
-            # season slate look like a 72% mapping failure rate.
+            # season slate look like a 72% mapping failure rate. The
+            # 2026-09-01 forensic audit found the same shape one level
+            # up -- FBS-vs-FCS and other non-FBS fixtures landing in
+            # AMBIGUOUS_TEAM_MAPPING -- hence NON_FBS_PARTICIPANT and
+            # the explicit unsupported-population accounting here.
             if scan_logic.is_genuine_mapping_failure(mapping.reason):
+                report.events_mapping_failed += 1
                 report.mapping_failures += len(event_markets)
+            elif scan_logic.is_unsupported_population(mapping.reason):
+                report.markets_unsupported_population += len(event_markets)
 
             matched_game = games_by_id.get(mapping.game_id) if mapping.game_id else None
             home_cls = away_cls = None
@@ -1047,6 +1057,7 @@ def main() -> int:
             games=not_started_games,
             classification_by_game_id=classification_by_game_id,
             fcs_school_names=fcs_school_names,
+            non_fbs_school_names=inputs.non_fbs_school_names,
             cache=cache,
             kalshi_client=kalshi_client,
             model_version=model_version,
@@ -1154,6 +1165,9 @@ def main() -> int:
     report_dict = {
         "games_scanned": report.games_scanned,
         "markets_scanned": report.markets_scanned,
+        "events_scanned": report.events_scanned,
+        "events_mapping_failed": report.events_mapping_failed,
+        "markets_unsupported_population": report.markets_unsupported_population,
         "supported_markets": report.supported_markets,
         "captures_due": report.captures_due,
         "captures_written": report.captures_written,

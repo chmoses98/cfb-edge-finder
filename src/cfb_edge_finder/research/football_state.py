@@ -90,7 +90,7 @@ from cfb_edge_finder.ingestion.game_normalization import (
 from cfb_edge_finder.modeling.corpus import TeamGameLine, build_team_game_lines
 from cfb_edge_finder.research.scan_logic import MAX_SCHEDULE_STALENESS_HOURS
 from cfb_edge_finder.schemas.game import GameRecord
-from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set
+from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set, build_non_fbs_school_name_set
 
 FOOTBALL_STATE_SCHEMA_VERSION = "football_state_v1"
 FOOTBALL_STATE_SUBDIR = "football_state"
@@ -231,6 +231,7 @@ class FootballState:
             classification[game.game_id] = (home_classification(raw), away_classification(raw))
 
         fcs_names = build_fcs_school_name_set(self.all_division_teams)
+        non_fbs_names = build_non_fbs_school_name_set(self.all_division_teams)
 
         def lines_loader() -> list[TeamGameLine]:
             lines: list[TeamGameLine] = []
@@ -248,6 +249,7 @@ class FootballState:
             games=games,
             classification_by_game_id=classification,
             fcs_school_names=fcs_names,
+            non_fbs_school_names=non_fbs_names,
             schedule_source_timestamp=self.schedule_fetched_at,
             lines_loader=lines_loader,
         )
@@ -260,6 +262,11 @@ class ScanInputs:
     fcs_school_names: frozenset[str]
     schedule_source_timestamp: datetime
     lines_loader: object  # zero-arg callable -> list[TeamGameLine]
+    non_fbs_school_names: frozenset[str] = frozenset()
+    """Exact-match-normalized names of every known non-FBS program
+    (fcs/ii/iii, per CFBD /teams) -- see
+    teams.fcs_identity.build_non_fbs_school_name_set. Defaults empty so
+    pre-existing constructions keep their legacy mapping behavior."""
 
 
 @dataclass

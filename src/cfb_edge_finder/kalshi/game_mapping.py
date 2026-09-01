@@ -60,7 +60,7 @@ from datetime import datetime, timedelta
 from cfb_edge_finder.kalshi.cfb_coverage_reason import KalshiCfbCoverageReason
 from cfb_edge_finder.schemas.common import MarketFamily
 from cfb_edge_finder.schemas.game import GameRecord
-from cfb_edge_finder.teams.fcs_identity import is_known_fcs_school
+from cfb_edge_finder.teams.fcs_identity import is_known_fcs_school, is_known_non_fbs_school
 from cfb_edge_finder.teams.registry import (
     AmbiguousTeamAliasError,
     UnknownTeamAliasError,
@@ -154,20 +154,26 @@ def _split_title(title: str) -> tuple[str, str] | None:
     return None
 
 
-def _resolve_one(raw_name: str) -> tuple[str | None, str | None]:
-    """Returns (team_id, error_detail). Exactly one is None."""
+def _resolve_one(raw_name: str) -> tuple[str | None, str | None, bool]:
+    """Returns (team_id, error_detail, failed_as_unknown). Exactly one of
+    the first two is None. `failed_as_unknown` is True only for
+    UnknownTeamAliasError -- an AMBIGUOUS name (bare "Miami") is a real
+    FBS-registry collision and must never be eligible for the non-FBS
+    identity check below, where an exact-name match could otherwise
+    quietly reclassify a genuinely ambiguous FBS market."""
     try:
-        return resolve_team_alias(raw_name), None
+        return resolve_team_alias(raw_name), None, False
     except AmbiguousTeamAliasError as exc:
-        return None, f"{raw_name!r} is ambiguous: {exc}"
+        return None, f"{raw_name!r} is ambiguous: {exc}", False
     except UnknownTeamAliasError as exc:
-        return None, f"{raw_name!r} is unknown: {exc}"
+        return None, f"{raw_name!r} is unknown: {exc}", True
 
 
 def map_kalshi_event_to_game(
     evidence: KalshiGameEvidence,
     candidate_games: list[GameRecord],
     fcs_school_names: frozenset[str] = frozenset(),
+    non_fbs_school_names: frozenset[str] = frozenset(),
 ) -> KalshiGameMappingResult:
     """The single entry point. Never raises -- every failure path returns a
     `KalshiGameMappingResult` with an explicit `reason` and human-readable
@@ -179,7 +185,19 @@ def map_kalshi_event_to_game(
     that don't supply it get IDENTICAL behavior to before this parameter
     existed (both sides simply fall through to AMBIGUOUS_TEAM_MAPPING, as
     always). When supplied and BOTH raw team names match it exactly, a
-    genuine FCS-vs-FCS market is classified as FCS_VS_FCS instead."""
+    genuine FCS-vs-FCS market is classified as FCS_VS_FCS instead.
+
+    `non_fbs_school_names`: optional, exact-match-normalized set of ALL
+    known non-FBS school names (fcs/ii/iii -- see
+    `teams.fcs_identity.build_non_fbs_school_name_set`). Defaults to
+    empty (identical legacy behavior). When supplied and a side that
+    failed registry resolution as UNKNOWN matches it exactly, the event
+    is classified NON_FBS_PARTICIPANT: one side provably non-FBS means
+    the fixture can never be a supported FBS-vs-FBS population,
+    whatever the other side is. Deliberately consulted ONLY for
+    unknown-name sides -- an AMBIGUOUS name is a genuine FBS-registry
+    collision and stays AMBIGUOUS_TEAM_MAPPING (fail-closed), and a
+    side that resolved in the FBS registry is FBS by definition."""
     if evidence.raw_home_name and evidence.raw_away_name:
         first_raw, second_raw = evidence.raw_home_name, evidence.raw_away_name
     elif evidence.title:
@@ -198,8 +216,8 @@ def map_kalshi_event_to_game(
             detail="no title and no structured home/away name evidence to parse",
         )
 
-    first_id, first_error = _resolve_one(first_raw)
-    second_id, second_error = _resolve_one(second_raw)
+    first_id, first_error, first_unknown = _resolve_one(first_raw)
+    second_id, second_error, second_unknown = _resolve_one(second_raw)
     if first_id is None or second_id is None:
         if is_known_fcs_school(first_raw, fcs_school_names) and is_known_fcs_school(second_raw, fcs_school_names):
             return KalshiGameMappingResult(
@@ -210,6 +228,23 @@ def map_kalshi_event_to_game(
                     f"programs (CFBD /teams classification) -- teams.registry is FBS-only by design, "
                     f"so game identity is not further resolved; this is an understood unsupported "
                     f"population, not a parse failure"
+                ),
+            )
+        non_fbs_sides = [
+            raw
+            for raw, unknown in ((first_raw, first_unknown), (second_raw, second_unknown))
+            if unknown and is_known_non_fbs_school(raw, non_fbs_school_names)
+        ]
+        if non_fbs_sides:
+            return KalshiGameMappingResult(
+                reason=KalshiCfbCoverageReason.NON_FBS_PARTICIPANT,
+                game_id=None,
+                detail=(
+                    f"{', '.join(repr(s) for s in non_fbs_sides)} deterministically identified as "
+                    f"non-FBS program(s) (CFBD /teams classification, exact match) -- the fixture "
+                    f"cannot be a supported FBS-vs-FBS population regardless of the other side; "
+                    f"game identity is not further resolved (teams.registry is FBS-only by design); "
+                    f"an understood unsupported population, not a mapping failure"
                 ),
             )
         details = [d for d in (first_error, second_error) if d]
