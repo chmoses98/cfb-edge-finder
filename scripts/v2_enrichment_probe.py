@@ -28,10 +28,10 @@ def show(label: str, r: requests.Response | None, err: str | None = None, chars:
     print(f"  body: {body}")
 
 
-def get(label: str, url: str, **kw):
+def get(label: str, url: str, chars: int = 400, **kw):
     try:
         r = requests.get(url, headers=UA, timeout=40, **kw)
-        show(label, r)
+        show(label, r, chars=chars)
         return r
     except Exception as exc:  # noqa: BLE001
         show(label, None, f"{type(exc).__name__}: {exc}")
@@ -102,7 +102,12 @@ def main() -> int:
                        ("collegefootballpoll coaching changes", "https://www.collegefootballpoll.com/coaching-changes/"),
                        ("wikipedia 2024 FBS coaching changes", "https://en.wikipedia.org/wiki/2024_NCAA_Division_I_FBS_football_season#Coaching_changes"),
                        ("cfbd docs redoc", "https://api.collegefootballdata.com/api/docs/?url=/api-docs.json"),
-                       ("NWS API points (keyless)", "https://api.weather.gov/points/40.0017,-83.0197")):
+                       ("NWS API points (keyless)", "https://api.weather.gov/points/40.0017,-83.0197"),
+                       ("ESPN core team roster/athletes (2025 OSU)", "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2025/teams/194/athletes?limit=5"),
+                       ("ESPN core injuries (2025 OSU)", "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/teams/194/injuries"),
+                       ("ESPN core event odds history sample", "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/events/401628378/competitions/401628378/odds/58/history/0/movement?limit=100"),
+                       ("ESPN core 2026 week1 events", "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2026/types/2/weeks/1/events?limit=5"),
+                       ("Wikipedia REST (2024 season page, HTML)", "https://en.wikipedia.org/api/rest_v1/page/html/2024_NCAA_Division_I_FBS_football_season")):
         get(label, url, chars=250)
     print("\nSTATUS: read-only probe complete; no metered call spent.")
     return 0
