@@ -8,6 +8,12 @@ name: Live Info Sidecar (research-only)
 
 on:
   workflow_dispatch:
+  # push trigger = one validation run per change while this file lives only
+  # on the research branch (workflow_dispatch/schedule require the file on
+  # the default branch).
+  push:
+    branches: [claude/cfb-model-v2-research-krupoc]
+    paths: [scripts/live_info_sidecar.py, .github/workflows/live-info-sidecar.yml]
   schedule:
     - cron: "17 */6 * * *"
 
