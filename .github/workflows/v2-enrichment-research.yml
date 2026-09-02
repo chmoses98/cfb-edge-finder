@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe (default) -- reachability + quota only"
+        description: "probe (default) | weather -- fetch Open-Meteo kickoff weather for every V2 game and push to research-data"
         required: false
         default: "probe"
 
@@ -26,8 +26,48 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -q requests
+      - run: pip install -q requests pandas pyarrow
       - name: Source reachability + unmetered quota probe
+        if: ${{ github.event.inputs.mode != 'weather' }}
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: python scripts/v2_enrichment_probe.py
+
+  weather:
+    if: ${{ github.event.inputs.mode == 'weather' }}
+    runs-on: ubuntu-latest
+    # Writes ONLY to the research-data orphan branch (never main), same
+    # pattern and concurrency group as preseason-research-fetch.yml.
+    permissions:
+      contents: write
+    concurrency:
+      group: research-data-write
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests pandas pyarrow
+      - name: Fetch Open-Meteo kickoff weather (free, keyless, zero CFBD calls)
+        run: |
+          python scripts/v2_fetch_weather.py --games data/research_inputs/v2_games_for_weather.csv \
+            --out-dir "$RUNNER_TEMP/weather"
+          ls -la "$RUNNER_TEMP/weather"
+      - name: Push to research-data (data/research_cache/v2_enrich/weather)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin research-data --depth=1
+          rm -rf /tmp/rd && git worktree add /tmp/rd origin/research-data --detach
+          mkdir -p /tmp/rd/data/research_cache/v2_enrich/weather
+          cp "$RUNNER_TEMP"/weather/* /tmp/rd/data/research_cache/v2_enrich/weather/
+          cd /tmp/rd && git add data/research_cache/v2_enrich
+          git diff --cached --quiet && { echo unchanged; exit 0; }
+          git commit -m "V2 enrichment cache: Open-Meteo kickoff weather (archive/hforecast/prevrun) for V2 games
+
+          Free, keyless, read-only fetch on a GitHub-hosted runner by
+          .github/workflows/v2-enrichment-research.yml (mode=weather).
+          Zero CFBD calls. See manifest.json for timing classes."
+          git push origin HEAD:research-data
