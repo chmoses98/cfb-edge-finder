@@ -34,12 +34,24 @@ UA = {"User-Agent": "cfb-edge-finder live-info sidecar (research-only, read-only
 ESPN = "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football"
 
 
-def _get(url: str, params: dict | None = None) -> tuple[int, str]:
-    try:
-        r = requests.get(url, params=params, headers=UA, timeout=40)
-        return r.status_code, r.text
-    except Exception as exc:  # noqa: BLE001
-        return 0, f"{type(exc).__name__}: {exc}"
+def _get(url: str, params: dict | None = None, retries: int = 1) -> tuple[int, str]:
+    """One GET with at most ``retries`` extra attempts on transport failure / 429 / 5xx.
+
+    Never raises: a final failure is returned as (0, message) so it is recorded as
+    a row and retried by the next capture instead of aborting the run.
+    """
+    last: tuple[int, str] = (0, "no attempt")
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, params=params, headers=UA, timeout=40)
+            last = (r.status_code, r.text)
+            if r.status_code < 500 and r.status_code != 429:
+                return last
+        except Exception as exc:  # noqa: BLE001
+            last = (0, f"{type(exc).__name__}: {exc}")
+        if attempt < retries:
+            time.sleep(3.0 * (attempt + 1))
+    return last
 
 
 def _row(kind: str, game_id: str, source: str, status: int, raw: str, parsed: dict, now: datetime, extra: dict | None = None) -> dict:

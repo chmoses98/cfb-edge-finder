@@ -1,0 +1,37 @@
+{
+  "spec_id": "cfb-v2-enriched-candidate-2026-09-02",
+  "status": "FROZEN RESEARCH SPEC -- optional component; see CFB_V2_DATA_ENRICHMENT_REPORT.md for the evidence and the primary recommendation",
+  "base": {
+    "spec": "docs/v2/V2_SPEC.json",
+    "spec_sha256": "d55b5ba077498402f7c79dcf20f693e96275bc238963aa6708b12b1f982d9bc2",
+    "dataset_version": "v2_dataset_v1",
+    "dataset_feature_hash": "c8f727e3c93bfc10",
+    "state_config": {"season_decay": 0.25, "lam": 6.0, "fcs_lam": 2.0},
+    "unchanged": "V2-TOTAL, V2-WINNER derivation, uncertainty model, continuity correction, folds, alpha grid, missing-value policy"
+  },
+  "component": {
+    "id": "SELFCORR-MARGIN-v1",
+    "family": "V2 self-correction (within-season residual feedback)",
+    "hypothesis": "the market prices a persistent, within-season team-level drift that V2's decayed state under-weights; V2's own prior-game residuals recover part of it",
+    "features": {
+      "selfcorr_cum": "for each side, mean over the team's PRIOR games this season of (V2 pred_margin - actual margin) from the team's perspective, shrunk by n/(n+3); feature = home value - away value; 0 when a side has no prior game",
+      "selfcorr_prev": "same using only the team's most recent prior game; 0 when absent"
+    },
+    "timing_rule": "uses only games that finished strictly before the game's kickoff; the V2 predictions used are the model's own out-of-sample predictions for those games (historically: rolling-origin fold predictions; in production: the live 0.x prediction recorded in the observation ledger at the time). Never uses the target game or any later game.",
+    "preprocessing": "appended to both V2-MARGIN members' feature sets (struct+pre -> 40 features, eff+pre -> 66), standardised with the rest; training-median fill (0 by construction)",
+    "model": "identical to V2-MARGIN: equal-weight mean of two standardised ridge regressions; alpha chosen on the inner validation season from {1,10,100,1000}; refit on all seasons < Y",
+    "training_cutoff": "all completed FBS-vs-FBS games through the 2025 postseason; NO 2026 game result",
+    "validation_folds": [2017, 2018, 2019, 2021, 2022, 2023, 2024, 2025],
+    "predictions_file": "docs/v2/enrichment/enr_selfcorr.json (metrics); preds on scratch reproduced by scripts/v2_enrich/enrich_eval.py"
+  },
+  "evidence": {
+    "pooled_margin_mae": {"v2": 12.635, "enriched": 12.596, "paired_delta": -0.039, "ci95": [-0.073, -0.007], "verdict": "improves"},
+    "by_season": {"2017": [12.772, 12.772], "2018": [12.981, 12.879], "2019": [12.523, 12.475], "2021": [13.089, 13.05], "2022": [12.477, 12.474], "2023": [12.407, 12.39], "2024": [12.639, 12.537], "2025": [12.217, 12.214]},
+    "common_2021_2025_vs_v2": {"delta": -0.026, "ci95": [-0.069, 0.015], "verdict": "flat"},
+    "spread_contract_brier": {"v2": 0.11727, "enriched": 0.11685, "ece": [0.00577, 0.00633]},
+    "large_disagreement_ge7": {"n": 603, "v2_mae": 14.617, "enriched_mae": 14.305, "market_mae": 12.396, "moved_toward_market_pct": 71.0, "side_win_pct_unchanged": 49.3},
+    "market_gap_closed": "no: V2+selfcorr vs close paired delta +0.373 [+0.241, +0.489] on common 2021-2025 games"
+  },
+  "acceptance_assessment": "MODEST, borderline-repeatable (7 of 8 folds non-worse, pooled interval excludes zero, common-set interval does not). Does not alter the market comparison, calibration, or large-disagreement side accuracy. Not sufficient on its own to justify a distinct production model version; documented for a future productionization mission to include only if it survives a second season of prospective evidence.",
+  "no_2026_outcome_used": true
+}
