@@ -101,6 +101,14 @@ class CFBDClient:
                 pass
         return min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS)
 
+    def fetch_raw(self, path: str, params: dict[str, object] | None = None) -> list[dict] | dict:
+        """Generic authenticated GET for research acquisition scripts
+        (scripts/fetch_v2_research_cache.py). Same retry/auth discipline
+        as every typed fetcher; the caller owns endpoint/param semantics
+        and must record timing/leakage classification for whatever it
+        pulls. Never logs the key."""
+        return self._get(path, dict(params or {}))
+
     def fetch_account_info(self) -> dict:
         """Raw CFBD GET /info response -- the authenticated account/quota
         surface. LIVE-VERIFIED 2026-08-31 during the real quota outage

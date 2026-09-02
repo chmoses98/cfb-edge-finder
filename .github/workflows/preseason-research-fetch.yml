@@ -1,29 +1,57 @@
 name: Preseason Research Cache Fetch (manual)
 
 # MANUAL ONLY. No schedule, no cron. This workflow exists so a human can
-# deliberately spend a bounded number of real, rate-limited CFBD calls
-# (four per season: /games, /player/returning, /talent, /coaches) to build
-# the leakage-safe historical cache that preseason-prior research needs.
-# The dev environment cannot reach CFBD, so a GitHub-hosted runner is the
-# only place this can happen -- the same constraint documented since
-# Milestone B.
+# deliberately spend a bounded number of real, rate-limited CFBD calls to
+# build leakage-safe historical research caches. The dev environment
+# cannot reach CFBD, so a GitHub-hosted runner is the only place this can
+# happen -- the same constraint documented since Milestone B.
 #
-# READ-ONLY AGAINST CFBD. It fetches and writes a compact research cache.
-# It does not price anything, does not touch the production model, does
-# not qualify or recommend anything, and has no execution path.
+# Two modes, selected by `mode`:
+#   preseason -- the original 4-endpoint-per-season preseason cache
+#                (scripts/fetch_preseason_research_cache.py).
+#   v2        -- the CFB MODEL V2 research cache: whole-season pulls of
+#                games, box scores, advanced efficiency, drives, lines
+#                (evaluation only), polls, teams, recruiting, talent,
+#                returning production, coaches, season summaries, SP+,
+#                portal, venues (scripts/fetch_v2_research_cache.py).
+#                Hard call cap + minimum-remaining-quota guard; quota is
+#                read from the unmetered /info before and after and
+#                recorded in the manifest.
 #
-# The API key is passed as a secret and is never printed: the fetch script
-# hands it straight to the client and records only whether a key was
-# present.
+# READ-ONLY AGAINST CFBD. It fetches and writes a research cache. It does
+# not price anything, does not touch the production model, does not
+# qualify or recommend anything, and has no execution path.
+#
+# The API key is passed as a secret and is never printed.
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "preseason (original 4-endpoint cache) or v2 (CFB MODEL V2 research cache)"
+        required: false
+        default: "preseason"
       seasons:
-        description: "Space-separated seasons, e.g. '2019 2021 2022 2023 2024 2025'"
+        description: "Space-separated historical seasons, e.g. '2014 2015 ... 2025'"
         required: true
         default: "2019 2021 2022 2023 2024 2025"
+      current_season:
+        description: "v2 only: live season for which ONLY preseason-known endpoints are fetched (blank = none)"
+        required: false
+        default: ""
+      max_calls:
+        description: "v2 only: hard cap on metered CFBD calls for this run"
+        required: false
+        default: "520"
+      min_remaining:
+        description: "v2 only: refuse to start if /info remainingCalls is below this"
+        required: false
+        default: "600"
+      only:
+        description: "v2 only: space-separated endpoint names to fetch (blank = all)"
+        required: false
+        default: ""
       include_advanced:
-        description: "Also fetch /stats/game/advanced (pace). One extra call per season."
+        description: "preseason only: also fetch /stats/game/advanced (pace)"
         required: false
         default: "false"
       no_push:
@@ -59,6 +87,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Fetch preseason research cache
+        if: ${{ github.event.inputs.mode != 'v2' }}
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: |
@@ -67,14 +96,34 @@ jobs:
             --out-dir "$RUNNER_TEMP/preseason" \
             ${{ github.event.inputs.include_advanced == 'true' && '--include-advanced' || '' }}
 
+      - name: Fetch V2 research cache
+        if: ${{ github.event.inputs.mode == 'v2' }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          CURRENT_SEASON: ${{ github.event.inputs.current_season }}
+          ONLY: ${{ github.event.inputs.only }}
+        run: |
+          set -euo pipefail
+          EXTRA=""
+          if [ -n "$CURRENT_SEASON" ]; then EXTRA="$EXTRA --current-season $CURRENT_SEASON"; fi
+          if [ -n "$ONLY" ]; then EXTRA="$EXTRA --only $ONLY"; fi
+          python3 scripts/fetch_v2_research_cache.py \
+            --seasons ${{ github.event.inputs.seasons }} \
+            --out-dir "$RUNNER_TEMP/v2" \
+            --max-calls ${{ github.event.inputs.max_calls }} \
+            --min-remaining ${{ github.event.inputs.min_remaining }} \
+            $EXTRA
+
       - name: Report cache size
         run: |
           echo "Cache contents:"
-          ls -la "$RUNNER_TEMP/preseason"
-          du -sh "$RUNNER_TEMP/preseason"
+          ls -laR "$RUNNER_TEMP"/preseason "$RUNNER_TEMP"/v2 2>/dev/null || true
+          du -sh "$RUNNER_TEMP"/preseason "$RUNNER_TEMP"/v2 2>/dev/null || true
 
       - name: Push cache to the research-data orphan branch
         if: ${{ github.event.inputs.no_push != 'true' }}
+        env:
+          MODE: ${{ github.event.inputs.mode }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -85,21 +134,28 @@ jobs:
           git fetch origin research-data --depth=1
           rm -rf /tmp/rd && git worktree add /tmp/rd origin/research-data --detach
 
-          mkdir -p /tmp/rd/data/research_cache/preseason
-          cp "$RUNNER_TEMP/preseason"/*.json /tmp/rd/data/research_cache/preseason/
+          if [ "$MODE" = "v2" ]; then
+            mkdir -p /tmp/rd/data/research_cache/v2
+            cp -r "$RUNNER_TEMP"/v2/. /tmp/rd/data/research_cache/v2/
+            TARGET=data/research_cache/v2
+          else
+            mkdir -p /tmp/rd/data/research_cache/preseason
+            cp "$RUNNER_TEMP"/preseason/*.json /tmp/rd/data/research_cache/preseason/
+            TARGET=data/research_cache/preseason
+          fi
 
           cd /tmp/rd
-          git add data/research_cache/preseason
+          git add "$TARGET"
           if git diff --cached --quiet; then
             echo "cache unchanged; nothing to push"
             exit 0
           fi
-          git commit -m "Preseason research cache: seasons ${{ github.event.inputs.seasons }}
+          git commit -m "Research cache ($MODE): seasons ${{ github.event.inputs.seasons }}
 
           Fetched read-only from CFBD on a GitHub-hosted runner by
-          .github/workflows/preseason-research-fetch.yml. Compact: only
-          audited fields are retained. See manifest.json for per-endpoint
-          row counts, schema fingerprints and timing semantics.
+          .github/workflows/preseason-research-fetch.yml (mode=$MODE).
+          See manifest.json for per-endpoint row counts, schema
+          fingerprints, timing semantics and the metered-call count.
 
           No API key is present in this data."
           git push origin HEAD:research-data
