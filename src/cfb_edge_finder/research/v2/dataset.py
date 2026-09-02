@@ -270,9 +270,13 @@ def _state_feature_block(state, games_block: pd.DataFrame, metrics: list[str]) -
     return pd.DataFrame(cols, index=games_block.index)
 
 
+LONG_METRICS = ["pts_for", "margin", "o_ppa"]
+"""Metrics that also get a long-memory (slow season decay) strength, suffixed `_L`."""
+
+
 def build_dataset(cache: V2Cache, *, seasons: list[int], current_season: int | None = None,
                   state_cfg: StateConfig | None = None, min_eval_season: int | None = None,
-                  verbose: bool = True) -> DatasetBuild:
+                  long_decay: float = 0.85, verbose: bool = True) -> DatasetBuild:
     state_cfg = state_cfg or StateConfig()
     hist_seasons = [s for s in seasons if current_season is None or s != current_season]
     all_seasons = list(seasons) + ([current_season] if current_season and current_season not in seasons else [])
@@ -298,12 +302,19 @@ def build_dataset(cache: V2Cache, *, seasons: list[int], current_season: int | N
     feature_frames = []
     as_ofs = sorted({(s, w) for s, w in zip(games.season, games.week, strict=True)})
     first_eval = min_eval_season or (min(hist_seasons) + 1)
+    long_cfg = StateConfig(season_decay=long_decay, lam=state_cfg.lam, fcs_lam=state_cfg.fcs_lam)
     for s, w in as_ofs:
         if s < first_eval:
             continue
         block = games[(games.season == s) & (games.week == w)]
         state = fit_state(long, STATE_METRICS, cutoff_season=s, cutoff_week=w, cfg=state_cfg)
-        feature_frames.append(_state_feature_block(state, block, STATE_METRICS))
+        fb = _state_feature_block(state, block, STATE_METRICS)
+        # long-memory strengths: same fit, slower season decay, scoring metrics only
+        state_long = fit_state(long, LONG_METRICS, cutoff_season=s, cutoff_week=w, cfg=long_cfg)
+        fl = _state_feature_block(state_long, block, LONG_METRICS)
+        fl = fl[[c for c in fl.columns if c.startswith(("h_o_", "a_o_", "h_d_", "a_d_", "hfa_"))]]
+        fl.columns = [c + "_L" for c in fl.columns]
+        feature_frames.append(pd.concat([fb, fl], axis=1))
         if verbose and w in (1, 8):
             print(f"  state fitted as of {s} wk{w}: {len(state.teams)} teams, block {len(block)} games")
     state_feats = pd.concat(feature_frames) if feature_frames else pd.DataFrame(index=games.index)
@@ -343,6 +354,7 @@ def build_dataset(cache: V2Cache, *, seasons: list[int], current_season: int | N
     meta = {
         "dataset_version": DATASET_VERSION,
         "state_config": state_cfg.to_dict(),
+        "long_decay": long_decay,
         "state_metrics": STATE_METRICS,
         "seasons": all_seasons,
         "current_season": current_season,

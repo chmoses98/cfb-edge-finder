@@ -34,13 +34,21 @@ def _col(df: pd.DataFrame, c: str) -> pd.Series:
 
 def matchup_frame(df: pd.DataFrame) -> pd.DataFrame:
     """All derived matchup columns (superset); feature sets select from it."""
-    out = pd.DataFrame(index=df.index)
+    out: dict = {}
     hi = np.where(df["neutral"].astype(bool), 0.0, 1.0)
     out["home_ind"] = hi
     out["neutral"] = df["neutral"].astype(float)
     # structural margin strength
     out["str_margin_diff"] = _col(df, "h_o_margin") - _col(df, "a_o_margin")
     out["str_margin_hfa"] = _col(df, "hfa_margin") * hi
+    # long-memory strengths (slow season decay), present when the dataset was built with them
+    out["str_margin_diff_L"] = _col(df, "h_o_margin_L") - _col(df, "a_o_margin_L")
+    out["diff_pts_for_L"] = (_col(df, "h_o_pts_for_L") - _col(df, "a_d_pts_for_L")) - (
+        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L"))
+    out["sum_pts_for_L"] = (_col(df, "h_o_pts_for_L") - _col(df, "a_d_pts_for_L")) + (
+        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L"))
+    out["diff_o_ppa_L"] = (_col(df, "h_o_o_ppa_L") - _col(df, "a_d_o_ppa_L")) - (
+        _col(df, "a_o_o_ppa_L") - _col(df, "h_d_o_ppa_L"))
     for m in EFF_METRICS + PACE_METRICS:
         h_exp = _col(df, f"h_o_{m}") - _col(df, f"a_d_{m}")
         a_exp = _col(df, f"a_o_{m}") - _col(df, f"h_d_{m}")
@@ -71,9 +79,16 @@ def matchup_frame(df: pd.DataFrame) -> pd.DataFrame:
     # early-season interactions: preseason differential weighted by lack of current-season evidence
     early = np.exp(-out["min_games"] / 4.0)
     out["early_w"] = early
-    for f in ["talent", "recruit_avg4", "prev_margin_strength", "sp_prev_rating", "poll_pre_ap", "ret_percentPPA",
-              "ret_percentPassingPPA", "coach_change"]:
+    early_fields = ["talent", "recruit_avg4", "prev_margin_strength", "sp_prev_rating", "poll_pre_ap",
+                    "ret_percentPPA", "ret_percentPassingPPA", "coach_change"]
+    for f in early_fields:
         out[f"early_x_{f}_diff"] = out[f"pre_{f}_diff"] * early
+    # alternative decay speeds (Phase 4: learn the prior-decay schedule rather than assume k=4)
+    for k in (2.0, 8.0):
+        ek = np.exp(-out["min_games"] / k)
+        out[f"early_w_k{int(k)}"] = ek
+        for f in early_fields:
+            out[f"early_k{int(k)}_x_{f}_diff"] = out[f"pre_{f}_diff"] * ek
     # situational
     out["week"] = _col(df, "week")
     out["postseason"] = df["postseason"].astype(float) if "postseason" in df.columns else 0.0
@@ -92,7 +107,8 @@ def matchup_frame(df: pd.DataFrame) -> pd.DataFrame:
     # external rating
     out["elo_diff"] = _col(df, "home_pregame_elo") - _col(df, "away_pregame_elo")
     out["elo_sum"] = _col(df, "home_pregame_elo") + _col(df, "away_pregame_elo")
-    return out
+    frame = pd.DataFrame(out, index=df.index)
+    return frame
 
 
 FEATURE_SETS: dict[str, list[str]] = {}
@@ -134,6 +150,35 @@ _register("tot_struct", _SCORE + ["neutral"])
 _register("tot_eff", _SCORE + _EFF_SUM + _PACE + _EVID + ["neutral"])
 _register("tot_eff+pre", _SCORE + _EFF_SUM + _PACE + _EVID + _PRE_SUM + _PRE_DIFF + ["neutral", "early_w"])
 _register("tot_full", FEATURE_SETS["full"])
+
+
+# Preseason ablations: struct+pre minus one family at a time (Phase 4 evidence)
+_PRE_FAMILIES = {
+    "talent": ["talent", "recruit_avg4", "recruit_0"],
+    "returning": ["ret_percentPPA", "ret_percentPassingPPA", "ret_percentRushingPPA", "ret_percentReceivingPPA",
+                  "ret_usage"],
+    "coaching": ["coach_change", "coach_tenure"],
+    "prev_strength": ["prev_margin_strength", "prev2_margin_strength", "prev_pf", "prev_pa", "prev_win_pct"],
+    "sp_prev": ["sp_prev_rating", "sp_prev_off", "sp_prev_def"],
+    "poll": ["poll_pre_ap", "poll_pre_coaches"],
+    "fbs_new": ["fbs_new"],
+}
+for _fam, _fields in _PRE_FAMILIES.items():
+    _drop = {f"pre_{f}_diff" for f in _fields} | {f"early_x_{f}_diff" for f in _fields}
+    _register(f"struct+pre-no_{_fam}", [c for c in FEATURE_SETS["struct+pre"] if c not in _drop])
+_register("struct+pre-no_early", [c for c in FEATURE_SETS["struct+pre"] if not c.startswith("early_x_")])
+_register("struct+pre-only_talent_prev", _STRUCT + _EVID + [f"pre_{f}_diff" for f in _PRE_FAMILIES["talent"]
+                                                            + _PRE_FAMILIES["prev_strength"]]
+          + ["early_x_talent_diff", "early_x_prev_margin_strength_diff"])
+_register("struct+pre+elo", FEATURE_SETS["struct+pre"] + _ELO)
+_LONG = ["str_margin_diff_L", "diff_pts_for_L", "diff_o_ppa_L"]
+_register("struct+pre+long", FEATURE_SETS["struct+pre"] + _LONG)
+_register("struct+pre+long-no_sp_poll", [c for c in FEATURE_SETS["struct+pre+long"]
+                                          if not any(k in c for k in ("sp_prev", "poll_pre"))])
+_register("tot_eff+long", FEATURE_SETS["tot_eff"] + ["sum_pts_for_L"])
+for _k in (2, 8):
+    _register(f"struct+pre_k{_k}", [c.replace("early_x_", f"early_k{_k}_x_").replace("early_w", f"early_w_k{_k}")
+                                    for c in FEATURE_SETS["struct+pre"]])
 
 
 def feature_hash(name: str) -> str:

@@ -38,6 +38,11 @@ def main() -> int:
     ap.add_argument("--target", choices=["margin", "total"], default="margin")
     ap.add_argument("--name", required=True)
     ap.add_argument("--equal", action="store_true", help="equal weights everywhere (no learned weights)")
+    ap.add_argument(
+        "--affine",
+        action="store_true",
+        help="fit y = a + b*blend chronologically on prior OOS seasons (shrinkage / level recalibration)",
+    )
     args = ap.parse_args()
 
     df = pd.read_parquet(args.dataset)
@@ -65,8 +70,15 @@ def main() -> int:
             if w.sum() <= 0:
                 w = np.full(len(args.members), 1.0 / len(args.members))
             w = w / w.sum()
+        blend = M @ w
+        if args.affine and hist.sum() >= 300:
+            A = np.column_stack([np.ones(hist.sum()), blend[hist]])
+            ab, *_ = np.linalg.lstsq(A, y[hist], rcond=None)
+            w = np.concatenate([w, ab])
+            P.loc[cur, "pred"] = ab[0] + ab[1] * blend[cur]
+        else:
+            P.loc[cur, "pred"] = blend[cur]
         weights_by_season[int(s)] = [round(float(x), 4) for x in w]
-        P.loc[cur, "pred"] = M[cur] @ w
     out = pd.DataFrame({"game_id": P.game_id, "season": P.season, "week": P.week})
     if args.target == "margin":
         out["pred_margin"] = P["pred"].values
