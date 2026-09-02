@@ -29,3 +29,6 @@ data/ingestion_reports/
 # to the wrong branch -- scripts/research_*.py always check out
 # research-data via research/git_durable_store.py before writing for real.
 data/research/
+
+# V2 research caches live on the research-data branch only (see scripts/fetch_v2_research_cache.py).
+data/research_cache/
