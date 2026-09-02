@@ -40,11 +40,12 @@ class StateConfig:
     season_decay: float = 0.5
     lam: float = 6.0
     fcs_lam: float = 2.0
-    min_games_full: int = 6
-    """Not a hard threshold -- ridge shrinkage handles sparsity; kept for reporting."""
+    week_decay: float = 1.0
+    """Within-season recency: weight *= week_decay ** (weeks back) for games of the as-of season."""
 
     def to_dict(self) -> dict:
-        return {"season_decay": self.season_decay, "lam": self.lam, "fcs_lam": self.fcs_lam}
+        return {"season_decay": self.season_decay, "lam": self.lam, "fcs_lam": self.fcs_lam,
+                "week_decay": self.week_decay}
 
 
 def side_rows(games: pd.DataFrame, tg: pd.DataFrame, metrics: list[str]) -> pd.DataFrame:
@@ -106,6 +107,10 @@ def fit_state(long: pd.DataFrame, metrics: list[str], *, cutoff_season: int, cut
     hist = long[ordv < cut]
     assert (hist.season.values * 100 + hist.week.values < cut).all()
     w = np.power(cfg.season_decay, (cutoff_season - hist.season.values).astype(float))
+    if cfg.week_decay != 1.0:
+        same = hist.season.values == cutoff_season
+        back = np.maximum(cutoff_week - hist.week.values, 0).astype(float)
+        w = np.where(same, w * np.power(cfg.week_decay, back), w)
     teams = sorted(set(hist.team_key) | set(hist.opp_key))
     idx = {t: i for i, t in enumerate(teams)}
     k = len(teams)

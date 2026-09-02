@@ -33,6 +33,8 @@ def main() -> int:
     parser.add_argument("--season-decay", type=float, default=0.5)
     parser.add_argument("--lam", type=float, default=6.0)
     parser.add_argument("--min-eval-season", type=int, default=2015)
+    parser.add_argument("--week-decay", type=float, default=1.0)
+    parser.add_argument("--long-decay", type=float, default=0.85)
     args = parser.parse_args()
 
     cache = V2Cache(args.cache_dir)
@@ -41,8 +43,8 @@ def main() -> int:
     t0 = time.perf_counter()
     build = build_dataset(
         cache, seasons=args.seasons, current_season=args.current_season,
-        state_cfg=StateConfig(season_decay=args.season_decay, lam=args.lam),
-        min_eval_season=args.min_eval_season,
+        state_cfg=StateConfig(season_decay=args.season_decay, lam=args.lam, week_decay=args.week_decay),
+        min_eval_season=args.min_eval_season, long_decay=args.long_decay,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     save_dataset(build, args.out)
