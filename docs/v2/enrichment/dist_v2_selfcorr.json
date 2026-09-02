@@ -1,0 +1,2394 @@
+{
+  "margin_model": "enr_selfcorr",
+  "total_model": "tot_eff_ridge_d025_affine",
+  "method": "normal",
+  "by_season": {
+    "2018": {
+      "n_games": 772,
+      "resid_sd_margin": 16.411,
+      "resid_sd_total": 17.079,
+      "mean_sd_margin": 16.154,
+      "mean_sd_total": 16.239,
+      "coverage90_margin": 0.886,
+      "coverage90_total": 0.8834,
+      "spread": {
+        "n_contracts": 16984,
+        "n_games": 772,
+        "brier": 0.11957,
+        "log_loss": 0.37516,
+        "ece": 0.00606,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5276,
+            "predicted": 0.0165,
+            "observed": 0.0229,
+            "gap": 0.0065
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 1960,
+            "predicted": 0.0733,
+            "observed": 0.0786,
+            "gap": 0.0052
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2520,
+            "predicted": 0.1458,
+            "observed": 0.1444,
+            "gap": -0.0013
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3137,
+            "predicted": 0.2903,
+            "observed": 0.2792,
+            "gap": -0.0111
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 1993,
+            "predicted": 0.4934,
+            "observed": 0.4922,
+            "gap": -0.0012
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1285,
+            "predicted": 0.6917,
+            "observed": 0.6942,
+            "gap": 0.0025
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 452,
+            "predicted": 0.8475,
+            "observed": 0.8186,
+            "gap": -0.0289
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 193,
+            "predicted": 0.9239,
+            "observed": 0.9326,
+            "gap": 0.0088
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 168,
+            "predicted": 0.9751,
+            "observed": 0.9762,
+            "gap": 0.0011
+          }
+        ],
+        "hit_rate_90_95": 0.9326,
+        "hit_rate_95_plus": 0.9762
+      },
+      "total": {
+        "n_contracts": 10808,
+        "n_games": 772,
+        "brier": 0.17079,
+        "log_loss": 0.51542,
+        "ece": 0.04929,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 357,
+            "predicted": 0.0267,
+            "observed": 0.0812,
+            "gap": 0.0546
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 445,
+            "predicted": 0.0751,
+            "observed": 0.1371,
+            "gap": 0.062
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 996,
+            "predicted": 0.1507,
+            "observed": 0.2018,
+            "gap": 0.0511
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 1987,
+            "predicted": 0.3011,
+            "observed": 0.3558,
+            "gap": 0.0547
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2060,
+            "predicted": 0.5014,
+            "observed": 0.5544,
+            "gap": 0.053
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2428,
+            "predicted": 0.7048,
+            "observed": 0.7537,
+            "gap": 0.0489
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1603,
+            "predicted": 0.8513,
+            "observed": 0.8896,
+            "gap": 0.0383
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 742,
+            "predicted": 0.9241,
+            "observed": 0.9636,
+            "gap": 0.0395
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 190,
+            "predicted": 0.9615,
+            "observed": 1.0,
+            "gap": 0.0385
+          }
+        ],
+        "hit_rate_90_95": 0.9636,
+        "hit_rate_95_plus": 1.0
+      },
+      "all_const_sd_brier": 0.1391,
+      "winner": {
+        "n": 772,
+        "log_loss": 0.50968,
+        "brier": 0.17,
+        "accuracy": 0.7409
+      }
+    },
+    "2019": {
+      "n_games": 774,
+      "resid_sd_margin": 15.747,
+      "resid_sd_total": 16.267,
+      "mean_sd_margin": 16.346,
+      "mean_sd_total": 17.483,
+      "coverage90_margin": 0.916,
+      "coverage90_total": 0.9289,
+      "spread": {
+        "n_contracts": 17028,
+        "n_games": 774,
+        "brier": 0.11331,
+        "log_loss": 0.35401,
+        "ece": 0.00968,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5159,
+            "predicted": 0.0164,
+            "observed": 0.0114,
+            "gap": -0.005
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2008,
+            "predicted": 0.0726,
+            "observed": 0.0627,
+            "gap": -0.0099
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2589,
+            "predicted": 0.1461,
+            "observed": 0.1329,
+            "gap": -0.0132
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3154,
+            "predicted": 0.2918,
+            "observed": 0.2863,
+            "gap": -0.0055
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2002,
+            "predicted": 0.4931,
+            "observed": 0.499,
+            "gap": 0.0059
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1286,
+            "predicted": 0.6914,
+            "observed": 0.7302,
+            "gap": 0.0388
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 452,
+            "predicted": 0.8481,
+            "observed": 0.8473,
+            "gap": -0.0007
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 195,
+            "predicted": 0.9241,
+            "observed": 0.9026,
+            "gap": -0.0215
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 183,
+            "predicted": 0.9759,
+            "observed": 0.9672,
+            "gap": -0.0087
+          }
+        ],
+        "hit_rate_90_95": 0.9026,
+        "hit_rate_95_plus": 0.9672
+      },
+      "total": {
+        "n_contracts": 10836,
+        "n_games": 774,
+        "brier": 0.17081,
+        "log_loss": 0.51471,
+        "ece": 0.01781,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 35,
+            "predicted": 0.0367,
+            "observed": 0.0286,
+            "gap": -0.0081
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 158,
+            "predicted": 0.0792,
+            "observed": 0.057,
+            "gap": -0.0222
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 729,
+            "predicted": 0.1544,
+            "observed": 0.1139,
+            "gap": -0.0405
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2110,
+            "predicted": 0.3037,
+            "observed": 0.2754,
+            "gap": -0.0283
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2265,
+            "predicted": 0.5014,
+            "observed": 0.4821,
+            "gap": -0.0193
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2625,
+            "predicted": 0.7053,
+            "observed": 0.7101,
+            "gap": 0.0048
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1787,
+            "predicted": 0.8513,
+            "observed": 0.8696,
+            "gap": 0.0183
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 905,
+            "predicted": 0.9235,
+            "observed": 0.9326,
+            "gap": 0.0091
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 222,
+            "predicted": 0.9615,
+            "observed": 0.9505,
+            "gap": -0.011
+          }
+        ],
+        "hit_rate_90_95": 0.9326,
+        "hit_rate_95_plus": 0.9505
+      },
+      "all_const_sd_brier": 0.13577,
+      "winner": {
+        "n": 774,
+        "log_loss": 0.50732,
+        "brier": 0.16928,
+        "accuracy": 0.7468
+      }
+    },
+    "2021": {
+      "n_games": 770,
+      "resid_sd_margin": 16.132,
+      "resid_sd_total": 16.396,
+      "mean_sd_margin": 16.174,
+      "mean_sd_total": 17.087,
+      "coverage90_margin": 0.8935,
+      "coverage90_total": 0.9156,
+      "spread": {
+        "n_contracts": 16940,
+        "n_games": 770,
+        "brier": 0.12032,
+        "log_loss": 0.37362,
+        "ece": 0.00455,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5120,
+            "predicted": 0.017,
+            "observed": 0.0164,
+            "gap": -0.0006
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2071,
+            "predicted": 0.0731,
+            "observed": 0.0748,
+            "gap": 0.0017
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2632,
+            "predicted": 0.1459,
+            "observed": 0.1459,
+            "gap": -0.0
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3197,
+            "predicted": 0.2914,
+            "observed": 0.2884,
+            "gap": -0.003
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 1993,
+            "predicted": 0.4925,
+            "observed": 0.4817,
+            "gap": -0.0109
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1246,
+            "predicted": 0.6918,
+            "observed": 0.6717,
+            "gap": -0.02
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 393,
+            "predicted": 0.8466,
+            "observed": 0.8346,
+            "gap": -0.012
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 147,
+            "predicted": 0.9251,
+            "observed": 0.898,
+            "gap": -0.0272
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 141,
+            "predicted": 0.9753,
+            "observed": 0.9362,
+            "gap": -0.0391
+          }
+        ],
+        "hit_rate_90_95": 0.898,
+        "hit_rate_95_plus": 0.9362
+      },
+      "total": {
+        "n_contracts": 10780,
+        "n_games": 770,
+        "brier": 0.17402,
+        "log_loss": 0.52292,
+        "ece": 0.02613,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 53,
+            "predicted": 0.0338,
+            "observed": 0.0,
+            "gap": -0.0338
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 180,
+            "predicted": 0.0787,
+            "observed": 0.0667,
+            "gap": -0.012
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 739,
+            "predicted": 0.1551,
+            "observed": 0.1407,
+            "gap": -0.0144
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2082,
+            "predicted": 0.302,
+            "observed": 0.2531,
+            "gap": -0.0489
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2200,
+            "predicted": 0.5007,
+            "observed": 0.455,
+            "gap": -0.0457
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2564,
+            "predicted": 0.7049,
+            "observed": 0.6856,
+            "gap": -0.0193
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1795,
+            "predicted": 0.8523,
+            "observed": 0.8518,
+            "gap": -0.0005
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 928,
+            "predicted": 0.9237,
+            "observed": 0.9321,
+            "gap": 0.0084
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 239,
+            "predicted": 0.9617,
+            "observed": 0.9331,
+            "gap": -0.0286
+          }
+        ],
+        "hit_rate_90_95": 0.9321,
+        "hit_rate_95_plus": 0.9331
+      },
+      "all_const_sd_brier": 0.14141,
+      "winner": {
+        "n": 770,
+        "log_loss": 0.54484,
+        "brier": 0.18386,
+        "accuracy": 0.7143
+      }
+    },
+    "2022": {
+      "n_games": 776,
+      "resid_sd_margin": 15.771,
+      "resid_sd_total": 15.972,
+      "mean_sd_margin": 16.107,
+      "mean_sd_total": 16.724,
+      "coverage90_margin": 0.9149,
+      "coverage90_total": 0.933,
+      "spread": {
+        "n_contracts": 17072,
+        "n_games": 776,
+        "brier": 0.11656,
+        "log_loss": 0.3665,
+        "ece": 0.02083,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5278,
+            "predicted": 0.0169,
+            "observed": 0.0201,
+            "gap": 0.0032
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2043,
+            "predicted": 0.0734,
+            "observed": 0.0607,
+            "gap": -0.0127
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2582,
+            "predicted": 0.1462,
+            "observed": 0.1336,
+            "gap": -0.0126
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3171,
+            "predicted": 0.291,
+            "observed": 0.2649,
+            "gap": -0.0261
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 1992,
+            "predicted": 0.493,
+            "observed": 0.4378,
+            "gap": -0.0553
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1248,
+            "predicted": 0.6904,
+            "observed": 0.6426,
+            "gap": -0.0478
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 436,
+            "predicted": 0.8463,
+            "observed": 0.7936,
+            "gap": -0.0527
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 165,
+            "predicted": 0.9247,
+            "observed": 0.903,
+            "gap": -0.0217
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 157,
+            "predicted": 0.9783,
+            "observed": 0.9873,
+            "gap": 0.009
+          }
+        ],
+        "hit_rate_90_95": 0.903,
+        "hit_rate_95_plus": 0.9873
+      },
+      "total": {
+        "n_contracts": 10864,
+        "n_games": 776,
+        "brier": 0.17454,
+        "log_loss": 0.52238,
+        "ece": 0.0169,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 111,
+            "predicted": 0.0295,
+            "observed": 0.036,
+            "gap": 0.0066
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 242,
+            "predicted": 0.0764,
+            "observed": 0.0579,
+            "gap": -0.0185
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 845,
+            "predicted": 0.1533,
+            "observed": 0.1172,
+            "gap": -0.0361
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2125,
+            "predicted": 0.3014,
+            "observed": 0.2922,
+            "gap": -0.0091
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2169,
+            "predicted": 0.4995,
+            "observed": 0.4772,
+            "gap": -0.0223
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2535,
+            "predicted": 0.7046,
+            "observed": 0.6888,
+            "gap": -0.0158
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1757,
+            "predicted": 0.8525,
+            "observed": 0.8384,
+            "gap": -0.0142
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 883,
+            "predicted": 0.9239,
+            "observed": 0.9388,
+            "gap": 0.015
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 197,
+            "predicted": 0.9602,
+            "observed": 0.9695,
+            "gap": 0.0093
+          }
+        ],
+        "hit_rate_90_95": 0.9388,
+        "hit_rate_95_plus": 0.9695
+      },
+      "all_const_sd_brier": 0.13919,
+      "winner": {
+        "n": 776,
+        "log_loss": 0.5573,
+        "brier": 0.19035,
+        "accuracy": 0.7113
+      }
+    },
+    "2023": {
+      "n_games": 792,
+      "resid_sd_margin": 15.608,
+      "resid_sd_total": 16.07,
+      "mean_sd_margin": 15.899,
+      "mean_sd_total": 16.24,
+      "coverage90_margin": 0.9116,
+      "coverage90_total": 0.9091,
+      "spread": {
+        "n_contracts": 17424,
+        "n_games": 792,
+        "brier": 0.11517,
+        "log_loss": 0.35934,
+        "ece": 0.00939,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5524,
+            "predicted": 0.0165,
+            "observed": 0.015,
+            "gap": -0.0015
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2072,
+            "predicted": 0.0731,
+            "observed": 0.0685,
+            "gap": -0.0046
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2584,
+            "predicted": 0.1462,
+            "observed": 0.142,
+            "gap": -0.0041
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3174,
+            "predicted": 0.2911,
+            "observed": 0.2741,
+            "gap": -0.017
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2020,
+            "predicted": 0.4926,
+            "observed": 0.4767,
+            "gap": -0.0159
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1291,
+            "predicted": 0.6918,
+            "observed": 0.6561,
+            "gap": -0.0357
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 421,
+            "predicted": 0.8478,
+            "observed": 0.8504,
+            "gap": 0.0025
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 181,
+            "predicted": 0.9241,
+            "observed": 0.9171,
+            "gap": -0.007
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 157,
+            "predicted": 0.9731,
+            "observed": 0.9682,
+            "gap": -0.0049
+          }
+        ],
+        "hit_rate_90_95": 0.9171,
+        "hit_rate_95_plus": 0.9682
+      },
+      "total": {
+        "n_contracts": 11088,
+        "n_games": 792,
+        "brier": 0.17791,
+        "log_loss": 0.53287,
+        "ece": 0.00692,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 191,
+            "predicted": 0.0284,
+            "observed": 0.0524,
+            "gap": 0.024
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 381,
+            "predicted": 0.0776,
+            "observed": 0.1102,
+            "gap": 0.0327
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 1072,
+            "predicted": 0.1521,
+            "observed": 0.1791,
+            "gap": 0.027
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2283,
+            "predicted": 0.2987,
+            "observed": 0.3,
+            "gap": 0.0014
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2170,
+            "predicted": 0.5008,
+            "observed": 0.4986,
+            "gap": -0.0022
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2484,
+            "predicted": 0.7058,
+            "observed": 0.7093,
+            "gap": 0.0035
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1648,
+            "predicted": 0.852,
+            "observed": 0.8586,
+            "gap": 0.0067
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 712,
+            "predicted": 0.9228,
+            "observed": 0.927,
+            "gap": 0.0042
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 147,
+            "predicted": 0.961,
+            "observed": 0.9592,
+            "gap": -0.0018
+          }
+        ],
+        "hit_rate_90_95": 0.927,
+        "hit_rate_95_plus": 0.9592
+      },
+      "all_const_sd_brier": 0.13957,
+      "winner": {
+        "n": 792,
+        "log_loss": 0.52778,
+        "brier": 0.17756,
+        "accuracy": 0.7222
+      }
+    },
+    "2024": {
+      "n_games": 798,
+      "resid_sd_margin": 15.915,
+      "resid_sd_total": 16.215,
+      "mean_sd_margin": 15.743,
+      "mean_sd_total": 16.019,
+      "coverage90_margin": 0.896,
+      "coverage90_total": 0.8985,
+      "spread": {
+        "n_contracts": 17556,
+        "n_games": 798,
+        "brier": 0.11808,
+        "log_loss": 0.36941,
+        "ece": 0.00847,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5587,
+            "predicted": 0.0168,
+            "observed": 0.0195,
+            "gap": 0.0027
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2105,
+            "predicted": 0.0732,
+            "observed": 0.076,
+            "gap": 0.0028
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2631,
+            "predicted": 0.1459,
+            "observed": 0.1463,
+            "gap": 0.0005
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3260,
+            "predicted": 0.2914,
+            "observed": 0.2776,
+            "gap": -0.0138
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2002,
+            "predicted": 0.4924,
+            "observed": 0.468,
+            "gap": -0.0244
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1275,
+            "predicted": 0.6915,
+            "observed": 0.6745,
+            "gap": -0.017
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 403,
+            "predicted": 0.8492,
+            "observed": 0.8238,
+            "gap": -0.0254
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 146,
+            "predicted": 0.9244,
+            "observed": 0.9247,
+            "gap": 0.0002
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 147,
+            "predicted": 0.9746,
+            "observed": 0.9796,
+            "gap": 0.005
+          }
+        ],
+        "hit_rate_90_95": 0.9247,
+        "hit_rate_95_plus": 0.9796
+      },
+      "total": {
+        "n_contracts": 11172,
+        "n_games": 798,
+        "brier": 0.17636,
+        "log_loss": 0.52862,
+        "ece": 0.02616,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 218,
+            "predicted": 0.0303,
+            "observed": 0.0367,
+            "gap": 0.0064
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 460,
+            "predicted": 0.0762,
+            "observed": 0.1043,
+            "gap": 0.0281
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 1261,
+            "predicted": 0.15,
+            "observed": 0.1848,
+            "gap": 0.0347
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2396,
+            "predicted": 0.2974,
+            "observed": 0.323,
+            "gap": 0.0256
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2142,
+            "predicted": 0.5007,
+            "observed": 0.5233,
+            "gap": 0.0226
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2473,
+            "predicted": 0.7046,
+            "observed": 0.7311,
+            "gap": 0.0265
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1589,
+            "predicted": 0.8514,
+            "observed": 0.8804,
+            "gap": 0.029
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 566,
+            "predicted": 0.9217,
+            "observed": 0.9417,
+            "gap": 0.02
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 67,
+            "predicted": 0.9599,
+            "observed": 0.9403,
+            "gap": -0.0196
+          }
+        ],
+        "hit_rate_90_95": 0.9417,
+        "hit_rate_95_plus": 0.9403
+      },
+      "all_const_sd_brier": 0.14075,
+      "winner": {
+        "n": 798,
+        "log_loss": 0.54937,
+        "brier": 0.18716,
+        "accuracy": 0.7093
+      }
+    },
+    "2025": {
+      "n_games": 808,
+      "resid_sd_margin": 15.515,
+      "resid_sd_total": 15.781,
+      "mean_sd_margin": 15.902,
+      "mean_sd_total": 16.363,
+      "coverage90_margin": 0.9059,
+      "coverage90_total": 0.9121,
+      "spread": {
+        "n_contracts": 17776,
+        "n_games": 808,
+        "brier": 0.11501,
+        "log_loss": 0.36155,
+        "ece": 0.00749,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 5487,
+            "predicted": 0.0175,
+            "observed": 0.0173,
+            "gap": -0.0002
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 2187,
+            "predicted": 0.0731,
+            "observed": 0.0677,
+            "gap": -0.0055
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 2757,
+            "predicted": 0.146,
+            "observed": 0.1389,
+            "gap": -0.0071
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 3403,
+            "predicted": 0.2909,
+            "observed": 0.2795,
+            "gap": -0.0115
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2063,
+            "predicted": 0.4924,
+            "observed": 0.5012,
+            "gap": 0.0088
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1249,
+            "predicted": 0.6881,
+            "observed": 0.7142,
+            "gap": 0.0261
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 357,
+            "predicted": 0.8481,
+            "observed": 0.8739,
+            "gap": 0.0259
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 137,
+            "predicted": 0.9252,
+            "observed": 0.927,
+            "gap": 0.0018
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 136,
+            "predicted": 0.9749,
+            "observed": 0.9853,
+            "gap": 0.0104
+          }
+        ],
+        "hit_rate_90_95": 0.927,
+        "hit_rate_95_plus": 0.9853
+      },
+      "total": {
+        "n_contracts": 11312,
+        "n_games": 808,
+        "brier": 0.17998,
+        "log_loss": 0.53739,
+        "ece": 0.02857,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 72,
+            "predicted": 0.036,
+            "observed": 0.0417,
+            "gap": 0.0057
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 301,
+            "predicted": 0.078,
+            "observed": 0.0797,
+            "gap": 0.0017
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 1052,
+            "predicted": 0.1525,
+            "observed": 0.1416,
+            "gap": -0.0109
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 2461,
+            "predicted": 0.2974,
+            "observed": 0.2653,
+            "gap": -0.0321
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 2221,
+            "predicted": 0.4998,
+            "observed": 0.4484,
+            "gap": -0.0514
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 2600,
+            "predicted": 0.7051,
+            "observed": 0.6681,
+            "gap": -0.037
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1761,
+            "predicted": 0.8518,
+            "observed": 0.8416,
+            "gap": -0.0102
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 764,
+            "predicted": 0.9215,
+            "observed": 0.9202,
+            "gap": -0.0014
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 80,
+            "predicted": 0.9575,
+            "observed": 0.9875,
+            "gap": 0.03
+          }
+        ],
+        "hit_rate_90_95": 0.9202,
+        "hit_rate_95_plus": 0.9875
+      },
+      "all_const_sd_brier": 0.1403,
+      "winner": {
+        "n": 808,
+        "log_loss": 0.53785,
+        "brier": 0.1819,
+        "accuracy": 0.7265
+      }
+    }
+  },
+  "scale_models": {
+    "2018": {
+      "margin": {
+        "coef": {
+          "const": 2.76913,
+          "abs_pred_margin": -0.00214,
+          "early_w": -0.15521,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00163
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 1.95012,
+          "pred_total_level": 0.01614,
+          "early_w": 0.13339,
+          "abs_pred_margin": -0.0067
+        },
+        "t_df": null
+      }
+    },
+    "2019": {
+      "margin": {
+        "coef": {
+          "const": 2.59237,
+          "abs_pred_margin": -0.0019,
+          "early_w": -0.04287,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00424
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.49039,
+          "pred_total_level": 0.00733,
+          "early_w": -0.02184,
+          "abs_pred_margin": -0.00289
+        },
+        "t_df": 20
+      }
+    },
+    "2021": {
+      "margin": {
+        "coef": {
+          "const": 2.57549,
+          "abs_pred_margin": -0.00141,
+          "early_w": -0.0248,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00413
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.35754,
+          "pred_total_level": 0.00887,
+          "early_w": 0.01325,
+          "abs_pred_margin": -0.00192
+        },
+        "t_df": 20
+      }
+    },
+    "2022": {
+      "margin": {
+        "coef": {
+          "const": 2.61479,
+          "abs_pred_margin": -0.00062,
+          "early_w": -0.03005,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00329
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.27129,
+          "pred_total_level": 0.0104,
+          "early_w": 0.01518,
+          "abs_pred_margin": -0.00301
+        },
+        "t_df": 20
+      }
+    },
+    "2023": {
+      "margin": {
+        "coef": {
+          "const": 2.55218,
+          "abs_pred_margin": -0.00017,
+          "early_w": -0.02906,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00424
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.2602,
+          "pred_total_level": 0.0105,
+          "early_w": 0.00765,
+          "abs_pred_margin": -0.00311
+        },
+        "t_df": 30
+      }
+    },
+    "2024": {
+      "margin": {
+        "coef": {
+          "const": 2.53798,
+          "abs_pred_margin": 1e-05,
+          "early_w": -0.05585,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00455
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.27147,
+          "pred_total_level": 0.01014,
+          "early_w": 0.02804,
+          "abs_pred_margin": -0.00309
+        },
+        "t_df": 30
+      }
+    },
+    "2025": {
+      "margin": {
+        "coef": {
+          "const": 2.54556,
+          "abs_pred_margin": -0.00058,
+          "early_w": -0.01188,
+          "fcs_involved": 0.0,
+          "pred_total_level": 0.00431
+        },
+        "t_df": null
+      },
+      "total": {
+        "coef": {
+          "const": 2.2803,
+          "pred_total_level": 0.01003,
+          "early_w": 0.02438,
+          "abs_pred_margin": -0.00303
+        },
+        "t_df": 30
+      }
+    }
+  },
+  "pooled": {
+    "seasons": [
+      2018,
+      2019,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "spread": {
+      "n_contracts": 120780,
+      "n_games": 5490,
+      "brier": 0.11685,
+      "log_loss": 0.36562,
+      "ece": 0.00633,
+      "bins": [
+        {
+          "bin": "0.00-0.05",
+          "n": 37431,
+          "predicted": 0.0168,
+          "observed": 0.0176,
+          "gap": 0.0008
+        },
+        {
+          "bin": "0.05-0.10",
+          "n": 14446,
+          "predicted": 0.0731,
+          "observed": 0.0698,
+          "gap": -0.0033
+        },
+        {
+          "bin": "0.10-0.20",
+          "n": 18295,
+          "predicted": 0.146,
+          "observed": 0.1406,
+          "gap": -0.0054
+        },
+        {
+          "bin": "0.20-0.40",
+          "n": 22496,
+          "predicted": 0.2911,
+          "observed": 0.2786,
+          "gap": -0.0125
+        },
+        {
+          "bin": "0.40-0.60",
+          "n": 14065,
+          "predicted": 0.4928,
+          "observed": 0.4796,
+          "gap": -0.0132
+        },
+        {
+          "bin": "0.60-0.80",
+          "n": 8880,
+          "predicted": 0.691,
+          "observed": 0.6834,
+          "gap": -0.0075
+        },
+        {
+          "bin": "0.80-0.90",
+          "n": 2914,
+          "predicted": 0.8476,
+          "observed": 0.8336,
+          "gap": -0.0141
+        },
+        {
+          "bin": "0.90-0.95",
+          "n": 1164,
+          "predicted": 0.9244,
+          "observed": 0.9149,
+          "gap": -0.0095
+        },
+        {
+          "bin": "0.95-1.00",
+          "n": 1089,
+          "predicted": 0.9753,
+          "observed": 0.9715,
+          "gap": -0.0038
+        }
+      ],
+      "hit_rate_90_95": 0.9149,
+      "hit_rate_95_plus": 0.9715
+    },
+    "total": {
+      "n_contracts": 76860,
+      "n_games": 5490,
+      "brier": 0.17497,
+      "log_loss": 0.52503,
+      "ece": 0.00716,
+      "bins": [
+        {
+          "bin": "0.00-0.05",
+          "n": 1037,
+          "predicted": 0.0294,
+          "observed": 0.053,
+          "gap": 0.0236
+        },
+        {
+          "bin": "0.05-0.10",
+          "n": 2167,
+          "predicted": 0.0769,
+          "observed": 0.0969,
+          "gap": 0.02
+        },
+        {
+          "bin": "0.10-0.20",
+          "n": 6694,
+          "predicted": 0.1523,
+          "observed": 0.1585,
+          "gap": 0.0062
+        },
+        {
+          "bin": "0.20-0.40",
+          "n": 15444,
+          "predicted": 0.3001,
+          "observed": 0.2945,
+          "gap": -0.0056
+        },
+        {
+          "bin": "0.40-0.60",
+          "n": 15227,
+          "predicted": 0.5006,
+          "observed": 0.4905,
+          "gap": -0.0101
+        },
+        {
+          "bin": "0.60-0.80",
+          "n": 17709,
+          "predicted": 0.705,
+          "observed": 0.7061,
+          "gap": 0.0011
+        },
+        {
+          "bin": "0.80-0.90",
+          "n": 11940,
+          "predicted": 0.8518,
+          "observed": 0.8608,
+          "gap": 0.009
+        },
+        {
+          "bin": "0.90-0.95",
+          "n": 5500,
+          "predicted": 0.9231,
+          "observed": 0.9362,
+          "gap": 0.0131
+        },
+        {
+          "bin": "0.95-1.00",
+          "n": 1142,
+          "predicted": 0.9609,
+          "observed": 0.9615,
+          "gap": 0.0006
+        }
+      ],
+      "hit_rate_90_95": 0.9362,
+      "hit_rate_95_plus": 0.9615
+    },
+    "week_1": {
+      "spread": {
+        "n_contracts": 7304,
+        "n_games": 332,
+        "brier": 0.11169,
+        "log_loss": 0.35346,
+        "ece": 0.00993,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 2591,
+            "predicted": 0.0129,
+            "observed": 0.0235,
+            "gap": 0.0106
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 717,
+            "predicted": 0.0729,
+            "observed": 0.0921,
+            "gap": 0.0192
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 915,
+            "predicted": 0.1461,
+            "observed": 0.1486,
+            "gap": 0.0025
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 1080,
+            "predicted": 0.2919,
+            "observed": 0.2944,
+            "gap": 0.0025
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 765,
+            "predicted": 0.4955,
+            "observed": 0.4993,
+            "gap": 0.0039
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 628,
+            "predicted": 0.6985,
+            "observed": 0.7166,
+            "gap": 0.018
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 282,
+            "predicted": 0.8492,
+            "observed": 0.8759,
+            "gap": 0.0267
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 144,
+            "predicted": 0.9263,
+            "observed": 0.9167,
+            "gap": -0.0097
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 182,
+            "predicted": 0.9779,
+            "observed": 0.9615,
+            "gap": -0.0164
+          }
+        ],
+        "hit_rate_90_95": 0.9167,
+        "hit_rate_95_plus": 0.9615
+      },
+      "total": {
+        "n_contracts": 4648,
+        "n_games": 332,
+        "brier": 0.17904,
+        "log_loss": 0.53725,
+        "ece": 0.01733,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 9,
+            "predicted": 0.037,
+            "observed": 0.0,
+            "gap": -0.037
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 81,
+            "predicted": 0.08,
+            "observed": 0.0864,
+            "gap": 0.0064
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 430,
+            "predicted": 0.1555,
+            "observed": 0.1372,
+            "gap": -0.0183
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 1000,
+            "predicted": 0.2978,
+            "observed": 0.27,
+            "gap": -0.0278
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 937,
+            "predicted": 0.4998,
+            "observed": 0.4781,
+            "gap": -0.0217
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 1083,
+            "predicted": 0.7056,
+            "observed": 0.6944,
+            "gap": -0.0112
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 771,
+            "predicted": 0.8526,
+            "observed": 0.856,
+            "gap": 0.0034
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 301,
+            "predicted": 0.9215,
+            "observed": 0.9037,
+            "gap": -0.0179
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 36,
+            "predicted": 0.9599,
+            "observed": 0.8611,
+            "gap": -0.0987
+          }
+        ],
+        "hit_rate_90_95": 0.9037,
+        "hit_rate_95_plus": 0.8611
+      }
+    },
+    "weeks_4_plus": {
+      "spread": {
+        "n_contracts": 91960,
+        "n_games": 4180,
+        "brier": 0.1169,
+        "log_loss": 0.36598,
+        "ece": 0.00784,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 27940,
+            "predicted": 0.0174,
+            "observed": 0.017,
+            "gap": -0.0003
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 11244,
+            "predicted": 0.0731,
+            "observed": 0.0672,
+            "gap": -0.0059
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 14294,
+            "predicted": 0.146,
+            "observed": 0.1365,
+            "gap": -0.0095
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 17543,
+            "predicted": 0.291,
+            "observed": 0.2753,
+            "gap": -0.0157
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 10848,
+            "predicted": 0.4925,
+            "observed": 0.4778,
+            "gap": -0.0147
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 6683,
+            "predicted": 0.6901,
+            "observed": 0.6847,
+            "gap": -0.0054
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 2063,
+            "predicted": 0.8473,
+            "observed": 0.8352,
+            "gap": -0.0121
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 759,
+            "predicted": 0.9239,
+            "observed": 0.913,
+            "gap": -0.0109
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 586,
+            "predicted": 0.9738,
+            "observed": 0.9659,
+            "gap": -0.0079
+          }
+        ],
+        "hit_rate_90_95": 0.913,
+        "hit_rate_95_plus": 0.9659
+      },
+      "total": {
+        "n_contracts": 58520,
+        "n_games": 4180,
+        "brier": 0.1739,
+        "log_loss": 0.52225,
+        "ece": 0.00859,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 891,
+            "predicted": 0.0289,
+            "observed": 0.0561,
+            "gap": 0.0272
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 1729,
+            "predicted": 0.0768,
+            "observed": 0.0966,
+            "gap": 0.0198
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 5048,
+            "predicted": 0.152,
+            "observed": 0.1622,
+            "gap": 0.0102
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 11609,
+            "predicted": 0.3003,
+            "observed": 0.297,
+            "gap": -0.0033
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 11587,
+            "predicted": 0.5006,
+            "observed": 0.4913,
+            "gap": -0.0093
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 13440,
+            "predicted": 0.7049,
+            "observed": 0.7096,
+            "gap": 0.0047
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 9030,
+            "predicted": 0.8517,
+            "observed": 0.864,
+            "gap": 0.0124
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 4259,
+            "predicted": 0.9234,
+            "observed": 0.9397,
+            "gap": 0.0163
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 927,
+            "predicted": 0.9611,
+            "observed": 0.9633,
+            "gap": 0.0022
+          }
+        ],
+        "hit_rate_90_95": 0.9397,
+        "hit_rate_95_plus": 0.9633
+      }
+    }
+  },
+  "control_comparison": {
+    "n_common": 3675,
+    "seasons": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "spread": {
+      "v2": {
+        "n_contracts": 80850,
+        "n_games": 3675,
+        "brier": 0.11629,
+        "log_loss": 0.36415,
+        "ece": 0.00797,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 25319,
+            "predicted": 0.0167,
+            "observed": 0.0178,
+            "gap": 0.0011
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 9660,
+            "predicted": 0.0731,
+            "observed": 0.0692,
+            "gap": -0.004
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 12197,
+            "predicted": 0.146,
+            "observed": 0.14,
+            "gap": -0.006
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 14940,
+            "predicted": 0.2913,
+            "observed": 0.2764,
+            "gap": -0.0149
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 9321,
+            "predicted": 0.4927,
+            "observed": 0.4763,
+            "gap": -0.0164
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 5970,
+            "predicted": 0.6912,
+            "observed": 0.675,
+            "gap": -0.0162
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 1948,
+            "predicted": 0.8476,
+            "observed": 0.8357,
+            "gap": -0.0119
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 760,
+            "predicted": 0.9247,
+            "observed": 0.9145,
+            "gap": -0.0103
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 735,
+            "predicted": 0.9752,
+            "observed": 0.9714,
+            "gap": -0.0038
+          }
+        ],
+        "hit_rate_90_95": 0.9145,
+        "hit_rate_95_plus": 0.9714
+      },
+      "ctrl_0_4_0": {
+        "n_contracts": 80850,
+        "n_games": 3675,
+        "brier": 0.13253,
+        "log_loss": 0.41215,
+        "ece": 0.01481,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 15023,
+            "predicted": 0.0251,
+            "observed": 0.0204,
+            "gap": -0.0047
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 11809,
+            "predicted": 0.0737,
+            "observed": 0.0584,
+            "gap": -0.0153
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 16237,
+            "predicted": 0.1464,
+            "observed": 0.1282,
+            "gap": -0.0182
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 20870,
+            "predicted": 0.2919,
+            "observed": 0.2754,
+            "gap": -0.0165
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 11880,
+            "predicted": 0.4884,
+            "observed": 0.5003,
+            "gap": 0.0119
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 4369,
+            "predicted": 0.6772,
+            "observed": 0.7102,
+            "gap": 0.033
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 535,
+            "predicted": 0.8427,
+            "observed": 0.8785,
+            "gap": 0.0358
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 102,
+            "predicted": 0.9217,
+            "observed": 0.9314,
+            "gap": 0.0097
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 25,
+            "predicted": 0.9694,
+            "observed": 1.0,
+            "gap": 0.0306
+          }
+        ],
+        "hit_rate_90_95": 0.9314,
+        "hit_rate_95_plus": 1.0
+      },
+      "ctrl_0_5_0": {
+        "n_contracts": 80850,
+        "n_games": 3675,
+        "brier": 0.13085,
+        "log_loss": 0.40731,
+        "ece": 0.01494,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 16406,
+            "predicted": 0.023,
+            "observed": 0.0216,
+            "gap": -0.0014
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 11135,
+            "predicted": 0.0737,
+            "observed": 0.0605,
+            "gap": -0.0132
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 15435,
+            "predicted": 0.1466,
+            "observed": 0.1248,
+            "gap": -0.0218
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 19698,
+            "predicted": 0.2916,
+            "observed": 0.2683,
+            "gap": -0.0233
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 11516,
+            "predicted": 0.4898,
+            "observed": 0.4736,
+            "gap": -0.0162
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 5247,
+            "predicted": 0.6828,
+            "observed": 0.6733,
+            "gap": -0.0094
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 987,
+            "predicted": 0.8446,
+            "observed": 0.8419,
+            "gap": -0.0027
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 284,
+            "predicted": 0.9246,
+            "observed": 0.9225,
+            "gap": -0.002
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 142,
+            "predicted": 0.9704,
+            "observed": 0.9859,
+            "gap": 0.0155
+          }
+        ],
+        "hit_rate_90_95": 0.9225,
+        "hit_rate_95_plus": 0.9859
+      },
+      "brier_delta_v2_minus_050": {
+        "delta": -0.01456,
+        "ci95": [
+          -0.01657,
+          -0.01256
+        ],
+        "verdict": "improves"
+      },
+      "brier_delta_v2_minus_040": {
+        "delta": -0.01624,
+        "ci95": [
+          -0.01835,
+          -0.01419
+        ],
+        "verdict": "improves"
+      }
+    },
+    "total": {
+      "v2": {
+        "n_contracts": 51450,
+        "n_games": 3675,
+        "brier": 0.17624,
+        "log_loss": 0.5281,
+        "ece": 0.00989,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 601,
+            "predicted": 0.0304,
+            "observed": 0.0383,
+            "gap": 0.0079
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 1466,
+            "predicted": 0.0773,
+            "observed": 0.0873,
+            "gap": 0.0101
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 4665,
+            "predicted": 0.1524,
+            "observed": 0.1569,
+            "gap": 0.0045
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 10601,
+            "predicted": 0.2992,
+            "observed": 0.2865,
+            "gap": -0.0127
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 10154,
+            "predicted": 0.5004,
+            "observed": 0.4821,
+            "gap": -0.0183
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 11780,
+            "predicted": 0.7051,
+            "observed": 0.6977,
+            "gap": -0.0074
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 7961,
+            "predicted": 0.852,
+            "observed": 0.855,
+            "gap": 0.003
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 3564,
+            "predicted": 0.9228,
+            "observed": 0.9318,
+            "gap": 0.009
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 658,
+            "predicted": 0.9606,
+            "observed": 0.9529,
+            "gap": -0.0077
+          }
+        ],
+        "hit_rate_90_95": 0.9318,
+        "hit_rate_95_plus": 0.9529
+      },
+      "ctrl_0_4_0": {
+        "n_contracts": 51450,
+        "n_games": 3675,
+        "brier": 0.18302,
+        "log_loss": 0.54648,
+        "ece": 0.01382,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 88,
+            "predicted": 0.0371,
+            "observed": 0.0341,
+            "gap": -0.0031
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 605,
+            "predicted": 0.0809,
+            "observed": 0.0876,
+            "gap": 0.0067
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 4290,
+            "predicted": 0.157,
+            "observed": 0.1452,
+            "gap": -0.0117
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 11662,
+            "predicted": 0.2989,
+            "observed": 0.2776,
+            "gap": -0.0213
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 10857,
+            "predicted": 0.5004,
+            "observed": 0.4727,
+            "gap": -0.0278
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 12559,
+            "predicted": 0.705,
+            "observed": 0.704,
+            "gap": -0.0011
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 7957,
+            "predicted": 0.8504,
+            "observed": 0.8528,
+            "gap": 0.0024
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 2835,
+            "predicted": 0.9214,
+            "observed": 0.9062,
+            "gap": -0.0152
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 597,
+            "predicted": 0.9644,
+            "observed": 0.9129,
+            "gap": -0.0515
+          }
+        ],
+        "hit_rate_90_95": 0.9062,
+        "hit_rate_95_plus": 0.9129
+      },
+      "ctrl_0_5_0": {
+        "n_contracts": 51450,
+        "n_games": 3675,
+        "brier": 0.18302,
+        "log_loss": 0.54648,
+        "ece": 0.01382,
+        "bins": [
+          {
+            "bin": "0.00-0.05",
+            "n": 88,
+            "predicted": 0.0371,
+            "observed": 0.0341,
+            "gap": -0.0031
+          },
+          {
+            "bin": "0.05-0.10",
+            "n": 605,
+            "predicted": 0.0809,
+            "observed": 0.0876,
+            "gap": 0.0067
+          },
+          {
+            "bin": "0.10-0.20",
+            "n": 4290,
+            "predicted": 0.157,
+            "observed": 0.1452,
+            "gap": -0.0117
+          },
+          {
+            "bin": "0.20-0.40",
+            "n": 11662,
+            "predicted": 0.2989,
+            "observed": 0.2776,
+            "gap": -0.0213
+          },
+          {
+            "bin": "0.40-0.60",
+            "n": 10857,
+            "predicted": 0.5004,
+            "observed": 0.4727,
+            "gap": -0.0278
+          },
+          {
+            "bin": "0.60-0.80",
+            "n": 12559,
+            "predicted": 0.705,
+            "observed": 0.704,
+            "gap": -0.0011
+          },
+          {
+            "bin": "0.80-0.90",
+            "n": 7957,
+            "predicted": 0.8504,
+            "observed": 0.8528,
+            "gap": 0.0024
+          },
+          {
+            "bin": "0.90-0.95",
+            "n": 2835,
+            "predicted": 0.9214,
+            "observed": 0.9062,
+            "gap": -0.0152
+          },
+          {
+            "bin": "0.95-1.00",
+            "n": 597,
+            "predicted": 0.9644,
+            "observed": 0.9129,
+            "gap": -0.0515
+          }
+        ],
+        "hit_rate_90_95": 0.9062,
+        "hit_rate_95_plus": 0.9129
+      },
+      "brier_delta_v2_minus_050": {
+        "delta": -0.00679,
+        "ci95": [
+          -0.00866,
+          -0.00486
+        ],
+        "verdict": "improves"
+      },
+      "brier_delta_v2_minus_040": {
+        "delta": -0.00679,
+        "ci95": [
+          -0.00866,
+          -0.00486
+        ],
+        "verdict": "improves"
+      }
+    },
+    "week_1": {
+      "spread": {
+        "v2_brier": 0.11187,
+        "ctrl_0_5_0_brier": 0.12531,
+        "delta": {
+          "delta": -0.01344,
+          "ci95": [
+            -0.02048,
+            -0.00637
+          ],
+          "verdict": "improves"
+        }
+      },
+      "total": {
+        "v2_brier": 0.18418,
+        "ctrl_0_5_0_brier": 0.18829,
+        "delta": {
+          "delta": -0.00411,
+          "ci95": [
+            -0.0105,
+            0.0021
+          ],
+          "verdict": "flat"
+        }
+      }
+    },
+    "weeks_4_plus": {
+      "spread": {
+        "v2_brier": 0.11754,
+        "ctrl_0_5_0_brier": 0.13204,
+        "delta": {
+          "delta": -0.01449,
+          "ci95": [
+            -0.01661,
+            -0.01234
+          ],
+          "verdict": "improves"
+        }
+      },
+      "total": {
+        "v2_brier": 0.17542,
+        "ctrl_0_5_0_brier": 0.18247,
+        "delta": {
+          "delta": -0.00706,
+          "ci95": [
+            -0.00922,
+            -0.00488
+          ],
+          "verdict": "improves"
+        }
+      }
+    },
+    "margin_mae_delta_v2_minus_050": {
+      "delta": -1.40299,
+      "ci95": [
+        -1.64157,
+        -1.17056
+      ],
+      "verdict": "improves"
+    },
+    "total_mae_delta_v2_minus_050": {
+      "delta": -0.46181,
+      "ci95": [
+        -0.61635,
+        -0.31161
+      ],
+      "verdict": "improves"
+    },
+    "winner": {
+      "v2": {
+        "n": 3675,
+        "log_loss": 0.53526,
+        "brier": 0.18075,
+        "accuracy": 0.7233
+      },
+      "ctrl_0_5_0_closed": {
+        "n": 3675,
+        "log_loss": 0.60021,
+        "brier": 0.20786,
+        "accuracy": 0.6705
+      },
+      "ctrl_0_4_0_sim": {
+        "n": 3675,
+        "log_loss": 0.60474,
+        "brier": 0.20912,
+        "accuracy": 0.6727
+      },
+      "log_loss_delta_v2_minus_050": {
+        "delta": -0.06495,
+        "ci95": [
+          -0.07569,
+          -0.05382
+        ],
+        "verdict": "improves"
+      }
+    },
+    "season_2021": {
+      "n": 721,
+      "margin_mae_v2": 13.0,
+      "margin_mae_050": 14.591,
+      "wk1_margin_mae_v2": 13.669,
+      "wk1_margin_mae_050": 15.729,
+      "total_mae_v2": 12.823,
+      "total_mae_ctrl": 13.045
+    },
+    "season_2022": {
+      "n": 723,
+      "margin_mae_v2": 12.462,
+      "margin_mae_050": 13.225,
+      "wk1_margin_mae_v2": 12.112,
+      "wk1_margin_mae_050": 14.848,
+      "total_mae_v2": 12.659,
+      "total_mae_ctrl": 13.14
+    },
+    "season_2023": {
+      "n": 739,
+      "margin_mae_v2": 12.121,
+      "margin_mae_050": 13.409,
+      "wk1_margin_mae_v2": 11.333,
+      "wk1_margin_mae_050": 12.727,
+      "total_mae_v2": 13.007,
+      "total_mae_ctrl": 13.759
+    },
+    "season_2024": {
+      "n": 741,
+      "margin_mae_v2": 12.637,
+      "margin_mae_050": 14.261,
+      "wk1_margin_mae_v2": 13.37,
+      "wk1_margin_mae_050": 14.004,
+      "total_mae_v2": 12.762,
+      "total_mae_ctrl": 13.169
+    },
+    "season_2025": {
+      "n": 751,
+      "margin_mae_v2": 12.236,
+      "margin_mae_050": 13.97,
+      "wk1_margin_mae_v2": 13.55,
+      "wk1_margin_mae_050": 13.224,
+      "total_mae_v2": 12.669,
+      "total_mae_ctrl": 13.11
+    }
+  }
+}
