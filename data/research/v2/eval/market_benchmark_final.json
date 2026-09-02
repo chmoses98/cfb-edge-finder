@@ -1,0 +1,130 @@
+{
+ "n_common": 3771,
+ "margin_mae_v2": 12.545,
+ "margin_mae_mkt": 12.115,
+ "margin_delta_v2_minus_mkt": {
+  "delta": 0.43074,
+  "ci95": [
+   0.30328,
+   0.56449
+  ],
+  "verdict": "degrades"
+ },
+ "total_mae_v2": 12.887,
+ "total_mae_mkt": 12.609,
+ "total_delta_v2_minus_mkt": {
+  "delta": 0.27868,
+  "ci95": [
+   0.17088,
+   0.39135
+  ],
+  "verdict": "degrades"
+ },
+ "winner_v2": {
+  "n": 3771,
+  "log_loss": 0.56174,
+  "brier": 0.19103,
+  "accuracy": 0.7054
+ },
+ "winner_mkt": {
+  "n": 3771,
+  "log_loss": 0.54751,
+  "brier": 0.18534,
+  "accuracy": 0.711
+ },
+ "corr_v2_mkt_margin": 0.932,
+ "disagree_ge7": {
+  "n": 363,
+  "v2_mae": 14.77,
+  "mkt_mae": 12.42,
+  "v2_side_right_share": 0.485
+ },
+ "blend_margin_mae_by_v2_weight": {
+  "0.1": 12.119,
+  "0.2": 12.135,
+  "0.3": 12.158,
+  "0.5": 12.229
+ },
+ "blend_total_mae_by_v2_weight": {
+  "0.1": 12.601,
+  "0.2": 12.601,
+  "0.3": 12.608,
+  "0.5": 12.649
+ },
+ "open_line": {
+  "n": 3765,
+  "v2_mae": 12.531,
+  "open_mae": 12.246,
+  "close_mae": 12.101
+ },
+ "ats_thr2": {
+  "n": 2337,
+  "win": 1154,
+  "loss": 1143,
+  "win_pct": 0.502
+ },
+ "ats_thr3": {
+  "n": 1717,
+  "win": 850,
+  "loss": 834,
+  "win_pct": 0.505
+ },
+ "ats_thr5": {
+  "n": 835,
+  "win": 404,
+  "loss": 414,
+  "win_pct": 0.494
+ },
+ "by_season": [
+  {
+   "season": 2021,
+   "n": 721,
+   "v2_margin": 13.03,
+   "mkt_margin": 12.49,
+   "v2_total": 12.92,
+   "mkt_total": 12.63,
+   "v2_ll": 0.5629,
+   "mkt_ll": 0.5497
+  },
+  {
+   "season": 2022,
+   "n": 708,
+   "v2_margin": 12.44,
+   "mkt_margin": 12.08,
+   "v2_total": 12.92,
+   "mkt_total": 12.23,
+   "v2_ll": 0.5906,
+   "mkt_ll": 0.5892
+  },
+  {
+   "season": 2023,
+   "n": 772,
+   "v2_margin": 12.42,
+   "mkt_margin": 12.13,
+   "v2_total": 12.98,
+   "mkt_total": 12.8,
+   "v2_ll": 0.5433,
+   "mkt_ll": 0.5232
+  },
+  {
+   "season": 2024,
+   "n": 787,
+   "v2_margin": 12.68,
+   "mkt_margin": 12.11,
+   "v2_total": 12.87,
+   "mkt_total": 12.83,
+   "v2_ll": 0.5614,
+   "mkt_ll": 0.5424
+  },
+  {
+   "season": 2025,
+   "n": 783,
+   "v2_margin": 12.19,
+   "mkt_margin": 11.78,
+   "v2_total": 12.75,
+   "mkt_total": 12.51,
+   "v2_ll": 0.5531,
+   "mkt_ll": 0.5369
+  }
+ ]
+}

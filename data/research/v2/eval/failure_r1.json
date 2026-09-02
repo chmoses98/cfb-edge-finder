@@ -1,0 +1,823 @@
+{
+  "margin_model": "struct_pre_ridge",
+  "total_model": "tot_eff_ridge",
+  "n": 6266,
+  "by_season": [
+    {
+      "season": 2017,
+      "n": 776,
+      "mae": 13.038,
+      "bias": 0.727
+    },
+    {
+      "season": 2018,
+      "n": 772,
+      "mae": 13.134,
+      "bias": -0.909
+    },
+    {
+      "season": 2019,
+      "n": 774,
+      "mae": 12.626,
+      "bias": -1.484
+    },
+    {
+      "season": 2021,
+      "n": 770,
+      "mae": 13.268,
+      "bias": 0.876
+    },
+    {
+      "season": 2022,
+      "n": 776,
+      "mae": 12.468,
+      "bias": 0.682
+    },
+    {
+      "season": 2023,
+      "n": 792,
+      "mae": 12.495,
+      "bias": 0.088
+    },
+    {
+      "season": 2024,
+      "n": 798,
+      "mae": 12.821,
+      "bias": -0.581
+    },
+    {
+      "season": 2025,
+      "n": 808,
+      "mae": 12.384,
+      "bias": -1.169
+    }
+  ],
+  "by_week_bucket": [
+    {
+      "week_bucket": "wk1",
+      "n": 376,
+      "mae": 12.399,
+      "bias": -0.025
+    },
+    {
+      "week_bucket": "wk2-3",
+      "n": 782,
+      "mae": 13.124,
+      "bias": 0.219
+    },
+    {
+      "week_bucket": "wk4-8",
+      "n": 2176,
+      "mae": 12.644,
+      "bias": -0.112
+    },
+    {
+      "week_bucket": "wk9-15",
+      "n": 2597,
+      "mae": 12.705,
+      "bias": -0.603
+    },
+    {
+      "week_bucket": "post",
+      "n": 335,
+      "mae": 13.796,
+      "bias": 0.673
+    }
+  ],
+  "by_fav_bucket": [
+    {
+      "fav_bucket": "0-3",
+      "n": 1240,
+      "mae": 12.951,
+      "bias": -0.411,
+      "signed_fav_bias": -0.182
+    },
+    {
+      "fav_bucket": "3-7",
+      "n": 1444,
+      "mae": 12.503,
+      "bias": -0.125,
+      "signed_fav_bias": 0.56
+    },
+    {
+      "fav_bucket": "7-14",
+      "n": 1879,
+      "mae": 12.695,
+      "bias": 0.071,
+      "signed_fav_bias": -0.447
+    },
+    {
+      "fav_bucket": "14-21",
+      "n": 980,
+      "mae": 13.137,
+      "bias": -0.406,
+      "signed_fav_bias": -0.324
+    },
+    {
+      "fav_bucket": "21-28",
+      "n": 417,
+      "mae": 13.036,
+      "bias": -0.592,
+      "signed_fav_bias": 0.034
+    },
+    {
+      "fav_bucket": "28+",
+      "n": 306,
+      "mae": 12.345,
+      "bias": -0.715,
+      "signed_fav_bias": 0.986
+    }
+  ],
+  "total_by_level": [
+    {
+      "tot_bucket": "<45",
+      "n": 293,
+      "mae": 12.202,
+      "bias": -2.513
+    },
+    {
+      "tot_bucket": "45-52",
+      "n": 1632,
+      "mae": 12.604,
+      "bias": -0.063
+    },
+    {
+      "tot_bucket": "52-58",
+      "n": 2285,
+      "mae": 13.086,
+      "bias": 0.833
+    },
+    {
+      "tot_bucket": "58-64",
+      "n": 1487,
+      "mae": 13.948,
+      "bias": 1.5
+    },
+    {
+      "tot_bucket": "64+",
+      "n": 569,
+      "mae": 15.089,
+      "bias": 2.471
+    }
+  ],
+  "total_by_week_bucket": [
+    {
+      "week_bucket": "wk1",
+      "n": 376,
+      "mae": 13.174,
+      "bias": 1.06
+    },
+    {
+      "week_bucket": "wk2-3",
+      "n": 782,
+      "mae": 12.848,
+      "bias": 0.941
+    },
+    {
+      "week_bucket": "wk4-8",
+      "n": 2176,
+      "mae": 13.386,
+      "bias": 0.461
+    },
+    {
+      "week_bucket": "wk9-15",
+      "n": 2597,
+      "mae": 13.312,
+      "bias": 0.77
+    },
+    {
+      "week_bucket": "post",
+      "n": 335,
+      "mae": 13.948,
+      "bias": 1.681
+    }
+  ],
+  "by_neutral": [
+    {
+      "neutral": false,
+      "n": 5768,
+      "mae": 12.776,
+      "bias": -0.335
+    },
+    {
+      "neutral": true,
+      "n": 498,
+      "mae": 12.777,
+      "bias": 1.025
+    }
+  ],
+  "by_conference_game": [
+    {
+      "conference_game": false,
+      "n": 1996,
+      "mae": 13.064,
+      "bias": -0.128
+    },
+    {
+      "conference_game": true,
+      "n": 4270,
+      "mae": 12.642,
+      "bias": -0.273
+    }
+  ],
+  "by_home_conf": [
+    {
+      "home_conf": "Big Ten",
+      "n": 827,
+      "mae": 12.797,
+      "bias": 0.353
+    },
+    {
+      "home_conf": "SEC",
+      "n": 794,
+      "mae": 12.058,
+      "bias": -0.339
+    },
+    {
+      "home_conf": "ACC",
+      "n": 721,
+      "mae": 13.086,
+      "bias": 0.522
+    },
+    {
+      "home_conf": "Big 12",
+      "n": 592,
+      "mae": 12.939,
+      "bias": -1.552
+    },
+    {
+      "home_conf": "American Athletic",
+      "n": 565,
+      "mae": 13.038,
+      "bias": -0.729
+    },
+    {
+      "home_conf": "Mountain West",
+      "n": 544,
+      "mae": 12.893,
+      "bias": -0.049
+    },
+    {
+      "home_conf": "Conference USA",
+      "n": 522,
+      "mae": 13.103,
+      "bias": 0.013
+    },
+    {
+      "home_conf": "Sun Belt",
+      "n": 520,
+      "mae": 12.714,
+      "bias": -0.597
+    },
+    {
+      "home_conf": "Mid-American",
+      "n": 498,
+      "mae": 12.732,
+      "bias": 0.997
+    },
+    {
+      "home_conf": "Pac-12",
+      "n": 468,
+      "mae": 12.406,
+      "bias": -0.944
+    },
+    {
+      "home_conf": "FBS Independents",
+      "n": 215,
+      "mae": 13.145,
+      "bias": -0.995
+    }
+  ],
+  "teams_most_under_projected": [
+    {
+      "team": "James Madison",
+      "n": 47,
+      "bias": -8.714,
+      "mae": 16.415
+    },
+    {
+      "team": "Ohio",
+      "n": 97,
+      "bias": -5.295,
+      "mae": 12.476
+    },
+    {
+      "team": "Texas Tech",
+      "n": 95,
+      "bias": -4.131,
+      "mae": 13.914
+    },
+    {
+      "team": "SMU",
+      "n": 97,
+      "bias": -4.119,
+      "mae": 12.056
+    },
+    {
+      "team": "Kansas State",
+      "n": 95,
+      "bias": -4.076,
+      "mae": 12.294
+    },
+    {
+      "team": "Indiana",
+      "n": 95,
+      "bias": -3.85,
+      "mae": 12.81
+    },
+    {
+      "team": "Notre Dame",
+      "n": 105,
+      "bias": -3.821,
+      "mae": 13.435
+    },
+    {
+      "team": "Oregon",
+      "n": 102,
+      "bias": -3.593,
+      "mae": 12.615
+    },
+    {
+      "team": "Fresno State",
+      "n": 98,
+      "bias": -3.025,
+      "mae": 13.934
+    },
+    {
+      "team": "Army",
+      "n": 91,
+      "bias": -2.98,
+      "mae": 13.474
+    }
+  ],
+  "teams_most_over_projected": [
+    {
+      "team": "Sam Houston",
+      "n": 36,
+      "bias": 6.859,
+      "mae": 12.532
+    },
+    {
+      "team": "Stanford",
+      "n": 95,
+      "bias": 5.148,
+      "mae": 12.364
+    },
+    {
+      "team": "Massachusetts",
+      "n": 86,
+      "bias": 4.566,
+      "mae": 13.427
+    },
+    {
+      "team": "Tulsa",
+      "n": 91,
+      "bias": 3.973,
+      "mae": 12.643
+    },
+    {
+      "team": "Ball State",
+      "n": 89,
+      "bias": 3.301,
+      "mae": 13.214
+    },
+    {
+      "team": "North Carolina",
+      "n": 93,
+      "bias": 3.291,
+      "mae": 12.34
+    },
+    {
+      "team": "Maryland",
+      "n": 93,
+      "bias": 3.232,
+      "mae": 15.58
+    },
+    {
+      "team": "Toledo",
+      "n": 98,
+      "bias": 3.221,
+      "mae": 13.268
+    },
+    {
+      "team": "Arkansas",
+      "n": 91,
+      "bias": 3.129,
+      "mae": 12.347
+    },
+    {
+      "team": "Akron",
+      "n": 91,
+      "bias": 2.954,
+      "mae": 13.6
+    }
+  ],
+  "largest_margin_errors": [
+    {
+      "season": 2018,
+      "week": 13,
+      "home": "Duke",
+      "away": "Wake Forest",
+      "pred": 10.7,
+      "actual": -52
+    },
+    {
+      "season": 2018,
+      "week": 17,
+      "home": "Army",
+      "away": "Houston",
+      "pred": -2.1,
+      "actual": 56
+    },
+    {
+      "season": 2022,
+      "week": 13,
+      "home": "Liberty",
+      "away": "New Mexico State",
+      "pred": 23.1,
+      "actual": -35
+    },
+    {
+      "season": 2023,
+      "week": 17,
+      "home": "Syracuse",
+      "away": "South Florida",
+      "pred": 12.8,
+      "actual": -45
+    },
+    {
+      "season": 2023,
+      "week": 17,
+      "home": "Florida State",
+      "away": "Georgia",
+      "pred": -3.4,
+      "actual": -60
+    },
+    {
+      "season": 2017,
+      "week": 12,
+      "home": "Georgia Southern",
+      "away": "South Alabama",
+      "pred": -3.8,
+      "actual": 52
+    },
+    {
+      "season": 2022,
+      "week": 9,
+      "home": "Kansas State",
+      "away": "Oklahoma State",
+      "pred": -5.4,
+      "actual": 48
+    },
+    {
+      "season": 2019,
+      "week": 2,
+      "home": "Oregon",
+      "away": "Nevada",
+      "pred": 17.8,
+      "actual": 71
+    },
+    {
+      "season": 2019,
+      "week": 5,
+      "home": "Nevada",
+      "away": "Hawai'i",
+      "pred": 2.0,
+      "actual": -51
+    },
+    {
+      "season": 2024,
+      "week": 14,
+      "home": "Tulsa",
+      "away": "Florida Atlantic",
+      "pred": 5.9,
+      "actual": -47
+    },
+    {
+      "season": 2022,
+      "week": 13,
+      "home": "Northern Illinois",
+      "away": "Akron",
+      "pred": 20.5,
+      "actual": -32
+    },
+    {
+      "season": 2022,
+      "week": 17,
+      "home": "Purdue",
+      "away": "LSU",
+      "pred": -3.5,
+      "actual": -56
+    },
+    {
+      "season": 2018,
+      "week": 8,
+      "home": "Purdue",
+      "away": "Ohio State",
+      "pred": -22.7,
+      "actual": 29
+    },
+    {
+      "season": 2025,
+      "week": 4,
+      "home": "Indiana",
+      "away": "Illinois",
+      "pred": 1.4,
+      "actual": 53
+    },
+    {
+      "season": 2017,
+      "week": 10,
+      "home": "Iowa",
+      "away": "Ohio State",
+      "pred": -19.5,
+      "actual": 31
+    }
+  ],
+  "largest_total_errors": [
+    {
+      "season": 2018,
+      "week": 13,
+      "home": "Texas A&M",
+      "away": "LSU",
+      "pred": 48.7,
+      "actual": 146
+    },
+    {
+      "season": 2017,
+      "week": 6,
+      "home": "Buffalo",
+      "away": "Western Michigan",
+      "pred": 60.2,
+      "actual": 139
+    },
+    {
+      "season": 2022,
+      "week": 10,
+      "home": "SMU",
+      "away": "Houston",
+      "pred": 67.3,
+      "actual": 140
+    },
+    {
+      "season": 2021,
+      "week": 8,
+      "home": "Army",
+      "away": "Wake Forest",
+      "pred": 54.8,
+      "actual": 126
+    },
+    {
+      "season": 2019,
+      "week": 4,
+      "home": "Washington State",
+      "away": "UCLA",
+      "pred": 59.3,
+      "actual": 130
+    },
+    {
+      "season": 2024,
+      "week": 4,
+      "home": "North Carolina",
+      "away": "James Madison",
+      "pred": 56.3,
+      "actual": 120
+    },
+    {
+      "season": 2022,
+      "week": 1,
+      "home": "App State",
+      "away": "North Carolina",
+      "pred": 60.9,
+      "actual": 124
+    },
+    {
+      "season": 2019,
+      "week": 7,
+      "home": "Wake Forest",
+      "away": "Louisville",
+      "pred": 63.9,
+      "actual": 121
+    },
+    {
+      "season": 2018,
+      "week": 1,
+      "home": "Ohio State",
+      "away": "Oregon State",
+      "pred": 54.2,
+      "actual": 108
+    },
+    {
+      "season": 2025,
+      "week": 5,
+      "home": "Louisiana",
+      "away": "Marshall",
+      "pred": 51.5,
+      "actual": 105
+    }
+  ],
+  "lgbm_gain_top25": [
+    {
+      "feature": "str_margin_diff",
+      "share": 0.4809
+    },
+    {
+      "feature": "early_x_sp_prev_rating_diff",
+      "share": 0.0638
+    },
+    {
+      "feature": "pre_sp_prev_rating_diff",
+      "share": 0.039
+    },
+    {
+      "feature": "pre_prev2_margin_strength_diff",
+      "share": 0.0332
+    },
+    {
+      "feature": "pre_talent_diff",
+      "share": 0.0317
+    },
+    {
+      "feature": "pre_ret_percentPPA_diff",
+      "share": 0.0227
+    },
+    {
+      "feature": "early_x_talent_diff",
+      "share": 0.0223
+    },
+    {
+      "feature": "pre_prev_pf_diff",
+      "share": 0.0222
+    },
+    {
+      "feature": "pre_recruit_avg4_diff",
+      "share": 0.022
+    },
+    {
+      "feature": "early_x_recruit_avg4_diff",
+      "share": 0.0183
+    },
+    {
+      "feature": "pre_ret_percentReceivingPPA_diff",
+      "share": 0.0176
+    },
+    {
+      "feature": "pre_prev_margin_strength_diff",
+      "share": 0.0174
+    },
+    {
+      "feature": "pre_ret_usage_diff",
+      "share": 0.0164
+    },
+    {
+      "feature": "pre_ret_percentRushingPPA_diff",
+      "share": 0.016
+    },
+    {
+      "feature": "pre_prev_pa_diff",
+      "share": 0.0147
+    },
+    {
+      "feature": "early_x_ret_percentPPA_diff",
+      "share": 0.0146
+    },
+    {
+      "feature": "pre_recruit_0_diff",
+      "share": 0.014
+    },
+    {
+      "feature": "pre_prev_win_pct_diff",
+      "share": 0.0128
+    },
+    {
+      "feature": "pre_ret_percentPassingPPA_diff",
+      "share": 0.0126
+    },
+    {
+      "feature": "pre_sp_prev_off_diff",
+      "share": 0.0117
+    },
+    {
+      "feature": "a_weighted",
+      "share": 0.0109
+    },
+    {
+      "feature": "early_x_coach_change_diff",
+      "share": 0.0101
+    },
+    {
+      "feature": "h_weighted",
+      "share": 0.0101
+    },
+    {
+      "feature": "str_margin_hfa",
+      "share": 0.0096
+    },
+    {
+      "feature": "pre_coach_tenure_diff",
+      "share": 0.0096
+    }
+  ],
+  "ridge_std_coef_top25": [
+    {
+      "feature": "str_margin_diff",
+      "coef": 14.528
+    },
+    {
+      "feature": "pre_prev2_margin_strength_diff",
+      "coef": -3.11
+    },
+    {
+      "feature": "pre_prev_pf_diff",
+      "coef": -1.863
+    },
+    {
+      "feature": "early_x_sp_prev_rating_diff",
+      "coef": 1.784
+    },
+    {
+      "feature": "pre_prev_margin_strength_diff",
+      "coef": -1.381
+    },
+    {
+      "feature": "early_x_talent_diff",
+      "coef": 1.295
+    },
+    {
+      "feature": "pre_ret_usage_diff",
+      "coef": 1.25
+    },
+    {
+      "feature": "pre_coach_change_diff",
+      "coef": -1.12
+    },
+    {
+      "feature": "pre_sp_prev_rating_diff",
+      "coef": 0.98
+    },
+    {
+      "feature": "pre_prev_pa_diff",
+      "coef": 0.966
+    },
+    {
+      "feature": "early_x_recruit_avg4_diff",
+      "coef": 0.873
+    },
+    {
+      "feature": "a_weighted",
+      "coef": 0.87
+    },
+    {
+      "feature": "pre_poll_pre_ap_diff",
+      "coef": 0.842
+    },
+    {
+      "feature": "early_x_prev_margin_strength_diff",
+      "coef": -0.833
+    },
+    {
+      "feature": "pre_ret_percentReceivingPPA_diff",
+      "coef": 0.8
+    },
+    {
+      "feature": "h_weighted",
+      "coef": -0.777
+    },
+    {
+      "feature": "neutral",
+      "coef": -0.708
+    },
+    {
+      "feature": "pre_prev_win_pct_diff",
+      "coef": -0.627
+    },
+    {
+      "feature": "early_x_ret_percentPPA_diff",
+      "coef": 0.601
+    },
+    {
+      "feature": "pre_recruit_avg4_diff",
+      "coef": 0.586
+    },
+    {
+      "feature": "pre_fbs_new_diff",
+      "coef": -0.583
+    },
+    {
+      "feature": "a_games",
+      "coef": 0.579
+    },
+    {
+      "feature": "min_games",
+      "coef": -0.473
+    },
+    {
+      "feature": "pre_sp_prev_off_diff",
+      "coef": 0.459
+    },
+    {
+      "feature": "early_x_coach_change_diff",
+      "coef": -0.382
+    }
+  ]
+}
