@@ -13,11 +13,10 @@ one weighted ridge normal-equation solve with a multi-column right-hand
 side yields every metric's offense/defense strengths at once.
 
 Rows: for each prior game, two rows (each side's offense). The offense
-metric for the row is the team's `o_*`; the defensive strength of the
-opponent is what the `- def[O]` term absorbs. Defensive strengths are
-therefore "what this team's defense allows", opponent-adjusted; a LOWER
-def_m for PPA-like metrics means a better defense... to keep signs
-intuitive, `def_m` is stored as +(allowed), i.e. higher = worse defense.
+metric for the row is the team's `o_*`; the opponent's defense enters as
+`- def[O]`, so SIGN CONVENTION: a HIGHER def_m means a BETTER defense
+(it subtracts more from what opponents produce). The predicted value of
+metric m for T's offense against O is mu + off[T] - def[O] + hfa*ind.
 
 FCS sides are pooled into one pseudo-team.
 
