@@ -89,6 +89,15 @@ class ScanTelemetry:
     """Terminal MISSED_WINDOW rows written by after-the-fact
     reconciliation this run (accounting only, never backfill)."""
 
+    talent_prior_state: str = "NOT_ATTEMPTED"
+    """Whether the early-season talent margin prior was live this run.
+    "ACTIVE" means every FBS-vs-FBS projection carried it and the run
+    priced under the 0.5.0 model version; any UNAVAILABLE_* value means
+    the run genuinely priced as the frozen 0.4.0 control. Recorded so a
+    silent degradation back to the control is visible in telemetry
+    rather than having to be inferred from the version string."""
+    talent_prior_teams: int = 0
+
     shadow_sidecar_state: str = "NOT_ATTEMPTED"
     shadow_rows_written: int = 0
     shadow_rows_duplicate: int = 0

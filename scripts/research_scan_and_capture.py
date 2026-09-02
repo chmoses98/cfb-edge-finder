@@ -120,7 +120,11 @@ def _emit_shadow_record(
     try:
         projection = cached_projection.projection
         raw = projection.raw
-        corrected_margins = (raw.home_scores - raw.away_scores) + projection.margin_delta
+        # total_margin_delta, not margin_delta: once the early-season
+        # talent prior is active the control's own corrected margin
+        # includes it, and comparing the shadow against a margin that
+        # omitted it would report a difference the control never made.
+        corrected_margins = (raw.home_scores - raw.away_scores) + projection.total_margin_delta
 
         key = observation_key(
             season=season,
@@ -185,6 +189,43 @@ def _emit_shadow_record(
             sidecar.telemetry.shadow_failures += 1
         except Exception:  # noqa: BLE001
             pass
+
+
+def _load_talent_by_team(repo_dir: Path, season: int) -> tuple[dict[str, float], str]:
+    """Load the frozen preseason talent composite for the EARLY-SEASON
+    TALENT PRIOR (modeling/talent_prior.py) -- the production control
+    input, not the research sidecar's copy.
+
+    Returns `(talent_by_team, state)`. The dict is EMPTY on any problem,
+    which makes the prior a no-op and the run price under the control
+    version: a half-available talent table must never produce a model
+    that is neither the control nor the candidate.
+
+    *** WHY THIS READS THROUGH FeatureTable.get, NOT THE INDEX ***
+    `get` calls `PreseasonFeature.validate_for()`, which RAISES when a
+    talent row's `derived_from_season` does not line up with the target
+    as-of. Reading the index directly would be faster and would skip the
+    one check that stops a composite being applied to the season it was
+    derived from. Same reasoning as `_build_shadow_sidecar`'s own note.
+    """
+    try:
+        cache_dir = repo_dir / "data" / "research_cache" / "preseason"
+        seasons = load_cache(cache_dir)
+        if season not in seasons:
+            return {}, f"UNAVAILABLE_NO_CACHE_FOR_SEASON_{season}"
+        table = build_feature_tables(seasons)[season]
+        target = AsOf(season=season, week=1)
+        teams = {team for (team, name) in table._by_key if name == "talent_composite"}  # noqa: SLF001
+        talent: dict[str, float] = {}
+        for team in sorted(teams):
+            feature = table.get(team, "talent_composite", target=target)
+            if feature is not None and feature.value is not None:
+                talent[team] = float(feature.value)
+        if not talent:
+            return {}, "UNAVAILABLE_NO_TALENT_VALUES"
+        return talent, "ACTIVE"
+    except Exception as exc:  # noqa: BLE001
+        return {}, f"UNAVAILABLE_{type(exc).__name__}"
 
 
 def _build_shadow_sidecar(
@@ -1047,10 +1088,22 @@ def main() -> int:
     not_started_games = [g for g in games if g.status == "scheduled"]
     report.games_scanned = len(not_started_games)
 
-    cache = GameProjectionCache(lines_provider=_load_history_lines)
+    # *** EARLY-SEASON TALENT PRIOR (2026-09-02 model-repair promotion) ***
+    # Loaded here, before any pricing, so the model version this run
+    # stamps on every row is decided once and describes the arithmetic
+    # that actually ran. An unavailable cache degrades to the frozen
+    # control rather than to a partially-applied hybrid.
+    talent_by_team, talent_state = _load_talent_by_team(args.data_repo_dir, args.schedule_season)
+    telemetry.talent_prior_state = talent_state
+    telemetry.talent_prior_teams = len(talent_by_team)
+    resolved_model_version = milestone_d.resolve_model_version(bool(talent_by_team))
+    print(f"TALENT-PRIOR state={talent_state} teams={len(talent_by_team)} "
+          f"model_version={resolved_model_version}")
+
+    cache = GameProjectionCache(lines_provider=_load_history_lines, talent_by_team=talent_by_team)
     kalshi_client = KalshiClient()
     model_version = ModelVersion(
-        model_version=milestone_d.MODEL_VERSION,
+        model_version=resolved_model_version,
         ratings_component_version=milestone_d._ratings_component_version(),  # noqa: SLF001
         pricing_engine_version="0.1.0",
     )

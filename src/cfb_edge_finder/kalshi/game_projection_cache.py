@@ -67,6 +67,7 @@ from cfb_edge_finder.modeling.score_model import (
     build_expanding_residual_pool,
     project_game,
 )
+from cfb_edge_finder.modeling.talent_prior import talent_margin_delta
 
 
 @dataclass(frozen=True)
@@ -143,6 +144,7 @@ class GameProjectionCache:
         lines: list[TeamGameLine] | None = None,
         *,
         lines_provider: Callable[[], list[TeamGameLine]] | None = None,
+        talent_by_team: dict[str, float] | None = None,
     ) -> None:
         """`lines` may instead be supplied lazily via `lines_provider`,
         called AT MOST ONCE and only when the first projection is actually
@@ -152,9 +154,16 @@ class GameProjectionCache:
         four seasons of CFBD team-game lines is the single most expensive
         thing a scan does (~30s and several API calls), and a scan that
         finds no checkpoint due must not pay it. Eager `lines` is still
-        the default and every existing caller is unaffected."""
+        the default and every existing caller is unaffected.
+
+        `talent_by_team` activates the early-season talent margin prior
+        (modeling/talent_prior.py). Omitting it -- the default -- makes
+        every projection byte-identical to the frozen control 0.4.0, so
+        the promotion cannot silently alter a caller that did not ask
+        for it, and CONTROL stays reproducible through this same class."""
         if lines is None and lines_provider is None:
             raise ValueError("GameProjectionCache needs either `lines` or `lines_provider`")
+        self._talent_by_team = dict(talent_by_team) if talent_by_team else {}
         self._lines: list[TeamGameLine] | None = lines
         self._lines_provider = lines_provider
         self.lines_fetch_count = 0
@@ -226,6 +235,18 @@ class GameProjectionCache:
         )
 
         is_fbs_vs_fbs = request.home_classification == "fbs" and request.away_classification == "fbs"
+        # The talent prior is FBS-vs-FBS only, matching the population it
+        # was fit and validated on. An FBS-vs-FCS game gets 0.0, never a
+        # talent differential built against a pooled pseudo-opponent that
+        # has no composite of its own.
+        talent_delta = (
+            talent_margin_delta(
+                self._talent_by_team.get(request.home_id),
+                self._talent_by_team.get(request.away_id),
+            )
+            if is_fbs_vs_fbs
+            else 0.0
+        )
         corrected = apply_margin_correction(
             raw_projection,
             is_fbs_vs_fbs=is_fbs_vs_fbs,
@@ -234,6 +255,7 @@ class GameProjectionCache:
             artifact_version=MARGIN_CORRECTION_ARTIFACT_VERSION,
             as_of=as_of,
             training_cutoff=MARGIN_CORRECTION_TRAINING_CUTOFF,
+            talent_margin_delta=talent_delta,
         )
 
         result = CachedGameProjection(

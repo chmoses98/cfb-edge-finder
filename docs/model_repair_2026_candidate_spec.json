@@ -1,0 +1,141 @@
+{
+  "spec_version": "cfb_model_repair_v1",
+  "declared_at": "2026-09-02",
+  "declared_before_any_candidate_result": true,
+  "control": {
+    "model_version": "0.4.0-milestone-c2-live-margin-correction",
+    "config_hash": "3741c6f522972fa2de46493b47a80de756aabc0a038d12c33f6f3e204f66bd83",
+    "reproduction_gate": "PASSED",
+    "reproduction_evidence": {
+      "week_1_n": 238,
+      "log_loss": 0.5627,
+      "brier": 0.1909,
+      "margin_mae": 15.92,
+      "margin_rmse": 20.21,
+      "margin_bias": -6.32,
+      "favorite_tail_bias": -9.24,
+      "total_mae": 13.59,
+      "total_bias": 2.96,
+      "documented_reference": "docs/PRESEASON_PRIOR_EXPERIMENTS.md section 2"
+    }
+  },
+
+  "synthetic_contract_grid": {
+    "rationale": "Fixed ABSOLUTE half-point thresholds, declared here before evaluation. Outcome-independent by construction: no threshold depends on any realised score. Mirrors real Kalshi ladders, which are quoted at absolute round numbers, not model-relative offsets.",
+    "spread_thresholds": [0.5, 3.5, 6.5, 9.5, 13.5, 17.5, 21.5, 24.5, 27.5, 31.5, 35.5],
+    "spread_sides": ["home_margin_greater_than_T", "away_margin_greater_than_T"],
+    "total_thresholds": [31.5, 34.5, 37.5, 40.5, 43.5, 46.5, 49.5, 52.5, 55.5, 58.5, 61.5, 64.5, 67.5, 70.5],
+    "total_sides": ["over"],
+    "pricer": "projections.distribution normal + 0.5 continuity correction, applied to to_game_distribution() -- the exact deployed Kalshi contract path (confirmed by Week 0 ladder inversion, fit residual 0.000)"
+  },
+
+  "clustering_rules": {
+    "fitting": "game-equal weighting: every game contributes total weight 1.0, split evenly across its synthetic contracts, so a game with 22 spread contracts cannot outvote a game with 22 total contracts or dominate the fit.",
+    "evaluation": "cluster bootstrap resampling WHOLE GAMES with replacement, 2000 iterations; per-game diagnostics reported; contract-level n and game-level n always reported side by side.",
+    "min_clusters_for_interval": 5
+  },
+
+  "calibration_bins": [[0.0,0.05],[0.05,0.10],[0.10,0.20],[0.20,0.40],[0.40,0.60],[0.60,0.80],[0.80,0.90],[0.90,0.95],[0.95,1.0]],
+
+  "temporal_design": {
+    "rationale": "2025 has already been inspected by the preseason-prior mission and is NOT a pristine holdout for this mission. Rolling-origin evaluation is used instead, every fold reported separately.",
+    "folds": [
+      {"eval_season": 2021, "fit_seasons": [], "note": "no prior calibration history; calibration candidates fall back to identity"},
+      {"eval_season": 2022, "fit_seasons": [2021]},
+      {"eval_season": 2023, "fit_seasons": [2021, 2022]},
+      {"eval_season": 2024, "fit_seasons": [2021, 2022, 2023]},
+      {"eval_season": 2025, "fit_seasons": [2021, 2022, 2023, 2024]}
+    ],
+    "excluded": [2020],
+    "excluded_reason": "COVID scheduling and opt-outs",
+    "truly_untouched_future_test": "2026 Week 1",
+    "week0_2026_role": "DEVELOPMENT DIAGNOSTIC ONLY -- never a fitting set, never a fold"
+  },
+
+  "candidates": [
+    {
+      "id": "A",
+      "name": "talent_margin_prior",
+      "hypothesis": "CONTROL under-projects early-season margins because preseason ratings compress team differences. The historically confirmed talent slope repairs the point estimate.",
+      "form": "margin_delta = TALENT_BETA * (home_talent_composite - away_talent_composite)",
+      "TALENT_BETA": 0.018993,
+      "refit_permitted": false,
+      "refit_note": "beta is FROZEN from the prior mission (fit on 2021-2023). It is NOT refit here and NOT refit on 2026.",
+      "channel": "margin mean only; total mean unchanged (home +delta/2, away -delta/2)"
+    },
+    {
+      "id": "B",
+      "name": "early_season_total_bias_correction",
+      "hypothesis": "CONTROL over-projects early-season totals. A simple intercept correction, fit chronologically, repairs the total mean.",
+      "form": "total_delta = -bias_hat(week_bucket), applied as home -= d/2, away -= d/2 so margin is unchanged",
+      "week_buckets": ["week_1", "weeks_2_3", "weeks_4_plus"],
+      "fitting": "bias_hat = game-equal mean of (projected_total - actual_total) over FIT SEASONS ONLY for that week bucket. Chronological, never fit on the evaluation season. Hard-coding -2.94 is forbidden.",
+      "shrinkage": "estimate shrunk toward 0 by n/(n+k) with k=50 games, to avoid overfitting a small early-season bucket"
+    },
+    {
+      "id": "C",
+      "name": "favorite_tail_margin_correction",
+      "hypothesis": "After Candidate A, residual favourite-tail bias may remain in early season.",
+      "form": "ONE simple linear slope on projected absolute margin, fit on FIT SEASONS ONLY, early-season games only",
+      "gating": "ONLY evaluated if residual favourite-tail bias after Candidate A still exceeds 3.0 points in magnitude on the fit seasons. If Candidate A suffices, C is not tested (declared here, not decided after seeing results).",
+      "max_hyperparameters": 2
+    },
+    {
+      "id": "D",
+      "name": "spread_probability_calibration",
+      "hypothesis": "Raw spread threshold probabilities are miscalibrated, especially in the tails.",
+      "form": "monotonic map on logit(p): calibrated_logit = A*logit(p) + B",
+      "variants": ["identity", "platt"],
+      "fitting": "walk-forward on FIT SEASONS ONLY, game-equal weighted, target = realised synthetic threshold outcome. Market prices are NEVER used.",
+      "isotonic_note": "isotonic only if a fold has >=500 games of fit history AND platt is visibly inadequate; declared but not expected"
+    },
+    {
+      "id": "E",
+      "name": "total_probability_calibration",
+      "hypothesis": "Total threshold probabilities are miscalibrated and must be treated separately from spread.",
+      "form": "same functional form as D, fit SEPARATELY on total contracts only",
+      "fitting": "identical discipline to D; no transfer of spread parameters to totals is permitted"
+    },
+    {
+      "id": "F",
+      "name": "distribution_scale_repair",
+      "hypothesis": "The deployed predictive sd is mis-scaled relative to realised error, causing tail overconfidence.",
+      "form": "single multiplicative factor on margin sd and (separately) total sd",
+      "gating": "ONLY tested if the diagnostic shows deployed sigma differs from bias-corrected realised RMSE by more than 8% on the fit seasons. Declared here as a gate, not decided after seeing results.",
+      "fitting": "factor = bias_corrected_realised_rmse / mean_deployed_sigma on FIT SEASONS ONLY"
+    }
+  ],
+
+  "acceptance_gates": {
+    "rule": "A candidate is ACCEPTED only if ALL of the following hold. 'Best average metric wins' is explicitly rejected.",
+    "gates": [
+      "G1 REPLICATION: improves its primary metric in at least 3 of the 4 evaluable folds (2022, 2023, 2024, 2025). Winning one fold is a rejection.",
+      "G2 DIRECTION: the pooled point estimate improves the primary metric, with a game-clustered 95% interval that does not sit predominantly on the harm side.",
+      "G3 NO MATERIAL HARM: no evaluated segment (week_1, weeks_1_3, weeks_4_plus) degrades its primary metric by more than 25% of the magnitude of the improvement claimed elsewhere.",
+      "G4 CALIBRATION: for probability candidates, ECE must not worsen, and the extreme bins (0-5%, 95-100%) must not worsen in absolute calibration error.",
+      "G5 SIMPLICITY TIE-BREAK: if two candidates are statistically indistinguishable, the one with fewer fitted parameters is chosen. Identity beats a fitted map at a tie."
+    ],
+    "primary_metrics": {
+      "point_estimate_candidates": "margin MAE (A, C); total MAE (B)",
+      "probability_candidates": "Brier on synthetic contracts (D, E, F), with log loss and ECE as co-equal guards"
+    },
+    "combination_rule": "The combined candidate is built ONLY from accepted components, and must itself pass all gates on the full rolling-origin evaluation. Individually-positive components are NOT automatically stacked."
+  },
+
+  "stop_conditions": [
+    "CONTROL cannot be reproduced (NOT triggered -- reproduction passed)",
+    "candidate only improves Week 0 2026",
+    "candidate wins only one historical fold",
+    "leakage detected",
+    "extreme calibration worsens materially",
+    "candidate depends on Week 1 2026 outcomes",
+    "historical observations would need rewriting",
+    "acceptance criteria would have to change after seeing results"
+  ],
+
+  "promotion_rule": {
+    "new_version_required": true,
+    "never_overwrite": "0.4.0-milestone-c2-live-margin-correction",
+    "prospective_boundary": "A promoted model may only capture PROSPECTIVELY from its freeze time forward. The scanner must never emit new-version rows for historical or missed checkpoints."
+  }
+}

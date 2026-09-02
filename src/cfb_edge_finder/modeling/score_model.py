@@ -394,6 +394,22 @@ class CorrectedGameProjection:
     correction_applied: bool
     correction_skip_reason: str | None
     artifact_version: str | None
+    talent_margin_delta: float = 0.0
+    """The early-season talent margin prior's own contribution
+    (modeling/talent_prior.py), kept as a SEPARATE field from
+    `margin_delta` rather than folded into it so a row's provenance still
+    distinguishes the C.2 favourite-tail artifact from the talent prior.
+
+    Defaults to 0.0, so every construction that predates the prior --
+    and every caller that supplies no talent -- produces a projection
+    byte-identical to the frozen control. That default is what makes
+    CONTROL 0.4.0 reproducible by construction rather than by promise."""
+
+    @property
+    def total_margin_delta(self) -> float:
+        """Every margin shift this projection applies. Both components
+        move the margin and preserve the total, so they simply add."""
+        return self.margin_delta + self.talent_margin_delta
 
     @property
     def raw_expected_margin(self) -> float:
@@ -401,15 +417,15 @@ class CorrectedGameProjection:
 
     @property
     def expected_home_points(self) -> float:
-        return max(self.raw.expected_home_points + self.margin_delta / 2, 0.0)
+        return max(self.raw.expected_home_points + self.total_margin_delta / 2, 0.0)
 
     @property
     def expected_away_points(self) -> float:
-        return max(self.raw.expected_away_points - self.margin_delta / 2, 0.0)
+        return max(self.raw.expected_away_points - self.total_margin_delta / 2, 0.0)
 
     @property
     def expected_margin(self) -> float:
-        return self.raw_expected_margin + self.margin_delta
+        return self.raw_expected_margin + self.total_margin_delta
 
     @property
     def expected_total(self) -> float:
@@ -426,7 +442,7 @@ class CorrectedGameProjection:
         return self.raw.prob_away_win()
 
     def prob_margin_greater_than(self, threshold: float) -> float:
-        shifted_margins = (self.raw.home_scores - self.raw.away_scores) + self.margin_delta
+        shifted_margins = (self.raw.home_scores - self.raw.away_scores) + self.total_margin_delta
         return float(np.mean(shifted_margins > threshold))
 
     def prob_total_greater_than(self, threshold: float) -> float:
@@ -435,8 +451,8 @@ class CorrectedGameProjection:
     def to_game_distribution(self) -> GameDistribution:
         raw_dist = self.raw.to_game_distribution()
         return GameDistribution(
-            home_mean=max(raw_dist.home_mean + self.margin_delta / 2, 0.0),
-            away_mean=max(raw_dist.away_mean - self.margin_delta / 2, 0.0),
+            home_mean=max(raw_dist.home_mean + self.total_margin_delta / 2, 0.0),
+            away_mean=max(raw_dist.away_mean - self.total_margin_delta / 2, 0.0),
             home_sd=raw_dist.home_sd,
             away_sd=raw_dist.away_sd,
             correlation=raw_dist.correlation,
@@ -474,6 +490,7 @@ def apply_margin_correction(
     artifact_version: str | None,
     as_of: AsOf,
     training_cutoff: AsOf | None,
+    talent_margin_delta: float = 0.0,
 ) -> CorrectedGameProjection:
     """The single entry point `scripts/build_cfb_baseline.py` uses to
     apply Milestone C.2 Part 3's margin correction to a live projection --
@@ -506,6 +523,7 @@ def apply_margin_correction(
             correction_applied=False,
             correction_skip_reason="method_none",
             artifact_version=artifact_version,
+            talent_margin_delta=talent_margin_delta,
         )
     if not is_fbs_vs_fbs:
         return CorrectedGameProjection(
@@ -516,6 +534,7 @@ def apply_margin_correction(
             correction_applied=False,
             correction_skip_reason="not_fbs_vs_fbs",
             artifact_version=artifact_version,
+            talent_margin_delta=talent_margin_delta,
         )
     if training_cutoff is not None and as_of.is_strictly_before(training_cutoff):
         return CorrectedGameProjection(
@@ -526,6 +545,7 @@ def apply_margin_correction(
             correction_applied=False,
             correction_skip_reason="as_of_predates_training_cutoff",
             artifact_version=artifact_version,
+            talent_margin_delta=talent_margin_delta,
         )
     if correction_model is None:
         return CorrectedGameProjection(
@@ -536,6 +556,7 @@ def apply_margin_correction(
             correction_applied=False,
             correction_skip_reason="no_correction_model",
             artifact_version=artifact_version,
+            talent_margin_delta=talent_margin_delta,
         )
     if correction_model.is_identity_fallback:
         return CorrectedGameProjection(
@@ -546,6 +567,7 @@ def apply_margin_correction(
             correction_applied=False,
             correction_skip_reason="identity_fallback",
             artifact_version=artifact_version,
+            talent_margin_delta=talent_margin_delta,
         )
 
     raw_margin = projection.expected_home_points - projection.expected_away_points
@@ -558,6 +580,7 @@ def apply_margin_correction(
         correction_applied=True,
         correction_skip_reason=None,
         artifact_version=artifact_version,
+        talent_margin_delta=talent_margin_delta,
     )
 
 
