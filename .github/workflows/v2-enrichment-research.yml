@@ -1,0 +1,33 @@
+# RESEARCH-ONLY (V2 data-enrichment mission). Read-only against every
+# external source; never touches the production collector, the
+# research-data branch, or the 0.5.0 model. Spends zero metered CFBD
+# calls in probe mode (/info is unmetered).
+name: V2 Enrichment Research (read-only)
+
+on:
+  push:
+    branches: [claude/cfb-model-v2-research-krupoc]
+    paths: [scripts/v2_enrichment_probe.py, .github/workflows/v2-enrichment-research.yml]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe (default) -- reachability + quota only"
+        required: false
+        default: "probe"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests
+      - name: Source reachability + unmetered quota probe
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: python scripts/v2_enrichment_probe.py
