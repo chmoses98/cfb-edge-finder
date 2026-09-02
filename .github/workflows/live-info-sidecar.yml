@@ -1,0 +1,50 @@
+# LIVE INFORMATION SIDECAR -- research-only. Captures pregame forecasts,
+# posted odds and injury lists for upcoming games and appends them,
+# timestamped, to the ISOLATED `research-sidecar` orphan branch.
+# Never touches main, research-data, the collector, or the 0.5.0 model.
+# Zero CFBD calls. Fails independently. (A cron schedule only fires once
+# this file exists on the default branch; until then dispatch manually.)
+name: Live Info Sidecar (research-only)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: research-sidecar-write
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests pandas pyarrow
+      - name: Capture upcoming-game live information (append-only)
+        run: |
+          set -euo pipefail
+          git fetch origin research-sidecar --depth=1 2>/dev/null && \
+            git worktree add /tmp/rs origin/research-sidecar --detach || \
+            { mkdir -p /tmp/rs && cd /tmp/rs && git init -q && git checkout -q --orphan research-sidecar && cd -; }
+          mkdir -p /tmp/rs/data/research/live_sidecar
+          python scripts/live_info_sidecar.py --games data/research_inputs/v2_games_for_weather.csv \
+            --out-dir /tmp/rs/data/research/live_sidecar
+      - name: Push to research-sidecar (isolated orphan branch)
+        run: |
+          set -euo pipefail
+          cd /tmp/rs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/live_sidecar
+          git diff --cached --quiet && { echo "nothing new"; exit 0; }
+          git commit -m "live sidecar capture $(date -u +%Y-%m-%dT%H:%M:%SZ) (research-only, append-only)"
+          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git push origin HEAD:research-sidecar
