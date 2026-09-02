@@ -56,7 +56,30 @@ from cfb_edge_finder.teams.fcs_identity import build_fcs_school_name_set  # noqa
 
 MODEL_VERSION = "0.4.0-milestone-c2-live-margin-correction"
 """Must match scripts/build_cfb_baseline.py's own MODEL_VERSION exactly
--- mission section 9 forbids silently pricing under any other version."""
+-- mission section 9 forbids silently pricing under any other version.
+
+This is the CONTROL version and is deliberately NEVER reused for a
+different computation. It remains the version emitted whenever the
+early-season talent prior is not active, because in that case the
+projection is byte-identical to the frozen control."""
+
+TALENT_PRIOR_MODEL_VERSION = "0.5.0-early-season-talent-prior"
+"""Emitted when, and only when, the early-season talent margin prior
+(modeling/talent_prior.py) actually priced the contract.
+
+*** WHY THE VERSION IS RESOLVED, NOT HARD-SET ***
+The prior needs a talent composite for both teams. If the preseason
+research cache is unavailable, the projection genuinely IS the control,
+and stamping it 0.5.0 would put a version on the corpus that does not
+describe the arithmetic that produced the row. `resolve_model_version`
+therefore derives the string from whether the prior is live, so
+`model_version` stays a true statement about the computation rather than
+a statement about the deployment's intent."""
+
+
+def resolve_model_version(talent_prior_active: bool) -> str:
+    """The model version this run genuinely priced under."""
+    return TALENT_PRIOR_MODEL_VERSION if talent_prior_active else MODEL_VERSION
 
 TRAINING_CUTOFF_LABEL = "strictly before the projected game's own as_of (season, week)"
 
