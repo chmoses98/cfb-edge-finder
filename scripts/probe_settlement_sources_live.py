@@ -135,50 +135,58 @@ def settlement_check(events: list, day: datetime) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--days-back", type=int, default=5, help="How many days back to look for a completed slate")
+    ap.add_argument("--days-back", type=int, default=10, help="How many days back to look for a completed slate")
     args = ap.parse_args()
 
     now = datetime.now(UTC)
-    report: dict = {"probed_at": now.isoformat(), "cfbd_calls_made": 0, "hosts": {}}
+    report: dict = {"probed_at": now.isoformat(), "cfbd_calls_made": 0, "by_day": {}}
 
-    # Find a day that actually has completed games, using the first
-    # reachable host -- never hard-coded scores, never a hard-coded date.
-    for offset in range(1, args.days_back + 1):
+    # Scan a RANGE rather than stopping at the first day with a final:
+    # the first pass stopped early and reported a day that merely had a
+    # current-week event visible, which said nothing about whether a host
+    # can serve an OLDER completed slate -- exactly the property
+    # settlement depends on.
+    for offset in range(0, args.days_back + 1):
         day = now - timedelta(days=offset)
         per_host: dict = {}
-        any_final = False
         for name, (url, params, path) in CANDIDATES.items():
             got = probe(name, url, params, path, day)
             events = got.pop("events", None)
-            if events is not None and name != "ncaa (data.ncaa.com)":
+            if events is not None and not name.startswith("ncaa"):
                 got["settlement"] = settlement_check(events, day)
-                any_final = any_final or got["settlement"]["final_settleable"] > 0
             elif events is not None:
-                # NCAA's shape is entirely different; report its keys so
-                # the decision to use or reject it is evidence-based.
                 got["sample_keys"] = sorted(events[0])[:14] if events else []
-                got["sample"] = json.dumps(events[0])[:400] if events else None
             per_host[name] = got
-        report["hosts"][day.strftime("%Y-%m-%d")] = per_host
-        if any_final:
-            report["chosen_day"] = day.strftime("%Y-%m-%d")
-            break
+        report["by_day"][day.strftime("%Y-%m-%d")] = per_host
 
     print(json.dumps(report, indent=1, default=str))
-    print("\n==== COMPACT VERDICT ====")
-    verdict = {}
-    for day, hosts in report["hosts"].items():
+    print("\n==== COMPACT MATRIX (day x host: http / events / settleable / fail-closed) ====")
+    rows = []
+    for day, hosts in sorted(report["by_day"].items()):
         for name, got in hosts.items():
-            s = got.get("settlement") or {}
-            verdict[f"{day} {name}"] = {
-                "http": got.get("http"),
-                "n_events": got.get("n_events"),
-                "final_settleable": s.get("final_settleable"),
-                "fail_closed": s.get("fail_closed"),
-                "identity_unresolved": s.get("identity_unresolved"),
-                "error": (got.get("error") or "")[:80] or None,
-            }
-    print(json.dumps(verdict, indent=1))
+            st = got.get("settlement") or {}
+            rows.append(
+                f"{day}  {name:<24} http={str(got.get('http')):<4} "
+                f"events={str(got.get('n_events')):<5} "
+                f"settleable={str(st.get('final_settleable')):<5} "
+                f"failclosed={str(st.get('fail_closed')):<4} "
+                f"unresolved={str(st.get('identity_unresolved')):<4} "
+                f"{(got.get('error') or '')[:44]}"
+            )
+    print("\n".join(rows))
+
+    totals = {}
+    for _day, hosts in report["by_day"].items():
+        for name, got in hosts.items():
+            st = got.get("settlement") or {}
+            t = totals.setdefault(name, {"days_http200": 0, "events": 0, "settleable": 0, "fail_closed": 0})
+            if got.get("http") == 200:
+                t["days_http200"] += 1
+            t["events"] += got.get("n_events") or 0
+            t["settleable"] += st.get("final_settleable") or 0
+            t["fail_closed"] += st.get("fail_closed") or 0
+    print("\n==== TOTALS ACROSS THE RANGE ====")
+    print(json.dumps(totals, indent=1))
     return 0
 
 

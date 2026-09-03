@@ -34,4 +34,4 @@ jobs:
       - name: Install package
         run: pip install -e ".[dev]"
       - name: Probe free result sources with the real settlement parsers
-        run: python scripts/probe_settlement_sources_live.py --days-back 6
+        run: python scripts/probe_settlement_sources_live.py --days-back 10
