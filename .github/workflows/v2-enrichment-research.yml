@@ -47,6 +47,7 @@ jobs:
     concurrency:
       group: v2-enrich-weather-write-${{ matrix.product }}
       cancel-in-progress: false
+    timeout-minutes: 330
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -61,10 +62,12 @@ jobs:
       - name: Fetch Open-Meteo kickoff weather (free, keyless, zero CFBD calls)
         run: |
           python scripts/v2_fetch_weather.py --games data/research_inputs/v2_games_for_weather.csv \
-            --products ${{ matrix.product }} --out-dir "$RUNNER_TEMP/weather"
+            --products ${{ matrix.product }} --out-dir "$RUNNER_TEMP/weather" --max-minutes 290
           ls -la "$RUNNER_TEMP/weather"
       - name: Push to research-data-v2enrich (isolated orphan branch)
+        if: always()
         run: |
+          test -f "$RUNNER_TEMP/weather/weather_${{ matrix.product }}.parquet" || { echo "nothing fetched"; exit 0; }
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
