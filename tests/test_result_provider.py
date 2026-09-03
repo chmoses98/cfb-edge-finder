@@ -251,8 +251,12 @@ class TestPrimaryRouting:
             )
 
     def test_espn_fetch_failure_while_cfbd_down_aborts_everything(self, repo_with_preseason_cache):
+        """Every ESPN host exhausted while CFBD is down must still settle
+        NOTHING. The client now tries several hosts before raising, so the
+        message says 'all sources'; the fail-closed behaviour is the
+        same one this test has always pinned."""
         espn = _FakeESPN({}, raises=requests.ConnectionError("espn down too"))
-        with pytest.raises(ResultProviderUnavailable, match="both sources unavailable"):
+        with pytest.raises(ResultProviderUnavailable, match="all sources unavailable"):
             resolve_game_results(
                 season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)),
                 repo_dir=repo_with_preseason_cache, needed_game_ids={GAME_ID}, espn_client=espn,

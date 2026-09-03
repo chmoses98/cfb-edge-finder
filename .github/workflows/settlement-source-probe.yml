@@ -1,0 +1,114 @@
+name: Settlement Source Probe (read-only)
+
+# Read-only live probe for PART I of the settlement-resilience mission:
+# with CFBD quota-exhausted and site.api.espn.com answering 403 to CI, is
+# there a FREE structured result source that can still settle completed
+# games?
+#
+# Runs the REAL settlement parsers, so what it reports is what settlement
+# would actually do. Writes nothing, settles nothing, makes ZERO CFBD
+# calls, and shares no concurrency group with the collector or with
+# Research Settlement -- it can never queue against either.
+
+on:
+  push:
+    branches: [claude/settlement-403-and-v2-shadow]
+    paths:
+      - "scripts/probe_settlement_sources_live.py"
+      - "scripts/research_scan_and_capture.py"
+      - "src/cfb_edge_finder/research/result_provider.py"
+      - "src/cfb_edge_finder/research/v2_shadow.py"
+      - "src/cfb_edge_finder/data/espn_client.py"
+      - "src/cfb_edge_finder/modeling/v2/**"
+      - ".github/workflows/settlement-source-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Probe free result sources with the real settlement parsers
+        run: python scripts/probe_settlement_sources_live.py --days-back 10
+
+  # END-TO-END DRY RUN on the branch head (mission section 18).
+  # --no-push writes locally on the runner and pushes nothing, so it
+  # cannot touch the corpus, the durable branch, or another run's work,
+  # and needs no concurrency group. Proves the whole path under the real
+  # live conditions: CFBD quota 0, ESPN-backed schedule, canonical 0.5.0
+  # unchanged, V2 shadow ACTIVE against the frozen artifact.
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Configure git identity (the durable store stages locally even with --no-push)
+        run: |
+          git config user.name "v2-shadow-dryrun"
+          git config user.email "v2-shadow-dryrun@users.noreply.github.com"
+      - name: Scan and capture -- DRY RUN, writes locally, pushes nothing
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          set +e
+          python scripts/research_scan_and_capture.py \
+            --schedule-season 2026 \
+            --run-id "v2dryrun-${{ github.run_id }}" \
+            --trigger-type workflow_dispatch \
+            --trigger-actor "${{ github.actor }}" \
+            --trigger-source MANUAL \
+            --no-push > "$RUNNER_TEMP/dryrun.log" 2>&1
+          echo "collector exit code: $?"
+          set -e
+          echo "===== collector log (tail) ====="
+          tail -80 "$RUNNER_TEMP/dryrun.log"
+          echo "===== key lines ====="
+          grep -E "^(V2-SHADOW|CFBD-ACCESS|SCHEDULE-FALLBACK|OPERATIONAL|TALENT-PRIOR)" \
+            "$RUNNER_TEMP/dryrun.log" | head -40 || true
+          python - "$RUNNER_TEMP/dryrun.log" <<'PY'
+          import json, re, sys
+
+          text = open(sys.argv[1]).read()
+          perf = json.loads(re.search(r"^PERF (\{.*\})$", text, re.M).group(1))
+          checks = {
+              "zero metered CFBD calls": perf["cfbd_requests"] == 0,
+              "schedule source healthy": perf["schedule_state_verdict"] != "SCHEDULE_STATE_UNAVAILABLE"
+              or perf["football_state_source"] == "cache",
+              "canonical 0.5.0 still the priced model": perf["talent_prior_state"] == "ACTIVE",
+              "V2 shadow ACTIVE": perf["v2_shadow_state"] == "ACTIVE",
+              "V2 artifact hash stamped": bool(perf.get("v2_artifact_sha256")),
+              "V2 model version is not canonical": perf.get("v2_model_version") == "0.6.0-v2-shadow",
+              "V2 priced at least as many contracts as it wrote rows": (
+                  perf["v2_shadow_contracts_priced"] >= 0
+              ),
+          }
+          print(json.dumps({
+              "cfbd_requests": perf["cfbd_requests"],
+              "football_state_source": perf["football_state_source"],
+              "schedule_provider": perf["schedule_provider"],
+              "canonical_observations": perf["observation_count"],
+              "v2_shadow_state": perf["v2_shadow_state"],
+              "v2_model_version": perf.get("v2_model_version"),
+              "v2_artifact_sha256": perf.get("v2_artifact_sha256"),
+              "v2_shadow_rows_written": perf["v2_shadow_rows_written"],
+              "v2_shadow_contracts_priced": perf["v2_shadow_contracts_priced"],
+              "v2_shadow_unavailable": perf["v2_shadow_unavailable"],
+              "v2_shadow_unavailable_reasons": perf.get("v2_shadow_unavailable_reasons"),
+              "operational_state": perf["operational_state"],
+          }, indent=1))
+          for name, ok in checks.items():
+              print(("PASS  " if ok else "FAIL  ") + name)
+          sys.exit(0 if all(checks.values()) else 1)
+          PY

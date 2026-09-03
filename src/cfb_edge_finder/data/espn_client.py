@@ -38,6 +38,48 @@ import requests
 DEFAULT_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football"
 FBS_GROUP_ID = 80
 
+# *** HOST FAILOVER (live-verified 2026-09-03, runs 33808382040 / 33808502653) ***
+# `site.api.espn.com` began answering HTTP 403 "Access Denied" (Akamai)
+# to GitHub-hosted runners. Because CFBD is simultaneously
+# quota-exhausted, that left settlement with NO reachable result source:
+# it failed closed correctly, but completed games could not settle at
+# all. Two other hosts serve the IDENTICAL scoreboard payload and were
+# reachable on 11 of 11 probed days, with the real settlement parsers
+# accepting their finals and failing closed on nothing:
+#
+#   site.api.espn.com       0/11 days reachable  (403 every day)
+#   site.web.api.espn.com  11/11 days,  8 settleable finals, 0 fail-closed
+#   cdn.espn.com           11/11 days, 11 settleable finals, 0 fail-closed
+#
+# Order matters. `site.api` stays FIRST so the moment ESPN restores it
+# the original host is used again with no code change. `site.web.api` is
+# second because it honours `dates=` precisely (per-day slates), which is
+# what settlement queries by. `cdn.espn.com` is a week-oriented view --
+# it returns a superset and is therefore a sound last resort, but a
+# worse first choice.
+#
+# This is a TRANSPORT change only: the payload shape, the identity
+# matching, the three-fold finality requirement and every fail-closed
+# rule in research/result_provider.py are untouched.
+SCOREBOARD_HOSTS: tuple[tuple[str, str], ...] = (
+    ("site.api.espn.com", "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"),
+    (
+        "site.web.api.espn.com",
+        "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+    ),
+    ("cdn.espn.com", "https://cdn.espn.com/core/college-football/scoreboard"),
+)
+
+_CDN_HOST = "cdn.espn.com"
+
+USER_AGENT = "cfb-edge-finder research settlement (read-only result fallback)"
+"""A truthful, non-impersonating identifier -- never a spoofed browser
+string, and never an attempt to defeat the 403 on the blocked host."""
+
+NON_RETRYABLE_STATUSES = frozenset({401, 403, 404})
+"""A policy answer, not a transient one: retrying a blocked host wastes
+the settlement window. Move to the next host instead."""
+
 RETRY_ATTEMPTS = 4
 RETRY_BASE_DELAY_SECONDS = 1.0
 RETRY_MAX_DELAY_SECONDS = 8.0
@@ -46,37 +88,103 @@ RETRY_MAX_DELAY_SECONDS = 8.0
 keyless CDN-backed endpoint must cost seconds, not a settlement run."""
 
 
+def _events_from(host: str, payload: object) -> list | None:
+    """Both alternate hosts carry the SAME event objects; only the
+    envelope differs (`events` at the top level vs
+    `content.sbData.events`). Returns None when the envelope is not the
+    shape live verification established -- never a partial guess."""
+    if not isinstance(payload, dict):
+        return None
+    if host == _CDN_HOST:
+        events = ((payload.get("content") or {}).get("sbData") or {}).get("events")
+    else:
+        events = payload.get("events")
+    if not isinstance(events, list):
+        return None
+    return [e for e in events if isinstance(e, dict)]
+
+
 class ESPNClient:
-    def __init__(self, base_url: str = DEFAULT_BASE_URL, timeout_seconds: float = 30.0):
+    def __init__(
+        self,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout_seconds: float = 30.0,
+        hosts: tuple[tuple[str, str], ...] = SCOREBOARD_HOSTS,
+    ):
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
+        self._hosts = hosts
+        self.last_host: str | None = None
+        """Which host actually served the most recent successful fetch --
+        persisted as settlement provenance so an audit can tell a
+        site.api-sourced result from a cdn-sourced one."""
 
     def fetch_scoreboard(self, date_yyyymmdd: str, group_id: int = FBS_GROUP_ID) -> dict:
         """Raw ESPN scoreboard response for one calendar date (US-local
-        bucketing -- see module docstring). Shape live-verified 2026-08-30:
-        a dict with an "events" list as documented above.
+        bucketing -- see module docstring), from the first host that
+        answers with the verified `events` envelope.
+
+        Always returns the SAME shape -- `{"events": [...]}` -- whichever
+        host served, so every caller downstream is unchanged. The serving
+        host is recorded on `last_host` for provenance; a run that
+        exhausts every host raises the last error exactly as before, so
+        `research/result_provider.py` still fails closed and settles
+        nothing.
         """
-        last_error: requests.HTTPError | None = None
+        last_error: Exception | None = None
+        for host, url in self._hosts:
+            events, error = self._fetch_host(host, url, date_yyyymmdd, group_id)
+            if events is not None:
+                self.last_host = host
+                return {"events": events}
+            last_error = error
+        assert last_error is not None
+        raise last_error
+
+    def _fetch_host(
+        self, host: str, url: str, date_yyyymmdd: str, group_id: int
+    ) -> tuple[list | None, Exception | None]:
+        params: dict = {"groups": group_id, "dates": date_yyyymmdd, "limit": 400}
+        if host == _CDN_HOST:
+            params["xhr"] = 1
+        last_error: Exception | None = None
         for attempt in range(RETRY_ATTEMPTS):
-            response = requests.get(
-                f"{self._base_url}/scoreboard",
-                params={"groups": group_id, "dates": date_yyyymmdd},
-                timeout=self._timeout_seconds,
-            )
+            try:
+                response = requests.get(
+                    url, params=params, timeout=self._timeout_seconds, headers={"User-Agent": USER_AGENT}
+                )
+            except requests.RequestException as exc:
+                last_error = exc
+                if attempt == RETRY_ATTEMPTS - 1:
+                    return None, exc
+                time.sleep(min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS))
+                continue
+
             if response.status_code < 400:
-                return response.json()
+                try:
+                    payload = response.json()
+                except ValueError as exc:
+                    return None, requests.HTTPError(f"{host}: unparsable JSON: {exc}", response=response)
+                events = _events_from(host, payload)
+                if events is None:
+                    return None, requests.HTTPError(
+                        f"{host}: payload did not carry the verified scoreboard envelope", response=response
+                    )
+                return events, None
 
             try:
                 response.raise_for_status()
             except requests.HTTPError as exc:
                 last_error = exc
 
-            retryable = response.status_code == 429 or 500 <= response.status_code < 600
+            retryable = response.status_code not in NON_RETRYABLE_STATUSES and (
+                response.status_code == 429 or 500 <= response.status_code < 600
+            )
             if not retryable or attempt == RETRY_ATTEMPTS - 1:
-                assert last_error is not None
-                raise last_error
+                return None, last_error
 
             time.sleep(self._retry_delay_seconds(response, attempt))
+        return None, last_error
 
         assert last_error is not None  # loop always raises or returns
         raise last_error
