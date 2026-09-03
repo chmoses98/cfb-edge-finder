@@ -448,6 +448,8 @@ class ResultProviderOutcome:
     """Fallback mode only: game_id -> why it FAILED CLOSED this run."""
     identity_source: str | None = None
     espn_dates_fetched: list[str] = field(default_factory=list)
+    espn_hosts_used: list[str] = field(default_factory=list)
+    """Which ESPN host(s) actually served this run's scoreboards."""
 
     def summary_dict(self) -> dict:
         finals = sum(1 for r in self.results_by_game_id.values() if r.status is GameFinalStatus.FINAL)
@@ -456,6 +458,7 @@ class ResultProviderOutcome:
             "fallback_reason": self.fallback_reason,
             "identity_source": self.identity_source,
             "espn_dates_fetched": self.espn_dates_fetched,
+            "espn_hosts_used": self.espn_hosts_used,
             "games_with_results": len(self.results_by_game_id),
             "games_final": finals,
             "games_unresolved_fail_closed": len(self.unresolved),
@@ -502,6 +505,7 @@ def resolve_game_results(
     results = {}
     unresolved: dict[str, str] = {}
     events_by_date: dict[str, list[EspnEventFacts]] = {}
+    hosts_used: set[str] = set()
 
     for game_id in sorted(needed_game_ids):
         identity = identity_map.get(game_id)
@@ -518,9 +522,16 @@ def resolve_game_results(
                     body = client.fetch_scoreboard(date)
                 except requests.RequestException as exc:
                     raise ResultProviderUnavailable(
-                        f"{fallback_reason}; ESPN scoreboard fetch for {date} also failed: "
-                        f"{type(exc).__name__}: {exc} -- both sources unavailable, settling NOTHING"
+                        f"{fallback_reason}; ESPN scoreboard fetch for {date} failed on every host "
+                        f"({type(exc).__name__}: {exc}) -- all sources unavailable, settling NOTHING"
                     ) from exc
+                # WHICH ESPN host served is provenance, not trivia: on
+                # 2026-09-03 site.api.espn.com began 403ing CI while two
+                # other hosts served the identical payload, so an audit
+                # of a settled row must be able to say where the score
+                # actually came from.
+                if getattr(client, "last_host", None):
+                    hosts_used.add(client.last_host)
                 events_by_date[date] = [parse_espn_event(e) for e in (body.get("events") or []) if isinstance(e, dict)]
 
         seen: set[str] = set()
@@ -538,8 +549,9 @@ def resolve_game_results(
             unresolved[game_id] = reason
             continue
         assert event is not None
+        host_note = f" [espn_host={'+'.join(sorted(hosts_used))}]" if hosts_used else ""
         result, reason = espn_game_result(
-            event, game_id=game_id, season=season, now=now, fallback_reason=fallback_reason
+            event, game_id=game_id, season=season, now=now, fallback_reason=fallback_reason + host_note
         )
         if reason is not None:
             unresolved[game_id] = reason
@@ -554,4 +566,5 @@ def resolve_game_results(
         unresolved=unresolved,
         identity_source=identity_source,
         espn_dates_fetched=sorted(events_by_date),
+        espn_hosts_used=sorted(hosts_used),
     )

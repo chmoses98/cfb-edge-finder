@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from cfb_edge_finder.data.espn_client import RETRY_ATTEMPTS, ESPNClient
+from cfb_edge_finder.data.espn_client import RETRY_ATTEMPTS, SCOREBOARD_HOSTS, ESPNClient
 
 
 def test_fetch_scoreboard_sends_expected_params():
@@ -62,7 +62,7 @@ def _install_retry(monkeypatch, responses):
 
     calls = []
 
-    def fake_get(url, params=None, timeout=None):
+    def fake_get(url, params=None, timeout=None, headers=None):
         calls.append(url)
         return responses[min(len(calls) - 1, len(responses) - 1)]
 
@@ -77,15 +77,22 @@ def test_transient_5xx_is_retried_then_succeeds(monkeypatch):
     assert len(calls) == 2
 
 
-def test_persistent_5xx_raises_after_bounded_attempts(monkeypatch):
+def test_persistent_5xx_raises_after_bounded_attempts_per_host(monkeypatch):
+    """Bounded retry is now PER HOST: a genuinely dead ESPN retries its
+    schedule on each host in turn and then raises, so the caller still
+    fails closed. Total work stays bounded at attempts x hosts."""
     calls = _install_retry(monkeypatch, [_RetryResp(502)])
     with pytest.raises(requests.HTTPError):
         ESPNClient().fetch_scoreboard("20260829")
-    assert len(calls) == RETRY_ATTEMPTS
+    assert len(calls) == RETRY_ATTEMPTS * len(SCOREBOARD_HOSTS)
 
 
-def test_non_429_client_error_is_never_retried(monkeypatch):
+def test_non_retryable_status_moves_to_the_next_host_without_retrying(monkeypatch):
+    """A 403/404 is a POLICY answer, not a transient one -- retrying the
+    same blocked host wastes the settlement window. This is exactly the
+    2026-09-03 condition: site.api.espn.com returns 403 to CI on every
+    request, so the client must spend one call there and move on."""
     calls = _install_retry(monkeypatch, [_RetryResp(404)])
     with pytest.raises(requests.HTTPError):
         ESPNClient().fetch_scoreboard("20260829")
-    assert len(calls) == 1
+    assert len(calls) == len(SCOREBOARD_HOSTS), "one call per host, no retries on a policy answer"
