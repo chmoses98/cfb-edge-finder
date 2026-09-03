@@ -1,0 +1,30 @@
+name: Capture Resilience Probe (read-only)
+
+# Read-only live probe for the ESPN schedule fallback (mission section C:
+# "verify live response shape before relying on fields"). The dev
+# container's egress proxy 403s every ESPN host, so shape verification
+# has to happen on a GitHub-hosted runner. Makes ZERO CFBD calls, writes
+# nothing anywhere, and shares no concurrency group with the collector.
+
+on:
+  push:
+    branches: [claude/capture-resilience-espn-schedule]
+    paths:
+      - "scripts/probe_espn_schedule_live.py"
+      - ".github/workflows/capture-resilience-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests
+      - name: Probe ESPN schedule surfaces (read-only, zero CFBD calls)
+        run: python scripts/probe_espn_schedule_live.py
