@@ -15,8 +15,11 @@ on:
     branches: [claude/settlement-403-and-v2-shadow]
     paths:
       - "scripts/probe_settlement_sources_live.py"
+      - "scripts/research_scan_and_capture.py"
       - "src/cfb_edge_finder/research/result_provider.py"
+      - "src/cfb_edge_finder/research/v2_shadow.py"
       - "src/cfb_edge_finder/data/espn_client.py"
+      - "src/cfb_edge_finder/modeling/v2/**"
       - ".github/workflows/settlement-source-probe.yml"
   workflow_dispatch:
 
