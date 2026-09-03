@@ -69,6 +69,9 @@ jobs:
             --no-push > "$RUNNER_TEMP/dryrun.log" 2>&1
           echo "collector exit code: $?"
           set -e
+          echo "===== collector log (tail) ====="
+          tail -80 "$RUNNER_TEMP/dryrun.log"
+          echo "===== key lines ====="
           grep -E "^(V2-SHADOW|CFBD-ACCESS|SCHEDULE-FALLBACK|OPERATIONAL|TALENT-PRIOR)" \
             "$RUNNER_TEMP/dryrun.log" | head -40 || true
           python - "$RUNNER_TEMP/dryrun.log" <<'PY'
