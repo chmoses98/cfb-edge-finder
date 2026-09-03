@@ -1,16 +1,27 @@
 name: Capture Resilience Probe (read-only)
 
-# Read-only live probe for the ESPN schedule fallback (mission section C:
-# "verify live response shape before relying on fields"). The dev
-# container's egress proxy 403s every ESPN host, so shape verification
-# has to happen on a GitHub-hosted runner. Makes ZERO CFBD calls, writes
-# nothing anywhere, and shares no concurrency group with the collector.
+# LIVE, READ-ONLY validation of the ESPN fresh-schedule fallback
+# (mission section C: "verify live response shape before relying on
+# fields"; section M: validate against real production conditions).
+#
+# Runs on a GitHub-hosted runner because the dev container's egress proxy
+# 403s every ESPN host -- and because the hosts ESPN actually serves
+# differ between CI and elsewhere, which is the whole reason this exists:
+# a 2026-09-03 probe (run 33789268655) found site.api.espn.com answering
+# 403 to runners, the host the settlement fallback depends on.
+#
+# Makes ZERO CFBD requests. Writes nothing to any branch: the durable
+# football-state artifact is materialised into a temp dir with `git show`
+# and the refreshed schedule state is thrown away. Shares NO concurrency
+# group with the collector, so it can never queue against a capture.
 
 on:
   push:
     branches: [claude/capture-resilience-espn-schedule]
     paths:
-      - "scripts/probe_espn_schedule_live.py"
+      - "scripts/validate_espn_schedule_live.py"
+      - "src/cfb_edge_finder/data/espn_schedule_client.py"
+      - "src/cfb_edge_finder/research/schedule_state.py"
       - ".github/workflows/capture-resilience-probe.yml"
   workflow_dispatch:
 
@@ -25,6 +36,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -q requests
-      - name: Probe ESPN schedule surfaces (read-only, zero CFBD calls)
-        run: python scripts/probe_espn_schedule_live.py
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Validate the ESPN schedule fallback against the live durable artifact
+        run: python scripts/validate_espn_schedule_live.py --season 2026
