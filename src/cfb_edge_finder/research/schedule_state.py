@@ -402,14 +402,31 @@ def refresh_schedule_state(
         outcome.verdict = SCHEDULE_STATE_FRESH if not near and not far else SCHEDULE_STATE_PARTIAL
         return outcome
 
-    events = []
+    # *** DEDUPE BY EVENT ID -- NOT OPTIONAL ***
+    # Every kickoff contributes BOTH its own UTC date bucket and the day
+    # before (ESPN buckets by US local date), so consecutive buckets
+    # overlap and the same event is returned more than once. Feeding those
+    # duplicates to `match_espn_event` makes every single game look
+    # AMBIGUOUS -- two events matching the same (home, away) -- and the
+    # fallback would fail closed on the entire slate while reporting
+    # perfect provider health. Caught by
+    # test_moved_earlier_past_kickoff_stops_pregame_capture.
+    events_by_id: dict[str, dict] = {}
+    unidentified: list[dict] = []
     fetched_buckets: list[str] = []
     for bucket in to_fetch:
         fetch = client.fetch_scoreboard(bucket)
         outcome.fetches.append(fetch)
-        if fetch.ok:
-            fetched_buckets.append(bucket)
-            events.extend(fetch.events)
+        if not fetch.ok:
+            continue
+        fetched_buckets.append(bucket)
+        for raw in fetch.events:
+            event_id = raw.get("id")
+            if event_id is None:
+                unidentified.append(raw)
+            else:
+                events_by_id.setdefault(str(event_id), raw)
+    events = list(events_by_id.values()) + unidentified
     outcome.buckets_ok = len(fetched_buckets)
 
     if not fetched_buckets:

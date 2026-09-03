@@ -25,13 +25,14 @@ import json
 import subprocess
 import sys
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfb_edge_finder.data.espn_schedule_client import EspnScheduleClient  # noqa: E402
 from cfb_edge_finder.research import football_state, schedule_state  # noqa: E402
+from cfb_edge_finder.teams.registry import REGISTRY, Subdivision  # noqa: E402
 
 
 def _materialise_football_state(repo_dir: Path, branch: str, season: int, into: Path) -> str | None:
@@ -102,13 +103,26 @@ def main() -> int:
             for stamp in applied.schedule_source_timestamps.values()
             if (now - stamp).total_seconds() / 3600.0 <= football_state.SCHEDULE_HARD_MAX_HOURS
         )
-        soon = [
+        horizon_8h = now + timedelta(hours=8)
+        soon = [g for g in applied.games if g.kickoff_utc is not None and now < g.kickoff_utc <= horizon_8h]
+
+        # FBS participation is what the collector can actually capture, so
+        # it is the only coverage number that means anything: ESPN's
+        # groups=80 scoreboard does not carry D-II/D-III games and is not
+        # expected to, while the artifact's schedule carries every division.
+        fbs = {t.team_id for t in REGISTRY if t.subdivision == Subdivision.FBS}
+        in_window = [
             g
-            for g in applied.games
-            if g.kickoff_utc is not None and now < g.kickoff_utc <= now.replace(microsecond=0) + _hours(8)
+            for g in games
+            if g.kickoff_utc is not None
+            and (now - timedelta(hours=24)) <= g.kickoff_utc <= now + timedelta(hours=schedule_state.DEEP_HORIZON_HOURS)
         ]
+        fbs_in_window = [g for g in in_window if g.home_team_id in fbs or g.away_team_id in fbs]
+        fbs_matched = [g for g in fbs_in_window if g.game_id in applied.fresh_game_ids]
+        fbs_unmatched = [g for g in fbs_in_window if g.game_id not in applied.fresh_game_ids]
+
         report = {
-            "ok": outcome.verdict != schedule_state.SCHEDULE_STATE_UNAVAILABLE,
+            "ok": outcome.verdict != schedule_state.SCHEDULE_STATE_UNAVAILABLE and len(fbs_matched) > 0,
             "checked_at": now.isoformat(),
             "cfbd_requests_made": 0,
             "football_state": {
@@ -120,11 +134,18 @@ def main() -> int:
             "buckets": {"near": near, "far": far},
             "espn": outcome.summary_dict(),
             "espn_hosts_attempted": [
-                {"host": f.host, "bucket": f.date_param, "http": f.http_status, "error": f.error}
+                {"host": f.host, "bucket": f.date_param, "http": f.http_status, "n_events": len(f.events),
+                 "error": f.error}
                 for f in outcome.fetches
             ],
-            "applied": {
-                "games_with_fresh_espn_facts": len(applied.fresh_game_ids),
+            "coverage": {
+                "games_in_maintained_window": len(in_window),
+                "fbs_participant_games_in_window": len(fbs_in_window),
+                "fbs_games_with_fresh_espn_facts": len(fbs_matched),
+                "fbs_games_without_fresh_facts": len(fbs_unmatched),
+                "fbs_coverage_pct": (
+                    round(100.0 * len(fbs_matched) / len(fbs_in_window), 1) if fbs_in_window else None
+                ),
                 "games_within_6h_bound_after_fallback": trusted_within_bound,
                 "games_kicking_off_within_8h": len(soon),
                 "games_within_8h_lacking_fresh_facts": sum(
@@ -141,24 +162,27 @@ def main() -> int:
                 for c in outcome.changes
             ],
             "rejection_reasons": _reason_histogram(outcome.rejections),
-            "rejection_sample": dict(sorted(outcome.rejections.items())[: args.max_rejections_shown]),
+            "unmatched_fbs_sample": [
+                {
+                    "game_id": g.game_id,
+                    "kickoff_utc": g.kickoff_utc.isoformat() if g.kickoff_utc else None,
+                    "reason": outcome.rejections.get(g.game_id, "bucket not fetched / no fact"),
+                }
+                for g in fbs_unmatched[: args.max_rejections_shown]
+            ],
         }
         print(json.dumps(report, indent=2))
         return 0 if report["ok"] else 1
 
 
-def _hours(n: float):
-    from datetime import timedelta
-
-    return timedelta(hours=n)
-
-
 def _reason_histogram(rejections: dict[str, str]) -> dict[str, int]:
-    """Group refusals by their leading clause so a hundred 'no ESPN event
-    matched' lines read as one number instead of a hundred."""
+    """Group refusals by their KIND, not their text. Every 'no ESPN event
+    matched home=X away=Y' carries different team ids, so grouping on the
+    raw string produced one bucket per game and buried the shape under
+    four hundred lines of noise."""
     counts: dict[str, int] = {}
     for reason in rejections.values():
-        key = reason.split(":")[0].split("(")[0].strip()[:80]
+        key = " ".join(reason.split()[:4])[:60]
         counts[key] = counts.get(key, 0) + 1
     return dict(sorted(counts.items(), key=lambda kv: -kv[1]))
 
