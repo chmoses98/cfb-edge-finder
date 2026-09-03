@@ -1,0 +1,143 @@
+{
+ "source": "https://open-meteo.com (archive-api / historical-forecast-api / previous-runs-api), free, keyless, CC-BY 4.0",
+ "products": {
+  "hforecast": {
+   "min_season": 2022,
+   "timing_class": "A_minus_short_lead_forecast"
+  }
+ },
+ "hourly_vars": "temperature_2m,relative_humidity_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover",
+ "window": "kickoff hour + 3h",
+ "request": "per game, kickoff day +/- 1 day, non-dome only, newest seasons first",
+ "calls": 657,
+ "minutes": 291.3,
+ "fetched_at": "2026-09-03T05:50:47.249921+00:00",
+ "log": [
+  {
+   "product": "hforecast",
+   "game_id": "401754373",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401754517",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401752689",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401752816",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401754526",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401756902",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401754544",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401762827",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401762481",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401752733",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401762834",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401762838",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401757172",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401752952",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401756935",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401754570",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401760402",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401754586",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401752944",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "hforecast",
+   "game_id": "401760408",
+   "status": "fail",
+   "err": "HTTPError: 502 Server Error: Bad Gateway for url: https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=21.294294&longitude=-157.819338&start_date=2025-11-08&end_date=2025-11-10&hourly=temperature_2m%2Crelative_humidity_2m%2Cprecipitation%2Crain%2Csnowfall%2Cwind_speed_10m%2Cwind_gusts_10m%2Cwind_direction_10m%2Ccloud_cover&timezone=UTC&wind_speed_unit=kmh"
+  },
+  {
+   "product": "hforecast",
+   "status": "time_guard",
+   "rows": 653,
+   "targets": 3495
+  }
+ ]
+}
