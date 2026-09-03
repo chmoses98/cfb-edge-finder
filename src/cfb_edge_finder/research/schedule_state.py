@@ -79,13 +79,20 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cfb_edge_finder.data.espn_schedule_client import EspnScheduleClient, ScoreboardFetch
-from cfb_edge_finder.research.result_provider import GameIdentity, match_espn_event, parse_espn_event
+from cfb_edge_finder.ids import slugify_team
+from cfb_edge_finder.research.result_provider import parse_espn_event
 from cfb_edge_finder.research.scan_logic import (
     RESCHEDULE_THRESHOLD_MINUTES,
     ScheduleChangeRecord,
     detect_reschedule,
 )
 from cfb_edge_finder.schemas.game import GameRecord
+from cfb_edge_finder.teams.registry import (
+    AmbiguousTeamAliasError,
+    UnknownTeamAliasError,
+    get_team,
+    resolve_team_alias,
+)
 
 SCHEDULE_STATE_SCHEMA_VERSION = "schedule_state_v1"
 SCHEDULE_STATE_SUBDIR = "schedule_state"
@@ -369,6 +376,154 @@ def espn_status_for(event) -> tuple[str | None, str | None]:
     return _ESPN_STATUS_TO_GAME_STATUS.get(name), name
 
 
+# ------------------------------------------------------------------ identity
+
+
+@dataclass(frozen=True)
+class EspnScheduleEvent:
+    """One scoreboard event reduced to what a SCHEDULE refresh needs, with
+    the raw team names retained.
+
+    `result_provider.parse_espn_event` is reused for the date/status/shape
+    work it already does live-verified, but its `EspnEventFacts` discards
+    the team NAMES once registry resolution fails -- and for settlement
+    that is exactly right, because a settlement row records a score and a
+    wrong identity there corrupts a settled result. A schedule refresh has
+    a weaker obligation (it only moves a kickoff and a status) and a
+    stronger prior (it is matching against a specific CFBD game whose own
+    team ids are already canonical), so it keeps the names and applies the
+    rule in `_side_matches`."""
+
+    facts: object
+    home_name: str | None
+    away_name: str | None
+
+    @property
+    def event_id(self) -> str | None:
+        return self.facts.event_id
+
+    @property
+    def event_date(self):
+        return self.facts.event_date
+
+    @property
+    def season_year(self) -> int | None:
+        return self.facts.season_year
+
+
+def parse_schedule_event(raw: dict) -> EspnScheduleEvent:
+    facts = parse_espn_event(raw)
+    comp = (raw.get("competitions") or [{}])[0]
+    sides = {c.get("homeAway"): c for c in (comp.get("competitors") or []) if isinstance(c, dict)}
+
+    def _name(side: str) -> str | None:
+        team = (sides.get(side) or {}).get("team") or {}
+        for key in ("location", "displayName"):
+            value = team.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+        return None
+
+    return EspnScheduleEvent(facts=facts, home_name=_name("home"), away_name=_name("away"))
+
+
+def _side_matches(espn_name: str | None, cfbd_team_id: str) -> bool:
+    """Does this ESPN team name denote the same program as this canonical
+    CFBD team id? EXACT matching only, by the two canonicalizations the
+    production code already uses -- never similarity.
+
+    1. `resolve_team_alias` (literal exact match against the registry's
+       display names and curated aliases). Required for any program the
+       registry knows, i.e. every FBS team.
+    2. Failing that, `slugify_team` -- but ONLY when the CFBD side is
+       itself not an FBS program. This is not a loosening invented here:
+       `ingestion/team_matching.resolve_team_id_for_game` assigns exactly
+       this slug to a non-FBS opponent, because the registry curates FBS
+       programs only and an FCS opponent will never appear in it "by
+       design, not by omission". Applying the identical function to the
+       other vendor's own name for the same team is the same exact match
+       from the other side.
+
+    An AMBIGUOUS alias never matches, mirroring
+    `resolve_team_id_for_game`'s rule that ambiguity is an identity risk
+    independent of subdivision.
+
+    Why this matters: without rule 2 the fallback covered 46% of
+    FBS-participant games (live run 33791551291) -- every FBS-vs-FCS game
+    was dropped because its FCS opponent could not be resolved, and those
+    are a large share of an early-season slate."""
+    if not espn_name:
+        return False
+    try:
+        return resolve_team_alias(espn_name) == cfbd_team_id
+    except AmbiguousTeamAliasError:
+        return False
+    except UnknownTeamAliasError:
+        pass
+    if get_team(cfbd_team_id) is not None:
+        # A program the registry DOES curate must resolve properly; a slug
+        # match for a known FBS team would mean the registry and the feed
+        # disagree, which is a signal, not a shortcut.
+        return False
+    try:
+        return slugify_team(espn_name) == cfbd_team_id
+    except ValueError:
+        return False
+
+
+def match_schedule_event(
+    game: GameRecord, events: list[EspnScheduleEvent], *, max_shift_hours: float = MAX_RESCHEDULE_SHIFT_HOURS
+) -> tuple[EspnScheduleEvent | None, str | None]:
+    """Exactly one event whose (home, away) denote this game's canonical
+    pair, in this orientation, in this season. Anything else refuses with
+    an explicit reason.
+
+    Same fail-closed shape as `result_provider.match_espn_event`: more than
+    one candidate is AMBIGUOUS, a flipped orientation is an explicit
+    refusal rather than a silent correction, and an implausible kickoff
+    distance is refused. Two FBS teams meeting twice in a season produce
+    two candidates and are therefore refused, which is the intended
+    conservative answer."""
+    candidates = [
+        e
+        for e in events
+        if e.event_date is not None and (e.season_year is None or e.season_year == game.season)
+    ]
+    exact = [
+        e
+        for e in candidates
+        if _side_matches(e.home_name, game.home_team_id) and _side_matches(e.away_name, game.away_team_id)
+    ]
+    if len(exact) > 1:
+        ids = sorted({e.event_id or "?" for e in exact})
+        return None, (
+            f"ambiguous: {len(exact)} ESPN events match home={game.home_team_id} "
+            f"away={game.away_team_id} (event ids {ids})"
+        )
+    if not exact:
+        flipped = [
+            e
+            for e in candidates
+            if _side_matches(e.home_name, game.away_team_id) and _side_matches(e.away_name, game.home_team_id)
+        ]
+        if flipped:
+            return None, (
+                f"orientation mismatch: ESPN reports {flipped[0].home_name!r} as HOME where the durable "
+                f"schedule has {game.home_team_id} -- refusing to update either orientation"
+            )
+        return None, f"no ESPN event matched home={game.home_team_id} away={game.away_team_id}"
+
+    event = exact[0]
+    if game.kickoff_utc is not None:
+        shift_hours = abs((event.event_date - game.kickoff_utc).total_seconds()) / 3600.0
+        if shift_hours > max_shift_hours:
+            return None, (
+                f"kickoff shift {shift_hours:.1f}h exceeds the {max_shift_hours:.0f}h bound "
+                f"(ESPN {event.event_date.isoformat()} vs durable {game.kickoff_utc.isoformat()})"
+            )
+    return event, None
+
+
 # ------------------------------------------------------------------ refresh
 
 
@@ -435,7 +590,7 @@ def refresh_schedule_state(
         outcome.verdict = SCHEDULE_STATE_UNAVAILABLE
         return outcome
 
-    parsed = [parse_espn_event(e) for e in events]
+    parsed = [parse_schedule_event(e) for e in events]
 
     facts = dict(prior.facts)
     buckets_ts = dict(prior.bucket_fetched_at)
@@ -454,19 +609,12 @@ def refresh_schedule_state(
         if not (own_buckets & fetched_bucket_set):
             continue
 
-        identity = GameIdentity(
-            game_id=game.game_id,
-            season=game.season,
-            home_team_id=game.home_team_id,
-            away_team_id=game.away_team_id,
-            kickoff_utc=game.kickoff_utc,
-        )
-        event, reason = match_espn_event(identity, parsed)
+        event, reason = match_schedule_event(game, parsed)
         if event is None:
             outcome.rejections[game.game_id] = reason or "no ESPN event matched"
             continue
 
-        status, espn_status_name = espn_status_for(event)
+        status, espn_status_name = espn_status_for(event.facts)
         if status is None:
             outcome.rejections[game.game_id] = (
                 f"unrecognized ESPN status name {espn_status_name!r} -- refusing to infer a game status"
@@ -483,14 +631,6 @@ def refresh_schedule_state(
                 f"contradiction: durable schedule says status={game.status!r} but ESPN says scheduled"
             )
             continue
-        if game.kickoff_utc is not None:
-            shift_hours = abs((event.event_date - game.kickoff_utc).total_seconds()) / 3600.0
-            if shift_hours > MAX_RESCHEDULE_SHIFT_HOURS:
-                outcome.rejections[game.game_id] = (
-                    f"kickoff shift {shift_hours:.1f}h exceeds the {MAX_RESCHEDULE_SHIFT_HOURS:.0f}h bound"
-                )
-                continue
-
         if detect_reschedule(game.kickoff_utc, event.event_date, threshold_minutes=RESCHEDULE_THRESHOLD_MINUTES):
             outcome.changes.append(
                 ScheduleChangeRecord(
@@ -610,7 +750,7 @@ def kickoffs_within_horizon(
             continue
         for raw in fetch.events:
             event = parse_espn_event(raw)
-            status, _name = espn_status_for(event)
+            status, _name = espn_status_for(event)  # shape only; identity is irrelevant to a horizon count
             if status != "scheduled" or event.event_date is None:
                 continue
             if now < event.event_date <= horizon:

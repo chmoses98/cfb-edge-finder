@@ -46,6 +46,7 @@ from cfb_edge_finder.research.scan_logic import (  # noqa: E402
     guard_capture_allowed,
 )
 from cfb_edge_finder.schemas.game import GameRecord  # noqa: E402
+from cfb_edge_finder.teams.registry import get_team  # noqa: E402
 
 NOW = datetime(2026, 9, 3, 18, 0, tzinfo=UTC)
 HISTORY_SEASONS = [2025]
@@ -818,3 +819,47 @@ def test_client_returns_failures_as_data_never_raises(monkeypatch):
     fetch = EspnScheduleClient(session=Session()).fetch_scoreboard("20260903")
     assert fetch.ok is False
     assert "ConnectionError" in (fetch.error or "")
+
+
+# ================================================================= identity
+# The exact-match rule that decides which ESPN events denote which game.
+
+
+def test_fbs_teams_must_resolve_through_the_registry():
+    """A program the registry curates must resolve by exact alias. A slug
+    match for a known FBS team would mean the registry and the feed
+    disagree about an FBS program -- a signal, never a shortcut."""
+    home_id, home_name = FBS_TEAMS[0]
+    assert schedule_state._side_matches(home_name, home_id) is True
+    assert schedule_state._side_matches("Alabbama", home_id) is False
+    assert schedule_state._side_matches(None, home_id) is False
+
+
+def test_non_fbs_opponents_match_by_the_same_slug_cfbd_itself_assigns():
+    """The registry curates FBS programs only, so an FCS opponent never
+    appears in it. ingestion/team_matching gives that opponent
+    slugify_team(name); applying the identical function to ESPN's own name
+    is the same exact match from the other side -- and without it the live
+    fallback covered only 46% of FBS games (run 33791551291)."""
+    assert get_team("arkansas-pine-bluff") is None, "precondition: not an FBS program"
+    assert schedule_state._side_matches("Arkansas-Pine Bluff", "arkansas-pine-bluff") is True
+    assert schedule_state._side_matches("Some Other School", "arkansas-pine-bluff") is False
+
+
+def test_fbs_vs_fcs_game_now_matches_end_to_end(tmp_path):
+    """The concrete shape that was failing live: an FBS home team against
+    an unregistered FCS opponent."""
+    home_id, home_name = FBS_TEAMS[0]
+    kickoff = NOW + timedelta(hours=20)
+    game = _game(home_id, "arkansas-pine-bluff", home_name, "Arkansas-Pine Bluff", kickoff)
+    outcome = schedule_state.refresh_schedule_state(
+        tmp_path,
+        [game],
+        season=SEASON,
+        now=NOW,
+        client=FakeEspn(
+            {kickoff.date().strftime("%Y%m%d"): [_espn_event(home_name, "Arkansas-Pine Bluff", kickoff)]}
+        ),
+    )
+    assert outcome.rejections == {}
+    assert outcome.state.facts[game.game_id].kickoff_utc == kickoff
