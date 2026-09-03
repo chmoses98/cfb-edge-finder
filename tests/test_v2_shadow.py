@@ -460,3 +460,203 @@ def test_contract_probabilities_match_scipy_end_to_end():
         cut = t + CONTINUITY if abs(t - round(t)) < 1e-9 else t
         expected = 1.0 - float(stats.norm.cdf((cut - point) / sd))
         assert contract_probability(point, sd, t) == pytest.approx(expected, abs=1e-14)
+
+
+# ==================================================== end-to-end emission
+# Test matrix 18-22, 27. Drives the REAL _apply_scan through the shared
+# harness, so what is asserted is what the collector actually does.
+
+import json as _json  # noqa: E402
+
+import research_scan_and_capture as scanner  # noqa: E402
+from scan_harness import (  # noqa: E402
+    SEASON,
+    install_fake_market_feed,
+    make_games,
+    make_history_lines,
+    make_markets,
+)
+
+from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache  # noqa: E402
+from cfb_edge_finder.research import health, persistence  # noqa: E402
+from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
+from cfb_edge_finder.schemas.provenance import ModelVersion  # noqa: E402
+
+SCAN_NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
+SCAN_MODEL = ModelVersion(model_version="v2-shadow-test-0.5.0", pricing_engine_version="0.1.0")
+
+
+def _artifact_for_games(tmp_path: Path, games) -> Path:
+    """A frozen artifact covering exactly the harness's games, so the
+    shadow can price every canonical row the scan produces."""
+    payload = _artifact_payload()
+    payload["games"] = [
+        {
+            "game_id": g.game_id,
+            "season": SEASON,
+            "week": 1,
+            "home_team": g.home_team_name,
+            "away_team": g.away_team_name,
+            "pred_margin": 6.5,
+            "pred_total": 52.0,
+            "sd_margin": 16.0,
+            "sd_total": 15.5,
+            "p_home": 0.65,
+        }
+        for g in games
+    ]
+    target = tmp_path / "data" / "research" / "v2_shadow"
+    target.mkdir(parents=True, exist_ok=True)
+    written = _write_artifact(tmp_path, payload)
+    final = target / "2026.artifact.json"
+    final.write_text(written.read_text())
+    written.unlink()
+    return final
+
+
+def _run_scan(tmp_path, monkeypatch, *, v2_artifact):
+    games, classification = make_games(3, kickoff_hours_ahead=24.0)
+    install_fake_market_feed(monkeypatch, make_markets(games))
+    lines = make_history_lines(games)
+    report = health.CaptureHealthReport()
+    telemetry = ScanTelemetry(trigger_type="test")
+    result = scanner._apply_scan(  # noqa: SLF001
+        tmp_path,
+        season=SEASON,
+        games=games,
+        classification_by_game_id=classification,
+        fcs_school_names=frozenset(),
+        cache=GameProjectionCache(lines_provider=lambda: lines),
+        kalshi_client=None,
+        model_version=SCAN_MODEL,
+        training_cutoff_fn=lambda r: "cutoff",
+        n_simulations=200,
+        seed=0,
+        now=SCAN_NOW,
+        schedule_source_timestamp=SCAN_NOW,
+        v2_artifact=v2_artifact,
+        run_id="v2-shadow-test",
+        report=report,
+        telemetry=telemetry,
+    )
+    return result, telemetry, report, games
+
+
+def _canonical_keys(tmp_path):
+    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    if not path.exists():
+        return []
+    return [_json.loads(line)["observation_key"] for line in path.read_text().splitlines() if line.strip()]
+
+
+def _shadow_rows(tmp_path):
+    path = v2_shadow.ledger_path(tmp_path, SEASON)
+    if not path.exists():
+        return []
+    return [_json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def test_shadow_rows_appear_only_for_canonical_rows_and_link_to_them(tmp_path, monkeypatch):
+    """Test matrix 19 + 20: one linked shadow row per canonical row, and
+    no shadow row that does not correspond to one."""
+    games, _ = make_games(3, kickoff_hours_ahead=24.0)
+    artifact = load_artifact(_artifact_for_games(tmp_path, games), season=2026)
+
+    _result, telemetry, _report, _games = _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
+
+    canonical = _canonical_keys(tmp_path)
+    shadow = _shadow_rows(tmp_path)
+    assert canonical, "precondition: the harness produced canonical observations"
+    assert shadow, "V2 emitted no shadow rows for a slate it fully covers"
+
+    canonical_set = set(canonical)
+    shadow_keys = [r["observation_key"] for r in shadow]
+    assert set(shadow_keys) <= canonical_set, "a shadow row exists with no canonical row to shadow"
+    assert len(shadow_keys) == len(set(shadow_keys)), "duplicate shadow rows in one run"
+    assert telemetry.v2_shadow_rows_written == len(shadow)
+
+    for row in shadow:
+        assert row["v2_model_version"] == "0.6.0-v2-shadow"
+        assert row["v2_artifact_sha256"] == artifact.artifact_sha256
+        assert row["schema_version"] == v2_shadow.V2_SHADOW_SCHEMA_VERSION
+
+
+def _canonical_rows_normalised(repo_dir: Path) -> list[dict]:
+    """Canonical rows with the ONE field that is random by design removed.
+
+    `snapshot_id` is a fresh uuid4 per observation, so two runs of the
+    same scan never produce byte-identical files even with V2 completely
+    absent. Excluding it is what makes the comparison a test of V2's
+    influence rather than a test of uuid4."""
+    path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    rows = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        row = _json.loads(line)
+        row.get("observation", {}).pop("snapshot_id", None)
+        row.pop("snapshot_id", None)
+        rows.append(row)
+    return rows
+
+
+def test_canonical_rows_are_byte_identical_with_and_without_v2(tmp_path, monkeypatch):
+    """Test matrix 18: the canonical 0.5.0 ledger must not change at all
+    because a shadow is running beside it."""
+    games, _ = make_games(3, kickoff_hours_ahead=24.0)
+
+    without_dir = tmp_path / "without"
+    without_dir.mkdir()
+    _run_scan(without_dir, monkeypatch, v2_artifact=None)
+    without = _canonical_rows_normalised(without_dir)
+
+    with_dir = tmp_path / "with"
+    with_dir.mkdir()
+    artifact = load_artifact(_artifact_for_games(with_dir, games), season=2026)
+    _run_scan(with_dir, monkeypatch, v2_artifact=artifact)
+    with_v2 = _canonical_rows_normalised(with_dir)
+
+    assert without == with_v2, "the canonical ledger changed when V2 was enabled"
+    assert without, "precondition: canonical rows were actually written"
+    assert _shadow_rows(with_dir), "precondition: V2 really did run in the second scan"
+    assert not v2_shadow.ledger_path(without_dir, SEASON).exists()
+
+
+def test_a_broken_v2_artifact_never_blocks_canonical_capture(tmp_path, monkeypatch):
+    """Test matrix 22 -- the property that makes shadowing safe at all.
+    An artifact that raises on every lookup must cost nothing but its own
+    rows."""
+
+    class _Exploding:
+        model_version = "0.6.0-v2-shadow"
+        artifact_sha256 = "d" * 64
+        spec_id = "spec"
+        training_cutoff = "cutoff"
+
+        def for_game(self, game_id):
+            raise RuntimeError("V2 exploded")
+
+    _result, telemetry, report, _games = _run_scan(tmp_path, monkeypatch, v2_artifact=_Exploding())
+
+    assert _canonical_keys(tmp_path), "a broken V2 shadow prevented canonical capture"
+    assert report.captures_written > 0
+    assert telemetry.v2_shadow_unavailable > 0, "the failure must be counted, not silently swallowed"
+    assert telemetry.v2_shadow_rows_written == 0
+
+
+def test_rerunning_the_scan_writes_no_duplicate_shadow_rows(tmp_path, monkeypatch):
+    """Test matrix 21 + 27: a 5-minute loop is idempotent for the shadow
+    ledger exactly as it is for the canonical one."""
+    games, _ = make_games(3, kickoff_hours_ahead=24.0)
+    artifact = load_artifact(_artifact_for_games(tmp_path, games), season=2026)
+
+    _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
+    first = _shadow_rows(tmp_path)
+    assert first
+
+    _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
+    second = _shadow_rows(tmp_path)
+
+    assert len(second) == len(first), "the second run duplicated shadow rows"
+    keys = [r["observation_key"] for r in second]
+    assert len(keys) == len(set(keys))
