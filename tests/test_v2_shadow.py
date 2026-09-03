@@ -419,3 +419,44 @@ def test_row_links_to_the_canonical_observation_key(tmp_path):
     assert "model_probability" not in payload, "must not mimic the canonical observation schema"
 
 
+
+
+# =============================================== no scipy in the hot path
+# A live dry run caught this: importing scipy.stats in the pricing module
+# killed the collector at import time on a clean production install,
+# BEFORE any canonical row could be captured.
+
+
+def test_pricing_module_does_not_import_scipy():
+    """scipy is not a runtime dependency (pyproject lists pydantic,
+    requests, numpy). The V2 shadow must not smuggle one into the
+    5-minute capture loop."""
+    source = (_ROOT / "src" / "cfb_edge_finder" / "modeling" / "v2" / "pricing.py").read_text()
+    assert "import scipy" not in source
+    assert "from scipy" not in source
+
+    for module in ("artifact.py", "pricing.py"):
+        text = (_ROOT / "src" / "cfb_edge_finder" / "modeling" / "v2" / module).read_text()
+        assert "from scipy" not in text, f"{module} must not import scipy"
+
+
+def test_stdlib_normal_cdf_matches_scipy_to_double_precision():
+    """The replacement has to be a replacement, not an approximation.
+    scipy is available in dev, so the agreement is asserted rather than
+    assumed -- across the tails, where a sloppy erfc identity would show
+    up first."""
+    from scipy import stats
+
+    from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
+
+    for z in (-8.0, -5.0, -3.0, -1.0, -0.25, 0.0, 0.25, 1.0, 3.0, 5.0, 8.0):
+        assert _norm_cdf(z) == pytest.approx(float(stats.norm.cdf(z)), abs=1e-15, rel=1e-12)
+
+
+def test_contract_probabilities_match_scipy_end_to_end():
+    from scipy import stats
+
+    for point, sd, t in ((8.0, 16.0, 3.5), (8.0, 16.0, -3.0), (51.0, 15.5, 51.5), (0.0, 14.0, 0.0)):
+        cut = t + CONTINUITY if abs(t - round(t)) < 1e-9 else t
+        expected = 1.0 - float(stats.norm.cdf((cut - point) / sd))
+        assert contract_probability(point, sd, t) == pytest.approx(expected, abs=1e-14)

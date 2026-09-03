@@ -27,8 +27,25 @@ so production carries no branch it would never take.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
-from scipy import stats
+
+# *** NO SCIPY IN THE DEADLINE-CRITICAL PATH ***
+# scipy is NOT a runtime dependency of this package (pyproject lists only
+# pydantic, requests and numpy), and a live dry run caught exactly that:
+# importing `scipy.stats` here killed the whole collector at import time
+# on a clean production install, before a single canonical row could be
+# captured. The standard-library `math.erfc` gives the same Normal CDF to
+# double precision -- Phi(x) = erfc(-x / sqrt(2)) / 2 -- so V2 adds no
+# dependency to the 5-minute loop. tests/test_v2_shadow.py pins the
+# agreement against scipy, which IS available in dev.
+_SQRT2 = math.sqrt(2.0)
+
+
+def _norm_cdf(x: float) -> float:
+    """Standard Normal CDF, standard library only."""
+    return 0.5 * math.erfc(-float(x) / _SQRT2)
 
 CONTINUITY = 0.5
 """Half a point, applied only to integer thresholds -- see the module
@@ -42,7 +59,7 @@ def effective_threshold(threshold: float, continuity: float = CONTINUITY) -> flo
     Half-point threshold -> returned unchanged.
     """
     t = float(threshold)
-    return t + continuity if float(np.isclose(t, round(t))) else t
+    return t + continuity if abs(t - round(t)) < 1e-9 else t
 
 
 def contract_probability(
@@ -55,7 +72,7 @@ def contract_probability(
     if not sd > 0:
         raise ValueError(f"sd must be positive, got {sd!r}")
     cut = effective_threshold(threshold, continuity)
-    return float(1.0 - stats.norm.cdf((cut - float(point)) / float(sd)))
+    return float(1.0 - _norm_cdf((cut - float(point)) / float(sd)))
 
 
 def contract_probability_array(
@@ -66,7 +83,8 @@ def contract_probability_array(
     t = np.asarray(threshold, float)
     is_int = np.isclose(t, np.round(t))
     cut = np.where(is_int, t + continuity, t)
-    return 1.0 - stats.norm.cdf((cut - np.asarray(point, float)) / np.asarray(sd, float))
+    z = (cut - np.asarray(point, float)) / np.asarray(sd, float)
+    return 1.0 - np.vectorize(_norm_cdf)(z)
 
 
 def home_win_probability(pred_margin: float, sd_margin: float) -> float:
@@ -93,8 +111,8 @@ def probability_less(point: float, sd: float, threshold: float, *, continuity: f
     if not sd > 0:
         raise ValueError(f"sd must be positive, got {sd!r}")
     t = float(threshold)
-    cut = t - continuity if float(np.isclose(t, round(t))) else t
-    return float(stats.norm.cdf((cut - float(point)) / float(sd)))
+    cut = t - continuity if abs(t - round(t)) < 1e-9 else t
+    return float(_norm_cdf((cut - float(point)) / float(sd)))
 
 
 def price_observation_v2(observation, prediction) -> tuple[float | None, str]:
