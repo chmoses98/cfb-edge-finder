@@ -95,7 +95,10 @@ def _events_from(host: str, payload: object) -> list | None:
     shape live verification established -- never a partial guess."""
     if not isinstance(payload, dict):
         return None
-    events = ((payload.get("content") or {}).get("sbData") or {}).get("events") if host == _CDN_HOST else payload.get("events")
+    if host == _CDN_HOST:
+        events = ((payload.get("content") or {}).get("sbData") or {}).get("events")
+    else:
+        events = payload.get("events")
     if not isinstance(events, list):
         return None
     return [e for e in events if isinstance(e, dict)]

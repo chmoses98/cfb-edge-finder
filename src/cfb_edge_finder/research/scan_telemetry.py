@@ -104,6 +104,19 @@ class ScanTelemetry:
     Each keeps its CFBD facts and faces the ordinary 6h guard."""
     schedule_changes_detected: int = 0
     schedule_espn_requests: int = 0
+    # --- V2 shadow (research/v2_shadow.py) ---
+    v2_shadow_state: str = "not_attempted"
+    """Whether the frozen V2 artifact loaded this run: 'ACTIVE', or an
+    UNAVAILABLE_* reason. A shadow that silently stops emitting must be
+    visible in telemetry rather than inferred from a row count of 0."""
+    v2_shadow_rows_written: int = 0
+    v2_shadow_rows_duplicate: int = 0
+    v2_shadow_contracts_priced: int = 0
+    v2_shadow_unavailable: int = 0
+    v2_shadow_unavailable_reasons: dict = field(default_factory=dict)
+    v2_artifact_sha256: str | None = None
+    v2_model_version: str | None = None
+
     operational_state: str = "not_classified"
     """research/operational_state.py verdict: HEALTHY, DEGRADED_SAFE,
     DEGRADED_WAITING, DEADLINE_AT_RISK or INTEGRITY_FAILURE -- the thing

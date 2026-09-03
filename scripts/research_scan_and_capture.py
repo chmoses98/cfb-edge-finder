@@ -23,6 +23,7 @@ import argparse
 import json
 import sys
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -53,6 +54,8 @@ from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kal
 from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache, GameProjectionRequest  # noqa: E402
 from cfb_edge_finder.kalshi.ladder_pricing import price_one_market  # noqa: E402
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
+from cfb_edge_finder.modeling.v2 import artifact as v2_artifact_mod  # noqa: E402
+from cfb_edge_finder.modeling.v2.pricing import price_observation_v2  # noqa: E402
 from cfb_edge_finder.research import (  # noqa: E402
     cfbd_access,
     checkpoint_reconciliation,
@@ -69,6 +72,7 @@ from cfb_edge_finder.research import heartbeat as heartbeat_mod  # noqa: E402
 from cfb_edge_finder.research import (
     schedule_state as schedule_state_mod,
 )
+from cfb_edge_finder.research import v2_shadow as v2_shadow_mod  # noqa: E402
 from cfb_edge_finder.research.identity import observation_key  # noqa: E402
 from cfb_edge_finder.research.preseason.corpus import (  # noqa: E402
     build_feature_tables,
@@ -233,6 +237,116 @@ def _load_talent_by_team(repo_dir: Path, season: int) -> tuple[dict[str, float],
         return {}, f"UNAVAILABLE_{type(exc).__name__}"
 
 
+def _load_v2_artifact(repo_dir: Path, season: int, now: datetime):
+    """Load the frozen V2 shadow artifact, or return (None, reason).
+
+    NEVER raises into the capture loop. V2 is a second opinion: if it is
+    missing, stale, unverified or of an unknown schema, the canonical
+    0.5.0 capture proceeds exactly as it would have and the reason is
+    recorded in telemetry. The freeze guard is applied here too -- an
+    artifact whose evidence postdates the slate is refused, because a
+    "prospective" comparison against a model that may have seen the
+    outcomes is worse than no comparison at all."""
+    try:
+        path = v2_artifact_mod.artifact_path(repo_dir, season)
+        artifact = v2_artifact_mod.load_artifact(path, season=season)
+        v2_artifact_mod.assert_no_outcomes_after(artifact, now)
+        return artifact, "ACTIVE"
+    except v2_artifact_mod.V2ArtifactError as exc:
+        return None, f"UNAVAILABLE_{type(exc).__name__}: {exc}"[:300]
+    except Exception as exc:  # noqa: BLE001 -- research code must never kill a capture
+        return None, f"UNAVAILABLE_UNEXPECTED: {type(exc).__name__}: {exc}"[:300]
+
+
+def _emit_v2_shadow_row(
+    *,
+    artifact,
+    observation,
+    matched_game,
+    kickoff,
+    season: int,
+    run_id: str | None,
+    pending: list,
+    seen: set[str],
+    telemetry,
+) -> None:
+    """Append one linked V2 shadow row for a canonical observation.
+
+    Runs AFTER the canonical row exists and can only ADD a row. Every
+    failure is swallowed and counted: a shadow experiment must never cost
+    a canonical observation."""
+    try:
+        key = observation_key(
+            season=season,
+            game_id=observation.game_id or "unmapped",
+            market_ticker=observation.kalshi_market_ticker,
+            timing_label=observation.snapshot_timing.label,
+            model_version=(
+                observation.model_version.model_version if observation.model_version else "unpriced"
+            ),
+        )
+        dedup = v2_shadow_mod.dedup_key(key, artifact.model_version)
+        if dedup in seen:
+            telemetry.rows_duplicate += 1
+            return
+
+        game_id = observation.game_id or ""
+        prediction = artifact.for_game(game_id)
+        probability: float | None = None
+        reason: str | None = None
+        if prediction is None:
+            reason = f"game {game_id!r} not in the frozen V2 slate"
+        else:
+            probability, detail = price_observation_v2(observation, prediction)
+            if probability is None:
+                reason = detail
+
+        row = v2_shadow_mod.build_row(
+            artifact=artifact,
+            observation_key=key,
+            season=season,
+            game_id=game_id or "unmapped",
+            market_ticker=observation.kalshi_market_ticker,
+            timing_label=observation.snapshot_timing.label,
+            captured_at=observation.captured_at,
+            kickoff_utc=kickoff,
+            market_family=observation.family.value if observation.family else None,
+            threshold=observation.threshold,
+            side_is_over_or_home=True,
+            control_model_version=(
+                observation.model_version.model_version if observation.model_version else None
+            ),
+            control_probability=observation.model_probability,
+            executable_yes_price=observation.executable_yes_price,
+            run_id=run_id,
+        )
+        # build_row prices from (family, threshold) generically; the
+        # contract-semantics path above is authoritative because it reads
+        # the SAME parsed contract the canonical row was priced from.
+        row = replace(row, v2_probability=probability, unavailable_reason=reason)
+        if probability is not None:
+            row = replace(
+                row,
+                v2_minus_control=(
+                    None
+                    if observation.model_probability is None
+                    else probability - observation.model_probability
+                ),
+                v2_minus_market=(
+                    None
+                    if observation.executable_yes_price is None
+                    else probability - float(observation.executable_yes_price)
+                ),
+            )
+            telemetry.contracts_priced += 1
+        else:
+            telemetry.note_unavailable(reason or "unknown")
+        seen.add(dedup)
+        pending.append(row)
+    except Exception as exc:  # noqa: BLE001 -- never endanger the canonical row
+        telemetry.note_unavailable(f"emit failed: {type(exc).__name__}")
+
+
 def _build_shadow_sidecar(
     repo_dir: Path, season: int, now: datetime
 ) -> tuple[ShadowSidecar | None, str]:
@@ -352,6 +466,7 @@ def _apply_scan(
     now: datetime,
     schedule_source_timestamp: datetime,
     schedule_source_timestamps: dict[str, datetime] | None = None,
+    v2_artifact=None,
     run_id: str | None,
     report: health.CaptureHealthReport,
     telemetry: ScanTelemetry,
@@ -400,6 +515,17 @@ def _apply_scan(
     shadow_sidecar, shadow_sidecar_state = _build_shadow_sidecar(repo_dir, season, now)
     telemetry.shadow_sidecar_state = shadow_sidecar_state
     pending_shadow_rows: list[dict] = []
+
+    # V2 SHADOW: its own buffer, its own dedup set, its own ledger. Kept
+    # deliberately separate from the talent shadow above -- two unrelated
+    # experiments sharing one schema is how the first schema change
+    # corrupts the other's evidence.
+    v2_pending: list = []
+    v2_seen: set[str] = set()
+    v2_telemetry = v2_shadow_mod.V2ShadowTelemetry()
+    v2_ledger = v2_shadow_mod.ledger_path(repo_dir, season)
+    if v2_artifact is not None:
+        v2_seen |= v2_shadow_mod.load_existing_keys(v2_ledger)
     seen_shadow_keys: set[str] = set()
     # Distinct games this run actually PROJECTED, not the size of the
     # schedule -- the denominator for "contracts priced per projection"
@@ -697,6 +823,25 @@ def _apply_scan(
                             seen=seen_shadow_keys,
                         )
 
+                    # ------------------------------------------------
+                    # V2 SHADOW: linked second opinion. Same placement and
+                    # the same rule as the talent sidecar above -- it runs
+                    # after the canonical observation exists, can only add
+                    # a row, and swallows every failure.
+                    # ------------------------------------------------
+                    if v2_artifact is not None:
+                        _emit_v2_shadow_row(
+                            artifact=v2_artifact,
+                            observation=observation,
+                            matched_game=matched_game,
+                            kickoff=kickoff,
+                            season=season,
+                            run_id=run_id,
+                            pending=v2_pending,
+                            seen=v2_seen,
+                            telemetry=v2_telemetry,
+                        )
+
                     row = scan_logic.build_corpus_row(
                         observation=observation,
                         season=season,
@@ -808,6 +953,14 @@ def _apply_scan(
         # their own file. Ordering matters: if this raised, the canonical
         # rows are already durable. It is wrapped anyway, because a
         # research side effect must never fail a prospective capture.
+        if v2_pending:
+            v2_telemetry.rows_written = v2_shadow_mod.append_rows(v2_ledger, v2_pending)
+        telemetry.v2_shadow_rows_written = v2_telemetry.rows_written
+        telemetry.v2_shadow_contracts_priced = v2_telemetry.contracts_priced
+        telemetry.v2_shadow_unavailable = v2_telemetry.unavailable
+        telemetry.v2_shadow_unavailable_reasons = dict(v2_telemetry.unavailable_reasons)
+        telemetry.v2_shadow_rows_duplicate = v2_telemetry.rows_duplicate
+
         if pending_shadow_rows:
             try:
                 shadow_path = persistence.canonical_path(
@@ -1317,6 +1470,20 @@ def main() -> int:
     print(f"TALENT-PRIOR state={talent_state} teams={len(talent_by_team)} "
           f"model_version={resolved_model_version}")
 
+    # *** V2 SHADOW (frozen artifact, research-only) ***
+    # Loaded ONCE per run and never fitted. If it is missing, unverified,
+    # of an unknown schema, or its evidence postdates this slate, V2 is
+    # simply off for the run and the canonical 0.5.0 capture is
+    # completely unaffected.
+    v2_artifact, v2_state = _load_v2_artifact(args.data_repo_dir, args.schedule_season, now)
+    telemetry.v2_shadow_state = v2_state
+    if v2_artifact is not None:
+        telemetry.v2_artifact_sha256 = v2_artifact.artifact_sha256
+        telemetry.v2_model_version = v2_artifact.model_version
+        print(f"V2-SHADOW state={v2_state} " + " ".join(f"{k}={v}" for k, v in v2_artifact.summary_dict().items()))
+    else:
+        print(f"V2-SHADOW state={v2_state} (canonical 0.5.0 capture is unaffected)")
+
     cache = GameProjectionCache(lines_provider=_load_history_lines, talent_by_team=talent_by_team)
     kalshi_client = KalshiClient()
     model_version = ModelVersion(
@@ -1418,6 +1585,7 @@ def main() -> int:
             # were re-read from the fresh-schedule provider this run.
             schedule_source_timestamp=state.schedule_fetched_at,
             schedule_source_timestamps=applied.schedule_source_timestamps,
+            v2_artifact=v2_artifact,
             run_id=args.run_id,
             report=report,
             telemetry=telemetry,
@@ -1537,6 +1705,11 @@ def main() -> int:
         "mapping_failures": report.mapping_failures,
         "kickoff_uncertain_events": report.kickoff_uncertain_events,
         "stale_schedule_failures": report.stale_schedule_failures,
+        "v2_shadow_state": telemetry.v2_shadow_state,
+        "v2_shadow_rows_written": telemetry.v2_shadow_rows_written,
+        "v2_shadow_contracts_priced": telemetry.v2_shadow_contracts_priced,
+        "v2_model_version": telemetry.v2_model_version,
+        "v2_artifact_sha256": telemetry.v2_artifact_sha256,
         "diagnostics": [{"severity": d.severity.value, "code": d.code, "detail": d.detail} for d in diagnostics],
     }
     print(json.dumps(report_dict, indent=2))
