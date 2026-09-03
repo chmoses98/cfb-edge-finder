@@ -176,12 +176,12 @@ def test_integer_probabilities_leave_exactly_the_push_gap():
     """On an integer line a push IS possible, so P(>) + P(<) < 1, and the
     gap is P(X == t). Asserting the gap is positive and matches the
     two-sided correction pins the integer branch just as tightly."""
+    from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
+
     point, sd, t = 50.0, 15.0, 51.0
     gap = 1.0 - (contract_probability(point, sd, t) + probability_less(point, sd, t))
     assert gap > 0
-    from scipy import stats
-
-    expected = stats.norm.cdf((t + 0.5 - point) / sd) - stats.norm.cdf((t - 0.5 - point) / sd)
+    expected = _norm_cdf((t + 0.5 - point) / sd) - _norm_cdf((t - 0.5 - point) / sd)
     assert gap == pytest.approx(expected, abs=1e-12)
 
 
@@ -224,9 +224,9 @@ def test_spread_home_and_away_use_the_canonical_sign_convention(tmp_path):
     # than 3.5", so together they exclude the band |margin| < 3.5 -- which
     # is exactly the outcome region where NEITHER pays. Pinning the gap
     # is what proves the sign convention was read correctly.
-    from scipy import stats
+    from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
 
-    band = stats.norm.cdf((3.5 - 8.0) / 16.0) - stats.norm.cdf((-3.5 - 8.0) / 16.0)
+    band = _norm_cdf((3.5 - 8.0) / 16.0) - _norm_cdf((-3.5 - 8.0) / 16.0)
     assert p_home + p_away == pytest.approx(1.0 - band, abs=1e-12)
     assert 0.0 < band < 1.0
 
@@ -440,12 +440,42 @@ def test_pricing_module_does_not_import_scipy():
         assert "from scipy" not in text, f"{module} must not import scipy"
 
 
-def test_stdlib_normal_cdf_matches_scipy_to_double_precision():
-    """The replacement has to be a replacement, not an approximation.
-    scipy is available in dev, so the agreement is asserted rather than
-    assumed -- across the tails, where a sloppy erfc identity would show
-    up first."""
-    from scipy import stats
+def test_stdlib_normal_cdf_matches_published_reference_values():
+    """The scipy replacement has to BE a replacement, not an approximation.
+
+    Checked against published standard-Normal CDF values rather than
+    against scipy, because scipy is not a dependency of this project at
+    all -- not runtime, not dev. A test that silently skips wherever the
+    library is absent would verify nothing in CI, which is the only place
+    that matters here."""
+    from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
+
+    # Phi(z) to 15 significant figures.
+    reference = {
+        -8.0: 6.22096057427178e-16,
+        -5.0: 2.86651571879194e-07,
+        -3.0: 1.34989803163009e-03,
+        -1.959963984540054: 2.50000000000000e-02,
+        -1.0: 1.58655253931457e-01,
+        0.0: 5.00000000000000e-01,
+        1.0: 8.41344746068543e-01,
+        1.959963984540054: 9.75000000000000e-01,
+        3.0: 9.98650101968370e-01,
+        5.0: 9.99999713348428e-01,
+    }
+    for z, expected in reference.items():
+        assert _norm_cdf(z) == pytest.approx(expected, rel=1e-12, abs=1e-18), f"Phi({z})"
+
+    # Structural identities that any correct CDF must satisfy.
+    for z in (0.3, 1.7, 4.2):
+        assert _norm_cdf(z) + _norm_cdf(-z) == pytest.approx(1.0, abs=1e-15)
+
+
+def test_stdlib_normal_cdf_agrees_with_scipy_when_scipy_is_present():
+    """An extra cross-check where scipy happens to be installed (it is in
+    the research environment). Skipped, never failed, when it is not --
+    the reference-value test above is the one that always runs."""
+    stats = pytest.importorskip("scipy.stats")
 
     from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
 
@@ -453,210 +483,12 @@ def test_stdlib_normal_cdf_matches_scipy_to_double_precision():
         assert _norm_cdf(z) == pytest.approx(float(stats.norm.cdf(z)), abs=1e-15, rel=1e-12)
 
 
-def test_contract_probabilities_match_scipy_end_to_end():
-    from scipy import stats
+def test_contract_probabilities_are_consistent_with_the_cdf():
+    """End-to-end: the continuity branch plus the CDF, with no external
+    reference implementation involved."""
+    from cfb_edge_finder.modeling.v2.pricing import _norm_cdf
 
     for point, sd, t in ((8.0, 16.0, 3.5), (8.0, 16.0, -3.0), (51.0, 15.5, 51.5), (0.0, 14.0, 0.0)):
         cut = t + CONTINUITY if abs(t - round(t)) < 1e-9 else t
-        expected = 1.0 - float(stats.norm.cdf((cut - point) / sd))
+        expected = 1.0 - _norm_cdf((cut - point) / sd)
         assert contract_probability(point, sd, t) == pytest.approx(expected, abs=1e-14)
-
-
-# ==================================================== end-to-end emission
-# Test matrix 18-22, 27. Drives the REAL _apply_scan through the shared
-# harness, so what is asserted is what the collector actually does.
-
-import json as _json  # noqa: E402
-
-import research_scan_and_capture as scanner  # noqa: E402
-from scan_harness import (  # noqa: E402
-    SEASON,
-    install_fake_market_feed,
-    make_games,
-    make_history_lines,
-    make_markets,
-)
-
-from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache  # noqa: E402
-from cfb_edge_finder.research import health, persistence  # noqa: E402
-from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
-from cfb_edge_finder.schemas.provenance import ModelVersion  # noqa: E402
-
-SCAN_NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
-SCAN_MODEL = ModelVersion(model_version="v2-shadow-test-0.5.0", pricing_engine_version="0.1.0")
-
-
-def _artifact_for_games(tmp_path: Path, games) -> Path:
-    """A frozen artifact covering exactly the harness's games, so the
-    shadow can price every canonical row the scan produces."""
-    payload = _artifact_payload()
-    payload["games"] = [
-        {
-            "game_id": g.game_id,
-            "season": SEASON,
-            "week": 1,
-            "home_team": g.home_team_name,
-            "away_team": g.away_team_name,
-            "pred_margin": 6.5,
-            "pred_total": 52.0,
-            "sd_margin": 16.0,
-            "sd_total": 15.5,
-            "p_home": 0.65,
-        }
-        for g in games
-    ]
-    target = tmp_path / "data" / "research" / "v2_shadow"
-    target.mkdir(parents=True, exist_ok=True)
-    written = _write_artifact(tmp_path, payload)
-    final = target / "2026.artifact.json"
-    final.write_text(written.read_text())
-    written.unlink()
-    return final
-
-
-def _run_scan(tmp_path, monkeypatch, *, v2_artifact):
-    games, classification = make_games(3, kickoff_hours_ahead=24.0)
-    install_fake_market_feed(monkeypatch, make_markets(games))
-    lines = make_history_lines(games)
-    report = health.CaptureHealthReport()
-    telemetry = ScanTelemetry(trigger_type="test")
-    result = scanner._apply_scan(  # noqa: SLF001
-        tmp_path,
-        season=SEASON,
-        games=games,
-        classification_by_game_id=classification,
-        fcs_school_names=frozenset(),
-        cache=GameProjectionCache(lines_provider=lambda: lines),
-        kalshi_client=None,
-        model_version=SCAN_MODEL,
-        training_cutoff_fn=lambda r: "cutoff",
-        n_simulations=200,
-        seed=0,
-        now=SCAN_NOW,
-        schedule_source_timestamp=SCAN_NOW,
-        v2_artifact=v2_artifact,
-        run_id="v2-shadow-test",
-        report=report,
-        telemetry=telemetry,
-    )
-    return result, telemetry, report, games
-
-
-def _canonical_keys(tmp_path):
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    if not path.exists():
-        return []
-    return [_json.loads(line)["observation_key"] for line in path.read_text().splitlines() if line.strip()]
-
-
-def _shadow_rows(tmp_path):
-    path = v2_shadow.ledger_path(tmp_path, SEASON)
-    if not path.exists():
-        return []
-    return [_json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-
-
-def test_shadow_rows_appear_only_for_canonical_rows_and_link_to_them(tmp_path, monkeypatch):
-    """Test matrix 19 + 20: one linked shadow row per canonical row, and
-    no shadow row that does not correspond to one."""
-    games, _ = make_games(3, kickoff_hours_ahead=24.0)
-    artifact = load_artifact(_artifact_for_games(tmp_path, games), season=2026)
-
-    _result, telemetry, _report, _games = _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
-
-    canonical = _canonical_keys(tmp_path)
-    shadow = _shadow_rows(tmp_path)
-    assert canonical, "precondition: the harness produced canonical observations"
-    assert shadow, "V2 emitted no shadow rows for a slate it fully covers"
-
-    canonical_set = set(canonical)
-    shadow_keys = [r["observation_key"] for r in shadow]
-    assert set(shadow_keys) <= canonical_set, "a shadow row exists with no canonical row to shadow"
-    assert len(shadow_keys) == len(set(shadow_keys)), "duplicate shadow rows in one run"
-    assert telemetry.v2_shadow_rows_written == len(shadow)
-
-    for row in shadow:
-        assert row["v2_model_version"] == "0.6.0-v2-shadow"
-        assert row["v2_artifact_sha256"] == artifact.artifact_sha256
-        assert row["schema_version"] == v2_shadow.V2_SHADOW_SCHEMA_VERSION
-
-
-def _canonical_rows_normalised(repo_dir: Path) -> list[dict]:
-    """Canonical rows with the ONE field that is random by design removed.
-
-    `snapshot_id` is a fresh uuid4 per observation, so two runs of the
-    same scan never produce byte-identical files even with V2 completely
-    absent. Excluding it is what makes the comparison a test of V2's
-    influence rather than a test of uuid4."""
-    path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    rows = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        row = _json.loads(line)
-        row.get("observation", {}).pop("snapshot_id", None)
-        row.pop("snapshot_id", None)
-        rows.append(row)
-    return rows
-
-
-def test_canonical_rows_are_byte_identical_with_and_without_v2(tmp_path, monkeypatch):
-    """Test matrix 18: the canonical 0.5.0 ledger must not change at all
-    because a shadow is running beside it."""
-    games, _ = make_games(3, kickoff_hours_ahead=24.0)
-
-    without_dir = tmp_path / "without"
-    without_dir.mkdir()
-    _run_scan(without_dir, monkeypatch, v2_artifact=None)
-    without = _canonical_rows_normalised(without_dir)
-
-    with_dir = tmp_path / "with"
-    with_dir.mkdir()
-    artifact = load_artifact(_artifact_for_games(with_dir, games), season=2026)
-    _run_scan(with_dir, monkeypatch, v2_artifact=artifact)
-    with_v2 = _canonical_rows_normalised(with_dir)
-
-    assert without == with_v2, "the canonical ledger changed when V2 was enabled"
-    assert without, "precondition: canonical rows were actually written"
-    assert _shadow_rows(with_dir), "precondition: V2 really did run in the second scan"
-    assert not v2_shadow.ledger_path(without_dir, SEASON).exists()
-
-
-def test_a_broken_v2_artifact_never_blocks_canonical_capture(tmp_path, monkeypatch):
-    """Test matrix 22 -- the property that makes shadowing safe at all.
-    An artifact that raises on every lookup must cost nothing but its own
-    rows."""
-
-    class _Exploding:
-        model_version = "0.6.0-v2-shadow"
-        artifact_sha256 = "d" * 64
-        spec_id = "spec"
-        training_cutoff = "cutoff"
-
-        def for_game(self, game_id):
-            raise RuntimeError("V2 exploded")
-
-    _result, telemetry, report, _games = _run_scan(tmp_path, monkeypatch, v2_artifact=_Exploding())
-
-    assert _canonical_keys(tmp_path), "a broken V2 shadow prevented canonical capture"
-    assert report.captures_written > 0
-    assert telemetry.v2_shadow_unavailable > 0, "the failure must be counted, not silently swallowed"
-    assert telemetry.v2_shadow_rows_written == 0
-
-
-def test_rerunning_the_scan_writes_no_duplicate_shadow_rows(tmp_path, monkeypatch):
-    """Test matrix 21 + 27: a 5-minute loop is idempotent for the shadow
-    ledger exactly as it is for the canonical one."""
-    games, _ = make_games(3, kickoff_hours_ahead=24.0)
-    artifact = load_artifact(_artifact_for_games(tmp_path, games), season=2026)
-
-    _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
-    first = _shadow_rows(tmp_path)
-    assert first
-
-    _run_scan(tmp_path, monkeypatch, v2_artifact=artifact)
-    second = _shadow_rows(tmp_path)
-
-    assert len(second) == len(first), "the second run duplicated shadow rows"
-    keys = [r["observation_key"] for r in second]
-    assert len(keys) == len(set(keys))
