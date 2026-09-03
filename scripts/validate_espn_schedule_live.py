@@ -161,6 +161,7 @@ def main() -> int:
                 }
                 for c in outcome.changes
             ],
+            "espn_parse": _parse_diagnostics(outcome),
             "rejection_reasons": _reason_histogram(outcome.rejections),
             "unmatched_fbs_sample": [
                 {
@@ -172,7 +173,49 @@ def main() -> int:
             ],
         }
         print(json.dumps(report, indent=2))
+        print("\n==== COMPACT SUMMARY (printed last so log tails keep it) ====")
+        print(json.dumps({"coverage": report["coverage"], "espn": report["espn"],
+                          "espn_parse": {k: v for k, v in report["espn_parse"].items()
+                                         if k != "unresolved_samples"},
+                          "rejection_reasons": report["rejection_reasons"],
+                          "ok": report["ok"]}, indent=1))
         return 0 if report["ok"] else 1
+
+
+def _parse_diagnostics(outcome) -> dict:
+    """Why events became non-candidates. `parse_espn_event` drops an
+    entire event when EITHER side fails exact-match canonical resolution,
+    so an unresolvable FCS opponent silently removes an FBS game from the
+    candidate pool -- correct fail-closed behaviour, but it has to be
+    MEASURED rather than guessed at before deciding whether the coverage
+    it costs is acceptable."""
+    from cfb_edge_finder.research.result_provider import parse_espn_event
+
+    raw_events: dict[str, dict] = {}
+    for fetch in outcome.fetches:
+        if fetch.ok:
+            for raw in fetch.events:
+                raw_events.setdefault(str(raw.get("id")), raw)
+    parsed = [(rid, parse_espn_event(raw), raw) for rid, raw in raw_events.items()]
+    unresolved = [(rid, p, raw) for rid, p, raw in parsed if p.resolution_error is not None]
+    samples = []
+    for _rid, p, raw in unresolved[:12]:
+        comp = (raw.get("competitions") or [{}])[0]
+        samples.append(
+            {
+                "name": raw.get("name"),
+                "error": p.resolution_error,
+                "espn_locations": [
+                    (c.get("team") or {}).get("location") for c in (comp.get("competitors") or [])
+                ],
+            }
+        )
+    return {
+        "distinct_events_fetched": len(raw_events),
+        "events_parsed_with_both_teams_resolved": len(parsed) - len(unresolved),
+        "events_dropped_unresolved_identity": len(unresolved),
+        "unresolved_samples": samples,
+    }
 
 
 def _reason_histogram(rejections: dict[str, str]) -> dict[str, int]:
