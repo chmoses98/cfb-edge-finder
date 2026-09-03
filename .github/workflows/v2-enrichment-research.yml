@@ -36,13 +36,22 @@ jobs:
   weather:
     if: ${{ github.event.inputs.mode == 'weather' }}
     runs-on: ubuntu-latest
-    # Writes ONLY to the research-data orphan branch (never main), same
-    # pattern and concurrency group as preseason-research-fetch.yml.
+    # Writes ONLY to the research-data-v2enrich orphan branch (never main and
+    # never research-data). It has its OWN concurrency group: it must never
+    # share `research-data-write` with the collector, because GitHub keeps a
+    # single pending run per group and a long fetch here would cancel queued
+    # collector runs (this happened once on 2026-09-02 and is the reason for
+    # the separate branch and group).
     permissions:
       contents: write
     concurrency:
-      group: research-data-write
+      group: v2-enrich-weather-write-${{ matrix.product }}
       cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        product: [archive, hforecast, prevrun]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -52,22 +61,35 @@ jobs:
       - name: Fetch Open-Meteo kickoff weather (free, keyless, zero CFBD calls)
         run: |
           python scripts/v2_fetch_weather.py --games data/research_inputs/v2_games_for_weather.csv \
-            --out-dir "$RUNNER_TEMP/weather"
+            --products ${{ matrix.product }} --out-dir "$RUNNER_TEMP/weather"
           ls -la "$RUNNER_TEMP/weather"
-      - name: Push to research-data (data/research_cache/v2_enrich/weather)
+      - name: Push to research-data-v2enrich (isolated orphan branch)
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin research-data --depth=1
-          rm -rf /tmp/rd && git worktree add /tmp/rd origin/research-data --detach
+          rm -rf /tmp/rd
+          if git fetch origin research-data-v2enrich --depth=1 2>/dev/null; then
+            git worktree add /tmp/rd origin/research-data-v2enrich --detach
+          else
+            mkdir -p /tmp/rd && git -C /tmp/rd init -q && git -C /tmp/rd checkout -q --orphan research-data-v2enrich
+            git -C /tmp/rd config user.name "github-actions[bot]"
+            git -C /tmp/rd config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fi
           mkdir -p /tmp/rd/data/research_cache/v2_enrich/weather
-          cp "$RUNNER_TEMP"/weather/* /tmp/rd/data/research_cache/v2_enrich/weather/
+          cp "$RUNNER_TEMP"/weather/weather_${{ matrix.product }}.parquet /tmp/rd/data/research_cache/v2_enrich/weather/
+          cp "$RUNNER_TEMP"/weather/manifest.json /tmp/rd/data/research_cache/v2_enrich/weather/manifest_${{ matrix.product }}.json
           cd /tmp/rd && git add data/research_cache/v2_enrich
           git diff --cached --quiet && { echo unchanged; exit 0; }
-          git commit -m "V2 enrichment cache: Open-Meteo kickoff weather (archive/hforecast/prevrun) for V2 games
+          git commit -q -m "V2 enrichment cache: Open-Meteo kickoff weather (${{ matrix.product }}) for V2 games
 
           Free, keyless, read-only fetch on a GitHub-hosted runner by
           .github/workflows/v2-enrichment-research.yml (mode=weather).
-          Zero CFBD calls. See manifest.json for timing classes."
-          git push origin HEAD:research-data
+          Zero CFBD calls. See manifest_${{ matrix.product }}.json for timing classes."
+          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          for i in 1 2 3 4; do
+            git push origin HEAD:research-data-v2enrich && exit 0
+            git fetch origin research-data-v2enrich --depth=1 && git rebase origin/research-data-v2enrich || git rebase --abort
+            sleep $((i * 5))
+          done
+          exit 1
