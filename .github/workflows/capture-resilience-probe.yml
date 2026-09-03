@@ -69,12 +69,49 @@ jobs:
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: |
-          set -o pipefail
+          # The exit code is DELIBERATELY not the pass/fail signal here.
+          # A first entry into a degraded state is supposed to exit 1 (the
+          # entry alert), and this runner has no durable operational state
+          # to suppress against, so it always looks like a first entry.
+          # What this job proves is the SEMANTICS: that captures land, on
+          # the ESPN fresh schedule, with zero metered CFBD calls.
+          set +e
           python scripts/research_scan_and_capture.py \
             --schedule-season 2026 \
             --run-id "dryrun-${{ github.run_id }}" \
             --trigger-type workflow_dispatch \
             --trigger-actor "${{ github.actor }}" \
             --trigger-source MANUAL \
-            --no-push | tail -120
+            --no-push > "$RUNNER_TEMP/dryrun.log" 2>&1
           echo "collector exit code: $?"
+          set -e
+          tail -60 "$RUNNER_TEMP/dryrun.log"
+          python - "$RUNNER_TEMP/dryrun.log" <<'PY'
+          import json, re, sys
+
+          text = open(sys.argv[1]).read()
+          perf = json.loads(re.search(r"^PERF (\{.*\})$", text, re.M).group(1))
+          checks = {
+              "zero metered CFBD calls while the quota is exhausted": perf["cfbd_requests"] == 0,
+              "slow model half served from the durable CFBD artifact": perf["football_state_source"]
+              in ("cache", "cache_cfbd_gated", "cache_schedule_fallback", "cache_after_refresh_failure"),
+              "fresh schedule facts obtained": perf["schedule_games_refreshed"] > 0,
+              "run was classified, not left unclassified": perf["operational_state"] != "not_classified",
+              "no deadline was left at risk": perf["deadline_risk_games"] == 0
+              or perf["operational_state"] == "DEADLINE_AT_RISK",
+          }
+          # Captures only land when something is genuinely due; a quiet
+          # window is a legitimate outcome, so this is reported, not asserted.
+          print(json.dumps({
+              "captures_written": perf["observation_count"],
+              "schedule_provider": perf["schedule_provider"],
+              "schedule_games_refreshed": perf["schedule_games_refreshed"],
+              "football_state_source": perf["football_state_source"],
+              "football_state_schedule_age_minutes": perf["football_state_schedule_age_minutes"],
+              "operational_state": perf["operational_state"],
+              "cfbd_requests": perf["cfbd_requests"],
+          }, indent=1))
+          for name, ok in checks.items():
+              print(("PASS  " if ok else "FAIL  ") + name)
+          sys.exit(0 if all(checks.values()) else 1)
+          PY
