@@ -1,0 +1,37 @@
+name: Settlement Source Probe (read-only)
+
+# Read-only live probe for PART I of the settlement-resilience mission:
+# with CFBD quota-exhausted and site.api.espn.com answering 403 to CI, is
+# there a FREE structured result source that can still settle completed
+# games?
+#
+# Runs the REAL settlement parsers, so what it reports is what settlement
+# would actually do. Writes nothing, settles nothing, makes ZERO CFBD
+# calls, and shares no concurrency group with the collector or with
+# Research Settlement -- it can never queue against either.
+
+on:
+  push:
+    branches: [claude/settlement-403-and-v2-shadow]
+    paths:
+      - "scripts/probe_settlement_sources_live.py"
+      - "src/cfb_edge_finder/research/result_provider.py"
+      - "src/cfb_edge_finder/data/espn_client.py"
+      - ".github/workflows/settlement-source-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Probe free result sources with the real settlement parsers
+        run: python scripts/probe_settlement_sources_live.py --days-back 6
