@@ -1,0 +1,173 @@
+{
+ "source": "https://open-meteo.com (archive-api / historical-forecast-api / previous-runs-api), free, keyless, CC-BY 4.0",
+ "products": {
+  "prevrun": {
+   "min_season": 2024,
+   "timing_class": "A_day_ahead_forecast"
+  }
+ },
+ "hourly_vars": "temperature_2m,relative_humidity_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover",
+ "window": "kickoff hour + 3h",
+ "request": "per game, kickoff day +/- 1 day, non-dome only, newest seasons first",
+ "calls": 741,
+ "minutes": 292.0,
+ "fetched_at": "2026-09-03T05:51:35.639406+00:00",
+ "log": [
+  {
+   "product": "prevrun",
+   "game_id": "401754373",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401756852",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401757224",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401762456",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752682",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401762460",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401756886",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401761600",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752696",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401754623",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401757256",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401762465",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752846",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401757265",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401762825",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752851",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752720",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401756927",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752884",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401762493",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401761638",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401754576",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401752776",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401757175",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "game_id": "401757309",
+   "status": "fail",
+   "err": "ReadTimeout: HTTPSConnectionPool(host='previous-runs-api.open-meteo.com', port=443): Read timed out. (read timeout=45)"
+  },
+  {
+   "product": "prevrun",
+   "status": "time_guard",
+   "rows": 736,
+   "targets": 1774
+  }
+ ]
+}
