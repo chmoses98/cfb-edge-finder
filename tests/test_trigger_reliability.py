@@ -434,6 +434,18 @@ def test_cfbd_credential_actually_reaches_the_client(monkeypatch):
         "capture_kalshi_cfb_snapshot._fetch_candidate_games",
         lambda season, client, now: ([], {}),
     )
+    # HERMETIC: the conductor consults the durable CFBD access state on
+    # origin/research-data before it will attempt a live fetch, so without
+    # this stub the test's outcome depends on what production's quota
+    # state happens to be at run time. It passed locally (where
+    # `origin/research-data` does not resolve, so the read returned {})
+    # and failed on CI (where actions/checkout makes it resolve, and the
+    # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
+    # environment dependence the artifact stub below was already added to
+    # kill, applied to the quota gate that was introduced later.
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
+    )
 
     conductor.supported_upcoming_kickoffs(2026, NOW)
 
@@ -742,6 +754,18 @@ def test_fetch_schedule_health_reports_counts_not_just_kickoffs(monkeypatch):
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
     monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
                         lambda season, client, now: (games, classification))
+    # HERMETIC: the conductor consults the durable CFBD access state on
+    # origin/research-data before it will attempt a live fetch, so without
+    # this stub the test's outcome depends on what production's quota
+    # state happens to be at run time. It passed locally (where
+    # `origin/research-data` does not resolve, so the read returned {})
+    # and failed on CI (where actions/checkout makes it resolve, and the
+    # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
+    # environment dependence the artifact stub below was already added to
+    # kill, applied to the quota gate that was introduced later.
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
+    )
 
     health = conductor.fetch_schedule_health(2026, NOW)
     assert health.fetch_success is True
@@ -766,6 +790,18 @@ def test_fetch_schedule_health_returns_failure_as_data(monkeypatch):
     monkeypatch.setattr(
         "cfb_edge_finder.research.football_state.load_football_state_from_git",
         lambda repo_dir, branch, season: (None, football_state_mod.FOOTBALL_STATE_MISSING),
+    )
+    # HERMETIC: the conductor consults the durable CFBD access state on
+    # origin/research-data before it will attempt a live fetch, so without
+    # this stub the test's outcome depends on what production's quota
+    # state happens to be at run time. It passed locally (where
+    # `origin/research-data` does not resolve, so the read returned {})
+    # and failed on CI (where actions/checkout makes it resolve, and the
+    # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
+    # environment dependence the artifact stub below was already added to
+    # kill, applied to the quota gate that was introduced later.
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
     )
     health = conductor.fetch_schedule_health(2026, NOW)
     assert health.fetch_success is False
