@@ -46,6 +46,7 @@ import capture_kalshi_cfb_snapshot as milestone_d  # noqa: E402
 
 from cfb_edge_finder.config import Settings  # noqa: E402
 from cfb_edge_finder.data.cfbd_client import CFBDClient  # noqa: E402
+from cfb_edge_finder.data.espn_schedule_client import EspnScheduleClient  # noqa: E402
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.fee_schedule import KALSHI_FEE_SCHEDULE_2026_07_07_TAKER  # noqa: E402
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult, map_kalshi_event_to_game  # noqa: E402
@@ -59,11 +60,15 @@ from cfb_edge_finder.research import (  # noqa: E402
     football_state,
     git_durable_store,
     health,
+    operational_state,
     persistence,
     scan_logic,
     timing,
 )
 from cfb_edge_finder.research import heartbeat as heartbeat_mod  # noqa: E402
+from cfb_edge_finder.research import (
+    schedule_state as schedule_state_mod,
+)
 from cfb_edge_finder.research.identity import observation_key  # noqa: E402
 from cfb_edge_finder.research.preseason.corpus import (  # noqa: E402
     build_feature_tables,
@@ -346,6 +351,7 @@ def _apply_scan(
     seed: int,
     now: datetime,
     schedule_source_timestamp: datetime,
+    schedule_source_timestamps: dict[str, datetime] | None = None,
     run_id: str | None,
     report: health.CaptureHealthReport,
     telemetry: ScanTelemetry,
@@ -555,11 +561,21 @@ def _apply_scan(
             if kickoff_uncertain:
                 continue
 
+            # *** PER-GAME SCHEDULE EVIDENCE ***
+            # The 6h bound is unchanged; what changed is that each game is
+            # judged against the FRESHEST evidence for THAT game -- an ESPN
+            # schedule fact's own retrieval time when one exists, and the
+            # CFBD artifact's fetch time otherwise. A game with no fresh
+            # evidence is rejected here, alone, instead of taking the whole
+            # run down before the scan ever started.
+            game_schedule_ts = schedule_source_timestamp
+            if matched_game is not None and schedule_source_timestamps:
+                game_schedule_ts = schedule_source_timestamps.get(matched_game.game_id, schedule_source_timestamp)
             try:
                 if matched_game is not None:
                     scan_logic.guard_capture_allowed(
                         game_status=matched_game.status,
-                        schedule_source_timestamp=schedule_source_timestamp,
+                        schedule_source_timestamp=game_schedule_ts,
                         now=now,
                     )
             except StaleScheduleGuardError:
@@ -686,7 +702,7 @@ def _apply_scan(
                         season=season,
                         kickoff_utc_at_capture=kickoff,
                         game_status_at_capture=matched_game.status if matched_game is not None else "unknown",
-                        schedule_source_timestamp=schedule_source_timestamp,
+                        schedule_source_timestamp=game_schedule_ts,
                         data_versions=data_versions,
                         run_id=run_id,
                     )
@@ -862,8 +878,38 @@ def _append_actions_step_summary(access, access_record: dict, outcome) -> None:
         pass  # summary is cosmetic; never fail a run over it
 
 
+def _cached_kickoff(raw: dict) -> datetime | None:
+    """Kickoff from a RAW cached CFBD schedule row, for the fail-closed
+    horizon check only. Deliberately does NOT go through
+    `normalize_cfbd_game`: normalization can raise for rows the collector
+    would skip anyway, and this only needs to answer 'is a kickoff
+    near?', never to produce a capturable game."""
+    value = raw.get("startDate")
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
+def _append_operational_summary(classification) -> None:
+    """Mission section J: every run should make its condition obvious at
+    a glance in the Actions UI, so a green DEGRADED_SAFE run is not
+    mistaken for a healthy one and a red run says why in its first line."""
+    path = _actions_step_summary_path()
+    if path is None:
+        return
+    try:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(operational_state.job_summary_markdown(classification)) + "\n")
+    except OSError:
+        pass  # summary is cosmetic; never fail a run over it
+
+
 def _fail_closed_no_football_state(
-    args, outcome, resolved_trigger, now: datetime, telemetry, access_record: dict
+    args, outcome, resolved_trigger, now: datetime, telemetry, access_record: dict, espn_client=None
 ) -> int:
     """No provable football state and no way to refresh it: capture
     NOTHING, but leave durable evidence that the run happened and why it
@@ -871,14 +917,95 @@ def _fail_closed_no_football_state(
     -- so an outage can never again be a silent gap. Before this path
     existed, the equivalent condition was an unhandled exception: the
     process died before any accounting and the durable store showed
-    nothing at all (the exact shape of the 2026-08-29 CFBD-429 outage)."""
+    nothing at all (the exact shape of the 2026-08-29 CFBD-429 outage).
+
+    *** WHY THIS PATH NO LONGER ALWAYS EXITS 1 ***
+    It used to, which is how one already-known condition (CFBD quota at
+    zero) produced 288 red runs and 288 emails a day. Whether an operator
+    needs to care depends entirely on a question this function can still
+    answer without CFBD: IS ANYTHING ABOUT TO KICK OFF? If yes, a
+    checkpoint is being lost right now and the run is red, every time,
+    with no suppression. If nothing is inside the deadline window, the run
+    is a recorded DEGRADED_WAITING and exits 0 after the entry alert.
+
+    The horizon question is answered from the freshest evidence available,
+    in order: the keyless ESPN scoreboard (which needs no artifact at
+    all), then the cached football-state artifact's own kickoffs. If
+    NEITHER can answer, the run stays red -- unknown is treated as risk."""
     season = args.schedule_season
+    horizon_hours = operational_state.DEADLINE_RISK_HORIZON_HOURS
+
+    # --- Is anything inside the deadline window? Answered without CFBD.
+    horizon_games: int | None = None
+    risk_source = "unknown"
+    if espn_client is not None:
+        horizon_games, fetches = schedule_state_mod.kickoffs_within_horizon(
+            espn_client, now=now, horizon_hours=horizon_hours
+        )
+        telemetry.schedule_espn_requests = len(fetches)
+        if horizon_games is not None:
+            risk_source = "espn"
+        else:
+            print(
+                "NOTE: ESPN horizon check unavailable ("
+                + "; ".join(sorted({f.error or f"HTTP {f.http_status}" for f in fetches}))[:200]
+                + ")"
+            )
+    if horizon_games is None:
+        cached_state, _verdict = football_state.load_football_state(args.data_repo_dir, season)
+        if cached_state is not None:
+            horizon = now + timedelta(hours=horizon_hours)
+            horizon_games = sum(
+                1
+                for raw in cached_state.schedule_games
+                for kickoff in (_cached_kickoff(raw),)
+                if kickoff is not None and now < kickoff <= horizon
+            )
+            risk_source = "cached_schedule"
+    telemetry.deadline_risk_games = horizon_games if horizon_games is not None else 0
+
+    blocker_parts: list[str] = []
+    if access_record.get("access_state") != cfbd_access.CFBD_ACCESS_OK:
+        blocker_parts.append(str(access_record.get("access_state")))
+    blocker_parts.append(f"FOOTBALL_STATE_{outcome.freshness}")
+    if risk_source == "unknown":
+        blocker_parts.append("SCHEDULE_HORIZON_UNKNOWN")
+    blocker = "+".join(blocker_parts)
+
+    prior_operational = operational_state.load_state(args.data_repo_dir)
+    classification = operational_state.classify_run(
+        diagnostics=[],
+        fail_closed=True,
+        blocker=blocker,
+        # Unknown is risk: if neither provider could say whether a kickoff
+        # is imminent, the run must assume one is.
+        deadline_risk=(horizon_games is None or horizon_games > 0),
+        prior_state=prior_operational,
+        now=now,
+        summary_fields={
+            "football_state_source": outcome.source,
+            "football_state_freshness": outcome.freshness,
+            "schedule_source": "unavailable",
+            "deadline_horizon_source": risk_source,
+            "deadline_horizon_games": horizon_games,
+            "cfbd_access": access_record.get("access_state"),
+            "cfbd_quota_remaining": access_record.get("cfbd_quota_remaining"),
+            "cfbd_quota_resets_at": access_record.get("cfbd_quota_resets_at"),
+            "captures_due": 0,
+            "captures_written": 0,
+        },
+    )
+    telemetry.operational_state = classification.operational_state
+    classification_holder = {"run": classification}
 
     def account_only(repo_dir: Path) -> persistence.AppendResult:
         base_dir = repo_dir / "data" / "research"
         obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
         state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
         cfbd_access.save_state(repo_dir, access_record)
+        operational_state.save_state(
+            repo_dir, operational_state.record_state(classification, prior_operational, now=now)
+        )
         telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
             obs_path, state_path, now=now, run_id=args.run_id
         )
@@ -911,6 +1038,8 @@ def _fail_closed_no_football_state(
                     f"{'gated' if outcome.cfbd_requests == 0 else 'failed'} "
                     f"({outcome.refresh_error or 'no error detail'}); no captures attempted; "
                     f"reconciled_missed_checkpoints={telemetry.reconciled_missed_checkpoints}{gate_note}"
+                    f" | operational_state={classification.operational_state}"
+                    f" deadline_horizon_source={risk_source} deadline_horizon_games={horizon_games}"
                 ),
             ),
         )
@@ -929,8 +1058,17 @@ def _fail_closed_no_football_state(
             ),
         )
     telemetry.finish()
+    classification = classification_holder.get("run")
+    if classification is not None:
+        for line in classification.summary_lines():
+            print(f"OPERATIONAL {line}")
+        _append_operational_summary(classification)
     print(json.dumps({
         "fail_closed": True,
+        "operational_state": classification.operational_state if classification else "not_classified",
+        "deadline_risk": classification.deadline_risk if classification else True,
+        "deadline_horizon_source": risk_source,
+        "deadline_horizon_games": horizon_games,
         "football_state_freshness": outcome.freshness,
         "football_state_source": outcome.source,
         "refresh_error": outcome.refresh_error,
@@ -944,7 +1082,7 @@ def _fail_closed_no_football_state(
     }, indent=2))
     print("\nPERF " + json.dumps(telemetry.as_dict(), sort_keys=True))
     print("\nSTATUS: RESEARCH-ONLY. Fail-closed: no football state, no captures, accounting only.")
-    return 1
+    return 1 if classification is None or classification.should_fail_run else 0
 
 
 def main() -> int:
@@ -997,6 +1135,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--no-schedule-fallback",
+        action="store_true",
+        help=(
+            "Disable the keyless ESPN fresh-schedule fallback. Without it a CFBD outage makes the "
+            "schedule component age past its 6h hard bound with no way to refresh it, which is exactly "
+            "the 2026-09-03 outage this flag exists to be able to reproduce."
+        ),
+    )
+    parser.add_argument(
         "--telemetry-json",
         type=Path,
         default=None,
@@ -1038,6 +1185,17 @@ def main() -> int:
     for line in cfbd_access.summary_lines(access):
         print(f"CFBD-ACCESS {line}")
 
+    # *** TWO-CLOCK SCHEDULE RESILIENCE (research/schedule_state.py) ***
+    # The football-state artifact bundles slow model inputs with the fast
+    # kickoff clock under one 6h verdict. Telling the slow lane that a
+    # fresh-schedule provider exists lets it hand back the still-valid
+    # model half when ONLY the schedule half has aged out, instead of
+    # returning None and taking the run down. It does not make the stale
+    # schedule usable -- fresh per-game evidence is fetched below, and
+    # every game still faces the same unchanged 6h guard.
+    schedule_fallback_enabled = not args.no_schedule_fallback
+    espn_schedule_client = EspnScheduleClient() if schedule_fallback_enabled else None
+
     outcome = football_state.resolve_football_state(
         args.data_repo_dir,
         cfbd_client,
@@ -1046,6 +1204,7 @@ def main() -> int:
         now=now,
         force_refresh=args.refresh_football_state,
         allow_cfbd=access.allow_cfbd,
+        schedule_fallback_available=schedule_fallback_enabled,
     )
     telemetry.football_state_source = outcome.source
     telemetry.football_state_freshness = outcome.freshness
@@ -1068,7 +1227,9 @@ def main() -> int:
         # heartbeat that says the run happened and failed, and the
         # no-network reconciliation pass so windows that died in silence
         # get their explicit terminal accounting.
-        return _fail_closed_no_football_state(args, outcome, resolved_trigger, now, telemetry, access_record)
+        return _fail_closed_no_football_state(
+            args, outcome, resolved_trigger, now, telemetry, access_record, espn_schedule_client
+        )
 
     state = outcome.state
     telemetry.football_state_schedule_age_minutes = round(state.schedule_age_hours(now) * 60.0, 1)
@@ -1076,6 +1237,62 @@ def main() -> int:
     games = inputs.games
     classification_by_game_id = inputs.classification_by_game_id
     fcs_school_names = inputs.fcs_school_names
+
+    # *** FRESH SCHEDULE FACTS (provider hierarchy, mission section F) ***
+    # CFBD stays primary: when the slow lane just refreshed the schedule
+    # itself (or the cache is genuinely FRESH), this costs nothing and
+    # changes nothing. ESPN is consulted ONLY when CFBD did not supply a
+    # fresh schedule -- a quota gate, a failed refresh, or a hard-stale
+    # schedule component -- and even then it may only move kickoff and
+    # status, never identity.
+    cfbd_schedule_is_fresh = outcome.source in ("cache", "live_full_refresh", "live_schedule_refresh")
+    schedule_refresh = None
+    applied = schedule_state_mod.AppliedSchedule(
+        games=games,
+        schedule_source_timestamps={g.game_id: state.schedule_fetched_at for g in games},
+        fresh_game_ids=frozenset(),
+    )
+    if not cfbd_schedule_is_fresh and espn_schedule_client is not None:
+        schedule_refresh = schedule_state_mod.refresh_schedule_state(
+            args.data_repo_dir,
+            games,
+            season=args.schedule_season,
+            now=now,
+            client=espn_schedule_client,
+        )
+        applied = schedule_state_mod.apply_schedule_state(
+            games,
+            schedule_refresh.state,
+            cfbd_schedule_fetched_at=state.schedule_fetched_at,
+            now=now,
+            max_fact_age_hours=football_state.SCHEDULE_HARD_MAX_HOURS,
+        )
+        games = applied.games
+        classification_by_game_id = {
+            g.game_id: classification_by_game_id.get(g.game_id, (None, None)) for g in games
+        }
+        for line in (
+            f"SCHEDULE-FALLBACK {k}={v}" for k, v in sorted(schedule_refresh.summary_dict().items())
+        ):
+            print(line)
+        for change in schedule_refresh.changes:
+            print(
+                f"SCHEDULE-CHANGE game_id={change.game_id} "
+                f"previous_kickoff={change.previous_kickoff_utc.isoformat() if change.previous_kickoff_utc else None} "
+                f"new_kickoff={change.new_kickoff_utc.isoformat()} provider=espn "
+                f"detected_at={change.detected_at.isoformat()}"
+            )
+        for game_id, reason in sorted(schedule_refresh.rejections.items())[:20]:
+            print(f"SCHEDULE-REFUSED game_id={game_id} reason={reason}")
+    telemetry.schedule_provider = (
+        football_state.PROVIDER_CFBD_LABEL if cfbd_schedule_is_fresh else schedule_state_mod.PROVIDER_ESPN
+    )
+    if schedule_refresh is not None:
+        telemetry.schedule_state_verdict = schedule_refresh.verdict
+        telemetry.schedule_games_refreshed = schedule_refresh.refreshed_games
+        telemetry.schedule_games_rejected = len(schedule_refresh.rejections)
+        telemetry.schedule_changes_detected = len(schedule_refresh.changes)
+        telemetry.schedule_espn_requests = len(schedule_refresh.fetches)
 
     def _load_history_lines():
         """Deferred to first projection, exactly as the live fetch was --
@@ -1116,6 +1333,69 @@ def main() -> int:
     # resolution, so --no-push rehearsals continue to scan the REAL
     # corpus rather than an empty ledger.)
 
+    prior_operational = operational_state.load_state(args.data_repo_dir)
+    classification_holder: dict[str, operational_state.RunClassification] = {}
+
+    def _classify(repo_dir: Path) -> operational_state.RunClassification:
+        """Decide what THIS run's exit code should mean, and leave the
+        decision durably recorded in the same commit as everything else.
+
+        Computed inside the durable apply on purpose: the suppression
+        state it reads and writes has to move atomically with the run it
+        describes, or a push retry could alert twice for one condition
+        (or, worse, record an alert that was never delivered)."""
+        diagnostics_now = health.evaluate_collapse(report, baseline_supported_markets=None)
+        supported_scheduled = {
+            g.game_id: g.kickoff_utc
+            for g in games
+            if g.status == "scheduled" and classification_by_game_id.get(g.game_id, (None, None)) == ("fbs", "fbs")
+        }
+        trusted = {
+            game_id
+            for game_id, stamp in applied.schedule_source_timestamps.items()
+            if (now - stamp).total_seconds() / 3600.0 <= scan_logic.MAX_SCHEDULE_STALENESS_HOURS
+        }
+        at_risk = operational_state.deadline_risk_games(
+            kickoffs_by_game_id=supported_scheduled, trusted_game_ids=trusted, now=now
+        )
+        telemetry.deadline_risk_games = len(at_risk)
+
+        blocker_parts: list[str] = []
+        if access_record.get("access_state") != cfbd_access.CFBD_ACCESS_OK:
+            blocker_parts.append(str(access_record.get("access_state")))
+        if (
+            schedule_refresh is not None
+            and schedule_refresh.verdict == schedule_state_mod.SCHEDULE_STATE_UNAVAILABLE
+        ):
+            blocker_parts.append("SCHEDULE_FALLBACK_UNAVAILABLE")
+        blocker = "+".join(blocker_parts) or None
+
+        classification = operational_state.classify_run(
+            diagnostics=diagnostics_now,
+            fail_closed=False,
+            blocker=blocker,
+            deadline_risk=bool(at_risk),
+            prior_state=prior_operational,
+            now=now,
+            summary_fields={
+                "football_state_source": outcome.source,
+                "schedule_source": telemetry.schedule_provider,
+                "schedule_fresh_games": len(applied.fresh_game_ids),
+                "captures_due": report.captures_due,
+                "captures_written": report.captures_written,
+                "closing_due": report.closing_due,
+                "cfbd_access": access_record.get("access_state"),
+                "cfbd_quota_remaining": access_record.get("cfbd_quota_remaining"),
+                "deadline_risk_games": len(at_risk),
+            },
+        )
+        operational_state.save_state(
+            repo_dir, operational_state.record_state(classification, prior_operational, now=now)
+        )
+        telemetry.operational_state = classification.operational_state
+        classification_holder["run"] = classification
+        return classification
+
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
         return _apply_scan(
             repo_dir,
@@ -1133,8 +1413,11 @@ def main() -> int:
             now=now,
             # The artifact's own fetch time -- guard_capture_allowed
             # enforces the 6h staleness bound against exactly this value,
-            # so schedule freshness is proven per captured row.
+            # so schedule freshness is proven per captured row. The
+            # per-game map overrides it for any game whose kickoff/status
+            # were re-read from the fresh-schedule provider this run.
             schedule_source_timestamp=state.schedule_fetched_at,
+            schedule_source_timestamps=applied.schedule_source_timestamps,
             run_id=args.run_id,
             report=report,
             telemetry=telemetry,
@@ -1150,7 +1433,10 @@ def main() -> int:
         reset and this runs again, so a run leaves exactly one heartbeat
         rather than one per attempt."""
         cfbd_access.save_state(repo_dir, access_record)
+        if schedule_refresh is not None and schedule_refresh.verdict != schedule_state_mod.SCHEDULE_STATE_UNAVAILABLE:
+            schedule_state_mod.save_schedule_state(repo_dir, schedule_refresh.state, now=now)
         result = apply_fn(repo_dir)
+        _classify(repo_dir)
         supported_kickoffs = sorted(
             g.kickoff_utc
             for g in not_started_games
@@ -1185,7 +1471,13 @@ def main() -> int:
                 cfbd_quota_remaining=access_record.get("cfbd_quota_remaining"),
                 cfbd_quota_resets_at=access_record.get("cfbd_quota_resets_at"),
                 cfbd_next_probe_at=access_record.get("cfbd_next_probe_at"),
-                schedule_fetch_success=outcome.source in ("cache", "live_full_refresh", "live_schedule_refresh"),
+                schedule_fetch_success=(
+                    cfbd_schedule_is_fresh
+                    or (
+                        schedule_refresh is not None
+                        and schedule_refresh.verdict != schedule_state_mod.SCHEDULE_STATE_UNAVAILABLE
+                    )
+                ),
                 schedule_state=(
                     SchedulePlanningState.FETCH_SUCCESS_GUARDABLE_GAME_PRESENT.value
                     if supported_kickoffs
@@ -1203,7 +1495,10 @@ def main() -> int:
                 detail=(
                     f"trigger={resolved_trigger.value} raw_event={args.trigger_type!r} "
                     f"declared={args.trigger_source or 'none'} "
-                    f"football_state={outcome.source} cfbd_requests={outcome.cfbd_requests}"
+                    f"football_state={outcome.source} cfbd_requests={outcome.cfbd_requests} "
+                    f"schedule_provider={telemetry.schedule_provider} "
+                    f"schedule_verdict={telemetry.schedule_state_verdict} "
+                    f"schedule_fresh_games={len(applied.fresh_game_ids)}"
                 ),
             ),
         )
@@ -1255,7 +1550,26 @@ def main() -> int:
         args.telemetry_json.write_text(json.dumps(telemetry.as_dict(), indent=2, sort_keys=True), encoding="utf-8")
     print("\nSTATUS: RESEARCH-ONLY. No bet recommendation, stake sizing, or trading action anywhere in this output.")
 
-    return 1 if health.should_fail_run(diagnostics) else 0
+    # *** WHAT THIS RUN'S EXIT CODE MEANS (research/operational_state.py) ***
+    # `should_fail_run` still decides the HIGH-severity case and is never
+    # suppressed; the classifier only adds the two questions the old bare
+    # boolean could not ask -- "is a deadline actually at risk?" and "is
+    # this the same known-safe degraded state we already alerted on?".
+    # A run with no classification (an unexpected path) falls back to the
+    # original rule rather than to silence.
+    classification = classification_holder.get("run")
+    if classification is None:
+        return 1 if health.should_fail_run(diagnostics) else 0
+    for line in classification.summary_lines():
+        print(f"OPERATIONAL {line}")
+    _append_operational_summary(classification)
+    if health.should_fail_run(diagnostics) and not classification.should_fail_run:
+        # Defensive: a HIGH diagnostic must never exit 0, whatever the
+        # classifier concluded. classify_run already guarantees this;
+        # asserting it here means a future edit that breaks the guarantee
+        # fails loudly instead of going quiet.
+        return 1
+    return 1 if classification.should_fail_run else 0
 
 
 if __name__ == "__main__":

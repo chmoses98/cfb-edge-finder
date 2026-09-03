@@ -31,11 +31,35 @@ in the open-source CFB analytics community (cfbfastR, `cfbd` Python
 client) -- reasonable reliability signal for that reason.
 
 **Fallback: ESPN hidden/unofficial API.** No key required.
-`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&dates=YYYYMMDD`
-(groups=80 = FBS); deeper box scores via `.../summary?event={id}`.
-Explicitly unofficial -- can change or break without notice, no ToS grant
-for automated commercial use. Appropriate as a cross-check/secondary feed,
-not a sole production dependency.
+`scoreboard?groups=80&dates=YYYYMMDD` (groups=80 = FBS); deeper box scores
+via `.../summary?event={id}`. Explicitly unofficial -- can change or break
+without notice, no ToS grant for automated commercial use. Appropriate as
+a cross-check/secondary feed, not a sole production dependency.
+
+> **HOST STATUS, live-verified 2026-09-03 from GitHub-hosted runners**
+> (probe runs 33789268655 and 33789404748):
+>
+> | Host | Result | Payload |
+> |---|---|---|
+> | `site.api.espn.com` | **HTTP 403 "Access Denied" (Akamai)** | none |
+> | `site.web.api.espn.com` | 200 | `events[]` at the top level |
+> | `cdn.espn.com/core/college-football/scoreboard?xhr=1` | 200 | the same events at `content.sbData.events` |
+> | `sports.core.api.espn.com/v2/...` | 200 | `$ref` index; ~3-4 requests per game |
+>
+> `site.api.espn.com` is the host `data/espn_client.ESPNClient` targets,
+> which means the SETTLEMENT ESPN fallback in
+> `research/result_provider.py` is currently unavailable from CI. It fails
+> closed, so it produces no wrong answers -- but it produces no answers
+> either, and CFBD is its primary. That is a live gap, recorded here
+> rather than fixed in passing: changing settlement semantics was out of
+> scope for the capture-resilience work that found it.
+>
+> The SCHEDULE fallback (`data/espn_schedule_client.py`,
+> `research/schedule_state.py`) uses `site.web.api.espn.com` with
+> `cdn.espn.com` as a second host, and re-verifies both on every run via
+> `scripts/validate_espn_schedule_live.py`. The core API is deliberately
+> not used: 3-4 requests per game is the wrong shape for a 5-minute loop
+> and it carries no field the scoreboard lacks.
 
 ## Play-by-Play
 

@@ -139,6 +139,31 @@ FOOTBALL_STATE_STALE_HARD = "FOOTBALL_STATE_STALE_HARD"
 FOOTBALL_STATE_MISSING = "FOOTBALL_STATE_MISSING"
 FOOTBALL_STATE_CORRUPT = "FOOTBALL_STATE_CORRUPT"
 
+FOOTBALL_STATE_SCHEDULE_STALE_HARD = "FOOTBALL_STATE_SCHEDULE_STALE_HARD"
+"""The SLOW half is still inside its own bounds and ONLY the schedule
+component has passed the 6h hard bound.
+
+This verdict exists because the two halves were previously
+indistinguishable. On 2026-09-03, with the CFBD quota at zero, a schedule
+component 9.6h old took a history component 18h old (hard bound: 14 days)
+down with it: `resolve_football_state` returned state=None and every
+5-minute run exited 1. The model inputs had not gone stale at all -- only
+the kickoff clock had, and kickoffs are readable from a keyless public
+source. Callers that have a fresh-schedule fallback available
+(research/schedule_state.py) receive the cached state under THIS verdict
+and must then obtain fresh PER-GAME schedule evidence before capturing;
+callers without one still fail closed exactly as before. The 6h bound
+itself is unchanged and still enforced per captured row by
+`scan_logic.guard_capture_allowed` -- against whichever evidence is
+freshest for that game."""
+
+COMPONENT_SCHEDULE = "schedule"
+COMPONENT_HISTORY = "history"
+
+PROVIDER_CFBD_LABEL = "cfbd"
+"""What this artifact's schedule component is sourced from, named so
+telemetry can say which provider supplied the FRESH facts."""
+
 _ADVANCED_KEEP = ("gameId", "team")
 _TEAM_KEEP = ("school", "classification")
 
@@ -184,6 +209,22 @@ class FootballState:
 
     def history_age_hours(self, now: datetime) -> float:
         return (now - self.history_fetched_at).total_seconds() / 3600.0
+
+    def hard_stale_components(self, now: datetime) -> tuple[str, ...]:
+        """Which halves are individually past their own hard bound.
+        `freshness()` collapses both into one verdict for backward
+        compatibility; this says WHICH, so a caller with a schedule
+        fallback can tell a stale kickoff clock from stale model
+        inputs."""
+        stale: list[str] = []
+        if self.schedule_age_hours(now) > SCHEDULE_HARD_MAX_HOURS:
+            stale.append(COMPONENT_SCHEDULE)
+        if self.history_age_hours(now) > HISTORY_HARD_MAX_HOURS:
+            stale.append(COMPONENT_HISTORY)
+        return tuple(stale)
+
+    def only_schedule_hard_stale(self, now: datetime) -> bool:
+        return self.hard_stale_components(now) == (COMPONENT_SCHEDULE,)
 
     def freshness(self, now: datetime) -> str:
         if self.schedule_age_hours(now) > SCHEDULE_HARD_MAX_HOURS:
@@ -433,6 +474,7 @@ def resolve_football_state(
     now: datetime,
     force_refresh: bool = False,
     allow_cfbd: bool = True,
+    schedule_fallback_available: bool = False,
 ) -> RefreshOutcome:
     """The slow-lane decision procedure the fast loop calls once per run.
 
@@ -451,7 +493,17 @@ def resolve_football_state(
     within-hard-bound cache degrades exactly like a failed refresh; a
     missing/hard-stale state fails closed. Freshness policy, hard
     bounds, and every downstream guard are untouched -- the gate only
-    removes doomed requests, never loosens what counts as usable state."""
+    removes doomed requests, never loosens what counts as usable state.
+
+    `schedule_fallback_available=True` (the caller has a fresh-schedule
+    provider -- research/schedule_state.py): when the ONLY component past
+    its hard bound is the schedule, hand back the cached state under
+    FOOTBALL_STATE_SCHEDULE_STALE_HARD instead of None. This does NOT
+    make the stale schedule usable: it makes the still-valid SLOW half
+    reachable so the caller can pair it with independently-fetched fresh
+    kickoffs. A caller that then fails to obtain fresh schedule evidence
+    must fail closed itself -- and per-row `guard_capture_allowed` still
+    rejects any game left on the stale CFBD timestamp, unchanged."""
     cached, _verdict = load_football_state(repo_dir, season)
     if cached is not None and list(cached.history_seasons) != list(history_seasons):
         cached = None  # config changed: rebuild
@@ -473,6 +525,14 @@ def resolve_football_state(
                 cfbd_requests=0,
                 refresh_error=gated_error,
                 freshness=cached.freshness(now),
+            )
+        if cached is not None and schedule_fallback_available and cached.only_schedule_hard_stale(now):
+            return RefreshOutcome(
+                state=cached,
+                source="cache_schedule_fallback",
+                cfbd_requests=0,
+                refresh_error=gated_error,
+                freshness=FOOTBALL_STATE_SCHEDULE_STALE_HARD,
             )
         return RefreshOutcome(
             state=None,
@@ -504,6 +564,15 @@ def resolve_football_state(
                 cfbd_requests=1 if not needs_full else 2 + 2 * len(history_seasons),
                 refresh_error=error,
                 freshness=cached.freshness(now),
+                refresh_http_status=http_status if isinstance(http_status, int) else None,
+            )
+        if cached is not None and schedule_fallback_available and cached.only_schedule_hard_stale(now):
+            return RefreshOutcome(
+                state=cached,
+                source="cache_schedule_fallback",
+                cfbd_requests=1 if not needs_full else 2 + 2 * len(history_seasons),
+                refresh_error=error,
+                freshness=FOOTBALL_STATE_SCHEDULE_STALE_HARD,
                 refresh_http_status=http_status if isinstance(http_status, int) else None,
             )
         return RefreshOutcome(

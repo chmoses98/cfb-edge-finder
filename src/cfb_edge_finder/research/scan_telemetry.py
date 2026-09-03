@@ -89,6 +89,27 @@ class ScanTelemetry:
     """Terminal MISSED_WINDOW rows written by after-the-fact
     reconciliation this run (accounting only, never backfill)."""
 
+    # --- Fresh-schedule fallback (research/schedule_state.py) ---
+    schedule_provider: str = "not_resolved"
+    """Which source supplied this run's FRESH schedule facts (kickoff and
+    status): 'cfbd' on the normal path, 'espn' when the keyless fallback
+    carried them. Distinct from football_state_source, which describes
+    the SLOW model half -- the whole point of the split is that these two
+    can legitimately disagree."""
+    schedule_state_verdict: str = "not_attempted"
+    schedule_games_refreshed: int = 0
+    schedule_games_rejected: int = 0
+    """Games the fallback REFUSED fail-closed (unresolvable team,
+    ambiguous or flipped event, unrecognized status, implausible shift).
+    Each keeps its CFBD facts and faces the ordinary 6h guard."""
+    schedule_changes_detected: int = 0
+    schedule_espn_requests: int = 0
+    operational_state: str = "not_classified"
+    """research/operational_state.py verdict: HEALTHY, DEGRADED_SAFE,
+    DEGRADED_WAITING, DEADLINE_AT_RISK or INTEGRITY_FAILURE -- the thing
+    the run's exit code actually means."""
+    deadline_risk_games: int = 0
+
     talent_prior_state: str = "NOT_ATTEMPTED"
     """Whether the early-season talent margin prior was live this run.
     "ACTIVE" means every FBS-vs-FBS projection carried it and the run
