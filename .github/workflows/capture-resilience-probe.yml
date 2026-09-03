@@ -20,8 +20,11 @@ on:
     branches: [claude/capture-resilience-espn-schedule]
     paths:
       - "scripts/validate_espn_schedule_live.py"
+      - "scripts/research_scan_and_capture.py"
       - "src/cfb_edge_finder/data/espn_schedule_client.py"
       - "src/cfb_edge_finder/research/schedule_state.py"
+      - "src/cfb_edge_finder/research/operational_state.py"
+      - "src/cfb_edge_finder/research/football_state.py"
       - ".github/workflows/capture-resilience-probe.yml"
   workflow_dispatch:
 
@@ -40,3 +43,38 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Validate the ESPN schedule fallback against the live durable artifact
         run: python scripts/validate_espn_schedule_live.py --season 2026
+
+  # END-TO-END DRY RUN of the REAL collector against the REAL live outage.
+  # --no-push means it writes locally on the runner and pushes nothing, so
+  # it cannot touch the corpus, the durable branch, or another run's work;
+  # it therefore needs no concurrency group and can never queue against a
+  # genuine capture. This is the mission's section-M proof that the whole
+  # path -- quota gate, slow-lane resolution, ESPN fresh-schedule refresh,
+  # per-game guard, operational classification, exit code -- behaves under
+  # the exact conditions that were producing a red run every five minutes.
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Configure git identity (the durable store stages locally even with --no-push)
+        run: |
+          git config user.name "capture-resilience-dryrun"
+          git config user.email "capture-resilience-dryrun@users.noreply.github.com"
+      - name: Scan and capture -- DRY RUN, writes locally, pushes nothing
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          set -o pipefail
+          python scripts/research_scan_and_capture.py \
+            --schedule-season 2026 \
+            --run-id "dryrun-${{ github.run_id }}" \
+            --trigger-type workflow_dispatch \
+            --trigger-actor "${{ github.actor }}" \
+            --trigger-source MANUAL \
+            --no-push | tail -120
+          echo "collector exit code: $?"

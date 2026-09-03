@@ -189,32 +189,24 @@ def _parse_diagnostics(outcome) -> dict:
     candidate pool -- correct fail-closed behaviour, but it has to be
     MEASURED rather than guessed at before deciding whether the coverage
     it costs is acceptable."""
-    from cfb_edge_finder.research.result_provider import parse_espn_event
-
     raw_events: dict[str, dict] = {}
     for fetch in outcome.fetches:
         if fetch.ok:
             for raw in fetch.events:
                 raw_events.setdefault(str(raw.get("id")), raw)
-    parsed = [(rid, parse_espn_event(raw), raw) for rid, raw in raw_events.items()]
-    unresolved = [(rid, p, raw) for rid, p, raw in parsed if p.resolution_error is not None]
-    samples = []
-    for _rid, p, raw in unresolved[:12]:
-        comp = (raw.get("competitions") or [{}])[0]
-        samples.append(
-            {
-                "name": raw.get("name"),
-                "error": p.resolution_error,
-                "espn_locations": [
-                    (c.get("team") or {}).get("location") for c in (comp.get("competitors") or [])
-                ],
-            }
-        )
+    parsed = [schedule_state.parse_schedule_event(raw) for raw in raw_events.values()]
+    settlement_strict = sum(1 for e in parsed if e.facts.resolution_error is None)
+    usable = [e for e in parsed if e.event_date is not None and e.home_name and e.away_name]
     return {
         "distinct_events_fetched": len(raw_events),
-        "events_parsed_with_both_teams_resolved": len(parsed) - len(unresolved),
-        "events_dropped_unresolved_identity": len(unresolved),
-        "unresolved_samples": samples,
+        "events_usable_for_schedule_matching": len(usable),
+        "events_both_sides_registry_resolvable": settlement_strict,
+        "events_needing_the_non_fbs_slug_rule": len(usable) - settlement_strict,
+        "unresolved_samples": [
+            {"name": (e.facts.name or ""), "home": e.home_name, "away": e.away_name}
+            for e in parsed
+            if e.event_date is None or not e.home_name or not e.away_name
+        ][:8],
     }
 
 
