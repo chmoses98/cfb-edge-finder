@@ -125,7 +125,7 @@ code, so comparisons are like-for-like. Paired per-game deltas with a
 | **Roster continuity** (B): S−1 starts of players on the S roster, QB starts, conference change | 4 | 88% | +0.005 [+0.002, +0.009] | +0.012 | +0.005 | 1 | 14.62 | degrades slightly — REJECT |
 | **V2 self-correction** (A): team's prior-games V2 residual this season (shrunk mean, last game) | 2 | 100% | **−0.039 [−0.073, −0.007]** | −0.026 | −0.038 [−0.076, 0.000] | 7 (1 tie) | **14.31** | **modest, repeatable — ACCEPT as optional component** |
 | self-correction + total self-correction | 3 | 100% | −0.033 [−0.068, 0.000]; total −0.013 [−0.028, +0.002] | −0.027 | −0.032 | 6 | 14.31 | margin-only version preferred |
-| Weather / environment (B / A− / A) | 7 per product | fetch in progress | pending | | | | | see §11 |
+| **Weather / environment** (B / A− / A): kickoff wind, gust, rain, temperature | 7 per product | 2025 partial only (558–619 games) | residual test: no correlation with V2 or market total residuals | — | — | — | — | null on delivered sample — NOT a candidate (§11) |
 | *Leaky upper bound* — the ACTUAL game's primary passer (hindsight, class D) | 7 | 88% | −0.053 [−0.101, −0.004] | **+0.237** | −0.075 | 5 | 14.34 | prices live QB info at ≈0.05–0.08 pts (bowls −0.24); never a feature |
 
 Detailed per-family JSON (all folds, segments, large-disagreement
@@ -156,20 +156,41 @@ per game: kickoff-hour wind and 3-hour max gust, 3-hour precipitation,
 temperature, and cold / windy (≥15 mph) / rain flags, all zero for dome
 venues.
 
-**Status at report time: fetch still running on the GitHub runner (run
-33701784573), no result yet.** The first attempt (season-long hourly
-requests per venue) was throttled by Open-Meteo's call weighting and
-never completed, and its concurrency group collided with the collector
-(see the incident note in §19); the second attempt uses light per-game
-requests with a wall-clock guard and pushes partial output (newest
-seasons first) to the isolated `research-data-v2enrich` branch. When it
-lands, `scripts/v2_enrich/README.md` documents the one-command ablation
-(`build_weather.py` → `enr_wx_{archive,hforecast,prevrun}.json`) and this
-section will be updated. Prior expectation, stated before seeing the
-result: weather is a *totals* signal (wind/rain lower totals), unlikely to
-move margin MAE, and a class-B observed proxy would overstate what a
-pregame forecast could deliver. The live sidecar already captures the
-class-C forecast every 6 hours so a prospective test needs nothing more.
+**Result: NULL on the sample the free source delivered; not a candidate.**
+Open-Meteo throttled the runner to about 2.3 requests per minute per job
+(429 back-offs), so the 290-minute guard delivered only part of the 2025
+season, newest games first: 670 archive, 653 historical-forecast and 736
+day-ahead rows, of which 558 / 537 / 619 are FBS games with closing
+lines (`docs/v2/enrichment/enr_weather_residual.json`,
+`scripts/v2_enrich/weather_residual_test.py`). One partial season cannot
+feed the rolling-origin ablation harness, so the test is a residual one:
+does kickoff weather explain what V2 misses, and does the market already
+price it?
+
+| product (class) | n | corr(wind, V2 total residual) | corr(rain, V2 total residual) | OLS t-stats wind / rain on V2 total residual | same on market total residual | V2 total − market total, windy games | rain games | V2 total MAE / market |
+|---|---|---|---|---|---|---|---|---|
+| archive (B, observed) | 558 | 0.006 (p 0.89) | −0.056 (p 0.19) | 0.5 / −1.1 | 0.9 / −0.9 | +2.3 [+0.8, +3.9], n=7 | +1.9 [+1.2, +2.7], n=47 | 12.36 / 12.20 |
+| hforecast (A−, archived forecast) | 537 | −0.017 (p 0.70) | −0.041 (p 0.35) | −0.7 / −1.0 | −0.5 / −0.9 | +2.4 [+0.5, +4.2], n=11 | +1.8 [+0.8, +2.7], n=28 | 12.20 / 12.08 |
+| prevrun (A, day-ahead forecast) | 619 | −0.014 (p 0.73) | 0.015 (p 0.71) | −0.1 / −1.0 | 0.4 / −1.0 | +2.3 [+1.2, +3.5], n=21 | +1.6 [+0.8, +2.5], n=34 | 12.34 / 12.15 |
+
+Neither V2's nor the market's total residuals correlate with kickoff
+wind, gusts or rain in any product; no coefficient reaches |t| > 1.2.
+The one consistent, significant pattern is that the closing total sits
+about 2 points *below* V2 in windy and rainy games in all three products,
+including the genuine day-ahead forecast: the market does shade totals for
+weather and V2 does not. On these games that shading did not make the
+market's totals better (its residual in windy games is positive, V2's is
+near zero; in rain both models were too high by a similar amount), so on
+this sample weather is something the market *uses* without it being
+something the market *gets right*. The rain-game V2 total residual of
+−3 to −4 points (V2 too high) is the same sign as the market's and not
+significant. Weather is therefore not an enriched-V2 candidate; the
+sidecar's 6-hourly forecast capture is the right way to answer the
+question properly over a full prospective season, and the fetched files
+plus the fetcher remain on `research-data-v2enrich` for anyone who wants
+to complete the history (roughly 60 runner-hours at the observed
+throttle, or a paid Open-Meteo tier). The earlier concurrency incident is
+in §19.
 
 ## 13. Full ablation leaderboard (pooled margin MAE, 8 folds, 6,266 games)
 
@@ -365,8 +386,9 @@ is generated in the days before a game and never archived for free, so
 the ceiling here is a statement about free *history*, not about the
 information itself; the sidecar starts closing that gap prospectively.
 The self-correction result is small and could be noise despite 7/8
-non-worse folds. Weather could only be tested with observed conditions
-before 2022 (class B). All free sources are unofficial (undocumented ESPN
+non-worse folds. Weather could only be tested on part of one season
+because Open-Meteo throttles bulk history; the sidecar closes that gap
+prospectively. All free sources are unofficial (undocumented ESPN
 endpoints, community data releases) and can change without notice; the
 inventory records each risk. The CFBD quota, not any model, is the
 nearest operational threat.

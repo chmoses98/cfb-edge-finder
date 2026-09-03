@@ -1,0 +1,636 @@
+{
+ "archive": {
+  "timing_class": "B_observed_proxy",
+  "n_games_with_lines": 558,
+  "seasons": [
+   2025
+  ],
+  "v2_total_mae": 12.361,
+  "mkt_total_mae": 12.195,
+  "corr_wind_speed_10m_kick": {
+   "r_v2_tot": [
+    0.006,
+    0.888
+   ],
+   "r_mkt_tot": [
+    0.022,
+    0.596
+   ],
+   "v2_minus_mkt_tot": [
+    0.088,
+    0.038
+   ],
+   "r_v2_mar": [
+    0.061,
+    0.152
+   ]
+  },
+  "corr_wind_gusts_10m_max3h": {
+   "r_v2_tot": [
+    0.017,
+    0.682
+   ],
+   "r_mkt_tot": [
+    0.038,
+    0.375
+   ],
+   "v2_minus_mkt_tot": [
+    0.097,
+    0.022
+   ],
+   "r_v2_mar": [
+    0.071,
+    0.095
+   ]
+  },
+  "corr_precipitation_sum3h": {
+   "r_v2_tot": [
+    -0.056,
+    0.186
+   ],
+   "r_mkt_tot": [
+    -0.032,
+    0.45
+   ],
+   "v2_minus_mkt_tot": [
+    0.107,
+    0.012
+   ],
+   "r_v2_mar": [
+    0.02,
+    0.639
+   ]
+  },
+  "corr_temperature_2m_kick": {
+   "r_v2_tot": [
+    0.074,
+    0.082
+   ],
+   "r_mkt_tot": [
+    0.049,
+    0.25
+   ],
+   "v2_minus_mkt_tot": [
+    -0.128,
+    0.002
+   ],
+   "r_v2_mar": [
+    0.078,
+    0.066
+   ]
+  },
+  "windy_games": {
+   "n": 7,
+   "v2_total_resid_mean": [
+    0.02,
+    -13.92,
+    13.97,
+    7
+   ],
+   "mkt_total_resid_mean": [
+    2.36,
+    -10.51,
+    15.23,
+    7
+   ],
+   "v2_minus_mkt_total_mean": [
+    2.34,
+    0.76,
+    3.91,
+    7
+   ],
+   "v2_total_mae": 15.79,
+   "mkt_total_mae": 14.36,
+   "v2_margin_resid_mean": [
+    4.8,
+    -6.54,
+    16.14,
+    7
+   ]
+  },
+  "gusty_games": {
+   "n": 70,
+   "v2_total_resid_mean": [
+    0.7,
+    -2.67,
+    4.06,
+    70
+   ],
+   "mkt_total_resid_mean": [
+    2.32,
+    -1.06,
+    5.7,
+    70
+   ],
+   "v2_minus_mkt_total_mean": [
+    1.62,
+    1.04,
+    2.2,
+    70
+   ],
+   "v2_total_mae": 11.46,
+   "mkt_total_mae": 11.66,
+   "v2_margin_resid_mean": [
+    3.34,
+    -0.39,
+    7.07,
+    70
+   ]
+  },
+  "rain_games": {
+   "n": 47,
+   "v2_total_resid_mean": [
+    -4.02,
+    -8.64,
+    0.59,
+    47
+   ],
+   "mkt_total_resid_mean": [
+    -2.11,
+    -6.72,
+    2.5,
+    47
+   ],
+   "v2_minus_mkt_total_mean": [
+    1.92,
+    1.19,
+    2.65,
+    47
+   ],
+   "v2_total_mae": 12.9,
+   "mkt_total_mae": 12.44,
+   "v2_margin_resid_mean": [
+    4.87,
+    0.08,
+    9.66,
+    47
+   ]
+  },
+  "hot_games": {
+   "n": 41,
+   "v2_total_resid_mean": [
+    -1.04,
+    -4.89,
+    2.82,
+    41
+   ],
+   "mkt_total_resid_mean": [
+    -1.37,
+    -5.31,
+    2.58,
+    41
+   ],
+   "v2_minus_mkt_total_mean": [
+    -0.33,
+    -1.27,
+    0.61,
+    41
+   ],
+   "v2_total_mae": 10.27,
+   "mkt_total_mae": 10.88,
+   "v2_margin_resid_mean": [
+    8.84,
+    4.52,
+    13.15,
+    41
+   ]
+  },
+  "ols_r_v2_tot": {
+   "wind_kmh_coef": 0.057,
+   "wind_t": 0.46,
+   "rain_mm_coef": -0.44,
+   "rain_t": -1.12,
+   "n": 558
+  },
+  "ols_r_mkt_tot": {
+   "wind_kmh_coef": 0.109,
+   "wind_t": 0.89,
+   "rain_mm_coef": -0.361,
+   "rain_t": -0.93,
+   "n": 558
+  }
+ },
+ "hforecast": {
+  "timing_class": "A_minus_archived_forecast",
+  "n_games_with_lines": 537,
+  "seasons": [
+   2025
+  ],
+  "v2_total_mae": 12.202,
+  "mkt_total_mae": 12.078,
+  "corr_wind_speed_10m_kick": {
+   "r_v2_tot": [
+    -0.017,
+    0.696
+   ],
+   "r_mkt_tot": [
+    -0.01,
+    0.814
+   ],
+   "v2_minus_mkt_tot": [
+    0.037,
+    0.395
+   ],
+   "r_v2_mar": [
+    0.008,
+    0.848
+   ]
+  },
+  "corr_wind_gusts_10m_max3h": {
+   "r_v2_tot": [
+    0.002,
+    0.957
+   ],
+   "r_mkt_tot": [
+    0.01,
+    0.82
+   ],
+   "v2_minus_mkt_tot": [
+    0.045,
+    0.294
+   ],
+   "r_v2_mar": [
+    0.009,
+    0.829
+   ]
+  },
+  "corr_precipitation_sum3h": {
+   "r_v2_tot": [
+    -0.041,
+    0.347
+   ],
+   "r_mkt_tot": [
+    -0.025,
+    0.57
+   ],
+   "v2_minus_mkt_tot": [
+    0.092,
+    0.033
+   ],
+   "r_v2_mar": [
+    0.09,
+    0.038
+   ]
+  },
+  "corr_temperature_2m_kick": {
+   "r_v2_tot": [
+    0.044,
+    0.306
+   ],
+   "r_mkt_tot": [
+    0.02,
+    0.646
+   ],
+   "v2_minus_mkt_tot": [
+    -0.131,
+    0.002
+   ],
+   "r_v2_mar": [
+    0.073,
+    0.089
+   ]
+  },
+  "windy_games": {
+   "n": 11,
+   "v2_total_resid_mean": [
+    2.39,
+    -6.7,
+    11.49,
+    11
+   ],
+   "mkt_total_resid_mean": [
+    4.75,
+    -3.65,
+    13.15,
+    11
+   ],
+   "v2_minus_mkt_total_mean": [
+    2.36,
+    0.5,
+    4.22,
+    11
+   ],
+   "v2_total_mae": 12.2,
+   "mkt_total_mae": 12.52,
+   "v2_margin_resid_mean": [
+    3.17,
+    -6.76,
+    13.09,
+    11
+   ]
+  },
+  "gusty_games": {
+   "n": 31,
+   "v2_total_resid_mean": [
+    0.82,
+    -3.65,
+    5.29,
+    31
+   ],
+   "mkt_total_resid_mean": [
+    2.54,
+    -1.87,
+    6.95,
+    31
+   ],
+   "v2_minus_mkt_total_mean": [
+    1.72,
+    0.83,
+    2.6,
+    31
+   ],
+   "v2_total_mae": 10.28,
+   "mkt_total_mae": 10.49,
+   "v2_margin_resid_mean": [
+    6.16,
+    0.91,
+    11.41,
+    31
+   ]
+  },
+  "rain_games": {
+   "n": 28,
+   "v2_total_resid_mean": [
+    -2.76,
+    -7.12,
+    1.6,
+    28
+   ],
+   "mkt_total_resid_mean": [
+    -0.99,
+    -5.25,
+    3.27,
+    28
+   ],
+   "v2_minus_mkt_total_mean": [
+    1.77,
+    0.8,
+    2.74,
+    28
+   ],
+   "v2_total_mae": 8.71,
+   "mkt_total_mae": 8.4,
+   "v2_margin_resid_mean": [
+    5.95,
+    -0.52,
+    12.42,
+    28
+   ]
+  },
+  "hot_games": {
+   "n": 59,
+   "v2_total_resid_mean": [
+    0.06,
+    -3.74,
+    3.87,
+    59
+   ],
+   "mkt_total_resid_mean": [
+    -0.22,
+    -4.12,
+    3.68,
+    59
+   ],
+   "v2_minus_mkt_total_mean": [
+    -0.28,
+    -1.04,
+    0.47,
+    59
+   ],
+   "v2_total_mae": 12.27,
+   "mkt_total_mae": 12.69,
+   "v2_margin_resid_mean": [
+    5.79,
+    2.1,
+    9.47,
+    59
+   ]
+  },
+  "ols_r_v2_tot": {
+   "wind_kmh_coef": -0.08,
+   "wind_t": -0.66,
+   "rain_mm_coef": -0.292,
+   "rain_t": -1.01,
+   "n": 537
+  },
+  "ols_r_mkt_tot": {
+   "wind_kmh_coef": -0.057,
+   "wind_t": -0.48,
+   "rain_mm_coef": -0.268,
+   "rain_t": -0.94,
+   "n": 537
+  }
+ },
+ "prevrun": {
+  "timing_class": "A_day_ahead_forecast",
+  "n_games_with_lines": 619,
+  "seasons": [
+   2025
+  ],
+  "v2_total_mae": 12.342,
+  "mkt_total_mae": 12.153,
+  "corr_wind_speed_10m_kick": {
+   "r_v2_tot": [
+    -0.014,
+    0.726
+   ],
+   "r_mkt_tot": [
+    0.004,
+    0.931
+   ],
+   "v2_minus_mkt_tot": [
+    0.085,
+    0.034
+   ],
+   "r_v2_mar": [
+    0.051,
+    0.207
+   ]
+  },
+  "corr_wind_gusts_10m_max3h": {
+   "r_v2_tot": [
+    -0.005,
+    0.893
+   ],
+   "r_mkt_tot": [
+    0.019,
+    0.63
+   ],
+   "v2_minus_mkt_tot": [
+    0.131,
+    0.001
+   ],
+   "r_v2_mar": [
+    -0.002,
+    0.956
+   ]
+  },
+  "corr_precipitation_sum3h": {
+   "r_v2_tot": [
+    0.015,
+    0.71
+   ],
+   "r_mkt_tot": [
+    0.026,
+    0.514
+   ],
+   "v2_minus_mkt_tot": [
+    0.065,
+    0.107
+   ],
+   "r_v2_mar": [
+    0.098,
+    0.015
+   ]
+  },
+  "corr_temperature_2m_kick": {
+   "r_v2_tot": [
+    0.059,
+    0.144
+   ],
+   "r_mkt_tot": [
+    0.033,
+    0.412
+   ],
+   "v2_minus_mkt_tot": [
+    -0.141,
+    0.0
+   ],
+   "r_v2_mar": [
+    0.052,
+    0.199
+   ]
+  },
+  "windy_games": {
+   "n": 21,
+   "v2_total_resid_mean": [
+    1.38,
+    -4.57,
+    7.34,
+    21
+   ],
+   "mkt_total_resid_mean": [
+    3.7,
+    -2.51,
+    9.92,
+    21
+   ],
+   "v2_minus_mkt_total_mean": [
+    2.32,
+    1.15,
+    3.49,
+    21
+   ],
+   "v2_total_mae": 11.13,
+   "mkt_total_mae": 12.04,
+   "v2_margin_resid_mean": [
+    2.16,
+    -3.9,
+    8.22,
+    21
+   ]
+  },
+  "gusty_games": {
+   "n": 64,
+   "v2_total_resid_mean": [
+    -2.1,
+    -5.75,
+    1.54,
+    64
+   ],
+   "mkt_total_resid_mean": [
+    -0.05,
+    -3.61,
+    3.5,
+    64
+   ],
+   "v2_minus_mkt_total_mean": [
+    2.05,
+    1.39,
+    2.71,
+    64
+   ],
+   "v2_total_mae": 12.17,
+   "mkt_total_mae": 11.64,
+   "v2_margin_resid_mean": [
+    2.4,
+    -0.92,
+    5.72,
+    64
+   ]
+  },
+  "rain_games": {
+   "n": 34,
+   "v2_total_resid_mean": [
+    -3.34,
+    -9.1,
+    2.42,
+    34
+   ],
+   "mkt_total_resid_mean": [
+    -1.71,
+    -7.25,
+    3.84,
+    34
+   ],
+   "v2_minus_mkt_total_mean": [
+    1.63,
+    0.79,
+    2.48,
+    34
+   ],
+   "v2_total_mae": 13.64,
+   "mkt_total_mae": 13.0,
+   "v2_margin_resid_mean": [
+    5.6,
+    0.88,
+    10.32,
+    34
+   ]
+  },
+  "hot_games": {
+   "n": 78,
+   "v2_total_resid_mean": [
+    -0.61,
+    -3.68,
+    2.47,
+    78
+   ],
+   "mkt_total_resid_mean": [
+    -0.55,
+    -3.63,
+    2.53,
+    78
+   ],
+   "v2_minus_mkt_total_mean": [
+    0.05,
+    -0.65,
+    0.76,
+    78
+   ],
+   "v2_total_mae": 11.3,
+   "mkt_total_mae": 11.47,
+   "v2_margin_resid_mean": [
+    4.8,
+    1.62,
+    7.99,
+    78
+   ]
+  },
+  "ols_r_v2_tot": {
+   "wind_kmh_coef": -0.012,
+   "wind_t": -0.11,
+   "rain_mm_coef": -0.288,
+   "rain_t": -1.02,
+   "n": 619
+  },
+  "ols_r_mkt_tot": {
+   "wind_kmh_coef": 0.038,
+   "wind_t": 0.37,
+   "rain_mm_coef": -0.264,
+   "rain_t": -0.95,
+   "n": 619
+  }
+ },
+ "_note": "Time-guarded partial fetch: only part of the 2025 season (newest-first) was delivered before the 290-min guard; Open-Meteo throttled to ~2.3 requests/min per runner. Residual test on games with closing lines; not a rolling-origin ablation."
+}

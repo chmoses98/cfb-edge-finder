@@ -10,3 +10,14 @@ point at the scratch layout they were run from (dataset/preds/cache
 directories side by side); `enrich_eval.py` reuses
 `cfb_edge_finder.research.v2` unchanged so every challenger runs on V2's
 exact folds. Results: `docs/v2/enrichment/enr_<family>.json`.
+
+## Weather (added after the runner fetch landed)
+
+- `build_weather_features.py`: builds `wx_*` features per product from
+  `weather/weather_{archive,hforecast,prevrun}.parquet` and runs the
+  rolling-origin ablation. Only meaningful once the history is complete.
+- `weather_residual_test.py`: the residual test actually reported in
+  §11 of the report, because the time-guarded fetch delivered only part
+  of 2025. Output: `docs/v2/enrichment/enr_weather_residual.json`.
+- Fetched files + manifests live on the `research-data-v2enrich` orphan
+  branch under `data/research_cache/v2_enrich/weather/`.
