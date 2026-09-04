@@ -158,6 +158,39 @@ def append_rows(path: Path, rows: list[V2ShadowRow]) -> int:
     return len(rows)
 
 
+ARTIFACT_ID_SOURCE = "cfbd"
+"""The vendor whose game id keys the frozen artifact. `V2Artifact.games[*].game_id`
+is the CFBD id the V2 dataset was built from (see
+scripts/build_v2_shadow_artifact.py), while the canonical `GameRecord.game_id`
+is the season/week/slug id. The two must never be confused for one another."""
+
+
+def resolve_artifact_game_id(artifact, canonical_game_id: str | None, matched_game) -> tuple[str | None, list[str]]:
+    """Find the key under which the frozen artifact knows this game.
+
+    Tries, in order: the matched GameRecord's CFBD source id, then the
+    canonical id itself (for an artifact keyed that way). Returns the first
+    id the artifact positively knows and the full list that was tried, so
+    an unavailable row can say exactly what was looked up. Never raises."""
+    tried: list[str] = []
+    try:
+        source_ids = getattr(matched_game, "source_game_ids", None) or {}
+        cfbd_id = source_ids.get(ARTIFACT_ID_SOURCE)
+        if cfbd_id:
+            tried.append(str(cfbd_id))
+    except Exception:  # noqa: BLE001 -- a malformed record must not stop the shadow
+        pass
+    if canonical_game_id and canonical_game_id not in tried:
+        tried.append(str(canonical_game_id))
+    for candidate in tried:
+        try:
+            if artifact.for_game(candidate) is not None:
+                return candidate, tried
+        except Exception:  # noqa: BLE001 -- an exploding artifact is reported by the caller
+            raise
+    return None, tried
+
+
 def is_half_point(threshold: float | None) -> bool | None:
     if threshold is None:
         return None
@@ -181,10 +214,20 @@ def build_row(
     control_probability: float | None,
     executable_yes_price: float | None,
     run_id: str | None,
+    artifact_game_id: str | None = None,
 ) -> V2ShadowRow:
     """One shadow row. Never raises -- an unavailable V2 opinion is
     recorded as a reason, because a silent gap in the shadow ledger would
-    be indistinguishable from a contract V2 simply agreed about."""
+    be indistinguishable from a contract V2 simply agreed about.
+
+    `game_id` is the CANONICAL game id and is what the row records.
+    `artifact_game_id` is the key the frozen artifact is indexed by (the
+    CFBD game id the V2 dataset was built from). They are different
+    namespaces: the first live season wrote 422 rows, every one of them
+    "not in the frozen V2 slate", because the canonical slug was used as
+    the artifact key. When omitted the canonical id is tried, which is
+    only right for an artifact that happens to be keyed that way.
+    """
     base = dict(
         schema_version=V2_SHADOW_SCHEMA_VERSION,
         observation_key=observation_key,
@@ -207,9 +250,13 @@ def build_row(
         run_id=run_id,
     )
 
-    pred = artifact.for_game(game_id)
+    lookup_id = artifact_game_id if artifact_game_id is not None else game_id
+    pred = artifact.for_game(lookup_id)
     if pred is None:
-        return V2ShadowRow(**base, unavailable_reason=f"game {game_id} not in the frozen V2 slate")
+        return V2ShadowRow(
+            **base,
+            unavailable_reason=f"game {game_id} not in the frozen V2 slate (artifact key tried: {lookup_id!r})",
+        )
     if market_family not in ("spread", "total"):
         return V2ShadowRow(
             **base,
@@ -232,7 +279,7 @@ def build_row(
         )
 
     probability = artifact.price_contract(
-        game_id, family=market_family, threshold=threshold, side_is_over_or_home=side_is_over_or_home
+        lookup_id, family=market_family, threshold=threshold, side_is_over_or_home=side_is_over_or_home
     )
     market_p = None if executable_yes_price is None else float(executable_yes_price)
     return V2ShadowRow(

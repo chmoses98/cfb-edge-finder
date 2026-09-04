@@ -291,11 +291,17 @@ def _emit_v2_shadow_row(
             return
 
         game_id = observation.game_id or ""
-        prediction = artifact.for_game(game_id)
+        # The artifact is keyed by the CFBD game id the V2 dataset was built
+        # from, NOT by the canonical slug the observation carries. The first
+        # live season looked the slug up directly and every row came back
+        # "not in the frozen V2 slate" -- resolve through the matched
+        # GameRecord's source ids instead.
+        artifact_game_id, tried_ids = v2_shadow_mod.resolve_artifact_game_id(artifact, game_id, matched_game)
+        prediction = artifact.for_game(artifact_game_id) if artifact_game_id is not None else None
         probability: float | None = None
         reason: str | None = None
         if prediction is None:
-            reason = f"game {game_id!r} not in the frozen V2 slate"
+            reason = f"game {game_id!r} not in the frozen V2 slate (artifact keys tried: {tried_ids})"
         else:
             probability, detail = price_observation_v2(observation, prediction)
             if probability is None:
@@ -319,6 +325,7 @@ def _emit_v2_shadow_row(
             control_probability=observation.model_probability,
             executable_yes_price=observation.executable_yes_price,
             run_id=run_id,
+            artifact_game_id=artifact_game_id,
         )
         # build_row prices from (family, threshold) generically; the
         # contract-semantics path above is authoritative because it reads

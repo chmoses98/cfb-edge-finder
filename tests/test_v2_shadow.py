@@ -492,3 +492,260 @@ def test_contract_probabilities_are_consistent_with_the_cdf():
         cut = t + CONTINUITY if abs(t - round(t)) < 1e-9 else t
         expected = 1.0 - _norm_cdf((cut - point) / sd)
         assert contract_probability(point, sd, t) == pytest.approx(expected, abs=1e-14)
+
+
+# ============================================ artifact key resolution
+# Regression for the first live season's defect: 422 shadow rows, every
+# one "not in the frozen V2 slate". The artifact is keyed by the CFBD game
+# id the V2 dataset was built from ("401856766"); the canonical observation
+# carries the slug ("cfb-2026-wk01-north-carolina-vs-tcu"). Looking the
+# slug up directly can never succeed on a real artifact.
+
+
+class _MatchedGame:
+    def __init__(self, source_game_ids):
+        self.source_game_ids = source_game_ids
+
+
+def test_resolver_prefers_the_matched_games_cfbd_id(tmp_path):
+    art = load_artifact(_write_artifact(tmp_path, _artifact_payload()), season=2026)
+    resolved, tried = v2_shadow.resolve_artifact_game_id(
+        art, "cfb-2026-wk01-north-carolina-vs-tcu", _MatchedGame({"cfbd": "401856766"})
+    )
+    assert resolved == "401856766"
+    assert tried == ["401856766", "cfb-2026-wk01-north-carolina-vs-tcu"]
+
+
+def test_resolver_falls_back_to_the_canonical_id_for_a_slug_keyed_artifact(tmp_path):
+    payload = _artifact_payload()
+    payload["games"][0]["game_id"] = "cfb-2026-wk01-north-carolina-vs-tcu"
+    art = load_artifact(_write_artifact(tmp_path, payload), season=2026)
+    resolved, _tried = v2_shadow.resolve_artifact_game_id(art, "cfb-2026-wk01-north-carolina-vs-tcu", None)
+    assert resolved == "cfb-2026-wk01-north-carolina-vs-tcu"
+
+
+def test_resolver_reports_every_key_it_tried_when_none_is_known(tmp_path):
+    art = load_artifact(_write_artifact(tmp_path, _artifact_payload()), season=2026)
+    resolved, tried = v2_shadow.resolve_artifact_game_id(
+        art, "cfb-2026-wk09-nobody-at-nowhere", _MatchedGame({"cfbd": "1"})
+    )
+    assert resolved is None
+    assert tried == ["1", "cfb-2026-wk09-nobody-at-nowhere"]
+
+
+def test_resolver_survives_a_matched_game_without_source_ids(tmp_path):
+    art = load_artifact(_write_artifact(tmp_path, _artifact_payload()), season=2026)
+    resolved, tried = v2_shadow.resolve_artifact_game_id(art, "401856766", object())
+    assert resolved == "401856766"
+    assert tried == ["401856766"]
+
+
+def test_build_row_prices_through_the_artifact_key_but_records_the_canonical_id(tmp_path):
+    art = load_artifact(_write_artifact(tmp_path, _artifact_payload()), season=2026)
+    row = v2_shadow.build_row(
+        artifact=art,
+        observation_key="k",
+        season=2026,
+        game_id="cfb-2026-wk01-north-carolina-vs-tcu",
+        market_ticker="KXNCAAFSPREAD-26AUG29UNCTCU-TCU3",
+        timing_label="T_24H",
+        captured_at=NOW,
+        kickoff_utc=NOW + timedelta(hours=24),
+        market_family="spread",
+        threshold=3.5,
+        side_is_over_or_home=True,
+        control_model_version="0.5.0",
+        control_probability=0.6,
+        executable_yes_price=0.55,
+        run_id="r",
+        artifact_game_id="401856766",
+    )
+    assert row.game_id == "cfb-2026-wk01-north-carolina-vs-tcu"
+    assert row.unavailable_reason is None
+    assert row.v2_probability == pytest.approx(contract_probability(8.0, 16.0, 3.5))
+
+
+def test_build_row_without_a_resolved_key_says_which_key_it_tried(tmp_path):
+    art = load_artifact(_write_artifact(tmp_path, _artifact_payload()), season=2026)
+    row = v2_shadow.build_row(
+        artifact=art,
+        observation_key="k",
+        season=2026,
+        game_id="cfb-2026-wk01-north-carolina-vs-tcu",
+        market_ticker="t",
+        timing_label="T_24H",
+        captured_at=NOW,
+        kickoff_utc=None,
+        market_family="spread",
+        threshold=3.5,
+        side_is_over_or_home=True,
+        control_model_version=None,
+        control_probability=None,
+        executable_yes_price=None,
+        run_id=None,
+    )
+    assert row.v2_probability is None
+    assert "cfb-2026-wk01-north-carolina-vs-tcu" in row.unavailable_reason
+
+
+# ==================================================== end-to-end emission
+# Drives the REAL _apply_scan through the shared harness with an artifact
+# keyed the way the production artifact is keyed (CFBD ids) and GameRecords
+# that carry their CFBD source id -- the exact shape of the live defect.
+import json as _json  # noqa: E402
+
+import research_scan_and_capture as scanner  # noqa: E402
+from scan_harness import (  # noqa: E402
+    SEASON,
+    install_fake_market_feed,
+    make_games,
+    make_history_lines,
+    make_markets,
+)
+
+from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionCache  # noqa: E402
+from cfb_edge_finder.research import health, persistence  # noqa: E402
+from cfb_edge_finder.research.scan_telemetry import ScanTelemetry  # noqa: E402
+from cfb_edge_finder.schemas.provenance import ModelVersion  # noqa: E402
+
+SCAN_NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
+SCAN_MODEL = ModelVersion(model_version="v2-shadow-test-0.5.0", pricing_engine_version="0.1.0")
+
+
+def _games_with_cfbd_ids():
+    games, classification = make_games(3, kickoff_hours_ahead=24.0)
+    games = [g.model_copy(update={"source_game_ids": {"cfbd": str(401856766 + i)}}) for i, g in enumerate(games)]
+    return games, classification
+
+
+def _artifact_keyed_by_cfbd_id(tmp_path: Path, games) -> Path:
+    payload = _artifact_payload()
+    payload["games"] = [
+        {
+            "game_id": g.source_game_ids["cfbd"],
+            "season": SEASON,
+            "week": 1,
+            "home_team": g.home_team_name,
+            "away_team": g.away_team_name,
+            "pred_margin": 6.5,
+            "pred_total": 52.0,
+            "sd_margin": 16.0,
+            "sd_total": 15.5,
+            "p_home": 0.65,
+        }
+        for g in games
+    ]
+    target = tmp_path / "data" / "research" / "v2_shadow"
+    target.mkdir(parents=True, exist_ok=True)
+    written = _write_artifact(tmp_path, payload)
+    final = target / "2026.artifact.json"
+    final.write_text(written.read_text())
+    written.unlink()
+    return final
+
+
+def _run_scan(tmp_path, monkeypatch, games, classification, *, v2_artifact):
+    install_fake_market_feed(monkeypatch, make_markets(games))
+    lines = make_history_lines(games)
+    report = health.CaptureHealthReport()
+    telemetry = ScanTelemetry(trigger_type="test")
+    result = scanner._apply_scan(  # noqa: SLF001
+        tmp_path,
+        season=SEASON,
+        games=games,
+        classification_by_game_id=classification,
+        fcs_school_names=frozenset(),
+        cache=GameProjectionCache(lines_provider=lambda: lines),
+        kalshi_client=None,
+        model_version=SCAN_MODEL,
+        training_cutoff_fn=lambda r: "cutoff",
+        n_simulations=200,
+        seed=0,
+        now=SCAN_NOW,
+        schedule_source_timestamp=SCAN_NOW,
+        v2_artifact=v2_artifact,
+        run_id="v2-shadow-test",
+        report=report,
+        telemetry=telemetry,
+    )
+    return result, telemetry, report
+
+
+def _canonical_keys(tmp_path):
+    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    if not path.exists():
+        return []
+    return [_json.loads(line)["observation_key"] for line in path.read_text().splitlines() if line.strip()]
+
+
+def _shadow_rows(tmp_path):
+    path = v2_shadow.ledger_path(tmp_path, SEASON)
+    if not path.exists():
+        return []
+    return [_json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def test_live_shape_regression_slug_observations_are_priced_from_a_cfbd_keyed_artifact(tmp_path, monkeypatch):
+    """The defect the first live season exposed, reproduced and fixed: the
+    canonical rows carry slugs, the artifact carries CFBD ids, and every
+    spread/total shadow row must still come back priced."""
+    games, classification = _games_with_cfbd_ids()
+    artifact = load_artifact(_artifact_keyed_by_cfbd_id(tmp_path, games), season=2026)
+
+    _result, telemetry, _report = _run_scan(tmp_path, monkeypatch, games, classification, v2_artifact=artifact)
+
+    canonical = set(_canonical_keys(tmp_path))
+    shadow = _shadow_rows(tmp_path)
+    assert canonical, "precondition: the harness produced canonical observations"
+    assert shadow, "V2 emitted no shadow rows for a slate it fully covers"
+    assert {r["observation_key"] for r in shadow} <= canonical
+    assert all(r["game_id"].startswith("cfb-2026-wk01-") for r in shadow), "the row must keep the canonical id"
+
+    priceable = [r for r in shadow if r["market_family"] in ("spread", "total")]
+    assert priceable, "precondition: the harness produced spread/total contracts"
+    unavailable = [r["unavailable_reason"] for r in priceable if r["v2_probability"] is None]
+    assert unavailable == [], f"V2 failed to price rows it covers: {unavailable[:3]}"
+    assert all(r["v2_pred_margin"] == 6.5 for r in priceable)
+    assert telemetry.v2_shadow_contracts_priced == len(priceable)
+    assert telemetry.v2_shadow_rows_written == len(shadow)
+
+
+def test_a_game_the_artifact_does_not_cover_is_recorded_with_the_keys_tried(tmp_path, monkeypatch):
+    games, classification = _games_with_cfbd_ids()
+    artifact = load_artifact(_artifact_keyed_by_cfbd_id(tmp_path, games[:1]), season=2026)
+
+    _run_scan(tmp_path, monkeypatch, games, classification, v2_artifact=artifact)
+
+    shadow = _shadow_rows(tmp_path)
+    covered = [r for r in shadow if r["game_id"] == games[0].game_id and r["market_family"] in ("spread", "total")]
+    uncovered = [r for r in shadow if r["game_id"] != games[0].game_id]
+    assert covered and all(r["v2_probability"] is not None for r in covered)
+    assert uncovered and all(r["v2_probability"] is None for r in uncovered)
+    second = [r for r in uncovered if r["game_id"] == games[1].game_id]
+    assert second and all(games[1].source_game_ids["cfbd"] in r["unavailable_reason"] for r in second)
+
+
+def test_canonical_rows_are_unchanged_when_v2_prices_every_contract(tmp_path, monkeypatch):
+    games, classification = _games_with_cfbd_ids()
+
+    def _rows(repo_dir):
+        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+        rows = []
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            row = _json.loads(line)
+            row.get("observation", {}).pop("snapshot_id", None)
+            rows.append(row)
+        return rows
+
+    without_dir = tmp_path / "without"
+    without_dir.mkdir()
+    _run_scan(without_dir, monkeypatch, games, classification, v2_artifact=None)
+    with_dir = tmp_path / "with"
+    with_dir.mkdir()
+    artifact = load_artifact(_artifact_keyed_by_cfbd_id(with_dir, games), season=2026)
+    _run_scan(with_dir, monkeypatch, games, classification, v2_artifact=artifact)
+
+    assert _rows(without_dir) == _rows(with_dir)
+    assert _shadow_rows(with_dir) and not v2_shadow.ledger_path(without_dir, SEASON).exists()

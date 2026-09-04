@@ -133,3 +133,8 @@ prints a notice -- no live 2026 data is fetched or implied.
   disabled, no validated threshold artifact), evidence readiness,
   exposure grouping, and the safety tests proving zero actionable output.
 - `docs/ROADMAP.md` -- milestones A-H, critical path, what's next.
+- `docs/CFB_FINAL_SALVAGE_VERDICT.md` -- the closing audit of the CFB
+  research cycle: verdict C (no defensible betting edge), every
+  price-facing test with intervals, the 2026 prospective audit, the V2
+  shadow key defect, and the one preregistered market-anomaly hypothesis.
+  Reproduced by `scripts/salvage_audit/`.

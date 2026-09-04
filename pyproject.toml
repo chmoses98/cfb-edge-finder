@@ -28,6 +28,9 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+# Research-only audit notebooks-as-scripts (docs/CFB_FINAL_SALVAGE_VERDICT.md);
+# never imported by production code. Kept verbatim as the reproduction record.
+extend-exclude = ["scripts/salvage_audit"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
