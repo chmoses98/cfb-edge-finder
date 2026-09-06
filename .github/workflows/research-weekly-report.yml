@@ -1,14 +1,26 @@
 name: Research Weekly Report
 
-# Milestone E, Part I/P. Once per week, Monday 09:00 UTC -- after the
-# Saturday/Sunday slate (plus a small Monday-night-game buffer for
-# settlement to catch up) and well ahead of the following week's first
-# kickoffs. Also builds the season-cumulative report on the same run
-# (mission section 23: keep it versioned, updated regularly).
+# Milestone E, Part I/P. Builds the weekly and season-cumulative research
+# reports.
+#
+# *** SCHEDULE DISABLED -- QUIET HIBERNATION (2026-09-06) ***
+# Was `cron: "0 9 * * 1"` (Mondays 09:00 UTC). This workflow REPORTS on
+# prospective evidence; it does not collect any. Active model development
+# has stopped, so nobody is reading a weekly report as it lands, and a
+# recurring scheduled job that nobody reads is purely a weekly chance to
+# email a red run about a report that could have been regenerated on
+# demand at any time.
+#
+# Nothing is lost by disabling the schedule: the reports are pure
+# functions of the durable research corpus, which the collector and
+# settlement workflows keep filling. An end-of-season review dispatches
+# this manually and gets a report built from a strictly more complete
+# corpus than any weekly run could have produced.
+#
+# The workflow, its code, and every report it has already committed are
+# deliberately untouched. Re-enable by restoring the two `schedule` lines.
 
 on:
-  schedule:
-    - cron: "0 9 * * 1"
   workflow_dispatch:
     inputs:
       season:

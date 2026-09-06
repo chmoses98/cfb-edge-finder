@@ -35,11 +35,11 @@ Three things still fail loudly, unconditionally:
 Suppression is keyed on (operational_state, blocker) recorded durably. It
 never suppresses a different failure, never suppresses a HIGH diagnostic,
 never suppresses deadline risk, and expires on its own after
-`REALERT_AFTER_HOURS` so a long-lived degraded state re-reports about
-once a day rather than fading into silence forever. It is deliberately
-NOT `continue-on-error` and deliberately NOT a broadened exception
-handler: the run still computes the same verdicts, it just answers a
-better question with its exit code.
+`REALERT_AFTER_HOURS` so a long-lived degraded state re-reports on a
+bounded schedule rather than fading into silence forever. It is
+deliberately NOT `continue-on-error` and deliberately NOT a broadened
+exception handler: the run still computes the same verdicts, it just
+answers a better question with its exit code.
 """
 
 from __future__ import annotations
@@ -88,11 +88,27 @@ the earliest of the final-approach buckets, so 8h is exactly the point
 past which a missing schedule fact can start costing checkpoints. Wider
 would cry wolf; narrower would let T_6H die quietly."""
 
-REALERT_AFTER_HOURS = 24.0
+REALERT_AFTER_HOURS = 168.0
 """A degraded state that persists this long alerts again. Bounded
-re-reporting (about one a day) is the difference between 'suppressed' and
-'forgotten'; the failure mode this guards against is a collector that has
-been quietly not capturing for a week."""
+re-reporting is the difference between 'suppressed' and 'forgotten'; the
+failure mode this guards against is a collector that has been quietly not
+capturing.
+
+*** WHY WEEKLY AND NOT DAILY (quiet hibernation, 2026-09-06) ***
+This was 24h, chosen while the project was under active development and a
+daily nudge might plausibly get someone to top up the CFBD quota. It is
+now a passive research collector: model development has stopped, the
+quota exhaustion is permanent, acknowledged, and not something anyone
+intends to act on, and the only job left is to accumulate clean
+prospective evidence cheaply. A daily email restating a known, deliberate
+condition is the exact 'trains the operator to ignore the channel' failure
+this module exists to prevent -- just at 1/288th the rate.
+
+Seven days still bounds it: a degraded state cannot fade into permanent
+silence, and the weekly re-report lands at roughly the cadence at which a
+hibernating project actually gets looked at. Nothing time-critical relies
+on this window -- deadline risk and integrity failures are classified
+above it and are never rate-limited at all."""
 
 _TERMINAL_STATES = (DEADLINE_AT_RISK, INTEGRITY_FAILURE)
 _DEGRADED_STATES = (DEGRADED_SAFE, DEGRADED_WAITING)
@@ -296,7 +312,29 @@ def _should_alert(
 
 
 def record_state(classification: RunClassification, prior_state: dict, *, now: datetime) -> dict:
-    """The durable operational state this run leaves behind."""
+    """The durable operational state this run leaves behind.
+
+    *** WHY ONLY DEGRADED STATES WRITE THE ALERT BOOKKEEPING ***
+    The `last_alerted_*` triple exists for exactly one reader,
+    `_should_alert`, which exactly one kind of state consults: a degraded
+    one. Terminal states (INTEGRITY_FAILURE, DEADLINE_AT_RISK) are red
+    unconditionally and never read it -- so letting them WRITE it did
+    nothing but corrupt it.
+
+    That is not hypothetical. On 2026-09-05 a transient
+    `api_failures` diagnostic classified one run INTEGRITY_FAILURE and
+    stamped that name into `last_alerted_state`. The very next run, five
+    minutes later, was the same long-running DEGRADED_SAFE(quota) it had
+    been for hours -- but `last_alerted_state` no longer said
+    DEGRADED_SAFE, so it read as a state ENTRY and went red. Every
+    transient blip therefore cost two emails: its own, and a spurious
+    'entering degradation' on the next tick.
+
+    A terminal run now leaves the degraded bookkeeping exactly as it found
+    it, which is the truthful record: we have not stopped having alerted
+    about that degraded state just because something else went wrong for
+    one run. A genuine change to the degraded condition is still caught --
+    `_should_alert` compares the blocker too."""
     prior_operational = prior_state.get("operational_state")
     state_since = prior_state.get("state_since")
     if prior_operational != classification.operational_state or not state_since:
@@ -314,7 +352,7 @@ def record_state(classification: RunClassification, prior_state: dict, *, now: d
         "last_alerted_blocker": prior_state.get("last_alerted_blocker"),
         "last_alerted_at": prior_state.get("last_alerted_at"),
     }
-    if classification.alerting:
+    if classification.alerting and classification.is_degraded:
         record["last_alerted_state"] = classification.operational_state
         record["last_alerted_blocker"] = classification.blocker
         record["last_alerted_at"] = now.isoformat()

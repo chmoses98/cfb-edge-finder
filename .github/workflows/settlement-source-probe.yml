@@ -10,17 +10,13 @@ name: Settlement Source Probe (read-only)
 # calls, and shares no concurrency group with the collector or with
 # Research Settlement -- it can never queue against either.
 
+# *** AUTOMATIC TRIGGER REMOVED -- QUIET HIBERNATION (2026-09-06) ***
+# Same reasoning as capture-resilience-probe.yml: the feature branch this
+# probe watched (`claude/settlement-403-and-v2-shadow`) merged as PR #38
+# and is no longer pushed, leaving a live trigger that can only ever fire
+# by accident. A read-only probe belongs on manual dispatch. The probe
+# itself is unchanged.
 on:
-  push:
-    branches: [claude/settlement-403-and-v2-shadow]
-    paths:
-      - "scripts/probe_settlement_sources_live.py"
-      - "scripts/research_scan_and_capture.py"
-      - "src/cfb_edge_finder/research/result_provider.py"
-      - "src/cfb_edge_finder/research/v2_shadow.py"
-      - "src/cfb_edge_finder/data/espn_client.py"
-      - "src/cfb_edge_finder/modeling/v2/**"
-      - ".github/workflows/settlement-source-probe.yml"
   workflow_dispatch:
 
 permissions:

@@ -179,8 +179,9 @@ def _fetch_active_markets_safe(client: KalshiClient, series_ticker: str) -> list
     the same, rather than trusting a server-side filter that was never
     actually confirmed to work.
 
-    A genuine per-series HTTPError (e.g. real rate-limiting) is still
-    caught here and reported rather than crashing the whole capture."""
+    A genuine per-series request failure (real rate-limiting, or a socket
+    reset that outlived the client's retries) is still caught here and
+    reported rather than crashing the whole capture."""
     markets, _failed = _fetch_active_markets_with_status(client, series_ticker)
     return markets
 
@@ -200,10 +201,21 @@ def _fetch_active_markets_with_status(client: KalshiClient, series_ticker: str) 
     exactly what mission section 18's CLOSING_MISSING_API_FAILURE exists
     to prevent. Callers that care (the scheduled collector) use this
     variant and count the failure; the legacy signature is preserved for
-    callers that genuinely only want a best-effort list."""
+    callers that genuinely only want a best-effort list.
+
+    *** WHY `RequestException` AND NOT `HTTPError` (live, 2026-09-05/06) ***
+    `HTTPError` only covers failures that produced a response. A socket
+    reset produces `requests.ConnectionError` -- a SIBLING of HTTPError,
+    not a subclass -- so it sailed past this guard and killed the whole
+    collector process before it could classify its own run, write its
+    operational state, or emit a heartbeat. Widening to the shared base
+    class does NOT swallow the failure: it routes a transport failure to
+    the exact same `return [], True` that already makes a failed series
+    countable and distinguishable from an empty one. The information is
+    preserved; only the process death is not."""
     try:
         markets = client.fetch_markets(series_ticker=series_ticker)
-    except requests.HTTPError as exc:
+    except requests.RequestException as exc:
         print(f"  NOTE: GET /markets?series_ticker={series_ticker} failed ({exc})")
         print(f"  Treating {series_ticker!r} as 0 markets and continuing, but recording an API FAILURE.")
         return [], True

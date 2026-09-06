@@ -68,15 +68,42 @@ class KalshiClient:
         that is not 429 is a real client error and is raised immediately:
         retrying a 400 just turns one clear failure into five slow ones.
         Backoff is exponential and honours `Retry-After` when the server
-        sends it."""
-        last_error: requests.HTTPError | None = None
+        sends it.
+
+        *** TRANSPORT ERRORS RETRY TOO (live evidence, 2026-09-05/06) ***
+        The retry loop above only ever saw failures that produced a
+        RESPONSE. A connection that dies before one exists -- Kalshi's
+        edge resetting the socket mid-sweep, `ConnectionResetError(104,
+        'Connection reset by peer')` -- raised straight out of
+        `requests.get` past this loop, past the collector's own per-series
+        guard, and killed the process with a traceback. Six of the ten
+        scheduled-collector failures in the 46h to 2026-09-06T21:10Z were
+        exactly that, each one an emailed red run for a blip that the very
+        next tick recovered from on its own.
+
+        A reset socket is the same category of transient the 429 path
+        already handles, and is strictly MORE likely at a tight collection
+        cadence, so it gets the same bounded backoff. Exhausting the
+        retries still raises: the caller must be able to tell a failed
+        series from an empty one."""
+        last_error: requests.RequestException | None = None
         for attempt in range(RETRY_ATTEMPTS):
-            response = requests.get(
-                f"{self._base_url}{path}",
-                params={k: v for k, v in (params or {}).items() if v is not None},
-                headers={"Accept": "application/json"},
-                timeout=self._timeout_seconds,
-            )
+            try:
+                response = requests.get(
+                    f"{self._base_url}{path}",
+                    params={k: v for k, v in (params or {}).items() if v is not None},
+                    headers={"Accept": "application/json"},
+                    timeout=self._timeout_seconds,
+                )
+            except requests.RequestException as exc:
+                # No response exists, so there is no status to classify and
+                # no `Retry-After` to honour: fall back to plain backoff.
+                last_error = exc
+                if attempt == RETRY_ATTEMPTS - 1:
+                    raise
+                time.sleep(self._retry_delay_seconds(None, attempt))
+                continue
+
             if response.status_code < 400:
                 return response.json()
 
@@ -96,12 +123,13 @@ class KalshiClient:
         raise last_error
 
     @staticmethod
-    def _retry_delay_seconds(response: requests.Response, attempt: int) -> float:
+    def _retry_delay_seconds(response: requests.Response | None, attempt: int) -> float:
         """Server-provided `Retry-After` wins over our own backoff -- it
         is the only party that actually knows how long the limit lasts.
         Capped so a hostile or malformed header cannot stall a scheduled
-        run past its next cadence tick."""
-        header = response.headers.get("Retry-After")
+        run past its next cadence tick. `response` is None for a transport
+        failure, where no server opinion exists to defer to."""
+        header = response.headers.get("Retry-After") if response is not None else None
         if header:
             try:
                 return min(float(header), RETRY_MAX_DELAY_SECONDS)
@@ -142,10 +170,13 @@ class KalshiClient:
         """Raw GET /series/{ticker}. Returns None (rather than raising) on
         any non-2xx status -- callers use this to PROBE whether a
         candidate series ticker exists at all, so a 404 is an expected,
-        informative outcome, not an error."""
+        informative outcome, not an error. A transport failure that
+        survived `_get`'s retries is the same "could not get it" answer
+        from this probe's point of view, so it too returns None rather
+        than killing the caller."""
         try:
             body = self._get(f"/series/{series_ticker}")
-        except requests.HTTPError:
+        except requests.RequestException:
             return None
         return body.get("series")
 
@@ -177,9 +208,10 @@ class KalshiClient:
         NOT need a separate detail fetch per ticker just to get pricing.
         This method is kept for the genuinely distinct case of already
         holding a bare ticker string with no list context at all.
-        Returns None on any non-2xx status rather than raising."""
+        Returns None on any non-2xx status, or on a transport failure that
+        survived `_get`'s retries, rather than raising."""
         try:
             body = self._get(f"/markets/{market_ticker}")
-        except requests.HTTPError:
+        except requests.RequestException:
             return None
         return body.get("market", body)

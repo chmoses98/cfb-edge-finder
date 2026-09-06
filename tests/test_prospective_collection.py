@@ -495,9 +495,51 @@ def test_recorded_missing_closings_warn_but_do_not_fail():
     assert health.should_fail_run(diags) is False
 
 
-def test_api_failures_are_high_severity():
+def test_api_failures_are_high_severity_when_a_closing_was_due():
+    """A failed data-source call while a CLOSING is due can silently cost
+    a closing line, which cannot be recovered after kickoff. That is the
+    case the operator must be woken for."""
+    report = health.CaptureHealthReport(
+        markets_scanned=10, games_scanned=5, api_failures=1, closing_due=1, closing_captured=1
+    )
+    diags = health.evaluate_collapse(report, None)
+    codes = {d.code: d.severity for d in diags}
+    assert codes.get("api_failures") == health.Severity.HIGH
+    assert health.should_fail_run(diags) is True
+
+
+def test_api_failures_with_nothing_due_warn_but_do_not_fail():
+    """QUIET HIBERNATION: a transient provider blip with no CLOSING due
+    costs nothing -- the next scheduled run re-reads the same market
+    universe. It is still counted and still reported, just not red."""
     report = health.CaptureHealthReport(markets_scanned=10, games_scanned=5, api_failures=1)
-    assert health.should_fail_run(health.evaluate_collapse(report, None)) is True
+    diags = health.evaluate_collapse(report, None)
+    codes = {d.code: d.severity for d in diags}
+    assert codes.get("api_failures") == health.Severity.WARNING, "the failure must still be reported"
+    assert health.should_fail_run(diags) is False
+
+
+def test_downgrading_api_failures_does_not_weaken_the_guards_it_backed_up():
+    """The severity narrowed; the detection did not. Each condition that
+    made an unconditional HIGH worth having still fails loudly on its own,
+    even with api_failures present and no CLOSING due."""
+    blackout = health.CaptureHealthReport(markets_scanned=0, games_scanned=5, api_failures=3)
+    assert health.should_fail_run(health.evaluate_collapse(blackout, None)) is True
+
+    collapse = health.CaptureHealthReport(
+        markets_scanned=500, games_scanned=5, supported_markets=1, api_failures=1
+    )
+    assert health.should_fail_run(health.evaluate_collapse(collapse, baseline_supported_markets=400)) is True
+
+    lost_closing = health.CaptureHealthReport(
+        markets_scanned=10, games_scanned=5, api_failures=1, closing_due=2, closing_captured=0
+    )
+    diags = health.evaluate_collapse(lost_closing, None)
+    assert {d.code for d in diags if d.severity == health.Severity.HIGH} >= {
+        "closing_capture_shortfall",
+        "api_failures",
+    }
+    assert health.should_fail_run(diags) is True
 
 
 def test_unexpected_zeros_fail_but_expected_ones_do_not():

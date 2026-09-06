@@ -752,6 +752,116 @@ def test_blocked_with_nothing_due_is_degraded_waiting_not_an_incident():
     assert repeat.operational_state == operational_state.DEGRADED_WAITING
 
 
+def test_a_transient_integrity_failure_does_not_re_alert_the_degraded_state():
+    """Regression, live 2026-09-05T17:10Z -> 17:15Z.
+
+    A transient `api_failures` diagnostic classified one run
+    INTEGRITY_FAILURE and stamped that name into `last_alerted_state`. The
+    next run -- the same long-running DEGRADED_SAFE(quota) it had been for
+    hours -- then read as a state ENTRY and went red. Every blip cost two
+    emails instead of one.
+
+    A terminal run must leave the degraded bookkeeping untouched."""
+    degraded = _classify(blocker="CFBD_QUOTA_EXHAUSTED", prior_state={})
+    recorded = operational_state.record_state(degraded, {}, now=NOW)
+    assert recorded["last_alerted_state"] == operational_state.DEGRADED_SAFE
+
+    blip_at = NOW + timedelta(minutes=5)
+    blip = operational_state.classify_run(
+        diagnostics=[Diagnostic(Severity.HIGH, "api_failures", "1 data-source call(s) failed")],
+        fail_closed=False,
+        blocker="CFBD_QUOTA_EXHAUSTED",
+        deadline_risk=False,
+        prior_state=recorded,
+        now=blip_at,
+    )
+    assert blip.should_fail_run is True, "a HIGH diagnostic is still red, unconditionally"
+    recorded = operational_state.record_state(blip, recorded, now=blip_at)
+    assert recorded["operational_state"] == operational_state.INTEGRITY_FAILURE
+    assert recorded["last_alerted_state"] == operational_state.DEGRADED_SAFE, (
+        "a terminal run must not clobber the degraded alert bookkeeping"
+    )
+
+    after = operational_state.classify_run(
+        diagnostics=[],
+        fail_closed=False,
+        blocker="CFBD_QUOTA_EXHAUSTED",
+        deadline_risk=False,
+        prior_state=recorded,
+        now=NOW + timedelta(minutes=10),
+    )
+    assert after.operational_state == operational_state.DEGRADED_SAFE
+    assert after.should_fail_run is False, "returning to an already-alerted degraded state is not news"
+    assert after.suppressed_because is not None
+
+
+def test_a_blocker_that_changes_across_a_blip_still_re_alerts():
+    """The flap fix must not create a blind spot: if the degraded
+    condition genuinely worsened while a terminal run was in the way, that
+    is new information and must still be red."""
+    recorded = operational_state.record_state(_classify(blocker="CFBD_QUOTA_EXHAUSTED"), {}, now=NOW)
+    blip_at = NOW + timedelta(minutes=5)
+    blip = operational_state.classify_run(
+        diagnostics=[Diagnostic(Severity.HIGH, "persistence_failures", "detail")],
+        fail_closed=False,
+        blocker="CFBD_QUOTA_EXHAUSTED",
+        deadline_risk=False,
+        prior_state=recorded,
+        now=blip_at,
+    )
+    recorded = operational_state.record_state(blip, recorded, now=blip_at)
+    worse = operational_state.classify_run(
+        diagnostics=[],
+        fail_closed=False,
+        blocker="CFBD_QUOTA_EXHAUSTED+SCHEDULE_FALLBACK_UNAVAILABLE",
+        deadline_risk=False,
+        prior_state=recorded,
+        now=NOW + timedelta(minutes=10),
+    )
+    assert worse.should_fail_run is True
+    assert worse.suppressed_because is None
+
+
+def test_known_degraded_state_stays_quiet_for_a_full_week_of_runs():
+    """QUIET HIBERNATION end-to-end: a permanent, acknowledged blocker
+    driving a run every 5 minutes must produce ONE alert on entry and then
+    stay green until the bounded weekly re-report."""
+    now = NOW
+    first = _classify(blocker="CFBD_QUOTA_EXHAUSTED", prior_state={})
+    assert first.should_fail_run is True
+    recorded = operational_state.record_state(first, {}, now=now)
+
+    reds = 0
+    ticks = 0
+    # Six days of a 5-minute cadence, stopping short of the re-alert window.
+    while (now - NOW) < timedelta(hours=operational_state.REALERT_AFTER_HOURS - 1):
+        now += timedelta(minutes=5)
+        ticks += 1
+        run = operational_state.classify_run(
+            diagnostics=[],
+            fail_closed=False,
+            blocker="CFBD_QUOTA_EXHAUSTED",
+            deadline_risk=False,
+            prior_state=recorded,
+            now=now,
+        )
+        reds += int(run.should_fail_run)
+        recorded = operational_state.record_state(run, recorded, now=now)
+
+    assert ticks > 1900, "the simulation must actually cover a week of 5-minute runs"
+    assert reds == 0, f"{reds} of {ticks} known-degraded runs were still red"
+
+    due = operational_state.classify_run(
+        diagnostics=[],
+        fail_closed=False,
+        blocker="CFBD_QUOTA_EXHAUSTED",
+        deadline_risk=False,
+        prior_state=recorded,
+        now=NOW + timedelta(hours=operational_state.REALERT_AFTER_HOURS + 0.1),
+    )
+    assert due.should_fail_run is True, "suppressed must not mean forgotten"
+
+
 def test_healthy_runs_never_alert_and_never_suppress():
     healthy = _classify()
     assert healthy.operational_state == operational_state.HEALTHY
