@@ -15,17 +15,16 @@ name: Capture Resilience Probe (read-only)
 # and the refreshed schedule state is thrown away. Shares NO concurrency
 # group with the collector, so it can never queue against a capture.
 
+# *** AUTOMATIC TRIGGER REMOVED -- QUIET HIBERNATION (2026-09-06) ***
+# This probe used to run on every push to
+# `claude/capture-resilience-espn-schedule`, the feature branch it was
+# written on. That branch merged (PR #37) and is not pushed any more, so
+# the trigger fires for nothing -- but it is still live config that would
+# start firing red probe runs the moment anyone reused the branch name.
+# A read-only diagnostic probe is something an operator runs when they are
+# asking a question, never something that should surprise them with mail.
+# Dispatch it manually; the probe itself is unchanged.
 on:
-  push:
-    branches: [claude/capture-resilience-espn-schedule]
-    paths:
-      - "scripts/validate_espn_schedule_live.py"
-      - "scripts/research_scan_and_capture.py"
-      - "src/cfb_edge_finder/data/espn_schedule_client.py"
-      - "src/cfb_edge_finder/research/schedule_state.py"
-      - "src/cfb_edge_finder/research/operational_state.py"
-      - "src/cfb_edge_finder/research/football_state.py"
-      - ".github/workflows/capture-resilience-probe.yml"
   workflow_dispatch:
 
 permissions:

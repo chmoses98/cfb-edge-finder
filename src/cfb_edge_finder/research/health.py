@@ -198,9 +198,46 @@ def evaluate_collapse(current: CaptureHealthReport, baseline_supported_markets: 
         )
 
     if current.api_failures > 0:
-        diagnostics.append(
-            Diagnostic(Severity.HIGH, "api_failures", f"{current.api_failures} data-source call(s) failed")
-        )
+        # *** WHY THIS IS CONDITIONAL AND NOT ALWAYS HIGH ***
+        # An unconditional HIGH here meant one transient provider blip --
+        # a 429 in a burst, a reset socket -- turned a run that lost
+        # NOTHING into a red run and an operator email. At a tight
+        # collection cadence those blips are routine and self-correcting:
+        # the next tick re-reads the same market universe.
+        #
+        # What actually makes a failed call unrecoverable is a CLOSING
+        # checkpoint being due in the same run, because a closing line
+        # does not exist after kickoff and a dropped series may be exactly
+        # where one was about to come from. So that is the condition that
+        # keeps this HIGH.
+        #
+        # This narrows the SEVERITY, never the DETECTION. The failure is
+        # still counted, still emitted as a diagnostic, still recorded in
+        # the durable heartbeat (`api_failures`, `kalshi_healthy`), and
+        # every independent guard that made this HIGH useful is untouched
+        # and still HIGH on its own: `zero_markets_scanned` (a total
+        # blackout), `supported_market_collapse` (the silent-drop shape
+        # the 429 regression was really about), and above all
+        # `closing_capture_shortfall`, which fires whenever a due CLOSING
+        # did not land for ANY reason, this one included.
+        if current.closing_due > 0:
+            diagnostics.append(
+                Diagnostic(
+                    Severity.HIGH,
+                    "api_failures",
+                    f"{current.api_failures} data-source call(s) failed while {current.closing_due} "
+                    f"CLOSING capture(s) were due -- a dropped series can silently cost a closing line",
+                )
+            )
+        else:
+            diagnostics.append(
+                Diagnostic(
+                    Severity.WARNING,
+                    "api_failures",
+                    f"{current.api_failures} data-source call(s) failed; no CLOSING was due this run, "
+                    f"so the next scheduled run re-reads the same market universe with nothing lost",
+                )
+            )
 
     if current.persistence_failures > 0:
         diagnostics.append(

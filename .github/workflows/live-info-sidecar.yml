@@ -25,15 +25,20 @@
 # this file exists on the default branch; until then dispatch manually.)
 name: Live Info Sidecar (research-only)
 
+# KEPT ON SCHEDULE under quiet hibernation (2026-09-06): this is
+# prospective live-info evidence -- pregame forecasts, posted odds and
+# injury lists that only exist before kickoff and cannot be reconstructed
+# afterwards. It is keyless, spends zero CFBD calls, writes only the
+# isolated `research-sidecar` orphan branch, and is already quiet by
+# construction: scripts/live_info_sidecar.py records an unavailable source
+# as a data row (status code / parse error) and returns 0, so a flaky
+# provider becomes evidence rather than an incident. Only a genuine write
+# or push failure can make it red -- exactly the case worth mail.
+#
+# The bootstrap `push:` trigger is removed: its feature branch merged as
+# PR #38 and is no longer pushed, so it could only ever fire by accident.
 on:
   workflow_dispatch:
-  # push trigger = one validation run per change while this file is on a
-  # feature branch (workflow_dispatch/schedule require it on the default
-  # branch, which is why the 6-hourly cron below only starts once this is
-  # merged to main).
-  push:
-    branches: [claude/settlement-403-and-v2-shadow]
-    paths: [scripts/live_info_sidecar.py, .github/workflows/live-info-sidecar.yml]
   schedule:
     - cron: "17 */6 * * *"
 
