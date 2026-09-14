@@ -216,11 +216,106 @@ python /tmp/code/scripts/check_research_blob_sizes.py --data-repo-dir /tmp/data 
 there is no legacy monolith left, so any oversize blob is a genuine
 regression.
 
-Then commit and push the migrated corpus:
+Then stage the migrated corpus — **with `-f`**:
 
 ```bash
 cd /tmp/data
-git add -A data/research
+git add -f -A data/research
+```
+
+> ### `-f` IS LOAD-BEARING. `git add -A` HERE DELETES THE CORPUS.
+>
+> `data/research/` is matched by this repository's `.gitignore`, and the
+> `research-data` branch carries that `.gitignore` too. The two halves of
+> the migration are therefore treated differently by a plain `git add -A`:
+>
+> | | tracked? | ignored? | staged by `git add -A`? |
+> |---|---|---|---|
+> | the legacy `{season}.jsonl` monoliths | **yes** | — (tracked wins) | **yes — as deletions** |
+> | every `{date}.partNNN.jsonl` the migration wrote | no | **yes** | **NO — silently skipped** |
+>
+> During the 2026-09-14 production cutover `git add -A data/research`
+> staged exactly that: **7 monolith deletions, 0 shard additions —
+> 204,271 rows removed and nothing put back.** It was caught only
+> because the operator compared insertions against deletions before
+> committing. Git printed no warning, and it will not print one for you:
+> skipping an ignored path is `git add`'s documented behaviour, not an
+> error.
+>
+> This is the same trap `research/git_durable_store.py` documents at
+> length. The live write path already defeats it with `git add -f`; the
+> manual cutover step has to as well.
+
+#### PRE-COMMIT TRUTH GATE — do not skip because `git add` succeeded
+
+`git add` exiting 0 tells you nothing here: it exits 0 precisely when it
+skips the shards. Prove the staged change is a **relocation** before
+committing.
+
+```bash
+cd /tmp/data
+
+# 1+2+6. BOTH directions must be present: shard additions AND monolith
+#        deletions. Expect 112 A and 7 D for the 2026 cutover.
+git diff --cached --name-status | awk '{print $1}' | sort | uniq -c
+
+# 5+6. A relocation adds as many lines as it removes. Expect equal
+#      numbers (204271 / 204271). This is the single check that would
+#      have caught the live near-miss on its own.
+git diff --cached --numstat \
+  | awk '{i+=$1; d+=$2} END {print "insertions", i, "deletions", d, (i==d && i>0 ? "OK" : "*** STOP ***")}'
+
+# 1. Shards are staged as additions, under the date-sharded path.
+git diff --cached --name-status | grep -c '^A.*/2026/.*\.part[0-9]*\.jsonl$'   # expect 112
+
+# 2. Monoliths are staged as deletions.
+git diff --cached --name-status | grep '^D.*/2026\.jsonl$'                      # expect 7 lines
+
+# 3. The maintenance-window file must NOT be in this commit. Empty output.
+git diff --cached --name-only -- data/research/MAINTENANCE_WINDOW.json
+
+# 7. Nothing outside the research corpus is staged. Empty output.
+git diff --cached --name-only | grep -v '^data/research/'
+
+# Human-readable confirmation, and a look at anything still unstaged.
+git diff --cached --stat | tail -3
+git status --short
+```
+
+**4. The equivalence proof must still pass** against the tree you are
+about to commit — re-read it rather than trusting the run from before
+you staged anything:
+
+```bash
+python - <<'EOF'
+import json
+r = json.load(open("/tmp/migration.json"))
+bad = [f["family"] for f in r["families"]
+       if f["status"] != "MIGRATED" or f["rows_in"] != f["rows_out"]
+       or f["duplicate_keys"] or f["missing_keys"] or f.get("gained_keys")
+       or f.get("order_violations") or f.get("preexisting_rows_lost")
+       or f.get("byte_identical") is not True]
+t = r["totals"]
+print("rows", t["rows_in"], "->", t["rows_out"], "| failing families:", bad or "none")
+print("VERDICT:", "OK" if not bad and t["rows_in"] == t["rows_out"] == 204271 else "*** STOP ***")
+EOF
+```
+
+> ## STOP CONDITION
+>
+> **IF THE STAGED DIFF SHOWS MONOLITH DELETIONS WITHOUT THE EXPECTED
+> SHARD ADDITIONS, DO NOT COMMIT.**
+>
+> Equivalently: if insertions and deletions are not equal, if the
+> additions count is 0, or if any check above prints `*** STOP ***` —
+> **do not commit and do not push.** Re-run `git add -f -A data/research`
+> and re-check. Nothing has been lost at this point; the shards are still
+> on disk and `research-data` is untouched. A commit, once pushed, is what
+> makes it real.
+
+Only once every gate above passes:
+
+```bash
 git commit -m "research: migrate season monoliths to UTC-date shards"
 git push origin HEAD:research-data      # expect NO GH001, NO 50 MB warning
 ```
