@@ -33,13 +33,12 @@ from cfb_edge_finder.expression.corpus import load_contract_snapshots  # noqa: E
 from cfb_edge_finder.research import persistence, shards  # noqa: E402
 
 
-def summarize_corpus(source) -> CorpusSummary:
+def summarize_corpus(source, identifier: str) -> CorpusSummary:
     """Counts straight off the ledger -- every shard plus any legacy
     monolith. Rows are read once."""
     total = prospective = non_prospective = 0
     versions: Counter[str] = Counter()
     paths = shards.as_source_paths(source)
-    identifier = str(paths[0].parent) if paths else str(source)
     if not paths:
         return CorpusSummary(corpus_identifier=identifier)
     for _path, line in shards.iter_raw_lines(paths):
@@ -86,7 +85,12 @@ def main() -> int:
         )
     )
 
-    corpus = summarize_corpus(observations)
+    corpus = summarize_corpus(
+        observations,
+        persistence.corpus_identifier(
+            args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
+        ),
+    )
     corpus = CorpusSummary(
         total_rows=corpus.total_rows,
         prospective_rows=corpus.prospective_rows,

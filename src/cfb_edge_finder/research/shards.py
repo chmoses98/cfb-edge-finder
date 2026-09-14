@@ -227,6 +227,19 @@ def source_paths(base_dir: Path, subdir: str, season: int) -> list[Path]:
     return paths
 
 
+def corpus_identifier(base_dir: Path, subdir: str, season: int) -> str:
+    """A STABLE, human-meaningful name for one family-season, for
+    provenance fields in reports.
+
+    The shard DIRECTORY, not the file list: a corpus is now many files,
+    so `str(source_paths(...))` would emit a Python repr of every shard
+    (`"[PosixPath('...2026-08-26.part001.jsonl'), ...]"`) -- unreadable,
+    and it churns every time a new date shard appears. The directory
+    names the same corpus before and after a shard is added, and is
+    still correct when the corpus is empty."""
+    return str(shard_dir(base_dir, subdir, season))
+
+
 def as_source_paths(source: Path | Iterable[Path] | None) -> list[Path]:
     """Normalise the many shapes a corpus location arrives in into an
     ordered list of existing files.

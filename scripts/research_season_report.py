@@ -30,11 +30,19 @@ def _next_report_version(reports_dir: Path, season: int) -> int:
 
 def _apply_report(repo_dir: Path, *, season: int, now: datetime) -> persistence.AppendResult:
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    settle_path = persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
+    # `corpus_sources` returns the LIST of files that hold this
+    # family-season (a legacy monolith, if one is still there, plus every
+    # UTC-date shard) -- never a single Path. An earlier revision of this
+    # function kept the pre-sharding `.exists()` guard on that value,
+    # which raised AttributeError on a list and would have failed every
+    # season-report run. No guard is needed: an empty source list reads
+    # back as an empty result, which is exactly what "no corpus yet"
+    # should mean.
+    obs_sources = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    settlement_sources = persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
 
-    rows = persistence.read_observation_rows(obs_path) if obs_path.exists() else []
-    settlement_rows = persistence.read_settlement_rows(settle_path) if settle_path.exists() else []
+    rows = persistence.read_observation_rows(obs_sources)
+    settlement_rows = persistence.read_settlement_rows(settlement_sources)
     weeks = sorted(
         {
             r.observation.game_id.split("-")[2]

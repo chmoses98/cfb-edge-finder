@@ -112,6 +112,13 @@ def corpus_sources(base_dir: Path, subdir: str, season: int) -> list[Path]:
     return shards.source_paths(base_dir, subdir, season)
 
 
+def corpus_identifier(base_dir: Path, subdir: str, season: int) -> str:
+    """A stable provenance name for one family-season -- see
+    `shards.corpus_identifier`. Never `str(corpus_sources(...))`, which
+    is a repr of the whole file list."""
+    return shards.corpus_identifier(base_dir, subdir, season)
+
+
 PathSource = Path | Iterable[Path] | None
 """What every reader below accepts: a single file (a legacy monolith, or
 a corpus a workflow materialised with `git show`), a shard DIRECTORY, or
