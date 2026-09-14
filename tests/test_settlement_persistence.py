@@ -10,6 +10,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import corpus_helpers  # noqa: E402
 import pytest
 
 from cfb_edge_finder.research import persistence
@@ -54,13 +55,13 @@ def _attr(row, **kw):
 
 
 def _path(tmp_path: Path) -> Path:
-    return persistence.canonical_path(tmp_path / "data" / "research", persistence.ATTRIBUTIONS_SUBDIR, SEASON)
+    return corpus_helpers.ref(tmp_path / "data" / "research", persistence.ATTRIBUTIONS_SUBDIR, SEASON)
 
 
 def _rows(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+    return [json.loads(x) for x in path.text().splitlines() if x.strip()]
 
 
 # --- Idempotence / duplicate prevention (section 9) ----------------------
@@ -70,16 +71,16 @@ def test_rerunning_settlement_writes_zero_duplicates(tmp_path):
     path = _path(tmp_path)
     attrs = [_attr(r) for r in REAL_ROWS]
 
-    index = persistence.load_attribution_index(path)
-    first = persistence.append_attribution_rows(path, attrs, index=index)
+    index = persistence.load_attribution_index(path.sources)
+    first = persistence.append_attribution_rows(path.base, path.season, attrs, index=index)
     assert first.written == len(attrs) > 0
-    after_first = path.read_bytes()
+    after_first = path.bytes()
 
-    index2 = persistence.load_attribution_index(path)
-    second = persistence.append_attribution_rows(path, attrs, index=index2)
+    index2 = persistence.load_attribution_index(path.sources)
+    second = persistence.append_attribution_rows(path.base, path.season, attrs, index=index2)
     assert second.written == 0, "a re-run wrote duplicate settlement records"
     assert second.skipped_duplicate == len(attrs)
-    assert path.read_bytes() == after_first, "re-run mutated existing settlement bytes"
+    assert path.bytes() == after_first, "re-run mutated existing settlement bytes"
 
 
 def test_attribution_key_is_stable_and_versioned():
@@ -95,8 +96,8 @@ def test_a_settlement_logic_revision_appends_rather_than_overwrites(tmp_path):
     path = _path(tmp_path)
     row = REAL_ROWS[0]
     original = _attr(row)
-    index = persistence.load_attribution_index(path)
-    persistence.append_attribution_rows(path, [original], index=index)
+    index = persistence.load_attribution_index(path.sources)
+    persistence.append_attribution_rows(path.base, path.season, [original], index=index)
 
     amended = original.model_copy(
         update={
@@ -104,7 +105,7 @@ def test_a_settlement_logic_revision_appends_rather_than_overwrites(tmp_path):
             "settlement_code_version": "attribution_v2",
         }
     )
-    persistence.append_attribution_rows(path, [amended], index=index)
+    persistence.append_attribution_rows(path.base, path.season, [amended], index=index)
 
     rows = _rows(path)
     assert len(rows) == 2, "amendment overwrote the original conclusion"
@@ -114,12 +115,12 @@ def test_a_settlement_logic_revision_appends_rather_than_overwrites(tmp_path):
 
 def test_existing_rows_are_never_rewritten_or_reordered(tmp_path):
     path = _path(tmp_path)
-    index = persistence.load_attribution_index(path)
-    persistence.append_attribution_rows(path, [_attr(r) for r in REAL_ROWS[:5]], index=index)
-    original_lines = path.read_text(encoding="utf-8").splitlines()
+    index = persistence.load_attribution_index(path.sources)
+    persistence.append_attribution_rows(path.base, path.season, [_attr(r) for r in REAL_ROWS[:5]], index=index)
+    original_lines = path.text().splitlines()
 
-    persistence.append_attribution_rows(path, [_attr(r) for r in REAL_ROWS[5:]], index=index)
-    after = path.read_text(encoding="utf-8").splitlines()
+    persistence.append_attribution_rows(path.base, path.season, [_attr(r) for r in REAL_ROWS[5:]], index=index)
+    after = path.text().splitlines()
 
     assert len(after) > len(original_lines)
     assert after[: len(original_lines)] == original_lines
@@ -157,8 +158,8 @@ def test_each_checkpoint_settles_independently(tmp_path):
 
     attrs = [_attr(c) for c in checkpoints]
     path = _path(tmp_path)
-    index = persistence.load_attribution_index(path)
-    result = persistence.append_attribution_rows(path, attrs, index=index)
+    index = persistence.load_attribution_index(path.sources)
+    result = persistence.append_attribution_rows(path.base, path.season, attrs, index=index)
 
     assert result.written == 5, "checkpoints were collapsed into fewer rows"
     assert len({a.timing_label for a in attrs}) == 5
@@ -241,9 +242,11 @@ def test_clv_primitives_are_present_but_ungraded():
 def test_index_matches_a_full_read_and_loads_once(tmp_path):
     path = _path(tmp_path)
     attrs = [_attr(r) for r in REAL_ROWS]
-    persistence.append_attribution_rows(path, attrs, index=persistence.load_attribution_index(path))
+    persistence.append_attribution_rows(
+        path.base, path.season, attrs, index=persistence.load_attribution_index(path.sources)
+    )
 
-    index = persistence.load_attribution_index(path)
+    index = persistence.load_attribution_index(path.sources)
     assert index.load_count == 1
     assert index.row_count == len(attrs)
     assert index.malformed_rows == 0
@@ -256,10 +259,9 @@ def test_index_matches_a_full_read_and_loads_once(tmp_path):
 
 def test_index_tolerates_and_counts_malformed_lines(tmp_path):
     path = _path(tmp_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
     good = _attr(REAL_ROWS[0]).model_dump(mode="json")
-    path.write_text(json.dumps(good, sort_keys=True) + "\n{not json\n\n", encoding="utf-8")
-    index = persistence.load_attribution_index(path)
+    path.seed_text(json.dumps(good, sort_keys=True) + "\n{not json\n\n")
+    index = persistence.load_attribution_index(path.sources)
     assert index.row_count == 1 and index.malformed_rows == 1
     assert len(index.keys) == 1
 
@@ -269,16 +271,15 @@ def test_index_lookup_does_not_degrade_with_ledger_size(tmp_path, n_existing):
     """Section 18: settlement must not become another O(history x ledger)
     nested scan. Membership must stay O(1) regardless of ledger size."""
     path = _path(tmp_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
     template = _attr(REAL_ROWS[0]).model_dump(mode="json")
-    with path.open("w", encoding="utf-8") as fh:
+    with path.seed_writer() as fh:
         for i in range(n_existing):
             row = dict(template)
             row["attribution_key"] = f"synthetic-{i:08d}|{ATTRIBUTION_CODE_VERSION}"
             row["observation_key"] = f"synthetic-{i:08d}"
             fh.write(json.dumps(row, sort_keys=True) + "\n")
 
-    index = persistence.load_attribution_index(path)
+    index = persistence.load_attribution_index(path.sources)
     assert index.row_count == n_existing
     assert index.load_count == 1
 
@@ -294,8 +295,11 @@ def test_index_lookup_does_not_degrade_with_ledger_size(tmp_path, n_existing):
 def test_index_holds_no_decoded_rows(tmp_path):
     path = _path(tmp_path)
     persistence.append_attribution_rows(
-        path, [_attr(r) for r in REAL_ROWS], index=persistence.load_attribution_index(path)
+        path.base,
+        path.season,
+        [_attr(r) for r in REAL_ROWS],
+        index=persistence.load_attribution_index(path.sources),
     )
-    index = persistence.load_attribution_index(path)
+    index = persistence.load_attribution_index(path.sources)
     for value in vars(index).values():
         assert not isinstance(value, list), "index retains a list -- likely the whole decoded ledger"

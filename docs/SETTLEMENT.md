@@ -14,8 +14,8 @@ Two ledgers, deliberately separate, both append-only:
 
 | Ledger | Grain | Path | What it answers |
 |---|---|---|---|
-| `MarketSettlement` | one per (game, ticker) | `data/research/settlements/{season}.jsonl` | How did this contract settle? |
-| `ObservationAttribution` | **one per captured observation** | `data/research/attributions/{season}.jsonl` | What did that outcome mean for *this snapshot*? |
+| `MarketSettlement` | one per (game, ticker) | `data/research/settlements/{season}/{date}.partNNN.jsonl` | How did this contract settle? |
+| `ObservationAttribution` | **one per captured observation** | `data/research/attributions/{season}/{date}.partNNN.jsonl` | What did that outcome mean for *this snapshot*? |
 
 **Why both.** A market's outcome is a single truth no matter how many
 times we looked at it, so `MarketSettlement` is correctly one row per

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, "tests")
+import corpus_helpers  # noqa: E402
 from research_factories import make_corpus_row, make_observation  # noqa: E402
 
 from cfb_edge_finder.research import git_durable_store, health, persistence, scan_logic, timing
@@ -41,14 +42,14 @@ def test_missed_t60_does_not_block_next_valid_checkpoint():
 
 
 def test_duplicated_scheduler_run_does_not_duplicate_rows(tmp_path: Path):
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
     row = make_corpus_row()
-    result1 = persistence.append_observation_rows(path, [row])
+    result1 = persistence.append_observation_rows(path.base, path.season, [row])
     # A second, fully independent "scheduler run" processes the identical checkpoint.
-    result2 = persistence.append_observation_rows(path, [row])
+    result2 = persistence.append_observation_rows(path.base, path.season, [row])
     assert result1.written == 1
     assert result2.written == 0
-    assert len(persistence.read_observation_rows(path)) == 1
+    assert len(persistence.read_observation_rows(path.sources)) == 1
 
 
 # 3. Kickoff moved by several hours --------------------------------------
@@ -82,12 +83,12 @@ def test_kalshi_partial_failure_isolated_per_series(tmp_path: Path):
     # health report tracks the failure without losing the successful series'
     # captures -- verified here at the persistence layer: a partial write
     # from one series succeeds and is durable even if a later series fails.
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
     good_row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-SPREAD-1"))
-    persistence.append_observation_rows(path, [good_row])
+    persistence.append_observation_rows(path.base, path.season, [good_row])
 
     report = health.CaptureHealthReport(games_scanned=10, markets_scanned=50, api_failures=1)
-    assert len(persistence.read_observation_rows(path)) == 1  # good series' data survives
+    assert len(persistence.read_observation_rows(path.sources)) == 1  # good series' data survives
     assert report.api_failures == 1  # failure is tracked, not swallowed silently
 
 
@@ -126,8 +127,8 @@ def test_persistence_retry_via_git_durable_store(tmp_path: Path):
     git_durable_store.ensure_branch_checked_out(clone_a, "research-data")
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
-        return persistence.append_observation_rows(path, [make_corpus_row()])
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        return persistence.append_observation_rows(path.base, path.season, [make_corpus_row()])
 
     result = git_durable_store.commit_and_push_with_retry(clone_a, "research-data", apply_fn, "retry test")
     assert result.append_result.written == 1
@@ -165,9 +166,9 @@ def test_market_disappearing_before_closing_is_missed_not_fabricated():
 
 
 def test_rescheduled_game_preserves_original_capture_history(tmp_path: Path):
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
     original = make_corpus_row(kickoff_utc_at_capture=KICKOFF)
-    persistence.append_observation_rows(path, [original])
+    persistence.append_observation_rows(path.base, path.season, [original])
 
     # Kickoff moves; a NEW capture (different timing label) is appended --
     # the original row is never rewritten or deleted.
@@ -177,9 +178,9 @@ def test_rescheduled_game_preserves_original_capture_history(tmp_path: Path):
         snapshot_timing=SnapshotTiming(label="T_24H"),
     )
     new_row = make_corpus_row(observation=new_obs, kickoff_utc_at_capture=new_kickoff)
-    persistence.append_observation_rows(path, [new_row])
+    persistence.append_observation_rows(path.base, path.season, [new_row])
 
-    rows = persistence.read_observation_rows(path)
+    rows = persistence.read_observation_rows(path.sources)
     assert len(rows) == 2
     assert rows[0].kickoff_utc_at_capture == KICKOFF  # original untouched
 
@@ -190,20 +191,20 @@ def test_rescheduled_game_preserves_original_capture_history(tmp_path: Path):
 def test_settlement_delay_pending_then_settled_preserves_both_facts(tmp_path: Path):
     from cfb_edge_finder.research.settlement import extract_game_result, settle_market
 
-    path = persistence.canonical_path(tmp_path, persistence.SETTLEMENTS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.SETTLEMENTS_SUBDIR, 2026)
     obs = make_observation(game_id="g-delay")
     pending_result = extract_game_result({"status": "scheduled"}, game_id="g-delay", season=2026, captured_at=KICKOFF)
     pending_settlement = settle_market(obs, pending_result, settled_at=KICKOFF)
-    persistence.append_settlement_rows(path, [pending_settlement])
+    persistence.append_settlement_rows(path.base, path.season, [pending_settlement])
 
     final_result = extract_game_result(
         {"status": "final", "homePoints": 20, "awayPoints": 17},
         game_id="g-delay", season=2026, captured_at=KICKOFF + timedelta(days=1),
     )
     final_settlement = settle_market(obs, final_result, settled_at=KICKOFF + timedelta(days=1))
-    persistence.append_settlement_rows(path, [final_settlement])
+    persistence.append_settlement_rows(path.base, path.season, [final_settlement])
 
-    rows = persistence.read_settlement_rows(path)
+    rows = persistence.read_settlement_rows(path.sources)
     assert len(rows) == 2  # both the pending and final facts are preserved in history
     latest = persistence.latest_settlements(rows)
     assert latest[("g-delay", obs.kalshi_market_ticker)].status.value == "settled"

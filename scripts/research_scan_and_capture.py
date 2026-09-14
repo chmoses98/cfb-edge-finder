@@ -495,8 +495,7 @@ def _apply_scan(
     provenance = DataProvenance(schedule_source="cfbd", data_timestamp=now)
     data_versions = _build_data_versions(model_version, now)
 
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    index = persistence.load_observation_index(obs_path)
+    index = persistence.load_observation_index_for(base_dir, season)
     telemetry.history_load_count += index.load_count
     telemetry.history_load_seconds += index.load_seconds
     telemetry.history_row_count = index.row_count
@@ -523,9 +522,9 @@ def _apply_scan(
     v2_pending: list = []
     v2_seen: set[str] = set()
     v2_telemetry = v2_shadow_mod.V2ShadowTelemetry()
-    v2_ledger = v2_shadow_mod.ledger_path(repo_dir, season)
+    v2_ledger_sources = v2_shadow_mod.ledger_sources(repo_dir, season)
     if v2_artifact is not None:
-        v2_seen |= v2_shadow_mod.load_existing_keys(v2_ledger)
+        v2_seen |= v2_shadow_mod.load_existing_keys(v2_ledger_sources)
     seen_shadow_keys: set[str] = set()
     # Distinct games this run actually PROJECTED, not the size of the
     # schedule -- the denominator for "contracts priced per projection"
@@ -938,23 +937,22 @@ def _apply_scan(
     # attempt, so a crash mid-scan leaves the durable store exactly as
     # untouched as it did before.
     with telemetry.phase("persistence_write_seconds"):
-        result = persistence.append_observation_rows(obs_path, pending_rows, index=index)
-        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+        result = persistence.append_observation_rows(base_dir, season, pending_rows, index=index)
         if capture_state_rows:
-            persistence.append_capture_state_rows(state_path, capture_state_rows)
+            persistence.append_capture_state_rows(base_dir, season, capture_state_rows)
         # After-the-fact reconciliation: durable-data-only accounting for
         # windows that provably passed uncaptured (e.g. during a
         # collector or dependency outage). Idempotent via the existing
         # capture-state dedup key; never creates an observation.
         telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
-            obs_path, state_path, now=now, run_id=run_id, index=index
+            base_dir, season, now=now, run_id=run_id, index=index
         )
         # Shadow rows are written AFTER the canonical observations and in
         # their own file. Ordering matters: if this raised, the canonical
         # rows are already durable. It is wrapped anyway, because a
         # research side effect must never fail a prospective capture.
         if v2_pending:
-            v2_telemetry.rows_written = v2_shadow_mod.append_rows(v2_ledger, v2_pending)
+            v2_telemetry.rows_written = v2_shadow_mod.append_rows(repo_dir, season, v2_pending)
         telemetry.v2_shadow_rows_written = v2_telemetry.rows_written
         telemetry.v2_shadow_contracts_priced = v2_telemetry.contracts_priced
         telemetry.v2_shadow_unavailable = v2_telemetry.unavailable
@@ -963,13 +961,8 @@ def _apply_scan(
 
         if pending_shadow_rows:
             try:
-                shadow_path = persistence.canonical_path(
-                    base_dir, persistence.SHADOW_SUBDIR, season
-                )
-                shadow_result = persistence.append_json_rows(
-                    shadow_path,
-                    pending_shadow_rows,
-                    key_fn=lambda row: row.get("shadow_key"),
+                shadow_result = persistence.append_shadow_rows(
+                    base_dir, season, pending_shadow_rows
                 )
                 telemetry.shadow_rows_written = shadow_result.written
                 telemetry.shadow_rows_duplicate = shadow_result.skipped_duplicate
@@ -1153,14 +1146,12 @@ def _fail_closed_no_football_state(
 
     def account_only(repo_dir: Path) -> persistence.AppendResult:
         base_dir = repo_dir / "data" / "research"
-        obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
         cfbd_access.save_state(repo_dir, access_record)
         operational_state.save_state(
             repo_dir, operational_state.record_state(classification, prior_operational, now=now)
         )
         telemetry.reconciled_missed_checkpoints = checkpoint_reconciliation.reconcile(
-            obs_path, state_path, now=now, run_id=args.run_id
+            base_dir, season, now=now, run_id=args.run_id
         )
         gate_note = ""
         if access_record.get("access_state") == cfbd_access.CFBD_QUOTA_EXHAUSTED:

@@ -34,16 +34,76 @@ Three realistic options were weighed:
    estimate is comfortably within git's line-oriented-text comfort zone,
    so building bucket credentials/infrastructure now would be premature.
 
-Canonical files live at `data/research/{observations,settlements,capture_state}/{season}.jsonl`
-on the `research-data` branch (never `main`), plus `data/research/reports/{weekly,season}/`.
+Canonical rows live under `data/research/{family}/{season}/` on the
+`research-data` branch (never `main`), plus `data/research/reports/{weekly,season}/`.
 Each observation row is a `ResearchCorpusRow` (`schemas/corpus_row.py`) —
 one `KalshiResearchObservation` (Milestone D) plus durable-storage identity
 and version metadata.
 
+#### UTC-date sharding (supersedes the season monolith, 2026-09-14)
+
+The original layout was one file per family-season,
+`data/research/{family}/{season}.jsonl`. That is unbounded by
+construction, and on **2026-09-14** `observations/2026.jsonl` reached
+99.72 MiB and the next append crossed GitHub's 100 MiB hard blob limit:
+
+```
+remote: error: File data/research/observations/2026.jsonl is 105.20 MB;
+        this exceeds GitHub's file size limit of 100.00 MB
+remote: error: GH001: Large files detected.
+! [remote rejected] HEAD -> research-data (pre-receive hook declined)
+```
+
+Every durable push failed from that point — so every prospective capture
+failed, including CLOSING lines, which are never recoverable after
+kickoff. `shadow/2026.jsonl` (66.5 MiB) was already past GitHub's 50 MB
+advisory warning and `attributions/2026.jsonl` (81.2 MiB) was close
+behind.
+
+The store is now sharded by the **UTC calendar date of the row's own
+canonical timestamp** (`research/shards.py`):
+
+```
+data/research/observations/2026/2026-09-12.part001.jsonl
+```
+
+* The shard is a **pure function of the row**, so the same row always
+  lands in the same shard on any machine, in any order, on a retry or a
+  re-migration. That determinism is what makes the migration's row/key
+  equivalence proof meaningful.
+* `{season}` stays in the path because a CFB season spans two calendar
+  years — the date year is not the season.
+* **Dedup remains global.** `observation_key` carries no timestamp, so
+  the same logical observation re-derived tomorrow keys identically but
+  dates differently; every index/key loader reads *every* shard before
+  deciding what is new. Sharding changed where a row is stored, never
+  whether it is stored.
+* A date's shard **rolls over** to `.part002` etc. at
+  `shards.SHARD_TARGET_BYTES` (45 MB), so one very busy capture day
+  cannot recreate the monolith problem a day at a time.
+* `research/git_durable_store.py` refuses to push a changed blob above
+  `shards.PUSH_REFUSAL_BYTES` (90 MB) and `scripts/check_research_blob_sizes.py`
+  is the same guard runnable on demand and in CI.
+* **No Git LFS.** The fix is the storage layout, not a pointer store.
+
+Readers still accept the legacy `{season}.jsonl` monolith — `shards.source_paths`
+lists it first, then the date shards — so a corpus that has not been
+migrated yet, or one a workflow materialised from an older commit, reads
+exactly as it always did. Writes never go back to it.
+
+`scripts/migrate_research_shards.py` performs the one-time move. It is a
+relocation, not a rewrite: every line is carried **byte-for-byte**, and
+the legacy file is removed only after row counts, the raw-line multiset,
+the dedup-key multiset, within-shard ordering and resulting blob sizes
+all check out.
+
 ### Append-only / immutable
 
-`research/persistence.py::append_json_rows` only ever appends new lines at
-EOF; there is no update/rewrite path anywhere in this milestone. A test
+`research/persistence.py::append_json_rows` (and the sharded
+`append_sharded_json_rows` built on it) only ever appends new lines at
+EOF of the target shard; there is no update/rewrite path anywhere in this
+milestone. A rollover starts a NEW part rather than touching the previous
+one, so an already-pushed shard stays byte-stable forever. A test
 (`tests/test_research_persistence.py::test_rows_are_immutable_on_disk_no_line_ever_rewritten`)
 proves a later append never changes bytes already on disk.
 

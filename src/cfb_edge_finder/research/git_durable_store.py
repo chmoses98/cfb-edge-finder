@@ -18,6 +18,43 @@ Defense in depth, two independent layers:
      merge` on the data files -- there is no line-level conflict to
      resolve, only a possible extra retry loop.
 
+*** TWO KINDS OF PUSH FAILURE, TWO RESPONSES ***
+The retry loop above is correct for a RACE: another writer moved the
+tip, so re-reading it and re-appending genuinely changes the outcome.
+It is exactly wrong for a DETERMINISTIC rejection, where the same bytes
+will be refused identically every time. On 2026-09-14 the collector hit
+the second kind:
+
+    remote: error: File data/research/observations/2026.jsonl is 105.20 MB;
+            this exceeds GitHub's file size limit of 100.00 MB
+    remote: error: GH001: Large files detected.
+    ! [remote rejected] HEAD -> research-data (pre-receive hook declined)
+
+and burned five full push attempts -- with a `git fetch` and a complete
+re-apply between each -- before surfacing the same error it already had
+after the first. `_push_failure_is_deterministic` now splits the two:
+GH001/oversize/pre-receive rejections raise on the FIRST attempt with
+the offending blob named, while non-fast-forward races retry exactly as
+before.
+
+*** AND THE FAILURE IS CAUGHT BEFORE THE PUSH WHERE POSSIBLE ***
+`_assert_no_oversize_blobs` measures every path this commit actually
+CHANGES (unchanged blobs create no new object and cannot trip GH001)
+against research.shards.PUSH_REFUSAL_BYTES, so the normal outcome is a
+precise local error naming the file and its size rather than a rejected
+push at all.
+
+*** AND NO WRITE LANDS DURING A CUTOVER ***
+Concurrency groups serialize writers; they do not stop one. A capture
+that starts after the sharding merge and before the migration holds the
+`research-data-write` group entirely legitimately and lands its first
+shard in the middle of the cutover, leaving the corpus split across two
+layouts. `research/maintenance.py` closes that: both entry points below
+check the maintenance flag on the FRESHLY FETCHED remote tip -- the
+same state the push is about to race -- and refuse if a window is open
+or if its state cannot be read at all. See that module for why the
+ambiguous case refuses.
+
 Mirrors docs/STORAGE_STRATEGY.md's carried-forward discipline: never
 trust an automated git operation's exit code for a safety-critical
 commit -- every step below checks its own `returncode` explicitly rather
@@ -31,11 +68,47 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from cfb_edge_finder.research import maintenance, shards
 from cfb_edge_finder.research.persistence import AppendResult
 
 
 class GitDurableStoreError(RuntimeError):
     pass
+
+
+class GitDurableStoreOversizeError(GitDurableStoreError):
+    """A blob is too large for the remote to ever accept. Distinct from
+    the base error so a caller can tell 'this will never succeed, fix the
+    data layout' apart from 'git had a bad day'."""
+
+
+DETERMINISTIC_PUSH_FAILURE_MARKERS: tuple[str, ...] = (
+    "GH001",
+    "exceeds GitHub's file size limit",
+    "Large files detected",
+    "pre-receive hook declined",
+    "protected branch",
+    "shallow update not allowed",
+)
+"""Push rejections that the SAME bytes will always earn. Retrying them
+re-runs a full fetch + re-apply to be told the identical thing, which is
+what turned one oversize file into five wasted attempts per run every
+ten minutes. Non-fast-forward and 'fetch first' are deliberately ABSENT:
+those are the concurrent-writer race the retry loop exists for."""
+
+OVERSIZE_PUSH_FAILURE_MARKERS: tuple[str, ...] = (
+    "GH001",
+    "exceeds GitHub's file size limit",
+    "Large files detected",
+)
+
+
+def _push_failure_is_deterministic(stderr: str) -> bool:
+    return any(marker in stderr for marker in DETERMINISTIC_PUSH_FAILURE_MARKERS)
+
+
+def _push_failure_is_oversize(stderr: str) -> bool:
+    return any(marker in stderr for marker in OVERSIZE_PUSH_FAILURE_MARKERS)
 
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -48,7 +121,13 @@ branch -- see the module-level bug note in commit_and_push_with_retry's
 docstring for why this must never be a bare `git add -A`."""
 
 
-def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin") -> None:
+def ensure_branch_checked_out(
+    repo_dir: Path,
+    branch: str,
+    remote: str = "origin",
+    *,
+    check_maintenance_window: bool = True,
+) -> None:
     """Fetches `branch` and checks it out, creating a fresh ORPHAN branch
     (no shared history with main -- keeps bot commits fully out of main's
     line of history) the first time it does not exist remotely yet.
@@ -70,6 +149,13 @@ def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin
     that risk entirely while fixing the real bug."""
     fetch = _run(["git", "fetch", remote, branch], repo_dir)
     if fetch.returncode == 0:
+        # Earliest possible refusal during a cutover. The branch is
+        # already fetched, so this is a local tree read, not another
+        # round trip -- and refusing HERE means a frozen window costs a
+        # capture run nothing: no CFBD quota spent, no scan performed,
+        # no work done that would only be thrown away at push time.
+        if check_maintenance_window:
+            maintenance.assert_writes_allowed(repo_dir, branch, remote=remote, fetch=False)
         checkout = _run(["git", "checkout", "-B", branch, f"{remote}/{branch}"], repo_dir)
         if checkout.returncode != 0:
             raise GitDurableStoreError(f"checkout of {branch!r} failed: {checkout.stderr}")
@@ -110,6 +196,36 @@ def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin
     _run(["git", "rm", "-rf", "--cached", "."], repo_dir)
 
 
+def _changed_paths(repo_dir: Path) -> list[Path]:
+    """The paths this commit would actually add or modify. Only these can
+    create a NEW blob, and only a new blob can trip GitHub's size limit --
+    an oversize file that is already on the remote and untouched by this
+    commit must not block an unrelated write."""
+    listing = _run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], repo_dir)
+    if listing.returncode != 0:
+        return []
+    return [repo_dir / name for name in listing.stdout.splitlines() if name.strip()]
+
+
+def _assert_no_oversize_blobs(repo_dir: Path, *, limit_bytes: int) -> None:
+    """Refuse locally, before the push, when a staged blob is too big for
+    the remote. Turns a GH001 pre-receive rejection (which names the file
+    only in stderr, after a wasted round trip) into an immediate error
+    that names the file, its size, and the limit it broke."""
+    offenders = shards.oversize_blobs(
+        repo_dir, limit_bytes=limit_bytes, only=_changed_paths(repo_dir)
+    )
+    if offenders:
+        raise GitDurableStoreOversizeError(
+            "refusing to push: "
+            + shards.describe_blobs(offenders)
+            + f", above the {limit_bytes / 1_000_000:.0f} MB durable-store blob limit "
+            "(GitHub rejects at 100 MiB with GH001). Research JSONL is sharded by UTC date "
+            "-- see research/shards.py; a blob this large means either a non-sharded artifact "
+            "or a shard that failed to roll over."
+        )
+
+
 def _reset_to_remote_tip(repo_dir: Path, branch: str, remote: str = "origin") -> None:
     fetch = _run(["git", "fetch", remote, branch], repo_dir)
     if fetch.returncode != 0:
@@ -133,6 +249,8 @@ def commit_and_push_with_retry(
     *,
     remote: str = "origin",
     max_retries: int = 5,
+    max_blob_bytes: int = shards.PUSH_REFUSAL_BYTES,
+    check_maintenance_window: bool = True,
 ) -> PushResult:
     """`apply_fn(repo_dir)` must perform the actual file writes (via
     research.persistence's append_* helpers) against the CURRENT on-disk
@@ -172,6 +290,13 @@ def commit_and_push_with_retry(
     anything actually changed) and then checking `git diff --cached
     --quiet` -- gitignore-agnostic once a path is staged -- to decide
     whether there is genuinely anything new to commit."""
+    # Before any work at all: a cutover window makes this whole run
+    # pointless, and the caller should learn that before apply_fn spends
+    # anything. Fetches once here; the per-attempt re-check below reuses
+    # whatever the retry loop's own fetch left behind.
+    if check_maintenance_window:
+        maintenance.assert_writes_allowed(repo_dir, branch, remote=remote)
+
     last_result: AppendResult | None = None
     for attempt in range(1, max_retries + 1):
         result = apply_fn(repo_dir)
@@ -197,6 +322,11 @@ def commit_and_push_with_retry(
             # genuinely nothing new to commit this attempt.
             return PushResult(attempts=attempt, append_result=result)
 
+        # BEFORE the commit, not after: a blob the remote will refuse is
+        # a data-layout bug, and committing it first would leave a local
+        # commit that every subsequent attempt has to reset away.
+        _assert_no_oversize_blobs(repo_dir, limit_bytes=max_blob_bytes)
+
         conflict_check = _run(["git", "diff", "--name-only", "--diff-filter=U"], repo_dir)
         if conflict_check.stdout.strip():
             raise GitDurableStoreError(
@@ -206,11 +336,31 @@ def commit_and_push_with_retry(
         if commit.returncode != 0:
             raise GitDurableStoreError(f"git commit failed: {commit.stderr}")
 
+        # Re-checked immediately before EVERY push, not just once at
+        # the top. The gap between "we decided to write" and "the bytes
+        # land" is exactly the interval a cutover needs closed, and a
+        # retry loop can sit in that gap for several fetch/re-apply
+        # rounds while an operator opens the window.
+        if check_maintenance_window:
+            maintenance.assert_writes_allowed(repo_dir, branch, remote=remote, fetch=False)
+
         push = _run(["git", "push", remote, f"HEAD:{branch}"], repo_dir)
         if push.returncode == 0:
             return PushResult(attempts=attempt, append_result=result)
 
-        # Rejected -- almost certainly a non-fast-forward race with
+        # Rejected. Two very different situations share this exit code.
+        if _push_failure_is_deterministic(push.stderr):
+            # The remote will refuse these same bytes every time --
+            # retrying only re-runs a fetch and a full re-apply to be
+            # told the identical thing. Fail on THIS attempt, naming the
+            # cause, so the operator sees it four attempts sooner.
+            error = GitDurableStoreOversizeError if _push_failure_is_oversize(push.stderr) else GitDurableStoreError
+            raise error(
+                f"push to {branch!r} rejected deterministically on attempt {attempt} "
+                f"(not retried -- the same bytes would be refused again): {push.stderr.strip()}"
+            )
+
+        # Otherwise: almost certainly a non-fast-forward race with
         # another writer. Reset to the fresh remote tip and retry;
         # apply_fn will recompute dedup fresh against the merged state.
         if attempt == max_retries:

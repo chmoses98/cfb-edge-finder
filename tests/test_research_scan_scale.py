@@ -30,6 +30,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as scanner  # noqa: E402
 from scan_harness import (  # noqa: E402
     NOW,
@@ -46,9 +47,8 @@ MODEL_VERSION = ModelVersion(model_version="scale-test-1.0", pricing_engine_vers
 
 
 def _write_corpus(path: Path, n_rows: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     labels = ("EARLY_OPEN", "T_7D", "T_3D", "T_24H", "T_6H")
-    with path.open("w", encoding="utf-8") as handle:
+    with path.seed_writer() as handle:
         for i in range(n_rows):
             handle.write(
                 json.dumps(
@@ -96,7 +96,7 @@ def _synthetic_markets(n_tickers: int) -> dict[str, list[dict]]:
 def _scan_at_scale(tmp_path: Path, monkeypatch, *, corpus_rows: int, n_tickers: int):
     repo_dir = tmp_path / f"c{corpus_rows}_t{n_tickers}"
     repo_dir.mkdir(parents=True, exist_ok=True)
-    obs = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    obs = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     _write_corpus(obs, corpus_rows)
     install_fake_market_feed(monkeypatch, _synthetic_markets(n_tickers))
     telemetry = ScanTelemetry()
@@ -138,14 +138,14 @@ def test_index_is_exact_at_one_hundred_thousand_rows(tmp_path):
     """The largest corpus size the mission asks about. Checks CORRECTNESS
     at scale (the index must still equal a full canonical read), not
     speed."""
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     _write_corpus(path, 100_000)
-    index = persistence.load_observation_index(path)
+    index = persistence.load_observation_index(path.sources)
     assert index.row_count == 100_000
     assert index.load_count == 1
     assert index.malformed_rows == 0
     assert len(index.keys) == 100_000
-    assert index.keys == persistence.read_observation_keys(path)
+    assert index.keys == persistence.read_observation_keys(path.sources)
     assert len(index.labels_by_ticker) == 4_000
     assert sum(len(v) for v in index.labels_by_ticker.values()) == 5 * 4_000
 
@@ -198,9 +198,9 @@ def test_growing_the_corpus_does_not_change_ticker_work(tmp_path, monkeypatch):
 def test_memory_stays_proportional_to_the_index_not_the_corpus_text(tmp_path):
     """The index keeps keys and per-ticker label sets, never the decoded
     rows themselves -- so a large corpus must not be held in memory."""
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     _write_corpus(path, 50_000)
-    index = persistence.load_observation_index(path)
+    index = persistence.load_observation_index(path.sources)
     # No attribute anywhere on the index holds decoded rows.
     for value in vars(index).values():
         assert not isinstance(value, list), "index retains a list -- likely the whole decoded corpus"

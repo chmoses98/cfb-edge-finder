@@ -20,12 +20,16 @@ from cfb_edge_finder.research import git_durable_store, persistence, reporting  
 
 def _apply_report(repo_dir: Path, *, season: int, week_label: str, now: datetime) -> persistence.AppendResult:
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    settle_path = persistence.canonical_path(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
+    # Both are LISTS of source files (legacy monolith + date shards), not
+    # single Paths -- an empty list already reads back as an empty
+    # result, so no `.exists()` guard is possible or needed. See the same
+    # note in scripts/research_season_report.py.
+    obs_sources = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    settlement_sources = persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
 
-    rows = persistence.read_observation_rows(obs_path)
+    rows = persistence.read_observation_rows(obs_sources)
     week_rows = [r for r in rows if r.observation.game_id is not None and f"-{week_label}-" in r.observation.game_id]
-    settlement_rows = persistence.read_settlement_rows(settle_path) if settle_path.exists() else []
+    settlement_rows = persistence.read_settlement_rows(settlement_sources)
 
     report = reporting.build_weekly_report(
         season=season, week_label=week_label, rows=week_rows, settlement_rows=settlement_rows, generated_at=now

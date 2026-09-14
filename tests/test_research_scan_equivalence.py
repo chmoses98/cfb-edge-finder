@@ -29,6 +29,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as optimized  # noqa: E402
 from reference.legacy_apply_scan import _apply_scan as legacy_apply_scan  # noqa: E402
 from scan_harness import (  # noqa: E402
@@ -74,7 +75,7 @@ def _normalize(row: dict) -> dict:
 def _read_normalized(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    return [_normalize(json.loads(line)) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [_normalize(json.loads(line)) for line in path.text().splitlines() if line.strip()]
 
 
 def _common_kwargs(games, classification, cache):
@@ -96,9 +97,8 @@ def _common_kwargs(games, classification, cache):
 
 
 def _seed_history(repo_dir: Path, rows: list[dict]) -> None:
-    path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
+    path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    with path.seed_writer() as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
 
@@ -129,8 +129,8 @@ def _run_pair(tmp_path: Path, monkeypatch, *, n_games: int, seed_rows: list[dict
         else:
             telemetry = ScanTelemetry()
             result = optimized._apply_scan(repo_dir, report=report, telemetry=telemetry, **kwargs)
-        obs = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-        state = persistence.canonical_path(repo_dir / "data" / "research", persistence.CAPTURE_STATE_SUBDIR, SEASON)
+        obs = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+        state = corpus_helpers.ref(repo_dir / "data" / "research", persistence.CAPTURE_STATE_SUBDIR, SEASON)
         outputs[name] = {
             "rows": _read_normalized(obs),
             "state": _read_normalized(state),
@@ -225,15 +225,11 @@ def test_equivalence_holds_against_a_pre_existing_history(tmp_path, monkeypatch)
     behind this and is covered directly in
     tests/test_research_scan_persistence.py)."""
     baseline = _run_pair(tmp_path / "seed", monkeypatch, n_games=4)
-    seed_rows = [
-        json.loads(line)
-        for line in (
-            (tmp_path / "seed" / "optimized" / "data" / "research" / "observations" / f"{SEASON}.jsonl")
-            .read_text(encoding="utf-8")
-            .splitlines()
-        )
-        if line.strip()
-    ]
+    seed_rows = corpus_helpers.rows(
+        tmp_path / "seed" / "optimized" / "data" / "research",
+        persistence.OBSERVATIONS_SUBDIR,
+        SEASON,
+    )
     assert len(seed_rows) > 0
 
     partial = seed_rows[: len(seed_rows) // 2]

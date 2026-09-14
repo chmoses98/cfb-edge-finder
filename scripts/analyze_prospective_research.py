@@ -100,8 +100,8 @@ def main() -> int:
     started = time.perf_counter()
 
     base = args.data_repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base, persistence.OBSERVATIONS_SUBDIR, args.season)
-    attr_path = persistence.canonical_path(base, persistence.ATTRIBUTIONS_SUBDIR, args.season)
+    obs_path = persistence.corpus_sources(base, persistence.OBSERVATIONS_SUBDIR, args.season)
+    attr_path = persistence.corpus_sources(base, persistence.ATTRIBUTIONS_SUBDIR, args.season)
 
     dataset = build_dataset(obs_path, attr_path)
     filtered_rows, applied_filters = _apply_filters(dataset, args)
@@ -110,8 +110,12 @@ def main() -> int:
     report = build_report(dataset, filters=applied_filters, side=args.side)
     payload = report_to_dict(report)
     payload["source"] = {
-        "observations_path": str(obs_path),
-        "attributions_path": str(attr_path),
+        "observations_path": persistence.corpus_identifier(
+            base, persistence.OBSERVATIONS_SUBDIR, args.season
+        ),
+        "attributions_path": persistence.corpus_identifier(
+            base, persistence.ATTRIBUTIONS_SUBDIR, args.season
+        ),
         "season": args.season,
         "generated_at": datetime.now(UTC).isoformat(),
         "analytics_code_version": ANALYTICS_CODE_VERSION,

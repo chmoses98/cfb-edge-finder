@@ -22,6 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 from cfb_edge_finder.research.protocol import manifest  # noqa: E402
 from cfb_edge_finder.research.threshold_discovery import (  # noqa: E402
     BLOCKED_ON_SAMPLE,
@@ -57,75 +58,66 @@ def load_settled_observations(
     }
 
     settled_by_ticker: dict[str, dict] = {}
-    if settlements_path.exists():
-        with settlements_path.open(encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                stats["settlement_rows"] += 1
-                if row.get("status") != "settled":
-                    continue
-                stats["terminal_settlements"] += 1
-                ticker = row.get("kalshi_market_ticker")
-                if ticker:
-                    settled_by_ticker[ticker] = row
+    for _path, line in shards.iter_raw_lines(settlements_path):
+        row = json.loads(line)
+        stats["settlement_rows"] += 1
+        if row.get("status") != "settled":
+            continue
+        stats["terminal_settlements"] += 1
+        ticker = row.get("kalshi_market_ticker")
+        if ticker:
+            settled_by_ticker[ticker] = row
 
     out: list[SettledResearchObservation] = []
-    if not observations_path.exists():
-        return out, stats
 
-    with observations_path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            stats["observation_rows"] += 1
-            obs = row.get("observation") or {}
+    for _path, line in shards.iter_raw_lines(observations_path):
+        row = json.loads(line)
+        stats["observation_rows"] += 1
+        obs = row.get("observation") or {}
 
-            if row.get("capture_mode") != "PROSPECTIVE":
-                stats["excluded_not_prospective"] += 1
-                continue
-            family = obs.get("family")
-            if family not in SUPPORTED_FAMILIES:
-                stats["excluded_unsupported_family"] += 1
-                continue
-            if obs.get("pricing_status") != "model_priced" or obs.get("model_probability") is None:
-                stats["excluded_unpriced"] += 1
-                continue
-            if obs.get("fee_status") != "VERIFIED_CURRENT":
-                stats["excluded_fee_unverified"] += 1
-                continue
+        if row.get("capture_mode") != "PROSPECTIVE":
+            stats["excluded_not_prospective"] += 1
+            continue
+        family = obs.get("family")
+        if family not in SUPPORTED_FAMILIES:
+            stats["excluded_unsupported_family"] += 1
+            continue
+        if obs.get("pricing_status") != "model_priced" or obs.get("model_probability") is None:
+            stats["excluded_unpriced"] += 1
+            continue
+        if obs.get("fee_status") != "VERIFIED_CURRENT":
+            stats["excluded_fee_unverified"] += 1
+            continue
 
-            ticker = obs.get("kalshi_market_ticker")
-            settlement = settled_by_ticker.get(ticker)
-            if settlement is None:
-                stats["excluded_no_settlement"] += 1
-                continue
+        ticker = obs.get("kalshi_market_ticker")
+        settlement = settled_by_ticker.get(ticker)
+        if settlement is None:
+            stats["excluded_no_settlement"] += 1
+            continue
 
-            price = obs.get("executable_yes_price")
-            fee = obs.get("estimated_taker_fee") or 0.0
-            model_version = (obs.get("model_version") or {}).get("model_version")
-            if price is None or not model_version:
-                stats["excluded_unpriced"] += 1
-                continue
+        price = obs.get("executable_yes_price")
+        fee = obs.get("estimated_taker_fee") or 0.0
+        model_version = (obs.get("model_version") or {}).get("model_version")
+        if price is None or not model_version:
+            stats["excluded_unpriced"] += 1
+            continue
 
-            out.append(
-                SettledResearchObservation(
-                    game_id=obs.get("game_id", ""),
-                    market_ticker=ticker,
-                    family=family,
-                    timing_label=(obs.get("snapshot_timing") or {}).get("label", "unknown"),
-                    model_version=model_version,
-                    side="yes",
-                    executable_price=float(price),
-                    fee_adjusted_break_even=float(price) + float(fee),
-                    model_probability=float(obs["model_probability"]),
-                    settled_yes=settlement.get("derived_contract_settlement") == "yes",
-                    capture_mode="PROSPECTIVE",
-                )
+        out.append(
+            SettledResearchObservation(
+                game_id=obs.get("game_id", ""),
+                market_ticker=ticker,
+                family=family,
+                timing_label=(obs.get("snapshot_timing") or {}).get("label", "unknown"),
+                model_version=model_version,
+                side="yes",
+                executable_price=float(price),
+                fee_adjusted_break_even=float(price) + float(fee),
+                model_probability=float(obs["model_probability"]),
+                settled_yes=settlement.get("derived_contract_settlement") == "yes",
+                capture_mode="PROSPECTIVE",
             )
-            stats["joined"] += 1
+        )
+        stats["joined"] += 1
     return out, stats
 
 
@@ -146,8 +138,8 @@ def main() -> int:
 
     base = args.data_repo_dir / "data" / "research"
     observations, stats = load_settled_observations(
-        base / "observations" / f"{args.season}.jsonl",
-        base / "settlements" / f"{args.season}.jsonl",
+        persistence.corpus_sources(base, persistence.OBSERVATIONS_SUBDIR, args.season),
+        persistence.corpus_sources(base, persistence.SETTLEMENTS_SUBDIR, args.season),
     )
     report = discover_threshold_candidates(
         observations, minimum_settled_games=args.minimum_settled_games

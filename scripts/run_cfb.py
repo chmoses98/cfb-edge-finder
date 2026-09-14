@@ -68,8 +68,9 @@ from week1_ops_health import (  # noqa: E402
     sizing_import_offenders,
 )
 
+from cfb_edge_finder.research import persistence  # noqa: E402
 from cfb_edge_finder.research.heartbeat import (  # noqa: E402
-    heartbeat_path,
+    heartbeat_sources,
     load_heartbeats,
 )
 
@@ -112,7 +113,7 @@ def main() -> int:
 
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
     base = args.data_repo_dir / "data" / "research"
-    obs_path = base / "observations" / f"{args.season}.jsonl"
+    obs_path = persistence.corpus_sources(base, persistence.OBSERVATIONS_SUBDIR, args.season)
 
     if args.paper_card:
         from cfb_edge_finder.research.paper_card import (
@@ -123,7 +124,7 @@ def main() -> int:
 
         card = build_paper_card(
             obs_path,
-            base / "shadow" / f"{args.season}.jsonl",
+            persistence.corpus_sources(base, persistence.SHADOW_SUBDIR, args.season),
             now=now,
             limit=args.paper_card_limit if args.paper_card_limit is not None else DEFAULT_LIMIT,
         )
@@ -140,9 +141,9 @@ def main() -> int:
     real_rows = [r for r in rows if not r.get("__malformed__")]
     load = load_contract_snapshots(obs_path)
     snapshots = load.snapshots
-    heartbeats = load_heartbeats(heartbeat_path(args.data_repo_dir, args.season))
-    settlements = load_rows(base / "settlements" / f"{args.season}.jsonl")
-    attributions = load_rows(base / "attributions" / f"{args.season}.jsonl")
+    heartbeats = load_heartbeats(heartbeat_sources(args.data_repo_dir, args.season))
+    settlements = load_rows(persistence.corpus_sources(base, persistence.SETTLEMENTS_SUBDIR, args.season))
+    attributions = load_rows(persistence.corpus_sources(base, persistence.ATTRIBUTIONS_SUBDIR, args.season))
 
     duplicates, malformed, non_prospective, total_rows = corpus_counts(rows)
     protection = assess_protection(heartbeats, now)
@@ -275,7 +276,7 @@ def main() -> int:
 
     # ------------------------------------------ TALENT SHADOW RESEARCH
     section("TALENT SHADOW RESEARCH (research only -- not a recommendation)")
-    shadow_rows = load_rows(base / "shadow" / f"{args.season}.jsonl")
+    shadow_rows = load_rows(persistence.corpus_sources(base, persistence.SHADOW_SUBDIR, args.season))
     shadow_rows_captured = len([r for r in shadow_rows if not r.get("__malformed__")])
     shadow_table = []
     for row in sorted(

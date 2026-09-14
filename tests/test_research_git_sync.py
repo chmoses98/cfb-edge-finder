@@ -10,11 +10,21 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, "tests")
+import corpus_helpers  # noqa: E402
 from research_factories import make_corpus_row, make_observation  # noqa: E402
 
-from cfb_edge_finder.research import git_durable_store, persistence
+from cfb_edge_finder.research import git_durable_store, persistence, shards
 
 BRANCH = "research-data"
+
+
+def _expected_shard(date: str, season: int = 2026, part: int = 1) -> str:
+    """The tracked path one day's observations land in. Derived from
+    `research.shards`, never hand-spelled, so a layout change updates the
+    expectation instead of silently breaking the assertion's meaning."""
+    return str(
+        shards.shard_path(Path("data/research"), shards.OBSERVATIONS_SUBDIR, season, date, part)
+    )
 
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -53,9 +63,9 @@ def test_single_writer_creates_orphan_branch_and_pushes(tmp_path):
     git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-A"))
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     result = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "capture: MKT-A")
     assert result.append_result.written == 1
@@ -74,14 +84,14 @@ def test_two_writers_racing_converge_to_union_with_no_data_loss(tmp_path):
     git_durable_store.ensure_branch_checked_out(clone_b, BRANCH)  # races A -- branch doesn't exist remotely yet
 
     def apply_fn_a(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-A"))
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     def apply_fn_b(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-B"))
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     result_a = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn_a, "capture: MKT-A")
     assert result_a.attempts == 1  # A wins the race outright, no rejection
@@ -94,8 +104,8 @@ def test_two_writers_racing_converge_to_union_with_no_data_loss(tmp_path):
     clone_c = tmp_path / "clone_c"
     _run(["git", "clone", str(tmp_path / "bare.git"), str(clone_c)], tmp_path)
     _run(["git", "checkout", BRANCH], clone_c)
-    final_path = persistence.canonical_path(clone_c / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
-    rows = persistence.read_observation_rows(final_path)
+    final_path = corpus_helpers.ref(clone_c / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+    rows = persistence.read_observation_rows(final_path.sources)
     tickers = {r.observation.kalshi_market_ticker for r in rows}
     assert tickers == {"MKT-A", "MKT-B"}
     assert len(rows) == 2  # no duplication, no data loss
@@ -111,9 +121,9 @@ def test_retried_run_with_identical_logical_row_does_not_duplicate(tmp_path):
     shared_observation = make_observation(kalshi_market_ticker="MKT-RETRY")
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=shared_observation)
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "capture: retry-1")
 
@@ -122,8 +132,8 @@ def test_retried_run_with_identical_logical_row_does_not_duplicate(tmp_path):
     assert result_retry.append_result.written == 0
     assert result_retry.append_result.skipped_duplicate == 1
 
-    final_path = persistence.canonical_path(clone_b / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
-    rows = persistence.read_observation_rows(final_path)
+    final_path = corpus_helpers.ref(clone_b / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+    rows = persistence.read_observation_rows(final_path.sources)
     assert len(rows) == 1
 
 
@@ -162,15 +172,15 @@ def test_orphan_commit_never_includes_stray_gitignored_main_tree_files(tmp_path)
     git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=make_observation(kalshi_market_ticker="MKT-REGRESSION"))
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     result = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "capture: regression test")
     assert result.append_result.written == 1
 
     committed_files = _run(["git", "ls-tree", "-r", "--name-only", "HEAD"], clone_a).stdout.splitlines()
-    assert committed_files == ["data/research/observations/2026.jsonl"], (
+    assert committed_files == [_expected_shard("2026-09-05")], (
         f"orphan commit must contain ONLY the durable-store data, got: {committed_files}"
     )
 
@@ -179,8 +189,8 @@ def test_orphan_commit_never_includes_stray_gitignored_main_tree_files(tmp_path)
     clone_c = tmp_path / "clone_c"
     _run(["git", "clone", str(bare), str(clone_c)], tmp_path)
     _run(["git", "checkout", BRANCH], clone_c)
-    final_path = persistence.canonical_path(clone_c / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
-    rows = persistence.read_observation_rows(final_path)
+    final_path = corpus_helpers.ref(clone_c / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+    rows = persistence.read_observation_rows(final_path.sources)
     assert len(rows) == 1
     assert rows[0].observation.kalshi_market_ticker == "MKT-REGRESSION"
 
@@ -208,9 +218,9 @@ def test_second_run_against_polluted_main_tree_correctly_dedupes(tmp_path):
     shared_observation = make_observation(kalshi_market_ticker="MKT-CROSS-RUN")
 
     def apply_fn(repo_dir: Path) -> persistence.AppendResult:
-        path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
+        path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, 2026)
         row = make_corpus_row(observation=shared_observation)
-        return persistence.append_observation_rows(path, [row])
+        return persistence.append_observation_rows(path.base, path.season, [row])
 
     git_durable_store.ensure_branch_checked_out(clone_a, BRANCH)
     result_a = git_durable_store.commit_and_push_with_retry(clone_a, BRANCH, apply_fn, "run A")
@@ -230,7 +240,7 @@ def test_second_run_against_polluted_main_tree_correctly_dedupes(tmp_path):
     assert result_b.append_result.skipped_duplicate == 1
 
     committed_files = _run(["git", "ls-tree", "-r", "--name-only", "HEAD"], clone_b).stdout.splitlines()
-    assert committed_files == ["data/research/observations/2026.jsonl"]
+    assert committed_files == [_expected_shard("2026-09-05")]
 
 
 def test_no_op_apply_produces_no_new_commit(tmp_path):

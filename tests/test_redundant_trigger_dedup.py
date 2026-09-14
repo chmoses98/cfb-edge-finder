@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "tests"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as collector  # noqa: E402
 from scan_harness import (  # noqa: E402
     install_failing_market_feed,
@@ -74,10 +75,10 @@ def _run_once(repo_dir: Path, monkeypatch, games, classification, markets, histo
 
 
 def _rows(repo_dir: Path) -> list[dict]:
-    path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [json.loads(line) for line in path.text().splitlines() if line.strip()]
 
 
 @pytest.fixture
@@ -192,8 +193,8 @@ def test_no_trigger_path_can_produce_an_actionable_candidate(tmp_path, monkeypat
     for run_id in ("cron", "conductor", "manual"):
         _run_once(repo, monkeypatch, games, classification, markets, history, run_id=run_id, now=now)
 
-    path = persistence.canonical_path(repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    loaded = load_contract_snapshots(path)
+    path = corpus_helpers.ref(repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    loaded = load_contract_snapshots(path.sources)
     result = run_pipeline(loaded.snapshots, config=EligibilityConfig(max_quote_age_seconds=86_400), now=now)
     assert result.card.actionable_count == 0
     assert result.card.entries == ()
@@ -223,9 +224,11 @@ def test_simultaneous_triggers_racing_past_due_resolution_still_dedup(tmp_path, 
         "two concurrent runs of the same slate must derive the same canonical keys"
     )
 
-    path_a = persistence.canonical_path(repo_a / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path_a = corpus_helpers.ref(repo_a / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     before = len(rows_a)
-    result = persistence.append_json_rows(path_a, rows_b, lambda r: r["observation_key"])
+    result = persistence.append_sharded_json_rows(
+        path_a.base, path_a.subdir, path_a.season, rows_b, lambda r: r["observation_key"]
+    )
     after = _rows(repo_a)
 
     assert len(after) == before, "the losing run's rows were appended a second time"

@@ -28,7 +28,6 @@ import json
 import time
 from collections import Counter
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from cfb_edge_finder.analytics.metrics import (
     CLOSING_CAPTURED_STATUS,
@@ -37,6 +36,7 @@ from cfb_edge_finder.analytics.metrics import (
     closing_line_value,
     probability_gaps,
 )
+from cfb_edge_finder.research import shards
 from cfb_edge_finder.schemas.common import Side
 
 PROSPECTIVE_CAPTURE_MODE = "PROSPECTIVE"
@@ -153,38 +153,37 @@ class AnalysisDataset:
         return sum(1 for r in self.rows if r.closing_status == CLOSING_CAPTURED_STATUS)
 
 
-def _iter_jsonl(path: Path, health: DatasetHealth):
-    if not path.exists():
-        return
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                health.malformed_rows += 1
+def _iter_jsonl(source, health: DatasetHealth):
+    """Every row of a family-season, across a legacy monolith and/or its
+    date shards -- `source` is whatever `shards.as_source_paths` takes."""
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            yield json.loads(line)
+        except json.JSONDecodeError:
+            health.malformed_rows += 1
 
 
 def _valid_probability(p: float | None) -> bool:
     return p is None or (0.0 <= p <= 1.0)
 
 
-def build_dataset(observations_path: Path, attributions_path: Path) -> AnalysisDataset:
+def build_dataset(observations_source, attributions_source) -> AnalysisDataset:
     """Join the two ledgers into an analysis dataset.
 
-    Each file is read EXACTLY ONCE and indexed by key, so the join is
+    Each ledger is read EXACTLY ONCE and indexed by key, so the join is
     O(observations + attributions) rather than a nested scan. This repo
     has already paid once for an O(n x m) rescan in the capture path (see
-    docs/PERFORMANCE.md); analytics does not repeat it."""
+    docs/PERFORMANCE.md); analytics does not repeat it.
+
+    Both arguments take any `shards.as_source_paths` form -- typically
+    `persistence.corpus_sources(base_dir, subdir, season)`."""
     started = time.perf_counter()
     dataset = AnalysisDataset()
     health = dataset.health
 
     observations: dict[str, dict] = {}
     seen_obs_keys: set[str] = set()
-    for obj in _iter_jsonl(observations_path, health):
+    for obj in _iter_jsonl(observations_source, health):
         key = obj.get("observation_key")
         if not isinstance(key, str):
             health.missing_provenance += 1
@@ -198,7 +197,7 @@ def build_dataset(observations_path: Path, attributions_path: Path) -> AnalysisD
     dataset.total_observations = len(observations)
 
     seen_attr_keys: set[str] = set()
-    for attr in _iter_jsonl(attributions_path, health):
+    for attr in _iter_jsonl(attributions_source, health):
         dataset.attributions_seen += 1
         akey = attr.get("attribution_key")
         if not isinstance(akey, str):

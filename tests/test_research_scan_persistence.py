@@ -22,6 +22,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as scanner  # noqa: E402
 from scan_harness import (  # noqa: E402
     NOW,
@@ -68,20 +69,19 @@ def _run_scan(repo_dir: Path, monkeypatch, *, n_games: int = 4, run_id: str = "r
 
 
 def _obs_path(repo_dir: Path) -> Path:
-    return persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    return corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
 
 
 def _rows(repo_dir: Path) -> list[dict]:
     path = _obs_path(repo_dir)
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [json.loads(line) for line in path.text().splitlines() if line.strip()]
 
 
 def _seed(repo_dir: Path, rows: list[dict]) -> None:
     path = _obs_path(repo_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
+    with path.seed_writer() as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
 
@@ -93,8 +93,14 @@ def test_history_file_is_opened_exactly_once_for_reading(tmp_path, monkeypatch):
     """THE regression guard. Before this work the observations file was
     re-opened and fully re-parsed once per market ticker (plus once more
     per row written); with a 1,724-row corpus and 4,578 live tickers that
-    was ~4,578 full reads per run and it grew with the corpus. Exactly one
-    read is allowed now, no matter how many tickers exist."""
+    was ~4,578 full reads per run and it grew with the corpus. Exactly ONE
+    read PER CORPUS FILE is allowed now, no matter how many tickers exist.
+
+    Stated per file rather than "exactly one open" because the corpus is
+    sharded by UTC date (research/shards.py): the invariant being guarded
+    is that history is re-derived once per run, which is unaffected by how
+    many files that history happens to span. A per-ticker re-read would
+    still show up here as N x (corpus files) opens."""
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
     # Seed a real history so the read is not trivially skipped.
@@ -103,7 +109,8 @@ def test_history_file_is_opened_exactly_once_for_reading(tmp_path, monkeypatch):
     seeded_rows = _rows(repo_dir)
     assert len(seeded_rows) > 0
 
-    target = _obs_path(repo_dir).resolve()
+    targets = {p.resolve() for p in _obs_path(repo_dir).sources}
+    assert targets, "no corpus files to watch"
     read_opens: list[str] = []
     real_open = builtins.open
     real_path_open = Path.open
@@ -114,7 +121,7 @@ def test_history_file_is_opened_exactly_once_for_reading(tmp_path, monkeypatch):
 
     def _patched_builtin_open(file, mode="r", *args, **kwargs):
         try:
-            if Path(file).resolve() == target:
+            if Path(file).resolve() in targets:
                 _count(mode)
         except (TypeError, OSError, ValueError):
             pass
@@ -122,7 +129,7 @@ def test_history_file_is_opened_exactly_once_for_reading(tmp_path, monkeypatch):
 
     def _patched_path_open(self, mode="r", *args, **kwargs):
         try:
-            if self.resolve() == target:
+            if self.resolve() in targets:
                 _count(mode)
         except (OSError, ValueError):
             pass
@@ -134,9 +141,10 @@ def test_history_file_is_opened_exactly_once_for_reading(tmp_path, monkeypatch):
     _, telemetry, report = _run_scan(repo_dir, monkeypatch, run_id="counted")
 
     assert report.markets_scanned > 50, "too few tickers for this test to be meaningful"
-    assert len(read_opens) == 1, (
-        f"observations file opened for reading {len(read_opens)} times across "
-        f"{report.markets_scanned} tickers -- the per-ticker re-read has regressed"
+    assert len(read_opens) == len(targets), (
+        f"observations corpus ({len(targets)} file(s)) opened for reading "
+        f"{len(read_opens)} times across {report.markets_scanned} tickers "
+        f"-- the per-ticker re-read has regressed"
     )
     assert telemetry.history_load_count == 1
     assert telemetry.history_row_count == len(seeded_rows)
@@ -194,10 +202,10 @@ def test_rerunning_the_same_scan_appends_nothing_and_rewrites_nothing(tmp_path, 
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
     _run_scan(repo_dir, monkeypatch, run_id="first")
-    after_first = _obs_path(repo_dir).read_bytes()
+    after_first = _obs_path(repo_dir).bytes()
 
     result, _, _ = _run_scan(repo_dir, monkeypatch, run_id="second")
-    after_second = _obs_path(repo_dir).read_bytes()
+    after_second = _obs_path(repo_dir).bytes()
 
     assert result.written == 0, "an identical re-scan wrote new rows"
     assert after_second == after_first, "existing corpus bytes changed -- not append-only"
@@ -207,11 +215,11 @@ def test_existing_rows_are_immutable_and_never_reordered(tmp_path, monkeypatch):
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
     _run_scan(repo_dir, monkeypatch, n_games=2, run_id="first")
-    original = _obs_path(repo_dir).read_text(encoding="utf-8").splitlines()
+    original = _obs_path(repo_dir).text().splitlines()
 
     # A larger slate: strictly more markets, so genuinely new rows append.
     _run_scan(repo_dir, monkeypatch, n_games=6, run_id="second")
-    after = _obs_path(repo_dir).read_text(encoding="utf-8").splitlines()
+    after = _obs_path(repo_dir).text().splitlines()
 
     assert len(after) > len(original), "second scan appended nothing -- test is vacuous"
     assert after[: len(original)] == original, "pre-existing lines were modified, reordered, or re-serialized"
@@ -232,12 +240,12 @@ def test_duplicate_insertions_are_rejected_by_canonical_key(tmp_path, monkeypatc
     typed = [ResearchCorpusRow.model_validate(r) for r in rows]
 
     # Without an index (re-reads from disk, the historical behaviour).
-    plain = persistence.append_observation_rows(path, typed)
+    plain = persistence.append_observation_rows(path.base, path.season, typed)
     assert plain.written == 0 and plain.skipped_duplicate == len(typed)
 
     # With a freshly loaded index -- must reach the identical verdict.
-    index = persistence.load_observation_index(path)
-    indexed = persistence.append_observation_rows(path, typed, index=index)
+    index = persistence.load_observation_index(path.sources)
+    indexed = persistence.append_observation_rows(path.base, path.season, typed, index=index)
     assert indexed.written == 0 and indexed.skipped_duplicate == len(typed)
     assert _rows(repo_dir) == rows, "a duplicate-rejecting append still mutated the file"
 
@@ -258,15 +266,14 @@ def test_duplicate_heavy_batch_writes_each_key_exactly_once(tmp_path, monkeypatc
     batch = [row for row in distinct for _ in range(4)]  # each key 4x
 
     target = tmp_path / "target"
-    path = persistence.canonical_path(target / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = corpus_helpers.ref(target / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
 
-    index = persistence.load_observation_index(path)
-    result = persistence.append_observation_rows(path, batch, index=index)
+    index = persistence.load_observation_index(path.sources)
+    result = persistence.append_observation_rows(path.base, path.season, batch, index=index)
 
     assert result.written == 5
     assert result.skipped_duplicate == 15
-    written_keys = [json.loads(line)["observation_key"] for line in path.read_text(encoding="utf-8").splitlines()]
+    written_keys = [json.loads(line)["observation_key"] for line in path.text().splitlines()]
     assert len(written_keys) == len(set(written_keys)) == 5
     assert index.keys == set(written_keys), "index did not absorb exactly the rows it wrote"
     assert index.row_count == 5
@@ -276,10 +283,9 @@ def test_duplicate_heavy_batch_writes_each_key_exactly_once(tmp_path, monkeypatc
 def test_index_matches_a_full_read_at_every_history_size(tmp_path, history_size):
     """`load_observation_index` must derive EXACTLY the key set the
     canonical reader derives -- at empty, tiny, and large corpus sizes."""
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     expected_labels: dict[str, set[str]] = {}
-    with path.open("w", encoding="utf-8") as handle:
+    with path.seed_writer() as handle:
         for i in range(history_size):
             row = json.loads(_SAMPLE_ROW)
             row["observation_key"] = f"key-{i}"
@@ -290,8 +296,8 @@ def test_index_matches_a_full_read_at_every_history_size(tmp_path, history_size)
             expected_labels.setdefault(ticker, set()).add(label)
             handle.write(json.dumps(row, sort_keys=True) + "\n")
 
-    index = persistence.load_observation_index(path)
-    assert index.keys == persistence.read_observation_keys(path)
+    index = persistence.load_observation_index(path.sources)
+    assert index.keys == persistence.read_observation_keys(path.sources)
     assert index.row_count == history_size
     assert index.load_count == 1
     assert index.malformed_rows == 0
@@ -304,15 +310,12 @@ def test_index_matches_a_full_read_at_every_history_size(tmp_path, history_size)
 def test_index_tolerates_and_counts_malformed_lines(tmp_path):
     """A corpus row this run cannot decode must never break dedup for the
     rows it CAN decode -- it is counted and reported instead."""
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     good = json.loads(_SAMPLE_ROW)
     good["observation_key"] = "good-key"
-    path.write_text(
-        json.dumps(good, sort_keys=True) + "\n" + "{not json at all\n" + "\n",
-        encoding="utf-8",
-    )
-    index = persistence.load_observation_index(path)
+    path.seed_text(
+        json.dumps(good, sort_keys=True) + "\n" + "{not json at all\n" + "\n")
+    index = persistence.load_observation_index(path.sources)
     assert index.keys == {"good-key"}
     assert index.row_count == 1
     assert index.malformed_rows == 1
@@ -321,10 +324,9 @@ def test_index_tolerates_and_counts_malformed_lines(tmp_path):
 def test_index_ignores_rows_missing_scheduling_fields(tmp_path):
     """A row from an older/partial schema still contributes its dedup key
     even if the scheduler cannot read a ticker/label out of it."""
-    path = persistence.canonical_path(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"observation_key": "legacy-key"}) + "\n", encoding="utf-8")
-    index = persistence.load_observation_index(path)
+    path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path.seed_text(json.dumps({"observation_key": "legacy-key"}) + "\n")
+    index = persistence.load_observation_index(path.sources)
     assert index.keys == {"legacy-key"}
     assert index.labels_by_ticker == {}
     assert index.row_count == 1
@@ -398,15 +400,15 @@ def test_prior_proof_corpus_loads_unchanged(tmp_path, monkeypatch):
         run_id="legacy",
         report=health.CaptureHealthReport(),
     )
-    legacy_bytes = _obs_path(repo_dir).read_bytes()
+    legacy_bytes = _obs_path(repo_dir).bytes()
     assert len(legacy_bytes) > 0
 
-    index = persistence.load_observation_index(_obs_path(repo_dir))
-    assert index.keys == persistence.read_observation_keys(_obs_path(repo_dir))
+    index = persistence.load_observation_index(_obs_path(repo_dir).sources)
+    assert index.keys == persistence.read_observation_keys(_obs_path(repo_dir).sources)
 
     result, telemetry, _ = _run_scan(repo_dir, monkeypatch, n_games=3, run_id="optimized")
     assert result.written == 0, "optimized scan re-wrote rows the legacy writer already stored"
-    assert _obs_path(repo_dir).read_bytes() == legacy_bytes
+    assert _obs_path(repo_dir).bytes() == legacy_bytes
     assert telemetry.history_load_count == 1
 
 

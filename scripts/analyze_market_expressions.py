@@ -55,7 +55,7 @@ def main() -> int:
     args = parser.parse_args()
 
     started = time.perf_counter()
-    obs_path = persistence.canonical_path(
+    obs_path = persistence.corpus_sources(
         args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
     )
     loaded = load_contract_snapshots(
@@ -182,7 +182,9 @@ def main() -> int:
         "generated_at": datetime.now(UTC).isoformat(),
         "expression_code_version": EXPRESSION_CODE_VERSION,
         "season": args.season,
-        "observations_path": str(obs_path),
+        "observations_path": persistence.corpus_identifier(
+            args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
+        ),
         "runtime_seconds": round(time.perf_counter() - started, 4),
         "corpus": {
             "rows_read": loaded.rows_read,

@@ -11,9 +11,9 @@ test.
 ## 1. Architecture
 
 ```
-observations/{season}.jsonl  ─┐
+observations/{season}/*.jsonl  ─┐
                               ├─► analytics.dataset ─► AnalysisRow[] ─► slices ─► report ─► JSON/CSV/MD
-attributions/{season}.jsonl  ─┘
+attributions/{season}/*.jsonl  ─┘
 ```
 
 | Module | Responsibility |

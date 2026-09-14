@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, "tests")
+import corpus_helpers  # noqa: E402
 from research_factories import make_corpus_row, make_observation  # noqa: E402
 
 from cfb_edge_finder.research import persistence
@@ -46,14 +47,14 @@ def test_estimated_season_row_count_is_documented_and_bounded():
 
 
 def test_a_realistic_single_week_appends_quickly(tmp_path: Path):
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
     rows = [
         make_corpus_row(observation=make_observation(kalshi_market_ticker=f"MKT-{g}-{c}"))
         for g in range(GAMES_PER_WEEK)
         for c in range(CONTRACTS_PER_GAME // 10)  # 15 contracts/game -- one week's realistic single-bucket batch
     ]
     start = time.perf_counter()
-    result = persistence.append_observation_rows(path, rows)
+    result = persistence.append_observation_rows(path.base, path.season, rows)
     elapsed = time.perf_counter() - start
 
     assert result.written == len(rows)
@@ -63,12 +64,12 @@ def test_a_realistic_single_week_appends_quickly(tmp_path: Path):
 
 
 def test_repeated_dedup_lookup_scales_reasonably_not_quadratically(tmp_path: Path):
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
 
     def _append_batch(n: int) -> float:
         rows = [make_corpus_row(observation=make_observation(kalshi_market_ticker=f"BATCH-{n}-{i}")) for i in range(n)]
         start = time.perf_counter()
-        persistence.append_observation_rows(path, rows)
+        persistence.append_observation_rows(path.base, path.season, rows)
         return time.perf_counter() - start
 
     small_elapsed = _append_batch(500)
@@ -82,13 +83,13 @@ def test_repeated_dedup_lookup_scales_reasonably_not_quadratically(tmp_path: Pat
 
 
 def test_file_size_estimate_stays_compact(tmp_path: Path):
-    path = persistence.canonical_path(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
     rows = [
         make_corpus_row(observation=make_observation(kalshi_market_ticker=f"MKT-{i}"))
         for i in range(1000)
     ]
-    persistence.append_observation_rows(path, rows)
-    bytes_per_row = path.stat().st_size / len(rows)
+    persistence.append_observation_rows(path.base, path.season, rows)
+    bytes_per_row = path.total_bytes() / len(rows)
     # Measured (not assumed): a full row -- KalshiResearchObservation plus
     # DataVersionManifest/provenance/uncertainty -- runs ~2.2KB as compact
     # JSON. This is genuinely compact (no raw Kalshi payload, no repeated

@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from cfb_edge_finder.research import heartbeat as hb
+from cfb_edge_finder.research import shards
 from cfb_edge_finder.research.timing import CLOSING_WINDOW_MINUTES
 from cfb_edge_finder.research.trigger import (
     CLOSING_GUARD_LEAD_MINUTES,
@@ -224,7 +225,7 @@ def _beat(trigger, finished, succeeded=True):
 
 def test_heartbeat_round_trip(tmp_path):
     hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW))
-    rows = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))
+    rows = hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))
     assert len(rows) == 1
     assert rows[0]["trigger_type"] == "GITHUB_SCHEDULE"
 
@@ -234,7 +235,7 @@ def test_last_successful_run_is_per_trigger(tmp_path):
     hour ago. An overall figure alone would look perfectly healthy."""
     hb.append_heartbeat(tmp_path, 2026, _beat("EXTERNAL_SCHEDULE", NOW - timedelta(hours=1)))
     hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW - timedelta(minutes=1)))
-    rows = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))
+    rows = hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))
     assert hb.last_successful_run(rows) == NOW - timedelta(minutes=1)
     assert hb.last_successful_run(rows, "EXTERNAL_SCHEDULE") == NOW - timedelta(hours=1)
     assert hb.last_successful_run(rows, "MANUAL") is None
@@ -242,7 +243,7 @@ def test_last_successful_run_is_per_trigger(tmp_path):
 
 def test_failed_runs_do_not_count_as_success(tmp_path):
     hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW, succeeded=False))
-    rows = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))
+    rows = hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))
     assert hb.last_successful_run(rows) is None
 
 
@@ -255,19 +256,20 @@ def test_heartbeat_write_failure_is_swallowed(tmp_path):
 
 
 def test_malformed_heartbeat_lines_are_skipped(tmp_path):
-    path = hb.heartbeat_path(tmp_path, 2026)
-    path.parent.mkdir(parents=True)
-    path.write_text('{"broken\n' + _beat("GITHUB_SCHEDULE", NOW).to_json() + "\n", encoding="utf-8")
-    assert len(hb.load_heartbeats(path)) == 1
+    shard = shards.shard_path(
+        tmp_path / "data" / "research", shards.HEARTBEATS_SUBDIR, 2026, "2026-09-06", 1
+    )
+    shard.parent.mkdir(parents=True)
+    shard.write_text('{"broken\n' + _beat("GITHUB_SCHEDULE", NOW).to_json() + "\n", encoding="utf-8")
+    assert len(hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))) == 1
 
 
 def test_heartbeats_are_trimmed(tmp_path):
     for i in range(30):
         hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW + timedelta(minutes=i)))
-    path = hb.heartbeat_path(tmp_path, 2026)
-    removed = hb.trim_heartbeats(path, max_rows=10)
+    removed = hb.trim_heartbeats(tmp_path, 2026, max_rows=10)
     assert removed == 20
-    assert len(hb.load_heartbeats(path)) == 10
+    assert len(hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))) == 10
 
 
 def test_heartbeat_carries_no_market_prices():
@@ -882,7 +884,7 @@ def test_heartbeat_carries_positive_schedule_telemetry(tmp_path):
         next_supported_kickoff="2026-08-29T16:00:00+00:00",
     )
     hb.append_heartbeat(tmp_path, 2026, beat)
-    row = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))[0]
+    row = hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))[0]
     assert row["schedule_fetch_success"] is True
     assert row["total_schedule_games"] == 3550
     assert row["next_supported_kickoff"] == "2026-08-29T16:00:00+00:00"
@@ -981,7 +983,7 @@ def test_external_and_github_schedule_are_tracked_separately(tmp_path):
     GitHub cron happens to have fired recently, and vice versa."""
     hb.append_heartbeat(tmp_path, 2026, _beat("EXTERNAL_SCHEDULE", NOW - timedelta(hours=3)))
     hb.append_heartbeat(tmp_path, 2026, _beat("GITHUB_SCHEDULE", NOW - timedelta(minutes=2)))
-    rows = hb.load_heartbeats(hb.heartbeat_path(tmp_path, 2026))
+    rows = hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))
     assert hb.last_successful_run(rows, "EXTERNAL_SCHEDULE") == NOW - timedelta(hours=3)
     assert hb.last_successful_run(rows, "GITHUB_SCHEDULE") == NOW - timedelta(minutes=2)
     assert hb.last_successful_run(rows) == NOW - timedelta(minutes=2)

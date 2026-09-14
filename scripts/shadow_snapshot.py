@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from cfb_edge_finder.modeling.leakage import AsOf  # noqa: E402
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 from cfb_edge_finder.research.preseason.corpus import build_feature_tables, load_cache  # noqa: E402
 from cfb_edge_finder.research.preseason.shadow_analytics import (  # noqa: E402
     EvidenceState,
@@ -39,17 +40,13 @@ from cfb_edge_finder.research.preseason.shadow_spec import (  # noqa: E402
 )
 
 
-def load_observations(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def load_observations(source) -> list[dict]:
     out = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                try:
-                    out.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
     return out
 
 
@@ -86,7 +83,9 @@ def main() -> int:
     target = AsOf(season=args.season, week=1)
 
     observations = load_observations(
-        args.data_repo_dir / "data" / "research" / "observations" / f"{args.season}.jsonl"
+        persistence.corpus_sources(
+            args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
+        )
     )
 
     print("=" * 96)

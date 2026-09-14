@@ -23,6 +23,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, "tests")
+import corpus_helpers  # noqa: E402
 from research_factories import make_data_versions  # noqa: E402
 
 from cfb_edge_finder.kalshi.game_mapping import KalshiGameMappingResult
@@ -100,9 +101,9 @@ def _capture(now: datetime, label: str, cached_projection) -> object:
 
 def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
     base_dir = tmp_path / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, 2026)
-    settle_path = persistence.canonical_path(base_dir, persistence.SETTLEMENTS_SUBDIR, 2026)
-    state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, 2026)
+    obs_path = corpus_helpers.ref(base_dir, persistence.OBSERVATIONS_SUBDIR, 2026)
+    settle_path = corpus_helpers.ref(base_dir, persistence.SETTLEMENTS_SUBDIR, 2026)
+    state_path = corpus_helpers.ref(base_dir, persistence.CAPTURE_STATE_SUBDIR, 2026)
 
     # 1-4: schedule discovery / market discovery / mapping / model
     # projection are all represented by MAPPING + cached_projection above
@@ -126,16 +127,16 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
                 game_status_at_capture="scheduled", schedule_source_timestamp=now,
                 data_versions=make_data_versions(model_version=MODEL_VERSION.model_version), run_id="rehearsal-1",
             )
-            result = persistence.append_observation_rows(obs_path, [row])
+            result = persistence.append_observation_rows(obs_path.base, obs_path.season, [row])
             assert result.written == 1
             written_keys.append(row.observation_key)
             already_captured.add(label)
 
-    assert len(persistence.read_observation_rows(obs_path)) == len(written_keys)
+    assert len(persistence.read_observation_rows(obs_path.sources)) == len(written_keys)
 
     # 7: duplicate retry -- re-appending the SAME rows must not duplicate.
-    all_rows = persistence.read_observation_rows(obs_path)
-    retry_result = persistence.append_observation_rows(obs_path, all_rows)
+    all_rows = persistence.read_observation_rows(obs_path.sources)
+    retry_result = persistence.append_observation_rows(obs_path.base, obs_path.season, all_rows)
     assert retry_result.written == 0
     assert retry_result.skipped_duplicate == len(all_rows)
 
@@ -145,8 +146,7 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
         kickoff_utc=KICKOFF, now=past_t60, already_captured_labels=already_captured
     )
     assert states["T_60"] == CaptureState.MISSED_WINDOW
-    persistence.append_capture_state_rows(
-        state_path,
+    persistence.append_capture_state_rows(state_path.base, state_path.season,
         [
             CaptureStateRecord(
                 game_id=GAME_ID, kalshi_market_ticker=_moneyline_market()["ticker"], timing_label="T_60",
@@ -154,7 +154,7 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
             )
         ],
     )
-    assert len(persistence.read_capture_state_rows(state_path)) == 1
+    assert len(persistence.read_capture_state_rows(state_path.sources)) == 1
 
     # 9: closing capture -- 4 minutes before kickoff.
     closing_now = KICKOFF - timedelta(minutes=4)
@@ -164,7 +164,7 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
         game_status_at_capture="scheduled", schedule_source_timestamp=closing_now,
         data_versions=make_data_versions(model_version=MODEL_VERSION.model_version), run_id="rehearsal-1",
     )
-    persistence.append_observation_rows(obs_path, [closing_row])
+    persistence.append_observation_rows(obs_path.base, obs_path.season, [closing_row])
 
     candidate = closing.ClosingCandidate(
         market_ticker=closing_observation.kalshi_market_ticker, captured_at=closing_now,
@@ -183,7 +183,7 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
         game_id=GAME_ID, season=2026, captured_at=KICKOFF + timedelta(hours=4),
     )
     settlement = settle_market(closing_observation, game_result, settled_at=KICKOFF + timedelta(hours=4))
-    persistence.append_settlement_rows(settle_path, [settlement])
+    persistence.append_settlement_rows(settle_path.base, settle_path.season, [settlement])
     assert settlement.status.value == "settled"
     assert settlement.derived_contract_settlement is not None
 
@@ -202,8 +202,8 @@ def test_full_lifecycle_rehearsal(tmp_path: Path, cached_projection):
     )
 
     # 12: weekly report.
-    all_rows = persistence.read_observation_rows(obs_path)
-    settlement_rows = persistence.read_settlement_rows(settle_path)
+    all_rows = persistence.read_observation_rows(obs_path.sources)
+    settlement_rows = persistence.read_settlement_rows(settle_path.sources)
     report = reporting.build_weekly_report(
         season=2026, week_label="wk01", rows=all_rows, settlement_rows=settlement_rows,
         generated_at=KICKOFF + timedelta(hours=5),
