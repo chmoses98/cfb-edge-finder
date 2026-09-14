@@ -19,6 +19,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as scanner  # noqa: E402
 from scan_harness import (  # noqa: E402
     NOW,
@@ -65,10 +66,10 @@ def _scan(repo_dir: Path, monkeypatch, *, hours_ahead: float, n_games: int = 2, 
 
 
 def _rows(repo_dir: Path) -> list[dict]:
-    p = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    p = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     if not p.exists():
         return []
-    return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    return [json.loads(x) for x in p.text().splitlines() if x.strip()]
 
 
 def _labels(repo_dir: Path) -> set[str]:
@@ -191,15 +192,15 @@ def test_reschedule_leaves_prior_snapshots_immutable(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _scan(repo, monkeypatch, hours_ahead=6.0, run_id="before")
-    before_bytes = persistence.canonical_path(
+    before_bytes = corpus_helpers.ref(
         repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON
-    ).read_bytes()
+    ).bytes()
     assert len(before_bytes) > 0
 
     # Game moves 24h later: new labels resolve against the NEW kickoff,
     # and nothing already written may change.
     _scan(repo, monkeypatch, hours_ahead=30.0, run_id="after-reschedule")
-    after = persistence.canonical_path(repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON).read_bytes()
+    after = corpus_helpers.ref(repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON).bytes()
     assert after.startswith(before_bytes), "reschedule rewrote or reordered existing snapshots"
 
 

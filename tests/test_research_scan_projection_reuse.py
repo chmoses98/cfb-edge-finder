@@ -19,6 +19,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as scanner  # noqa: E402
 from scan_harness import (  # noqa: E402
     NOW,
@@ -61,10 +62,10 @@ def _scan(repo_dir: Path, monkeypatch, *, n_games: int, contracts_per_ladder: in
         report=report,
         telemetry=telemetry,
     )
-    path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     rows = [
         __import__("json").loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
+        for line in path.text().splitlines()
         if line.strip()
     ]
     return cache, telemetry, report, rows

@@ -71,13 +71,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 from cfb_edge_finder.decision.expression_selection import EXECUTABLE_MARKET_STATUSES
 from cfb_edge_finder.decision.report import assert_vocabulary_clean
 from cfb_edge_finder.expression.corpus import load_contract_snapshots
 from cfb_edge_finder.expression.economics import ExpressionEconomics
 from cfb_edge_finder.expression.grouping import ContractSnapshot, build_universe
+from cfb_edge_finder.research import shards
 from cfb_edge_finder.research.preseason.shadow_contract_pricing import (
     PROBABILITY_SEMANTICS_VERSION,
 )
@@ -270,7 +270,7 @@ def _describe(snapshot: ContractSnapshot, side: Side) -> str:
     return f"{semantics.market_ticker} -- {side.value.upper()}"
 
 
-def _load_shadow_probability_map(shadow_path: Path) -> tuple[dict[str, dict], int, int]:
+def _load_shadow_probability_map(shadow) -> tuple[dict[str, dict], int, int]:
     """observation_key -> the probability-semantics-safe shadow row.
 
     ONLY rows stamped with the contract-oriented v2 probability semantics
@@ -280,26 +280,20 @@ def _load_shadow_probability_map(shadow_path: Path) -> tuple[dict[str, dict], in
     """
     eligible: dict[str, dict] = {}
     excluded_pre_v2 = 0
-    if not shadow_path.exists():
-        return eligible, 0, 0
-    with shadow_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            key = row.get("observation_key")
-            if not isinstance(key, str):
-                continue
-            if row.get("probability_semantics_version") != PROBABILITY_SEMANTICS_VERSION:
-                excluded_pre_v2 += 1
-                continue
-            existing = eligible.get(key)
-            if existing is None or str(row.get("captured_at") or "") > str(existing.get("captured_at") or ""):
-                eligible[key] = row
+    for _path, line in shards.iter_raw_lines(shadow):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        key = row.get("observation_key")
+        if not isinstance(key, str):
+            continue
+        if row.get("probability_semantics_version") != PROBABILITY_SEMANTICS_VERSION:
+            excluded_pre_v2 += 1
+            continue
+        existing = eligible.get(key)
+        if existing is None or str(row.get("captured_at") or "") > str(existing.get("captured_at") or ""):
+            eligible[key] = row
     return eligible, len(eligible), excluded_pre_v2
 
 
@@ -312,8 +306,8 @@ def _oriented(probability: float | None, side: Side) -> float | None:
 
 
 def build_paper_card(
-    observations_path: Path,
-    shadow_path: Path,
+    observations,
+    shadow,
     *,
     now: datetime,
     limit: int = DEFAULT_LIMIT,
@@ -322,7 +316,7 @@ def build_paper_card(
     backfilled; every number is carried from what was genuinely captured."""
     card = PaperCard(generated_at=now.isoformat(), limit=limit)
 
-    load = load_contract_snapshots(observations_path)
+    load = load_contract_snapshots(observations)
     card.tickers_considered = load.tickers_seen
 
     pregame: list[ContractSnapshot] = []
@@ -339,7 +333,7 @@ def build_paper_card(
     universe = build_universe(pregame)
     by_ticker = {s.semantics.market_ticker: s for s in pregame}
 
-    shadow_map, shadow_eligible, shadow_excluded = _load_shadow_probability_map(shadow_path)
+    shadow_map, shadow_eligible, shadow_excluded = _load_shadow_probability_map(shadow)
     card.shadow_rows_probability_eligible = shadow_eligible
     card.shadow_rows_excluded_pre_v2_semantics = shadow_excluded
 

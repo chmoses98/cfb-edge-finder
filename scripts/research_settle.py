@@ -43,12 +43,12 @@ def _settleable_game_ids(repo_dir: Path, season: int) -> set[str]:
     """The games whose observations this run could settle -- what the
     fallback provider needs results for. Same eligibility filter
     `_apply_settle` uses (family + model_probability present)."""
-    obs_path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season)
-    if not obs_path.exists():
-        return set()
+    obs_sources = persistence.corpus_sources(
+        repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season
+    )
     return {
         row.observation.game_id
-        for row in persistence.read_observation_rows(obs_path)
+        for row in persistence.read_observation_rows(obs_sources)
         if row.observation.game_id
         and row.observation.family is not None
         and row.observation.model_probability is not None
@@ -59,10 +59,9 @@ def _apply_settle(
     repo_dir: Path, *, season: int, results_by_game_id: dict[str, GameResult], now: datetime
 ) -> persistence.AppendResult:
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    settle_path = persistence.canonical_path(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
+    obs_sources = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
 
-    rows = persistence.read_observation_rows(obs_path)
+    rows = persistence.read_observation_rows(obs_sources)
     by_game: dict[str, list] = {}
     for row in rows:
         if row.observation.game_id:
@@ -82,7 +81,7 @@ def _apply_settle(
                 continue
             settlements.append(settle_market(row.observation, result, settled_at=now))
 
-    return persistence.append_settlement_rows(settle_path, settlements)
+    return persistence.append_settlement_rows(base_dir, season, settlements)
 
 
 def main() -> int:

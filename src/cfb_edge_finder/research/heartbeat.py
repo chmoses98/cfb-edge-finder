@@ -9,9 +9,15 @@ Deliberately NOT recorded here: prices, probabilities, per-market rows,
 anything a research conclusion could be drawn from. A heartbeat says how
 many markets were seen, never what they were quoted at.
 
-Append-only, same as the corpus, and written to its own file so a
-heartbeat write can never interleave with or corrupt an observation
-write.
+Append-only, same as the corpus, and written to its own family
+directory so a heartbeat write can never interleave with or corrupt an
+observation write. Sharded by the UTC date of `invoked_at` on the same
+rule as every other family (research.shards) -- the season monolith this
+used to be is exactly what hit GitHub's blob limit for `observations`.
+
+Heartbeats are the ONE family with no dedup key: a run that repeats an
+earlier run's field values is still a distinct invocation, so rows are
+appended unconditionally and `trim_heartbeats` bounds growth instead.
 """
 
 from __future__ import annotations
@@ -20,6 +26,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+from cfb_edge_finder.research import shards
 
 HEARTBEAT_SCHEMA_VERSION = "research_heartbeat_v1"
 
@@ -103,32 +111,41 @@ class Heartbeat:
         return json.dumps(asdict(self), sort_keys=True, separators=(",", ":"))
 
 
-def heartbeat_path(repo_dir: Path, season: int) -> Path:
-    return repo_dir / "data" / "research" / "heartbeats" / f"{season}.jsonl"
+def heartbeat_base_dir(repo_dir: Path) -> Path:
+    return repo_dir / "data" / "research"
 
 
-def append_heartbeat(repo_dir: Path, season: int, beat: Heartbeat) -> Path:
-    """Append one heartbeat. Never raises into the caller's control flow:
-    a telemetry failure must not fail a collection run that otherwise
-    succeeded, because that would turn an observability problem into a
-    data-loss problem."""
-    path = heartbeat_path(repo_dir, season)
+def heartbeat_sources(repo_dir: Path, season: int) -> list[Path]:
+    """Every file holding this season's heartbeats -- the legacy
+    `{season}.jsonl` monolith while it still exists, then the date
+    shards in chronological order."""
+    return shards.source_paths(heartbeat_base_dir(repo_dir), shards.HEARTBEATS_SUBDIR, season)
+
+
+def append_heartbeat(repo_dir: Path, season: int, beat: Heartbeat) -> list[Path]:
+    """Append one heartbeat to its UTC-date shard. Never raises into the
+    caller's control flow: a telemetry failure must not fail a collection
+    run that otherwise succeeded, because that would turn an
+    observability problem into a data-loss problem. Returns the files
+    written (empty on a swallowed failure)."""
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(beat.to_json() + "\n")
+        written = shards.append_lines(
+            heartbeat_base_dir(repo_dir),
+            shards.HEARTBEATS_SUBDIR,
+            season,
+            [(shards.shard_date_for(asdict(beat), shards.HEARTBEATS_SUBDIR), beat.to_json())],
+        )
     except OSError:
-        return path
-    return path
-
-
-def load_heartbeats(path: Path) -> list[dict]:
-    if not path.exists():
         return []
+    return list(written)
+
+
+def load_heartbeats(source) -> list[dict]:
+    """Accepts a single file (a legacy monolith, or one a workflow
+    materialised with `git show`), a shard directory, or the list from
+    `heartbeat_sources`."""
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
+    for _path, line in shards.iter_raw_lines(source):
         try:
             rows.append(json.loads(line))
         except json.JSONDecodeError:
@@ -136,15 +153,36 @@ def load_heartbeats(path: Path) -> list[dict]:
     return rows
 
 
-def trim_heartbeats(path: Path, max_rows: int = MAX_HEARTBEAT_ROWS) -> int:
-    """Keep only the newest `max_rows`. Returns rows removed."""
-    rows = load_heartbeats(path)
-    if len(rows) <= max_rows:
+def trim_heartbeats(repo_dir: Path, season: int, max_rows: int = MAX_HEARTBEAT_ROWS) -> int:
+    """Keep only the newest `max_rows` ACROSS the season, oldest shards
+    dropped first. Returns rows removed.
+
+    Shard-aware on purpose: trimming by rewriting one file would have
+    silently stopped bounding anything once the ledger was sharded. Whole
+    shards that fall entirely outside the window are removed and at most
+    one boundary shard is rewritten; newer shards are never touched, so
+    already-pushed blobs stay byte-stable."""
+    base = heartbeat_base_dir(repo_dir)
+    paths = shards.source_paths(base, shards.HEARTBEATS_SUBDIR, season)
+    counts = [(path, sum(1 for _ in shards.iter_raw_lines(path))) for path in paths]
+    total = sum(count for _path, count in counts)
+    if total <= max_rows:
         return 0
-    keep = rows[-max_rows:]
-    body = "".join(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n" for r in keep)
-    path.write_text(body, encoding="utf-8")
-    return len(rows) - len(keep)
+
+    to_drop = total - max_rows
+    removed = 0
+    for path, count in counts:
+        if removed >= to_drop:
+            break
+        if count <= to_drop - removed:
+            path.unlink()
+            removed += count
+            continue
+        keep_from = to_drop - removed
+        kept = [line for _p, line in shards.iter_raw_lines(path)][keep_from:]
+        path.write_text("".join(line + "\n" for line in kept), encoding="utf-8")
+        removed += keep_from
+    return removed
 
 
 def last_successful_run(rows: list[dict], trigger_type: str | None = None) -> datetime | None:

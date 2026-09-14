@@ -147,11 +147,24 @@ jobs:
         run: |
           set -euo pipefail
           CORPUS_DIR="$RUNNER_TEMP/corpus"
-          mkdir -p "$CORPUS_DIR/data/research/observations"
           git fetch origin research-data --depth=1 || true
-          git show "origin/research-data:data/research/observations/${SEASON}.jsonl" \
-            > "$CORPUS_DIR/data/research/observations/${SEASON}.jsonl" 2>/dev/null \
-            || echo "(no existing corpus for season ${SEASON}; validating against an empty corpus)"
+          # The corpus is SHARDED by UTC date (research/shards.py), so a
+          # single `git show ...:{SEASON}.jsonl` no longer names it. Copy
+          # out every tracked file under the family instead: that is one
+          # command for the legacy monolith AND the shard set, so it keeps
+          # working across the migration in both directions.
+          materialise() {
+            local kind="$1"
+            mkdir -p "$CORPUS_DIR/data/research/$kind"
+            git ls-tree -r --name-only "origin/research-data" -- "data/research/$kind" \
+              2>/dev/null | while IFS= read -r tracked; do
+                [ -n "$tracked" ] || continue
+                mkdir -p "$CORPUS_DIR/$(dirname "$tracked")"
+                git show "origin/research-data:$tracked" > "$CORPUS_DIR/$tracked"
+              done || true
+          }
+          materialise observations
+          materialise cfbd_access
           python scripts/validate_collection_schedule.py \
             --schedule-season "$SEASON" \
             --data-repo-dir "$CORPUS_DIR"
@@ -182,10 +195,17 @@ jobs:
           # load_heartbeats(); omitting them made every manual readiness run
           # report the false HIGH alarm "no successful collector run has
           # ever been recorded" against a corpus that genuinely had them.
+          # Sharded corpus: copy every tracked file under each family
+          # rather than one `{SEASON}.jsonl` blob (see the materialise
+          # note in the step above).
           for kind in observations settlements attributions heartbeats; do
             mkdir -p "$CORPUS_DIR/data/research/$kind"
-            git show "origin/research-data:data/research/$kind/${SEASON}.jsonl" \
-              > "$CORPUS_DIR/data/research/$kind/${SEASON}.jsonl" 2>/dev/null || true
+            git ls-tree -r --name-only "origin/research-data" -- "data/research/$kind" \
+              2>/dev/null | while IFS= read -r tracked; do
+                [ -n "$tracked" ] || continue
+                mkdir -p "$CORPUS_DIR/$(dirname "$tracked")"
+                git show "origin/research-data:$tracked" > "$CORPUS_DIR/$tracked"
+              done || true
           done
           python scripts/week1_readiness.py \
             --data-repo-dir "$CORPUS_DIR" \

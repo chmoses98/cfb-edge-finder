@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from cfb_edge_finder.research import persistence, timing
+from cfb_edge_finder.research import persistence, shards, timing
 from cfb_edge_finder.schemas.capture_state import (
     TERMINAL_CAPTURE_STATES,
     CaptureState,
@@ -73,40 +73,35 @@ def _parse_iso(value) -> datetime | None:
     return parsed if parsed.tzinfo is not None else None
 
 
-def _ticker_facts_from_ledger(observations_path: Path) -> dict[str, _TickerFacts]:
-    """One lenient pass over the raw ledger: per ticker, the game, the
+def _ticker_facts_from_ledger(observations: persistence.PathSource) -> dict[str, _TickerFacts]:
+    """One lenient pass over the raw ledger -- every date shard plus any
+    legacy monolith, in chronological order: per ticker, the game, the
     LAST-recorded kickoff (latest capture wins -- reschedules recorded by
     later captures supersede earlier kickoffs), and the labels genuinely
     captured. Malformed lines are skipped exactly as the corpus loaders
     skip them."""
     facts: dict[str, dict] = {}
-    if not observations_path.exists():
-        return {}
-    with observations_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            observation = row.get("observation") or {}
-            ticker = observation.get("kalshi_market_ticker")
-            game_id = observation.get("game_id")
-            if not isinstance(ticker, str) or not isinstance(game_id, str):
-                continue
-            label = (observation.get("snapshot_timing") or {}).get("label")
-            captured_at = str(observation.get("captured_at") or "")
-            entry = facts.setdefault(
-                ticker, {"game_id": game_id, "kickoff": None, "kick_seen_at": "", "labels": set()}
-            )
-            if isinstance(label, str):
-                entry["labels"].add(label)
-            kickoff = _parse_iso(row.get("kickoff_utc_at_capture"))
-            if kickoff is not None and captured_at >= entry["kick_seen_at"]:
-                entry["kickoff"] = kickoff
-                entry["kick_seen_at"] = captured_at
+    for _path, line in shards.iter_raw_lines(observations):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        observation = row.get("observation") or {}
+        ticker = observation.get("kalshi_market_ticker")
+        game_id = observation.get("game_id")
+        if not isinstance(ticker, str) or not isinstance(game_id, str):
+            continue
+        label = (observation.get("snapshot_timing") or {}).get("label")
+        captured_at = str(observation.get("captured_at") or "")
+        entry = facts.setdefault(
+            ticker, {"game_id": game_id, "kickoff": None, "kick_seen_at": "", "labels": set()}
+        )
+        if isinstance(label, str):
+            entry["labels"].add(label)
+        kickoff = _parse_iso(row.get("kickoff_utc_at_capture"))
+        if kickoff is not None and captured_at >= entry["kick_seen_at"]:
+            entry["kickoff"] = kickoff
+            entry["kick_seen_at"] = captured_at
     return {
         ticker: _TickerFacts(
             game_id=entry["game_id"],
@@ -133,8 +128,8 @@ def _ticker_facts_from_index(index) -> dict[str, _TickerFacts]:
 
 
 def build_reconciliation_rows(
-    observations_path: Path,
-    capture_state_path: Path,
+    base_dir: Path,
+    season: int,
     *,
     now: datetime,
     run_id: str | None,
@@ -147,11 +142,19 @@ def build_reconciliation_rows(
     already-loaded ObservationIndex) the ledger is NOT re-read; without
     one (the fail-closed path, which loads no index) a single lenient
     pass is made here."""
-    facts = _ticker_facts_from_index(index) if index is not None else _ticker_facts_from_ledger(observations_path)
+    facts = (
+        _ticker_facts_from_index(index)
+        if index is not None
+        else _ticker_facts_from_ledger(
+            persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+        )
+    )
     if not facts:
         return []
 
-    existing = persistence.read_capture_state_rows(capture_state_path) if capture_state_path.exists() else []
+    existing = persistence.read_capture_state_rows(
+        persistence.corpus_sources(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+    )
     terminal: set[tuple[str, str]] = {
         (row.kalshi_market_ticker, row.timing_label)
         for row in existing
@@ -192,8 +195,8 @@ def build_reconciliation_rows(
 
 
 def reconcile(
-    observations_path: Path,
-    capture_state_path: Path,
+    base_dir: Path,
+    season: int,
     *,
     now: datetime,
     run_id: str | None,
@@ -201,8 +204,8 @@ def reconcile(
 ) -> int:
     """Append the reconciliation rows; returns how many were genuinely
     new (the dedup key absorbs re-runs)."""
-    rows = build_reconciliation_rows(observations_path, capture_state_path, now=now, run_id=run_id, index=index)
+    rows = build_reconciliation_rows(base_dir, season, now=now, run_id=run_id, index=index)
     if not rows:
         return 0
-    result = persistence.append_capture_state_rows(capture_state_path, rows)
+    result = persistence.append_capture_state_rows(base_dir, season, rows)
     return result.written

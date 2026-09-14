@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
 import capture_kalshi_cfb_snapshot as milestone_d  # noqa: E402
+import corpus_helpers  # noqa: E402
 
 from cfb_edge_finder.data.kalshi_client import KalshiClient  # noqa: E402
 from cfb_edge_finder.kalshi.fee_schedule import KALSHI_FEE_SCHEDULE_2026_07_07_TAKER  # noqa: E402
@@ -172,8 +173,8 @@ def _apply_scan(
 
             for market in event_markets:
                 ticker = str(market.get("ticker", ""))
-                obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-                existing_rows = persistence.read_observation_rows(obs_path) if obs_path.exists() else []
+                obs_path = corpus_helpers.ref(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+                existing_rows = persistence.read_observation_rows(obs_path.sources) if obs_path.exists() else []
                 already_captured_for_ticker = {
                     r.observation.snapshot_timing.label
                     for r in existing_rows
@@ -221,7 +222,7 @@ def _apply_scan(
                         data_versions=data_versions,
                         run_id=run_id,
                     )
-                    result = persistence.append_observation_rows(obs_path, [row])
+                    result = persistence.append_observation_rows(obs_path.base, obs_path.season, [row])
                     total_written += result.written
                     total_skipped += result.skipped_duplicate
                     keys_written.extend(result.keys_written)
@@ -259,8 +260,8 @@ def _apply_scan(
                             )
 
     if capture_state_rows:
-        state_path = persistence.canonical_path(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
-        persistence.append_capture_state_rows(state_path, capture_state_rows)
+        state_path = corpus_helpers.ref(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
+        persistence.append_capture_state_rows(state_path.base, state_path.season, capture_state_rows)
 
     report.captures_written += total_written
     report.captures_skipped_already_present += total_skipped

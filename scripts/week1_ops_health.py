@@ -39,8 +39,9 @@ from cfb_edge_finder.decision.ops_health import (  # noqa: E402
     check_natural_data,
     check_safety_locks,
 )
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 from cfb_edge_finder.research.heartbeat import (  # noqa: E402
-    heartbeat_path,
+    heartbeat_sources,
     last_successful_run,
     load_heartbeats,
 )
@@ -80,18 +81,17 @@ def _minutes_since(moment: datetime | None, now: datetime) -> float | None:
     return (now - moment).total_seconds() / 60.0
 
 
-def load_rows(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def load_rows(source) -> list[dict]:
+    """Every row of a corpus family, across whatever files hold it --
+    `source` takes anything `shards.as_source_paths` accepts (a legacy
+    `{season}.jsonl` monolith, a shard directory, or the ordered list
+    from `persistence.corpus_sources`)."""
     rows = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if line:
-                try:
-                    rows.append(json.loads(line))
-                except json.JSONDecodeError:
-                    rows.append({"__malformed__": True})
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            rows.append({"__malformed__": True})
     return rows
 
 
@@ -270,12 +270,13 @@ def main() -> int:
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
     report = OpsHealthReport(generated_at=now)
 
-    heartbeats = load_heartbeats(heartbeat_path(args.data_repo_dir, args.season))
+    heartbeats = load_heartbeats(heartbeat_sources(args.data_repo_dir, args.season))
     protection = assess_protection(heartbeats, now)
     report.checks.append(check_collection_protection(protection))
 
+    base_dir = args.data_repo_dir / "data" / "research"
     rows = load_rows(
-        args.data_repo_dir / "data" / "research" / "observations" / f"{args.season}.jsonl"
+        persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, args.season)
     )
     duplicates, malformed, non_prospective, total = corpus_counts(rows)
     report.checks.append(
@@ -292,7 +293,7 @@ def main() -> int:
     report.checks.append(check_safety_locks(**probe_safety_locks()))
 
     settlements = load_rows(
-        args.data_repo_dir / "data" / "research" / "settlements" / f"{args.season}.jsonl"
+        persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, args.season)
     )
     # ONLY status == "settled" counts. A settlement row exists for every
     # market the settler has looked at, including ones whose game has not

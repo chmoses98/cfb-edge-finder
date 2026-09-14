@@ -18,7 +18,11 @@ experiments share a schema and a file, and the first schema change would
 corrupt the other's evidence. This ledger is its own file, its own
 schema, its own version field:
 
-    data/research/v2_shadow/{season}.jsonl
+    data/research/v2_shadow/{season}/{YYYY-MM-DD}.partNNN.jsonl
+
+(sharded by the UTC date of `captured_at`, on the same rule every other
+research family uses -- see research/shards.py for the GH001 incident
+that ended season monoliths)
 
 *** APPEND-ONLY, DEDUPED ON THE CANONICAL KEY ***
 Each row carries the canonical `observation_key` it shadows, so the two
@@ -35,6 +39,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+from cfb_edge_finder.research import shards
 
 V2_SHADOW_SCHEMA_VERSION = "v2_shadow_observation_v1"
 V2_SHADOW_SUBDIR = "v2_shadow"
@@ -109,53 +115,56 @@ class V2ShadowTelemetry:
         self.unavailable_reasons[key] = self.unavailable_reasons.get(key, 0) + 1
 
 
-def ledger_path(repo_dir: Path, season: int) -> Path:
-    return repo_dir / "data" / "research" / V2_SHADOW_SUBDIR / f"{season}.jsonl"
+def ledger_base_dir(repo_dir: Path) -> Path:
+    return repo_dir / "data" / "research"
+
+
+def ledger_sources(repo_dir: Path, season: int) -> list[Path]:
+    """Every file holding this season's V2 shadow rows -- legacy
+    monolith (while present) then date shards, chronologically."""
+    return shards.source_paths(ledger_base_dir(repo_dir), V2_SHADOW_SUBDIR, season)
 
 
 def dedup_key(observation_key: str, model_version: str) -> str:
     return f"{observation_key}|{model_version}"
 
 
-def load_existing_keys(path: Path) -> set[str]:
-    """Dedup keys already on disk. A malformed line is skipped rather
-    than raised on: a corrupt tail must not stop today's capture."""
+def load_existing_keys(source) -> set[str]:
+    """Dedup keys already on disk, across EVERY shard (and any legacy
+    monolith) -- never just the shard today's rows would land in, or the
+    same canonical observation shadowed on a later date would be written
+    twice. A malformed line is skipped rather than raised on: a corrupt
+    tail must not stop today's capture."""
     keys: set[str] = set()
-    if not path.exists():
-        return keys
     try:
-        with path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                key = row.get("observation_key")
-                version = row.get("v2_model_version")
-                if isinstance(key, str) and isinstance(version, str):
-                    keys.add(dedup_key(key, version))
+        for _path, line in shards.iter_raw_lines(source):
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            key = row.get("observation_key")
+            version = row.get("v2_model_version")
+            if isinstance(key, str) and isinstance(version, str):
+                keys.add(dedup_key(key, version))
     except OSError:
         return keys
     return keys
 
 
-def append_rows(path: Path, rows: list[V2ShadowRow]) -> int:
-    """One appending, fsync'd batch -- the same durability discipline the
-    observation ledger uses. Returns the number of rows written."""
+def append_rows(repo_dir: Path, season: int, rows: list[V2ShadowRow]) -> int:
+    """One appending, fsync'd batch per target shard -- the same
+    durability discipline the observation ledger uses, with each row
+    routed to the UTC date of its own `captured_at`. Returns the number
+    of rows written."""
     if not rows:
         return 0
-    path.parent.mkdir(parents=True, exist_ok=True)
-    import os
-
-    with path.open("a", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(row.to_json() + "\n")
-        handle.flush()
-        os.fsync(handle.fileno())
-    return len(rows)
+    written = shards.append_lines(
+        ledger_base_dir(repo_dir),
+        V2_SHADOW_SUBDIR,
+        season,
+        [(shards.utc_date_of(row.captured_at) or shards.UNDATED_SHARD_DATE, row.to_json()) for row in rows],
+    )
+    return sum(written.values())
 
 
 def is_half_point(threshold: float | None) -> bool | None:

@@ -30,8 +30,8 @@ def _next_report_version(reports_dir: Path, season: int) -> int:
 
 def _apply_report(repo_dir: Path, *, season: int, now: datetime) -> persistence.AppendResult:
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    settle_path = persistence.canonical_path(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
+    obs_path = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    settle_path = persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
 
     rows = persistence.read_observation_rows(obs_path) if obs_path.exists() else []
     settlement_rows = persistence.read_settlement_rows(settle_path) if settle_path.exists() else []

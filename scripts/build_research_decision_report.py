@@ -30,36 +30,36 @@ from cfb_edge_finder.decision.report import (  # noqa: E402
 )
 from cfb_edge_finder.decision.shadow import run_shadow_pipeline  # noqa: E402
 from cfb_edge_finder.expression.corpus import load_contract_snapshots  # noqa: E402
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 
 
-def summarize_corpus(path: Path) -> CorpusSummary:
-    """Counts straight off the ledger. Rows are read once."""
+def summarize_corpus(source) -> CorpusSummary:
+    """Counts straight off the ledger -- every shard plus any legacy
+    monolith. Rows are read once."""
     total = prospective = non_prospective = 0
     versions: Counter[str] = Counter()
-    if not path.exists():
-        return CorpusSummary(corpus_identifier=str(path))
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            total += 1
-            versions[str(row.get("schema_version"))] += 1
-            if row.get("capture_mode") == "PROSPECTIVE":
-                prospective += 1
-            else:
-                non_prospective += 1
+    paths = shards.as_source_paths(source)
+    identifier = str(paths[0].parent) if paths else str(source)
+    if not paths:
+        return CorpusSummary(corpus_identifier=identifier)
+    for _path, line in shards.iter_raw_lines(paths):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        total += 1
+        versions[str(row.get("schema_version"))] += 1
+        if row.get("capture_mode") == "PROSPECTIVE":
+            prospective += 1
+        else:
+            non_prospective += 1
     return CorpusSummary(
         total_rows=total,
         prospective_rows=prospective,
         non_prospective_rows=non_prospective,
         settled_games=0,
         schema_versions=dict(versions),
-        corpus_identifier=str(path),
+        corpus_identifier=identifier,
     )
 
 
@@ -81,7 +81,9 @@ def main() -> int:
 
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
     observations = (
-        args.data_repo_dir / "data" / "research" / "observations" / f"{args.season}.jsonl"
+        persistence.corpus_sources(
+            args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
+        )
     )
 
     corpus = summarize_corpus(observations)

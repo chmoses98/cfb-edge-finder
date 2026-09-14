@@ -47,7 +47,7 @@ from cfb_edge_finder.decision.collection_protection import (  # noqa: E402
     ProtectionState,
     observed_interval_minutes,
 )
-from cfb_edge_finder.research.heartbeat import heartbeat_path, load_heartbeats  # noqa: E402
+from cfb_edge_finder.research.heartbeat import heartbeat_sources, load_heartbeats  # noqa: E402
 from cfb_edge_finder.research.timing import CLOSING_WINDOW_MINUTES  # noqa: E402
 from cfb_edge_finder.research.trigger import CLOSING_GUARD_LEAD_MINUTES  # noqa: E402
 
@@ -66,7 +66,7 @@ def main() -> int:
     args = parser.parse_args()
 
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
-    heartbeats = load_heartbeats(heartbeat_path(args.data_repo_dir, args.season))
+    heartbeats = load_heartbeats(heartbeat_sources(args.data_repo_dir, args.season))
     observations = trigger_observations(heartbeats)
     protection = assess_protection(heartbeats, now)
 

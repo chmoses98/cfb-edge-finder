@@ -28,6 +28,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 from cfb_edge_finder.research.protocol import manifest as protocol_manifest  # noqa: E402
 from cfb_edge_finder.schemas.settlement import MarketSettlementStatus  # noqa: E402
 
@@ -46,17 +47,14 @@ def gap_bucket(gap: float | None) -> str:
     return "out_of_range"
 
 
-def load_jsonl(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def load_jsonl(source) -> list[dict]:
+    """Shard-aware: `source` is anything `shards.as_source_paths` takes."""
     out = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                try:
-                    out.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
     return out
 
 
@@ -70,9 +68,9 @@ def main() -> int:
 
     target: date | None = datetime.fromisoformat(args.date).date() if args.date else None
     base = args.data_repo_dir / "data" / "research"
-    settlements = load_jsonl(base / "settlements" / f"{args.season}.jsonl")
-    attributions = load_jsonl(base / "attributions" / f"{args.season}.jsonl")
-    observations = load_jsonl(base / "observations" / f"{args.season}.jsonl")
+    settlements = load_jsonl(persistence.corpus_sources(base, persistence.SETTLEMENTS_SUBDIR, args.season))
+    attributions = load_jsonl(persistence.corpus_sources(base, persistence.ATTRIBUTIONS_SUBDIR, args.season))
+    observations = load_jsonl(persistence.corpus_sources(base, persistence.OBSERVATIONS_SUBDIR, args.season))
 
     settled = [r for r in settlements if r.get("status") == MarketSettlementStatus.SETTLED.value]
     if target is not None:

@@ -7,6 +7,21 @@ reads the existing corpus, and for representative games at different
 distances from kickoff prints which labels are due now, which are not yet
 due, which are already captured, and when the next one becomes due.
 
+*** IT ALSO DOES NOT SPEND QUOTA IT KNOWS IS GONE ***
+The CFBD free tier is 1,000 metered calls/month shared across CFB and
+CBB, and this diagnostic runs on EVERY manual/conductor dispatch of the
+capture workflow -- ahead of deadline-critical captures. When the durable
+access state (data/research/cfbd_access/state.json, written by the
+collector, which owns probing and recovery) already says the quota is
+exhausted and the next recovery-probe window has not arrived, a live
+schedule fetch here is doomed: it can only produce 429s and retries.
+So the gate is consulted FIRST and the fetch is skipped, exactly as
+scripts/collection_conductor.py already does for its own planning read.
+This costs nothing when access is healthy -- the gate is a local file
+read, never a network call -- and it is a diagnostic decision only:
+nothing about capture eligibility, fail-closed schedule handling, or the
+ESPN fallback changes.
+
 It deliberately does NOT write rows: fabricating a snapshot that is not
 legitimately due would corrupt exactly the research primitive this
 milestone exists to protect. Exact boundary behaviour is covered by
@@ -32,7 +47,12 @@ import capture_kalshi_cfb_snapshot as milestone_d  # noqa: E402
 
 from cfb_edge_finder.config import Settings  # noqa: E402
 from cfb_edge_finder.data.cfbd_client import CFBDAuthError, CFBDClient  # noqa: E402
-from cfb_edge_finder.research import persistence, timing  # noqa: E402
+from cfb_edge_finder.research import (  # noqa: E402
+    cfbd_access,
+    persistence,
+    shards,
+    timing,
+)
 
 CADENCE_MINUTES = 10.0
 
@@ -63,22 +83,43 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = Settings.from_env()
-    if not settings.cfbd_api_key:
-        print("ERROR: CFBD_API_KEY not set.", file=sys.stderr)
-        return 2
 
     now = datetime.now(UTC)
-    client = CFBDClient(api_key=settings.cfbd_api_key)
-    try:
-        games, _classification = milestone_d._fetch_candidate_games(args.schedule_season, client, now)  # noqa: SLF001
-    except CFBDAuthError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
 
-    obs_path = persistence.canonical_path(
-        args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.schedule_season
-    )
-    index = persistence.load_observation_index(obs_path)
+    # *** QUOTA GATE, BEFORE ANY METERED REQUEST ***
+    # Read-only and local: the durable state the collector already
+    # maintains. If it says metered CFBD access is gated off and the next
+    # recovery probe is not yet due, every request below would be a 429,
+    # so do not make them. The diagnostic still runs -- against the
+    # durable corpus, reporting the gate -- rather than pretending the
+    # schedule is unknown for some other reason.
+    access_state = cfbd_access.load_state(args.data_repo_dir)
+    quota_gated = cfbd_access.gate_says_exhausted(access_state, now=now)
+
+    games = []
+    gate_note = ""
+    if quota_gated:
+        gate_note = (
+            f"CFBD GATED ({access_state.get('access_state')}): live schedule fetch skipped; "
+            f"next probe {access_state.get('cfbd_next_probe_at')}, "
+            f"quota resets {access_state.get('cfbd_quota_resets_at')}"
+        )
+        print(gate_note)
+        print("(the collector owns probing and recovery; this read-only check never spends quota)")
+    else:
+        if not settings.cfbd_api_key:
+            print("ERROR: CFBD_API_KEY not set.", file=sys.stderr)
+            return 2
+        client = CFBDClient(api_key=settings.cfbd_api_key)
+        try:
+            games, _classification = milestone_d._fetch_candidate_games(args.schedule_season, client, now)  # noqa: SLF001
+        except CFBDAuthError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
+    base_dir = args.data_repo_dir / "data" / "research"
+    obs_sources = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, args.schedule_season)
+    index = persistence.load_observation_index(obs_sources)
 
     # The scanner's index is keyed by market TICKER (that is what its
     # scheduling lookup needs). This report is per GAME, so fold the
@@ -87,20 +128,17 @@ def main() -> int:
     # own game_id field rather than from string matching.
     captured_by_game: dict[str, set[str]] = {}
     malformed = 0
-    if obs_path.exists():
-        for line in obs_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                malformed += 1
-                continue
-            observation = obj.get("observation") or {}
-            game_id = observation.get("game_id")
-            label = (observation.get("snapshot_timing") or {}).get("label")
-            if isinstance(game_id, str) and isinstance(label, str):
-                captured_by_game.setdefault(game_id, set()).add(label)
+    for _path, line in shards.iter_raw_lines(obs_sources):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            malformed += 1
+            continue
+        observation = obj.get("observation") or {}
+        game_id = observation.get("game_id")
+        label = (observation.get("snapshot_timing") or {}).get("label")
+        if isinstance(game_id, str) and isinstance(label, str):
+            captured_by_game.setdefault(game_id, set()).add(label)
 
     upcoming = [
         g for g in games if g.status == "scheduled" and g.kickoff_utc is not None and g.kickoff_utc > now
@@ -109,6 +147,8 @@ def main() -> int:
 
     print(f"now (UTC)            : {now.isoformat()}")
     print(f"schedule season      : {args.schedule_season}")
+    print(f"cfbd access          : {access_state.get('access_state') or 'no durable state recorded'}"
+          + ("  [live fetch skipped]" if quota_gated else ""))
     print(f"scheduled games      : {len(games)}")
     print(f"upcoming (future KO) : {len(upcoming)}")
     print(f"corpus rows          : {index.row_count}  (loads={index.load_count}, malformed={index.malformed_rows})")
@@ -169,6 +209,12 @@ def main() -> int:
         args.json.write_text(json.dumps(results, indent=2, sort_keys=True), encoding="utf-8")
         print(f"\nWrote {args.json}")
 
+    if quota_gated:
+        print(
+            "\nNOTE: the live slate could not be consulted because CFBD quota is exhausted per the "
+            "durable access state, so per-game rows above cover only what the corpus already knows. "
+            "This is a diagnostic limitation, never a capture decision."
+        )
     print("\nSTATUS: READ-ONLY schedule validation. Nothing was captured, priced, or written.")
     return 0
 

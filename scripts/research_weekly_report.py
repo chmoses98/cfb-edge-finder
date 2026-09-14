@@ -20,8 +20,8 @@ from cfb_edge_finder.research import git_durable_store, persistence, reporting  
 
 def _apply_report(repo_dir: Path, *, season: int, week_label: str, now: datetime) -> persistence.AppendResult:
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    settle_path = persistence.canonical_path(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
+    obs_path = persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    settle_path = persistence.corpus_sources(base_dir, persistence.SETTLEMENTS_SUBDIR, season)
 
     rows = persistence.read_observation_rows(obs_path)
     week_rows = [r for r in rows if r.observation.game_id is not None and f"-{week_label}-" in r.observation.game_id]

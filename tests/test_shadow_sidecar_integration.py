@@ -118,8 +118,8 @@ def test_shadow_persistence_happens_after_canonical_and_is_wrapped():
     """Ordering matters: if the shadow write raised, canonical rows are
     already durable."""
     src = (REPO_ROOT / "scripts" / "research_scan_and_capture.py").read_text()
-    canonical = src.index("append_observation_rows")
-    shadow = src.index("SHADOW_SUBDIR")
+    canonical = src.index("persistence.append_observation_rows(")
+    shadow = src.index("persistence.append_shadow_rows(")
     assert canonical < shadow, "shadow must be written after canonical observations"
 
 
@@ -197,31 +197,49 @@ def test_the_shadow_key_includes_the_model_version():
     assert shadow_key("obs-1", "shadow-future-v2") != key
 
 
+CAPTURED_AT = "2026-09-12T18:00:00+00:00"
+
+
 def test_a_retry_writes_zero_duplicate_rows():
     with tempfile.TemporaryDirectory() as tmp:
-        path = pathlib.Path(tmp) / "shadow" / "2026.jsonl"
-        rows = [{"shadow_key": shadow_key("obs-1"), "game_id": "g"}]
-        first = persistence.append_json_rows(path, rows, key_fn=lambda r: r.get("shadow_key"))
-        second = persistence.append_json_rows(path, rows, key_fn=lambda r: r.get("shadow_key"))
+        base = pathlib.Path(tmp)
+        rows = [{"shadow_key": shadow_key("obs-1"), "game_id": "g", "captured_at": CAPTURED_AT}]
+        first = persistence.append_shadow_rows(base, 2026, rows)
+        second = persistence.append_shadow_rows(base, 2026, rows)
         assert first.written == 1
         assert second.written == 0
         assert second.skipped_duplicate == 1
-        assert len(path.read_text().strip().splitlines()) == 1
+        assert len(persistence.read_shadow_rows(base, 2026)) == 1
 
 
 def test_a_later_shadow_version_coexists_without_overwriting():
     with tempfile.TemporaryDirectory() as tmp:
-        path = pathlib.Path(tmp) / "shadow" / "2026.jsonl"
-        persistence.append_json_rows(
-            path, [{"shadow_key": shadow_key("obs-1"), "v": 1}],
-            key_fn=lambda r: r.get("shadow_key"),
+        base = pathlib.Path(tmp)
+        persistence.append_shadow_rows(
+            base, 2026, [{"shadow_key": shadow_key("obs-1"), "v": 1, "captured_at": CAPTURED_AT}]
         )
-        result = persistence.append_json_rows(
-            path, [{"shadow_key": shadow_key("obs-1", "shadow-future-v2"), "v": 2}],
-            key_fn=lambda r: r.get("shadow_key"),
+        result = persistence.append_shadow_rows(
+            base,
+            2026,
+            [{"shadow_key": shadow_key("obs-1", "shadow-future-v2"), "v": 2, "captured_at": CAPTURED_AT}],
         )
         assert result.written == 1
-        assert len(path.read_text().strip().splitlines()) == 2
+        assert len(persistence.read_shadow_rows(base, 2026)) == 2
+
+
+def test_shadow_rows_dedup_across_date_shards():
+    """The shadow key carries no date, so a row re-derived on a LATER
+    UTC day must still be recognised as a duplicate -- otherwise sharding
+    would silently start duplicating shadow evidence."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = pathlib.Path(tmp)
+        row = {"shadow_key": shadow_key("obs-1"), "v": 1, "captured_at": "2026-09-12T23:59:00+00:00"}
+        later = dict(row, captured_at="2026-09-13T00:01:00+00:00")
+        assert persistence.append_shadow_rows(base, 2026, [row]).written == 1
+        second = persistence.append_shadow_rows(base, 2026, [later])
+        assert second.written == 0
+        assert second.skipped_duplicate == 1
+        assert len(persistence.read_shadow_rows(base, 2026)) == 1
 
 
 def test_shadow_rows_live_in_their_own_file_not_the_observations_file():

@@ -17,6 +17,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import corpus_helpers  # noqa: E402
 import pytest
 import requests
 
@@ -519,9 +520,8 @@ class TestIdentitySources:
 
 
 def _write_observation_ledger(repo_dir: Path, rows) -> Path:
-    obs_path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    obs_path.parent.mkdir(parents=True, exist_ok=True)
-    with obs_path.open("w", encoding="utf-8") as handle:
+    obs_path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    with obs_path.seed_writer() as handle:
         for row in rows:
             handle.write(row.model_dump_json() + "\n")
     return obs_path
@@ -554,7 +554,7 @@ class TestEndToEndSettlement:
     def test_fallback_settles_then_reruns_are_noops_and_ledger_untouched(self, repo_with_preseason_cache):
         repo_dir = repo_with_preseason_cache
         obs_path = self._seed(repo_dir)
-        obs_bytes_before = obs_path.read_bytes()
+        obs_bytes_before = obs_path.bytes()
 
         needed = research_settle._settleable_game_ids(repo_dir, SEASON)
         assert needed == {GAME_ID}
@@ -568,8 +568,8 @@ class TestEndToEndSettlement:
         )
         assert first.written == 3 and first.skipped_duplicate == 0
 
-        settle_path = persistence.canonical_path(repo_dir / "data" / "research", persistence.SETTLEMENTS_SUBDIR, SEASON)
-        settlements = persistence.read_settlement_rows(settle_path)
+        settle_path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.SETTLEMENTS_SUBDIR, SEASON)
+        settlements = persistence.read_settlement_rows(settle_path.sources)
         by_ticker = {s.kalshi_market_ticker: s for s in settlements}
         # EMU won 28-17: home moneyline YES; SAC +5.5 lost by 11: NO; total 45 > 44.5: YES.
         assert by_ticker["KXNCAAFGAME-X-EMU"].derived_contract_settlement is Side.YES
@@ -587,7 +587,7 @@ class TestEndToEndSettlement:
 
         # The prospective observations ledger is BYTE-IDENTICAL -- settlement
         # never edits, backfills, or annotates captured rows.
-        assert obs_path.read_bytes() == obs_bytes_before
+        assert obs_path.bytes() == obs_bytes_before
 
     def test_cfbd_recovery_rerun_re_derives_identical_facts_as_noop(self, repo_with_preseason_cache):
         repo_dir = repo_with_preseason_cache

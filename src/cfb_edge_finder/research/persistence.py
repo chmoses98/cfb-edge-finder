@@ -11,6 +11,29 @@ comfortably as line-oriented, diffable, append-only text, and a dedicated
 reviewed code history entirely. No new infrastructure (bucket,
 credentials, database) is needed for this volume.
 
+*** ONE SHARD PER UTC DATE, NOT ONE FILE PER SEASON ***
+This module used to address one file per family-season
+(`data/research/observations/2026.jsonl`). That monolith grew without
+bound and on 2026-09-14 crossed GitHub's 100 MiB hard blob limit, so
+every durable push -- and therefore every prospective capture -- started
+failing with GH001. Storage is now sharded by the UTC date of the row's
+own canonical timestamp (research.shards), and every function here that
+used to take THE path now takes `(base_dir, season)` and consults
+`shards.source_paths`: the legacy monolith (while it still exists) plus
+every date shard.
+
+Two properties are load-bearing and must not be weakened:
+
+  * DEDUP STAYS GLOBAL. `observation_key` carries no timestamp, so the
+    same logical observation re-derived tomorrow keys identically but
+    dates differently. Every key set / index below is therefore built
+    from ALL shards, never from the one shard a row is about to land in;
+    otherwise sharding would silently start duplicating observations.
+  * READS STILL SEE THE LEGACY FILE. `source_paths` lists the monolith
+    first, so a not-yet-migrated corpus (or one a workflow materialised
+    from an older commit) reads exactly as it always did. Writes never
+    go back to it.
+
 *** THE DEDUP/APPEND MODEL ***
 Each row's `observation_key` (research.identity.observation_key) is
 DETERMINISTIC. `append_rows` here does the in-process half of the safety
@@ -54,6 +77,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+from cfb_edge_finder.research import shards
 from cfb_edge_finder.schemas.attribution import ObservationAttribution
 from cfb_edge_finder.schemas.capture_state import CaptureStateRecord
 from cfb_edge_finder.schemas.corpus_row import ResearchCorpusRow
@@ -61,11 +85,11 @@ from cfb_edge_finder.schemas.settlement import MarketSettlement
 
 T = TypeVar("T")
 
-OBSERVATIONS_SUBDIR = "observations"
-SETTLEMENTS_SUBDIR = "settlements"
-CAPTURE_STATE_SUBDIR = "capture_state"
-ATTRIBUTIONS_SUBDIR = "attributions"
-SHADOW_SUBDIR = "shadow"
+OBSERVATIONS_SUBDIR = shards.OBSERVATIONS_SUBDIR
+SETTLEMENTS_SUBDIR = shards.SETTLEMENTS_SUBDIR
+CAPTURE_STATE_SUBDIR = shards.CAPTURE_STATE_SUBDIR
+ATTRIBUTIONS_SUBDIR = shards.ATTRIBUTIONS_SUBDIR
+SHADOW_SUBDIR = shards.SHADOW_SUBDIR
 """Linked talent-shadow research records. A SEPARATE directory from
 `observations` on purpose: canonical prospective observations stay
 byte-identical and a reader that knows nothing about shadows never sees
@@ -74,8 +98,25 @@ retry dedupes and a future candidate version coexists rather than
 overwriting the evidence this one is collecting."""
 
 
-def canonical_path(base_dir: Path, subdir: str, season: int) -> Path:
-    return base_dir / subdir / f"{season}.jsonl"
+def legacy_monolith_path(base_dir: Path, subdir: str, season: int) -> Path:
+    """The PRE-SHARDING season file. Kept only so migration and the
+    legacy-read path can name it; nothing writes here any more."""
+    return shards.legacy_monolith_path(base_dir, subdir, season)
+
+
+def corpus_sources(base_dir: Path, subdir: str, season: int) -> list[Path]:
+    """Every file a reader of this family-season must consult -- legacy
+    monolith first, then date shards in chronological order. THE
+    replacement for the old `canonical_path`, which named the single
+    file that both readers and writers used."""
+    return shards.source_paths(base_dir, subdir, season)
+
+
+PathSource = Path | Iterable[Path] | None
+"""What every reader below accepts: a single file (a legacy monolith, or
+a corpus a workflow materialised with `git show`), a shard DIRECTORY, or
+an explicit ordered list from `corpus_sources`. Normalised by
+`shards.as_source_paths`."""
 
 
 @dataclass(frozen=True)
@@ -85,22 +126,19 @@ class AppendResult:
     keys_written: tuple[str, ...] = field(default_factory=tuple)
 
 
-def _load_existing_keys(path: Path, key_fn: Callable[[dict], str | None]) -> set[str]:
-    if not path.exists():
-        return set()
+def _load_existing_keys(source: PathSource, key_fn: Callable[[dict], str | None]) -> set[str]:
+    """The key set across EVERY file of a family-season. Reading all
+    shards (and any legacy monolith) here is what keeps dedup global
+    rather than per-shard -- see this module's docstring."""
     keys: set[str] = set()
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            key = key_fn(obj)
-            if key is not None:
-                keys.add(key)
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        key = key_fn(obj)
+        if key is not None:
+            keys.add(key)
     return keys
 
 
@@ -126,8 +164,11 @@ def append_json_rows(
     `load_observation_index`). It is a pure read-cache: passing it changes
     only HOW MANY TIMES the file is read, never which rows are considered
     duplicates. Omit it and the set is loaded from disk exactly as before,
-    which is what every non-scanner caller still does."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    which is what every non-scanner caller still does.
+
+    This single-file form is retained for callers that genuinely own one
+    file (the shard writer itself, and tests of the primitive). Durable
+    corpus writes go through `append_sharded_json_rows`."""
     existing = _load_existing_keys(path, key_fn) if existing_keys is None else existing_keys
     seen_this_batch: set[str] = set()
     to_write: list[tuple[str, dict]] = []
@@ -150,16 +191,55 @@ def append_json_rows(
     return AppendResult(written=len(to_write), skipped_duplicate=skipped, keys_written=tuple(k for k, _ in to_write))
 
 
-def _read_all(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def append_sharded_json_rows(
+    base_dir: Path,
+    subdir: str,
+    season: int,
+    rows: list[dict],
+    key_fn: Callable[[dict], str | None],
+    *,
+    existing_keys: set[str] | None = None,
+) -> AppendResult:
+    """THE durable append. Identical dedup semantics to
+    `append_json_rows` -- a row is written only when its key is neither
+    already on disk (across EVERY shard plus any legacy monolith) nor
+    earlier in this same batch -- but the surviving rows are routed to
+    the UTC-date shard their own timestamp names, rolling over to a new
+    part before any shard can approach GitHub's blob limit.
+
+    Dedup is computed before dating on purpose: which shard a row lands
+    in must never influence whether it is considered new, or the same
+    observation re-derived on a later date would be written twice."""
+    existing = (
+        _load_existing_keys(shards.source_paths(base_dir, subdir, season), key_fn)
+        if existing_keys is None
+        else existing_keys
+    )
+    seen_this_batch: set[str] = set()
+    to_write: list[tuple[str, dict]] = []
+    skipped = 0
+    for row in rows:
+        key = key_fn(row)
+        if key is None or key in existing or key in seen_this_batch:
+            skipped += 1
+            continue
+        seen_this_batch.add(key)
+        to_write.append((key, row))
+
+    if to_write:
+        shards.append_rows(base_dir, subdir, season, [row for _key, row in to_write])
+
+    return AppendResult(
+        written=len(to_write),
+        skipped_duplicate=skipped,
+        keys_written=tuple(k for k, _ in to_write),
+    )
+
+
+def _read_all(source: PathSource) -> list[dict]:
     rows: list[dict] = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            rows.append(json.loads(line))
+    for _path, line in shards.iter_raw_lines(source):
+        rows.append(json.loads(line))
     return rows
 
 
@@ -234,67 +314,76 @@ class ObservationIndex:
             self.labels_by_ticker.setdefault(ticker, set()).add(label)
 
 
-def load_observation_index(path: Path) -> ObservationIndex:
-    """Read the observations file EXACTLY ONCE and derive every lookup a
-    scanner run needs from that one pass. `load_count`/`load_seconds` are
-    carried on the result specifically so a test (and run telemetry) can
-    assert the once-per-run property rather than merely hoping for it."""
+def load_observation_index(source: PathSource) -> ObservationIndex:
+    """Read the observation corpus EXACTLY ONCE -- one streaming pass
+    over every shard (and the legacy monolith, while it exists) -- and
+    derive every lookup a scanner run needs from that single pass.
+    `load_count`/`load_seconds` are carried on the result specifically so
+    a test (and run telemetry) can assert the once-per-run property
+    rather than merely hoping for it.
+
+    `load_count` counts CORPUS loads, not files: the whole point of the
+    property is that the scanner re-derives history once per attempt, and
+    that is unchanged by how many files the history happens to live in."""
     index = ObservationIndex()
     started = time.perf_counter()
     index.load_count = 1
-    if not path.exists():
-        index.load_seconds = time.perf_counter() - started
-        return index
 
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                # Same tolerance `_load_existing_keys` has always had, but
-                # counted here instead of invisible -- run telemetry
-                # reports it (mission section 12's "malformed rows").
-                index.malformed_rows += 1
-                continue
-            index.row_count += 1
-            key = observation_key_of(obj)
-            if key is not None:
-                index.keys.add(key)
-            pair = _observation_ticker_and_label(obj)
-            if pair is not None:
-                ticker, label = pair
-                index.labels_by_ticker.setdefault(ticker, set()).add(label)
-                observation = obj.get("observation") or {}
-                game_id = observation.get("game_id")
-                if isinstance(game_id, str) and game_id:
-                    index.ticker_game_ids.setdefault(ticker, game_id)
-                kickoff = obj.get("kickoff_utc_at_capture")
-                captured_at = str(observation.get("captured_at") or "")
-                if isinstance(kickoff, str) and kickoff:
-                    prior = index.ticker_kickoffs.get(ticker)
-                    if prior is None or captured_at >= prior[0]:
-                        index.ticker_kickoffs[ticker] = (captured_at, kickoff)
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            # Same tolerance `_load_existing_keys` has always had, but
+            # counted here instead of invisible -- run telemetry
+            # reports it (mission section 12's "malformed rows").
+            index.malformed_rows += 1
+            continue
+        index.row_count += 1
+        key = observation_key_of(obj)
+        if key is not None:
+            index.keys.add(key)
+        pair = _observation_ticker_and_label(obj)
+        if pair is not None:
+            ticker, label = pair
+            index.labels_by_ticker.setdefault(ticker, set()).add(label)
+            observation = obj.get("observation") or {}
+            game_id = observation.get("game_id")
+            if isinstance(game_id, str) and game_id:
+                index.ticker_game_ids.setdefault(ticker, game_id)
+            kickoff = obj.get("kickoff_utc_at_capture")
+            captured_at = str(observation.get("captured_at") or "")
+            if isinstance(kickoff, str) and kickoff:
+                prior = index.ticker_kickoffs.get(ticker)
+                if prior is None or captured_at >= prior[0]:
+                    index.ticker_kickoffs[ticker] = (captured_at, kickoff)
 
     index.load_seconds = time.perf_counter() - started
     return index
 
 
+def load_observation_index_for(base_dir: Path, season: int) -> ObservationIndex:
+    """`load_observation_index` over the canonical source list for one
+    season -- the form every production caller uses."""
+    return load_observation_index(corpus_sources(base_dir, OBSERVATIONS_SUBDIR, season))
+
+
 def append_observation_rows(
-    path: Path,
+    base_dir: Path,
+    season: int,
     rows: Iterable[ResearchCorpusRow],
     *,
     index: ObservationIndex | None = None,
 ) -> AppendResult:
-    """Appends with the usual exact-key dedup. When `index` is supplied,
-    its already-loaded `keys` are used instead of re-reading the file, and
+    """Appends with the usual exact-key dedup, into the UTC-date shard
+    each row's own `captured_at` names. When `index` is supplied, its
+    already-loaded `keys` are used instead of re-reading the corpus, and
     the index is updated with whatever was actually written so it stays a
-    faithful picture of the file for the rest of the run."""
+    faithful picture of the corpus for the rest of the run."""
     dicts = [r.model_dump(mode="json") for r in rows]
-    result = append_json_rows(
-        path,
+    result = append_sharded_json_rows(
+        base_dir,
+        OBSERVATIONS_SUBDIR,
+        season,
         dicts,
         key_fn=observation_key_of,
         existing_keys=None if index is None else index.keys,
@@ -309,12 +398,32 @@ def append_observation_rows(
     return result
 
 
-def read_observation_rows(path: Path) -> list[ResearchCorpusRow]:
-    return [ResearchCorpusRow.model_validate(obj) for obj in _read_all(path)]
+def read_observation_rows(source: PathSource) -> list[ResearchCorpusRow]:
+    return [ResearchCorpusRow.model_validate(obj) for obj in _read_all(source)]
 
 
-def read_observation_keys(path: Path) -> set[str]:
-    return _load_existing_keys(path, key_fn=observation_key_of)
+def read_observation_keys(source: PathSource) -> set[str]:
+    return _load_existing_keys(source, key_fn=observation_key_of)
+
+
+# --- Talent-shadow sidecar ----------------------------------------------
+
+
+def shadow_key_of(obj: dict) -> str | None:
+    return obj.get("shadow_key")
+
+
+def append_shadow_rows(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
+    """The talent-shadow sidecar, sharded on the same rule as everything
+    else. Keyed on `shadow_key` (observation_key|shadow_model_version),
+    so a push retry still writes zero duplicates."""
+    return append_sharded_json_rows(
+        base_dir, SHADOW_SUBDIR, season, rows, key_fn=shadow_key_of
+    )
+
+
+def read_shadow_rows(base_dir: Path, season: int) -> list[dict]:
+    return _read_all(corpus_sources(base_dir, SHADOW_SUBDIR, season))
 
 
 # --- Settlements --------------------------------------------------------
@@ -342,13 +451,17 @@ def _settlement_fact_key(obj: dict) -> str | None:
     return "|".join(parts)
 
 
-def append_settlement_rows(path: Path, rows: Iterable[MarketSettlement]) -> AppendResult:
+def append_settlement_rows(
+    base_dir: Path, season: int, rows: Iterable[MarketSettlement]
+) -> AppendResult:
     dicts = [r.model_dump(mode="json") for r in rows]
-    return append_json_rows(path, dicts, key_fn=_settlement_fact_key)
+    return append_sharded_json_rows(
+        base_dir, SETTLEMENTS_SUBDIR, season, dicts, key_fn=_settlement_fact_key
+    )
 
 
-def read_settlement_rows(path: Path) -> list[MarketSettlement]:
-    return [MarketSettlement.model_validate(obj) for obj in _read_all(path)]
+def read_settlement_rows(source: PathSource) -> list[MarketSettlement]:
+    return [MarketSettlement.model_validate(obj) for obj in _read_all(source)]
 
 
 def latest_settlements(rows: Iterable[MarketSettlement]) -> dict[tuple[str, str], MarketSettlement]:
@@ -395,48 +508,50 @@ class AttributionIndex:
         return f"{observation_key}|{code_version}" in self.keys
 
 
-def load_attribution_index(path: Path) -> AttributionIndex:
-    """Read the attributions file EXACTLY ONCE and derive every lookup a
-    settlement run needs. `load_count` is carried on the result so a test
-    can assert the once-per-run property rather than hoping for it."""
+def load_attribution_index(source: PathSource) -> AttributionIndex:
+    """Read the attribution corpus EXACTLY ONCE -- one streaming pass
+    across every shard and any legacy monolith -- and derive every lookup
+    a settlement run needs. `load_count` is carried on the result so a
+    test can assert the once-per-run property rather than hoping for
+    it."""
     index = AttributionIndex()
     started = time.perf_counter()
     index.load_count = 1
-    if not path.exists():
-        index.load_seconds = time.perf_counter() - started
-        return index
 
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                index.malformed_rows += 1
-                continue
-            index.row_count += 1
-            key = attribution_key_of(obj)
-            if key is not None:
-                index.keys.add(key)
-            observation_key = obj.get("observation_key")
-            if isinstance(observation_key, str):
-                index.settled_observation_keys.add(observation_key)
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            index.malformed_rows += 1
+            continue
+        index.row_count += 1
+        key = attribution_key_of(obj)
+        if key is not None:
+            index.keys.add(key)
+        observation_key = obj.get("observation_key")
+        if isinstance(observation_key, str):
+            index.settled_observation_keys.add(observation_key)
 
     index.load_seconds = time.perf_counter() - started
     return index
 
 
+def load_attribution_index_for(base_dir: Path, season: int) -> AttributionIndex:
+    return load_attribution_index(corpus_sources(base_dir, ATTRIBUTIONS_SUBDIR, season))
+
+
 def append_attribution_rows(
-    path: Path,
+    base_dir: Path,
+    season: int,
     rows: Iterable[ObservationAttribution],
     *,
     index: AttributionIndex | None = None,
 ) -> AppendResult:
     dicts = [r.model_dump(mode="json") for r in rows]
-    result = append_json_rows(
-        path,
+    result = append_sharded_json_rows(
+        base_dir,
+        ATTRIBUTIONS_SUBDIR,
+        season,
         dicts,
         key_fn=attribution_key_of,
         existing_keys=None if index is None else index.keys,
@@ -453,8 +568,8 @@ def append_attribution_rows(
     return result
 
 
-def read_attribution_rows(path: Path) -> list[ObservationAttribution]:
-    return [ObservationAttribution.model_validate(obj) for obj in _read_all(path)]
+def read_attribution_rows(source: PathSource) -> list[ObservationAttribution]:
+    return [ObservationAttribution.model_validate(obj) for obj in _read_all(source)]
 
 
 # --- Capture-state log ---------------------------------------------------
@@ -467,18 +582,25 @@ def _capture_state_fact_key(obj: dict) -> str | None:
     return "|".join(str(obj[f]) for f in required)
 
 
-def append_capture_state_rows(path: Path, rows: Iterable[CaptureStateRecord]) -> AppendResult:
+def append_capture_state_rows(
+    base_dir: Path, season: int, rows: Iterable[CaptureStateRecord]
+) -> AppendResult:
     """Dedup key deliberately excludes `observed_at`/`run_id`: once a
     checkpoint reaches CAPTURED (or MISSED_WINDOW) for a given
     (game, market, label), re-observing the SAME state on a later scan is
     a no-op, not a new history row -- only a genuine state TRANSITION
-    (e.g. NOT_YET_DUE -> CAPTURED) appends."""
+    (e.g. NOT_YET_DUE -> CAPTURED) appends. That key carries no date, so
+    dedup must (and does) span every shard: a checkpoint that reached
+    CAPTURED last week must not re-append today just because today is a
+    different shard."""
     dicts = [r.model_dump(mode="json") for r in rows]
-    return append_json_rows(path, dicts, key_fn=_capture_state_fact_key)
+    return append_sharded_json_rows(
+        base_dir, CAPTURE_STATE_SUBDIR, season, dicts, key_fn=_capture_state_fact_key
+    )
 
 
-def read_capture_state_rows(path: Path) -> list[CaptureStateRecord]:
-    return [CaptureStateRecord.model_validate(obj) for obj in _read_all(path)]
+def read_capture_state_rows(source: PathSource) -> list[CaptureStateRecord]:
+    return [CaptureStateRecord.model_validate(obj) for obj in _read_all(source)]
 
 
 def latest_capture_states(rows: Iterable[CaptureStateRecord]) -> dict[tuple[str, str, str], CaptureStateRecord]:

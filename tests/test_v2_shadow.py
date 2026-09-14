@@ -363,11 +363,11 @@ def _row(key="obs-1", version="0.6.0-v2-shadow"):
 def test_ledger_is_append_only_and_deduped(tmp_path):
     """Test matrix 20, 21, 27: a 5-minute loop re-running must not write
     a second copy of the same shadow row."""
-    path = tmp_path / "2026.jsonl"
-    assert v2_shadow.append_rows(path, [_row("a"), _row("b")]) == 2
-    first = path.read_text()
+    sources = lambda: v2_shadow.ledger_sources(tmp_path, 2026)  # noqa: E731
+    assert v2_shadow.append_rows(tmp_path, 2026, [_row("a"), _row("b")]) == 2
+    first = [p.read_text() for p in sources()]
 
-    seen = v2_shadow.load_existing_keys(path)
+    seen = v2_shadow.load_existing_keys(sources())
     assert seen == {
         v2_shadow.dedup_key("a", "0.6.0-v2-shadow"),
         v2_shadow.dedup_key("b", "0.6.0-v2-shadow"),
@@ -381,26 +381,27 @@ def test_ledger_is_append_only_and_deduped(tmp_path):
         if v2_shadow.dedup_key(r.observation_key, r.v2_model_version) not in seen
     ]
     assert fresh == []
-    assert v2_shadow.append_rows(path, fresh) == 0
-    assert path.read_text() == first
+    assert v2_shadow.append_rows(tmp_path, 2026, fresh) == 0
+    assert [p.read_text() for p in sources()] == first
 
 
 def test_a_new_model_version_coexists_rather_than_overwriting(tmp_path):
     """Dedup is on (observation_key, model_version), so a future V2 can
     shadow the same canonical rows without destroying this one's
     evidence."""
-    path = tmp_path / "2026.jsonl"
-    v2_shadow.append_rows(path, [_row("a", "0.6.0-v2-shadow")])
-    seen = v2_shadow.load_existing_keys(path)
+    v2_shadow.append_rows(tmp_path, 2026, [_row("a", "0.6.0-v2-shadow")])
+    seen = v2_shadow.load_existing_keys(v2_shadow.ledger_sources(tmp_path, 2026))
     assert v2_shadow.dedup_key("a", "0.7.0-next") not in seen
 
 
 def test_a_corrupt_tail_does_not_stop_todays_capture(tmp_path):
-    path = tmp_path / "2026.jsonl"
-    v2_shadow.append_rows(path, [_row("a")])
-    with path.open("a") as handle:
+    v2_shadow.append_rows(tmp_path, 2026, [_row("a")])
+    shard = v2_shadow.ledger_sources(tmp_path, 2026)[-1]
+    with shard.open("a") as handle:
         handle.write("{not json\n")
-    assert v2_shadow.load_existing_keys(path) == {v2_shadow.dedup_key("a", "0.6.0-v2-shadow")}
+    assert v2_shadow.load_existing_keys(v2_shadow.ledger_sources(tmp_path, 2026)) == {
+        v2_shadow.dedup_key("a", "0.6.0-v2-shadow")
+    }
 
 
 def test_half_point_flag_is_recorded(tmp_path):

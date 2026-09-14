@@ -62,12 +62,12 @@ def _settleable_game_ids(repo_dir: Path, season: int) -> set[str]:
     """The games whose pending observations this run could attribute --
     what the fallback provider needs results for. Same settleable-
     population filter `_apply_attribution` uses."""
-    obs_path = persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season)
-    if not obs_path.exists():
-        return set()
+    obs_sources = persistence.corpus_sources(
+        repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season
+    )
     return {
         row.observation.game_id
-        for row in persistence.read_observation_rows(obs_path)
+        for row in persistence.read_observation_rows(obs_sources)
         if row.observation.game_id and attribution_mod.is_settleable_population(row)
     }
 
@@ -90,11 +90,11 @@ def _apply_attribution(
     underneath us, and deduping against stale content would reintroduce
     duplicate rows."""
     base_dir = repo_dir / "data" / "research"
-    obs_path = persistence.canonical_path(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
-    attr_path = persistence.canonical_path(base_dir, persistence.ATTRIBUTIONS_SUBDIR, season)
 
-    rows = persistence.read_observation_rows(obs_path) if obs_path.exists() else []
-    index = persistence.load_attribution_index(attr_path)
+    rows = persistence.read_observation_rows(
+        persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+    )
+    index = persistence.load_attribution_index_for(base_dir, season)
     report.observations_scanned = len(rows)
 
     # One pass to group by market and to find each market's CLOSING row.
@@ -205,7 +205,7 @@ def _apply_attribution(
     # would permanently consume that observation's attribution key,
     # preventing the real settlement from ever being recorded.
     durable = [a for a in attributions if a.state not in PENDING_ATTRIBUTION_STATES]
-    result = persistence.append_attribution_rows(attr_path, durable, index=index)
+    result = persistence.append_attribution_rows(base_dir, season, durable, index=index)
     report.attributions_written = result.written
     report.duplicate_attempts = result.skipped_duplicate
     return result

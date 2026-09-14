@@ -51,8 +51,9 @@ from cfb_edge_finder.recommendation.eligibility import (  # noqa: E402
     EligibilityConfig,
 )
 from cfb_edge_finder.recommendation.pipeline import run_pipeline  # noqa: E402
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 from cfb_edge_finder.research.heartbeat import (  # noqa: E402
-    heartbeat_path,
+    heartbeat_sources,
     last_successful_run,
     load_heartbeats,
 )
@@ -141,16 +142,14 @@ def _parse_ts(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def load_rows(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def load_rows(source) -> list[dict]:
+    """Shard-aware: `source` is anything `shards.as_source_paths` takes."""
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
+    for _path, line in shards.iter_raw_lines(source):
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
     return rows
 
 
@@ -293,7 +292,9 @@ def section_closing(rows: list[dict], findings: Findings) -> None:
 
 def section_settlement(repo_dir: Path, season: int, findings: Findings) -> None:
     print("\n## Settlement")
-    path = repo_dir / "data" / "research" / "settlements" / f"{season}.jsonl"
+    path = persistence.corpus_sources(
+        repo_dir / "data" / "research", persistence.SETTLEMENTS_SUBDIR, season
+    )
     rows = load_rows(path)
     print(f"  settlement rows               : {len(rows)}")
     statuses = Counter(r.get("status") for r in rows)
@@ -315,7 +316,9 @@ def section_settlement(repo_dir: Path, season: int, findings: Findings) -> None:
 
 def section_analytics(repo_dir: Path, season: int, findings: Findings) -> None:
     print("\n## Analytics")
-    attributions = load_rows(repo_dir / "data" / "research" / "attributions" / f"{season}.jsonl")
+    attributions = load_rows(
+        persistence.corpus_sources(repo_dir / "data" / "research", persistence.ATTRIBUTIONS_SUBDIR, season)
+    )
     print(f"  attribution rows              : {len(attributions)}")
     statuses = Counter(r.get("state") for r in attributions)
     print(f"  attribution statuses          : {dict(statuses)}")
@@ -328,11 +331,13 @@ def section_analytics(repo_dir: Path, season: int, findings: Findings) -> None:
 
 def section_candidates(repo_dir: Path, season: int, findings: Findings, now: datetime) -> None:
     print("\n## Candidate pipeline")
-    path = repo_dir / "data" / "research" / "observations" / f"{season}.jsonl"
-    if not path.exists():
+    sources = persistence.corpus_sources(
+        repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, season
+    )
+    if not sources:
         print("  (no corpus)")
         return
-    loaded = load_contract_snapshots(path)
+    loaded = load_contract_snapshots(sources)
     result = run_pipeline(loaded.snapshots, config=EligibilityConfig(max_quote_age_seconds=86_400), now=now)
     quality_pass = [r for r in result.eligibility_results if not r.quality_failures]
     print(f"  ledger loads (must be 1)      : {loaded.ledger_load_count}")
@@ -373,7 +378,7 @@ def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Fin
     happens to have fired recently -- and it is the conductor, not cron,
     that protects CLOSING."""
     print("\n## Trigger health")
-    beats = load_heartbeats(heartbeat_path(repo_dir, season))
+    beats = load_heartbeats(heartbeat_sources(repo_dir, season))
     print(f"  heartbeat rows                : {len(beats)}")
     print(f"  primary trigger               : {TriggerType.EXTERNAL_SCHEDULE.value} (conductor chain)")
     print(f"  fallback trigger              : {TriggerType.GITHUB_SCHEDULE.value} (*/10 cron)")
@@ -513,7 +518,11 @@ def main() -> int:
 
     now = _parse_ts(args.now) or datetime.now(UTC)
     findings = Findings()
-    rows = load_rows(args.data_repo_dir / "data" / "research" / "observations" / f"{args.season}.jsonl")
+    rows = load_rows(
+        persistence.corpus_sources(
+            args.data_repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, args.season
+        )
+    )
 
     print("=" * 78)
     print(f"WEEK 1 RESEARCH READINESS -- {now.isoformat()}")

@@ -24,6 +24,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "tests"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import corpus_helpers  # noqa: E402
 import research_scan_and_capture as scanner  # noqa: E402
 from scan_harness import (  # noqa: E402
     FBS_TEAMS,
@@ -182,11 +183,11 @@ def _run_scan_from_state(repo_dir: Path, state, monkeypatch, *, now=NOW, run_id=
 
 
 def _obs_path(repo_dir: Path) -> Path:
-    return persistence.canonical_path(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
+    return corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
 
 
 def _state_path(repo_dir: Path) -> Path:
-    return persistence.canonical_path(repo_dir / "data" / "research", persistence.CAPTURE_STATE_SUBDIR, SEASON)
+    return corpus_helpers.ref(repo_dir / "data" / "research", persistence.CAPTURE_STATE_SUBDIR, SEASON)
 
 
 # ------------------------------------ 1: zero CFBD when state is fresh
@@ -218,7 +219,7 @@ def test_due_checkpoint_captures_while_cfbd_returns_429(tmp_path, monkeypatch, h
 
     result, telemetry, report, _games = _run_scan_from_state(tmp_path, outcome.state, monkeypatch)
     assert result.written > 0
-    rows = [json.loads(line) for line in _obs_path(tmp_path).read_text().splitlines() if line.strip()]
+    rows = [json.loads(line) for line in _obs_path(tmp_path).text().splitlines() if line.strip()]
     labels = {r["observation"]["snapshot_timing"]["label"] for r in rows}
     assert label in labels
     # The harness's GAME fixtures carry a generic rules text that the
@@ -327,7 +328,7 @@ def test_close_time_earlier_than_kickoff_marks_kickoff_uncertain_and_captures_no
     assert report.kickoff_uncertain_events >= 1
     diagnostics = health.evaluate_collapse(report, baseline_supported_markets=None)
     assert any(d.code == "kickoff_uncertain_events" for d in diagnostics)
-    state_rows = [json.loads(line) for line in _state_path(tmp_path).read_text().splitlines() if line.strip()]
+    state_rows = [json.loads(line) for line in _state_path(tmp_path).text().splitlines() if line.strip()]
     assert any(
         r["state"] == CaptureState.OTHER_EXPLICIT_REASON.value and "kickoff_uncertain" in r["detail"]
         for r in state_rows
@@ -375,7 +376,7 @@ def test_passed_kickoff_never_yields_closing_or_any_pregame_row(tmp_path, monkey
     result, _t, _report, _g = _run_scan_from_state(tmp_path, state, monkeypatch)
     assert result.written == 0
     if _obs_path(tmp_path).exists():
-        assert _obs_path(tmp_path).read_text().strip() == ""
+        assert _obs_path(tmp_path).text().strip() == ""
 
 
 # ------------------------------------------------- 10: dedup unchanged
@@ -436,8 +437,7 @@ def test_schedule_normalization_matches_live_path(tmp_path):
 
 def _seed_started_game_rows(repo_dir: Path, *, kickoff: datetime, captured_labels: list[str]) -> None:
     path = _obs_path(repo_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
+    with path.seed_writer(replace=False) as handle:
         for i, label in enumerate(captured_labels):
             handle.write(json.dumps({
                 "schema_version": "research_corpus_v2",
@@ -457,13 +457,13 @@ def _seed_started_game_rows(repo_dir: Path, *, kickoff: datetime, captured_label
 def test_reconciliation_writes_terminal_missed_reasons_after_hard_down_window(tmp_path):
     kickoff = NOW - timedelta(hours=2)  # game started during the outage
     _seed_started_game_rows(tmp_path, kickoff=kickoff, captured_labels=["EARLY_OPEN", "T_24H"])
-    obs_before = _obs_path(tmp_path).read_text()
+    obs_before = _obs_path(tmp_path).text()
 
     written = checkpoint_reconciliation.reconcile(
-        _obs_path(tmp_path), _state_path(tmp_path), now=NOW, run_id="reconciler"
+        tmp_path / "data" / "research", SEASON, now=NOW, run_id="reconciler"
     )
     assert written > 0
-    rows = [json.loads(line) for line in _state_path(tmp_path).read_text().splitlines() if line.strip()]
+    rows = [json.loads(line) for line in _state_path(tmp_path).text().splitlines() if line.strip()]
     by_label = {r["timing_label"]: r for r in rows}
     for label in ("T_6H", "T_90", "T_60", "T_30", "CLOSING"):
         assert label in by_label, f"{label} has no terminal accounting"
@@ -473,11 +473,11 @@ def test_reconciliation_writes_terminal_missed_reasons_after_hard_down_window(tm
     assert "T_24H" not in by_label and "EARLY_OPEN" not in by_label
 
     # NEVER backfill: the observations ledger is byte-identical.
-    assert _obs_path(tmp_path).read_text() == obs_before
+    assert _obs_path(tmp_path).text() == obs_before
 
     # Idempotent: a second reconciliation writes nothing new.
     assert checkpoint_reconciliation.reconcile(
-        _obs_path(tmp_path), _state_path(tmp_path), now=NOW + timedelta(minutes=5), run_id="again"
+        tmp_path / "data" / "research", SEASON, now=NOW + timedelta(minutes=5), run_id="again"
     ) == 0
 
 
@@ -485,13 +485,13 @@ def test_reconciliation_leaves_open_windows_and_unknown_kickoffs_alone(tmp_path)
     future_kick = NOW + timedelta(hours=30)
     _seed_started_game_rows(tmp_path, kickoff=future_kick, captured_labels=["EARLY_OPEN"])
     written = checkpoint_reconciliation.reconcile(
-        _obs_path(tmp_path), _state_path(tmp_path), now=NOW, run_id="r"
+        tmp_path / "data" / "research", SEASON, now=NOW, run_id="r"
     )
     # Nothing has provably passed for a game 30h away except nothing:
     # T_7D may legitimately be already-missed depending on discovery age,
     # but CLOSING/T_30/T_60/T_90/T_6H must NOT be.
     rows = (
-        [json.loads(line) for line in _state_path(tmp_path).read_text().splitlines()]
+        [json.loads(line) for line in _state_path(tmp_path).text().splitlines()]
         if _state_path(tmp_path).exists()
         else []
     )
@@ -555,8 +555,18 @@ def test_real_branch_swap_checkout_load_scan_capture(tmp_path, monkeypatch):
         ["git", "ls-tree", "--name-only", "origin/research-data"], cwd=work, capture_output=True, text=True
     )
     assert "src" not in ls.stdout.split()
+    # The observations corpus is SHARDED by UTC date, so name the tracked
+    # shard files rather than a single `{SEASON}.jsonl` blob.
+    obs_ls = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "origin/research-data",
+         "--", f"data/research/observations/{SEASON}"],
+        cwd=work, capture_output=True, text=True,
+    )
+    assert obs_ls.returncode == 0
+    obs_files = [f for f in obs_ls.stdout.split() if f.endswith(".jsonl")]
+    assert obs_files, "no observation shard reached the durable branch"
     obs_show = subprocess.run(
-        ["git", "show", f"origin/research-data:data/research/observations/{SEASON}.jsonl"],
+        ["git", "show", f"origin/research-data:{obs_files[0]}"],
         cwd=work, capture_output=True, text=True,
     )
     assert obs_show.returncode == 0 and obs_show.stdout.strip()
