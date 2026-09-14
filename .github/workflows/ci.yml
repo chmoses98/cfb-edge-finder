@@ -29,3 +29,30 @@ jobs:
         run: ruff check src tests scripts
       - name: Test (pytest)
         run: pytest -v
+      # The automated half of the post-GH001 size guard. The write path
+      # rolls a shard over at 45 MB and the durable store refuses to push
+      # above 90 MB, but an artifact that is NOT sharded (the
+      # football-state document, a v2 parquet) could still drift toward
+      # GitHub's 100 MiB limit between pushes. This points the same check
+      # at the live durable corpus so that drift is caught on a schedule
+      # rather than by a rejected collection run.
+      #
+      # Read-only: fetches the data branch shallowly into a temp dir and
+      # never writes to it. `--strict` because on the durable branch a
+      # blob over the shard target is already a defect worth failing on.
+      - name: Durable-store blob size guard
+        run: |
+          set -euo pipefail
+          CORPUS="$RUNNER_TEMP/durable"
+          mkdir -p "$CORPUS"
+          if git fetch origin research-data --depth=1 2>/dev/null; then
+            git ls-tree -r --name-only origin/research-data -- data/research \
+              | while IFS= read -r tracked; do
+                  [ -n "$tracked" ] || continue
+                  mkdir -p "$CORPUS/$(dirname "$tracked")"
+                  git show "origin/research-data:$tracked" > "$CORPUS/$tracked"
+                done || true
+            python scripts/check_research_blob_sizes.py --data-repo-dir "$CORPUS" --strict
+          else
+            echo "(research-data branch not reachable; nothing to size-check)"
+          fi

@@ -260,7 +260,7 @@ def migrate_family(
     return report
 
 
-def main() -> int:
+def main_with_args(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -284,7 +284,7 @@ def main() -> int:
         default=shards.SHARD_TARGET_BYTES,
         help="roll a date's shard over past this size",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     base_dir = args.data_repo_dir / "data" / "research"
     if not base_dir.is_dir():
@@ -367,6 +367,10 @@ def main() -> int:
         + ("DRY RUN complete; nothing on disk was changed." if args.dry_run else "MIGRATION APPLIED.")
     )
     return 0
+
+
+def main() -> int:
+    return main_with_args()
 
 
 if __name__ == "__main__":
