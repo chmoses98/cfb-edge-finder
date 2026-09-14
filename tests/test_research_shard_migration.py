@@ -443,3 +443,251 @@ def test_re_running_a_completed_migration_is_a_no_op(tmp_path):
     assert migrate.main_with_args(args) == 0
     after = {p.name: p.read_bytes() for p in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)}
     assert after == snapshot
+
+
+# =========================================================================
+# THE CUTOVER DEADLOCK
+#
+# merge -> a scheduled capture runs -> it writes the first shard ->
+# monolith and shards coexist -> migration refuses -> stuck.
+#
+# `research/maintenance.py` is what stops that state forming.
+# `--allow-existing-shards` is what makes it survivable if it forms
+# anyway (a pre-merge run still in flight, a workflow re-enabled early,
+# a raw push). The CEO's requirement was "this must not be possible" --
+# so it is prevented AND recoverable, not one or the other.
+# =========================================================================
+
+
+def _cutover_row(key: str, *, day: int = 12, extra: str = "x") -> dict:
+    return {
+        "observation_key": key,
+        "observation": {"captured_at": f"2026-09-{day:02d}T10:00:00+00:00", "note": extra},
+    }
+
+
+def _cutover_monolith(base: Path, rows: list[dict]) -> Path:
+    legacy = shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026)
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text(
+        "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows), encoding="utf-8"
+    )
+    return legacy
+
+
+def _cutover_shard_rows(base: Path, rows: list[dict]) -> None:
+    """Place rows in the shards the way a post-merge writer's append
+    lands them -- same shard rule, same serialisation -- but WITHOUT the
+    dedup pass.
+
+    Deliberately not `append_sharded_json_rows`: that dedups against the
+    legacy monolith as well (which is the transition guarantee, and is
+    asserted directly below), so it is incapable of producing a row that
+    sits in both layouts. The migration's behaviour when a row DOES sit
+    in both is the thing under test, so the fixture has to construct it.
+    """
+    shards.append_lines(
+        base,
+        shards.OBSERVATIONS_SUBDIR,
+        2026,
+        [
+            (shards.shard_date_for(row, shards.OBSERVATIONS_SUBDIR),
+             json.dumps(row, sort_keys=True))
+            for row in rows
+        ],
+    )
+
+
+def test_a_post_merge_writer_cannot_create_the_duplicate_in_the_first_place(tmp_path):
+    """Why the coexistence case is a narrow repair rather than a merge:
+    during the transition the writer READS the legacy monolith, so it
+    dedups against it and can only ever add genuinely NEW keys to the
+    shards. Two rows claiming one key is therefore already impossible on
+    the live path -- the migration handles it anyway, but this is the
+    reason it should never have to."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a"), _cutover_row("b")])
+
+    result = persistence.append_sharded_json_rows(
+        base,
+        shards.OBSERVATIONS_SUBDIR,
+        2026,
+        [_cutover_row("a"), _cutover_row("new")],
+        persistence.observation_key_of,
+    )
+
+    assert result.written == 1 and result.skipped_duplicate == 1
+    shard_keys = [json.loads(line)["observation_key"] for line in _cutover_lines(base)]
+    assert shard_keys == ["new"], "the writer re-emitted a row that was already in the monolith"
+
+
+def _cutover_lines(base: Path) -> list[str]:
+    lines: list[str] = []
+    for path in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, 2026):
+        lines.extend(x for x in path.read_text(encoding="utf-8").splitlines() if x.strip())
+    return lines
+
+
+def test_coexistence_still_refuses_by_default(tmp_path):
+    """The default must stay conservative: migrating blindly into a
+    populated shard set is how rows get duplicated."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a"), _cutover_row("b")])
+    _cutover_shard_rows(base, [_cutover_row("c")])
+
+    with pytest.raises(migrate.MigrationError) as exc:
+        migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026)
+
+    message = str(exc.value)
+    assert "already exist" in message
+    # ...but it must no longer read as a dead end.
+    assert "--allow-existing-shards" in message
+    assert shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).is_file()
+
+
+def test_the_deadlock_is_recoverable_with_allow_existing_shards(tmp_path):
+    """THE test for BLOCKER 2's recovery half: a writer landed a shard
+    between merge and migration, and the cutover still completes with
+    every row present exactly once."""
+    base = tmp_path / "data" / "research"
+    monolith_rows = [_cutover_row("a"), _cutover_row("b")]
+    _cutover_monolith(base, monolith_rows)
+    _cutover_shard_rows(base, [_cutover_row("c", day=13)])  # the writer that landed in the gap
+
+    report = migrate.migrate_family(
+        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
+    )
+
+    assert report["status"] == "MIGRATED"
+    assert report["preexisting_shard_rows"] == 1
+    assert report["rows_appended"] == 2
+    assert report["rows_out"] == 3
+    assert report["duplicate_keys"] == 0
+    assert report["missing_keys"] == 0
+    assert report["preexisting_rows_lost"] == 0
+    assert not shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).exists()
+
+    keys = {json.loads(line)["observation_key"] for line in _cutover_lines(base)}
+    assert keys == {"a", "b", "c"}
+    assert len(_cutover_lines(base)) == 3, "a row was duplicated or lost"
+
+
+def test_a_row_the_writer_already_captured_is_not_appended_twice(tmp_path):
+    """The writer reads the legacy monolith during the transition, so it
+    dedups against it and should never re-emit a monolith row. If it does
+    anyway, the migration must not turn that into a duplicate."""
+    base = tmp_path / "data" / "research"
+    shared = _cutover_row("a")
+    _cutover_monolith(base, [shared, _cutover_row("b")])
+    _cutover_shard_rows(base, [shared])
+
+    report = migrate.migrate_family(
+        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
+    )
+
+    assert report["rows_already_present"] == 1
+    assert report["rows_appended"] == 1
+    assert report["duplicate_keys"] == 0
+    assert report["missing_keys"] == 0
+    lines = _cutover_lines(base)
+    assert len(lines) == 2
+    assert sorted(json.loads(line)["observation_key"] for line in lines) == ["a", "b"]
+
+
+def test_same_key_different_bytes_refuses_rather_than_choosing(tmp_path):
+    """Two versions of one observation is a question about what the data
+    SAYS. Neither copy may be discarded automatically, so this fails with
+    both lines named and the monolith left exactly where it was."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a", extra="from-the-monolith")])
+    _cutover_shard_rows(base, [_cutover_row("a", extra="from-the-shard")])
+
+    with pytest.raises(migrate.MigrationError) as exc:
+        migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
+
+    message = str(exc.value)
+    assert "same dedup key with different content" in message
+    assert "from-the-monolith" in message and "from-the-shard" in message
+    assert shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).is_file()
+    assert len(_cutover_lines(base)) == 1, "the shard set was modified by a refused migration"
+
+
+def test_allow_existing_shards_is_a_no_op_when_no_shards_exist(tmp_path):
+    """The flag must not change the normal cutover's behaviour at all --
+    otherwise the production run would be rehearsing a different path
+    from the one the equivalence proof covers."""
+    base_plain = tmp_path / "plain" / "data" / "research"
+    base_flag = tmp_path / "flag" / "data" / "research"
+    rows = [_cutover_row("a"), _cutover_row("b", day=13), _cutover_row("c")]
+    _cutover_monolith(base_plain, rows)
+    _cutover_monolith(base_flag, rows)
+
+    plain = migrate.migrate_family(base_plain, shards.OBSERVATIONS_SUBDIR, 2026)
+    flagged = migrate.migrate_family(
+        base_flag, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
+    )
+
+    assert plain["status"] == flagged["status"] == "MIGRATED"
+    for field in ("rows_in", "rows_out", "shards_written", "duplicate_keys", "missing_keys",
+                  "order_violations", "byte_identical"):
+        assert plain[field] == flagged[field], field
+    assert _cutover_lines(base_plain) == _cutover_lines(base_flag)
+
+
+def test_pre_existing_shard_rows_survive_byte_for_byte(tmp_path):
+    """Nothing the writer wrote may be disturbed by the repair."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a"), _cutover_row("b", day=13)])
+    _cutover_shard_rows(base, [_cutover_row("c"), _cutover_row("d", day=13)])
+    before = sorted(_cutover_lines(base))
+
+    migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
+
+    after = _cutover_lines(base)
+    for line in before:
+        assert line in after, "a pre-existing shard line was altered or dropped"
+
+
+def test_migration_is_idempotent_after_the_deadlock_recovery(tmp_path):
+    """Re-running the recovery must be a no-op, so an operator who is
+    unsure whether it completed can simply run it again."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a"), _cutover_row("b")])
+    _cutover_shard_rows(base, [_cutover_row("c")])
+    migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
+    first = _cutover_lines(base)
+
+    again = migrate.migrate_family(
+        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
+    )
+    assert again["status"] == "NOTHING_TO_MIGRATE"
+    assert _cutover_lines(base) == first
+
+
+def test_the_cli_exposes_the_recovery_flag(tmp_path):
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a")])
+    _cutover_shard_rows(base, [_cutover_row("c", day=13)])
+
+    assert migrate.main_with_args(
+        ["--data-repo-dir", str(tmp_path), "--season", "2026",
+         "--families", shards.OBSERVATIONS_SUBDIR, "--allow-existing-shards"]
+    ) == 0
+    assert not shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).exists()
+
+
+def test_a_dry_run_of_the_recovery_rehearses_against_the_real_shards(tmp_path):
+    """A dry run that copied only the monolith would rehearse against an
+    empty shard set -- i.e. prove something other than what the real run
+    is about to do -- and would wrongly report success on a conflict."""
+    base = tmp_path / "data" / "research"
+    _cutover_monolith(base, [_cutover_row("a", extra="from-the-monolith")])
+    _cutover_shard_rows(base, [_cutover_row("a", extra="from-the-shard")])
+
+    assert migrate.main_with_args(
+        ["--data-repo-dir", str(tmp_path), "--season", "2026",
+         "--families", shards.OBSERVATIONS_SUBDIR, "--allow-existing-shards", "--dry-run"]
+    ) == 1
+    # And the real tree is untouched by the rehearsal, as always.
+    assert shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).is_file()
+    assert len(_cutover_lines(base)) == 1

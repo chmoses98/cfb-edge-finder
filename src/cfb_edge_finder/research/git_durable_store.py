@@ -44,6 +44,17 @@ against research.shards.PUSH_REFUSAL_BYTES, so the normal outcome is a
 precise local error naming the file and its size rather than a rejected
 push at all.
 
+*** AND NO WRITE LANDS DURING A CUTOVER ***
+Concurrency groups serialize writers; they do not stop one. A capture
+that starts after the sharding merge and before the migration holds the
+`research-data-write` group entirely legitimately and lands its first
+shard in the middle of the cutover, leaving the corpus split across two
+layouts. `research/maintenance.py` closes that: both entry points below
+check the maintenance flag on the FRESHLY FETCHED remote tip -- the
+same state the push is about to race -- and refuse if a window is open
+or if its state cannot be read at all. See that module for why the
+ambiguous case refuses.
+
 Mirrors docs/STORAGE_STRATEGY.md's carried-forward discipline: never
 trust an automated git operation's exit code for a safety-critical
 commit -- every step below checks its own `returncode` explicitly rather
@@ -57,7 +68,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from cfb_edge_finder.research import shards
+from cfb_edge_finder.research import maintenance, shards
 from cfb_edge_finder.research.persistence import AppendResult
 
 
@@ -110,7 +121,13 @@ branch -- see the module-level bug note in commit_and_push_with_retry's
 docstring for why this must never be a bare `git add -A`."""
 
 
-def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin") -> None:
+def ensure_branch_checked_out(
+    repo_dir: Path,
+    branch: str,
+    remote: str = "origin",
+    *,
+    check_maintenance_window: bool = True,
+) -> None:
     """Fetches `branch` and checks it out, creating a fresh ORPHAN branch
     (no shared history with main -- keeps bot commits fully out of main's
     line of history) the first time it does not exist remotely yet.
@@ -132,6 +149,13 @@ def ensure_branch_checked_out(repo_dir: Path, branch: str, remote: str = "origin
     that risk entirely while fixing the real bug."""
     fetch = _run(["git", "fetch", remote, branch], repo_dir)
     if fetch.returncode == 0:
+        # Earliest possible refusal during a cutover. The branch is
+        # already fetched, so this is a local tree read, not another
+        # round trip -- and refusing HERE means a frozen window costs a
+        # capture run nothing: no CFBD quota spent, no scan performed,
+        # no work done that would only be thrown away at push time.
+        if check_maintenance_window:
+            maintenance.assert_writes_allowed(repo_dir, branch, remote=remote, fetch=False)
         checkout = _run(["git", "checkout", "-B", branch, f"{remote}/{branch}"], repo_dir)
         if checkout.returncode != 0:
             raise GitDurableStoreError(f"checkout of {branch!r} failed: {checkout.stderr}")
@@ -226,6 +250,7 @@ def commit_and_push_with_retry(
     remote: str = "origin",
     max_retries: int = 5,
     max_blob_bytes: int = shards.PUSH_REFUSAL_BYTES,
+    check_maintenance_window: bool = True,
 ) -> PushResult:
     """`apply_fn(repo_dir)` must perform the actual file writes (via
     research.persistence's append_* helpers) against the CURRENT on-disk
@@ -265,6 +290,13 @@ def commit_and_push_with_retry(
     anything actually changed) and then checking `git diff --cached
     --quiet` -- gitignore-agnostic once a path is staged -- to decide
     whether there is genuinely anything new to commit."""
+    # Before any work at all: a cutover window makes this whole run
+    # pointless, and the caller should learn that before apply_fn spends
+    # anything. Fetches once here; the per-attempt re-check below reuses
+    # whatever the retry loop's own fetch left behind.
+    if check_maintenance_window:
+        maintenance.assert_writes_allowed(repo_dir, branch, remote=remote)
+
     last_result: AppendResult | None = None
     for attempt in range(1, max_retries + 1):
         result = apply_fn(repo_dir)
@@ -303,6 +335,14 @@ def commit_and_push_with_retry(
         commit = _run(["git", "commit", "-m", commit_message], repo_dir)
         if commit.returncode != 0:
             raise GitDurableStoreError(f"git commit failed: {commit.stderr}")
+
+        # Re-checked immediately before EVERY push, not just once at
+        # the top. The gap between "we decided to write" and "the bytes
+        # land" is exactly the interval a cutover needs closed, and a
+        # retry loop can sit in that gap for several fetch/re-apply
+        # rounds while an operator opens the window.
+        if check_maintenance_window:
+            maintenance.assert_writes_allowed(repo_dir, branch, remote=remote, fetch=False)
 
         push = _run(["git", "push", remote, f"HEAD:{branch}"], repo_dir)
         if push.returncode == 0:

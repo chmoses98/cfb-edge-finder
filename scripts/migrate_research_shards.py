@@ -39,6 +39,37 @@ touches the real tree at all.
 Re-running after a successful migration is a no-op: with the monolith
 gone there is nothing to move, and the shard dedup would reject the rows
 anyway.
+
+*** THE COEXISTENCE CASE, AND WHY IT IS NO LONGER A DEAD END ***
+By default this refuses to run when shards already exist next to the
+monolith, because migrating blindly into a populated shard set is how
+rows get duplicated. That refusal used to be terminal, and it made one
+specific sequence unrecoverable without hand surgery:
+
+    merge -> a scheduled capture runs -> it writes the first shard
+          -> monolith and shards now coexist -> migration refuses
+          -> stuck, with the corpus split across two layouts
+
+`--allow-existing-shards` makes that state RESOLVABLE. It does NOT relax
+the proof; it strengthens it, because there is now a third thing that
+could go wrong (a monolith row and a shard row claiming the same
+identity). In this mode:
+
+  * a monolith row whose dedup key is already in the shards is NOT
+    appended again -- it is already present, and appending would create
+    the duplicate this whole tool exists to prevent;
+  * unless its bytes DIFFER from the shard row holding that key, which
+    is a genuine conflict about what an observation says. That is not a
+    thing to resolve automatically, so it fails with both lines named;
+  * every other monolith row is appended exactly as in the normal path,
+    byte-for-byte, in its original relative order;
+  * the proof then requires that every pre-existing shard line still be
+    present untouched, that every monolith key be present afterwards,
+    and that the whole shard set still contain zero duplicate keys.
+
+Nothing is ever deleted to make this converge. `research/maintenance.py`
+exists so that the coexistence state should not arise in the first
+place; this flag is what makes it survivable if it does.
 """
 
 from __future__ import annotations
@@ -115,6 +146,7 @@ def migrate_family(
     season: int,
     *,
     target_bytes: int = shards.SHARD_TARGET_BYTES,
+    allow_existing_shards: bool = False,
 ) -> dict:
     """Move one family-season's monolith into date shards and prove the
     move. Returns the report; raises MigrationError if the proof fails,
@@ -140,21 +172,53 @@ def migrate_family(
         return report
 
     before_lines = _read_lines(legacy)
-    before_keys, before_keyless, before_malformed = _key_counter(before_lines, subdir)
-    before_line_counts = Counter(before_lines)
+    # Only the KEY multiset of the monolith is still compared directly:
+    # it is the one thing that must hold whatever else is in the shards
+    # (no monolith key may go missing). The line/keyless/malformed
+    # checks now run against `expected_*` below, which equals the
+    # monolith's own counts whenever the shard set starts empty.
+    before_keys, _before_keyless, _before_malformed = _key_counter(before_lines, subdir)
 
     existing_shards = shards.shard_paths(base_dir, subdir, season)
-    if existing_shards:
+    if existing_shards and not allow_existing_shards:
         raise MigrationError(
             f"{subdir}: refusing to migrate -- {len(existing_shards)} shard(s) already exist "
-            f"alongside the monolith ({existing_shards[0].parent}). Migrating into a populated "
-            f"shard set could duplicate rows; inspect and resolve by hand."
+            f"alongside the monolith ({existing_shards[0].parent}). Migrating blindly into a "
+            f"populated shard set could duplicate rows. This is NOT a dead end: re-run with "
+            f"--allow-existing-shards, which appends only the monolith rows whose dedup key is "
+            f"not already in the shards and fails loudly on any genuine conflict. See "
+            f"docs/CUTOVER_SHARDING.md."
         )
+
+    # Everything already in the shards before this run. In the normal
+    # (empty-shard) path these are all empty and every check below
+    # degenerates to the original one.
+    preexisting_lines: list[str] = []
+    for path in existing_shards:
+        preexisting_lines.extend(_read_lines(path))
+    preexisting_counts = Counter(preexisting_lines)
+    preexisting_keys, preexisting_keyless, preexisting_malformed = _key_counter(
+        preexisting_lines, subdir
+    )
+    # Which exact line currently holds each key -- needed to tell a true
+    # duplicate (same key, same bytes: skip) from a conflict (same key,
+    # different bytes: refuse).
+    line_for_key: dict[str, str] = {}
+    for line in preexisting_lines:
+        try:
+            key = dedup_key_of(json.loads(line), subdir)
+        except json.JSONDecodeError:
+            continue
+        if key is not None:
+            line_for_key.setdefault(key, line)
 
     # Date every line by the SAME function the live write path uses, so a
     # migrated row and a freshly captured one can never disagree about
     # where they belong. Input order is preserved within each date.
     dated: list[tuple[str, str]] = []
+    skipped_already_present = 0
+    conflicts: list[str] = []
+    keyless_budget = Counter(preexisting_counts)
     for line in before_lines:
         try:
             row = json.loads(line)
@@ -163,7 +227,37 @@ def migrate_family(
             # be dated, so it goes to the deterministic undated shard.
             dated.append((shards.UNDATED_SHARD_DATE, line))
             continue
+
+        if existing_shards:
+            key = dedup_key_of(row, subdir)
+            if key is not None and key in preexisting_keys:
+                held = line_for_key.get(key)
+                if held == line:
+                    # Already there, byte-for-byte. Appending it again is
+                    # the duplicate this tool exists to prevent.
+                    skipped_already_present += 1
+                    continue
+                conflicts.append(
+                    f"key {key!r} is in the shards as {held!r} but the monolith has {line!r}"
+                )
+                continue
+            if key is None and keyless_budget.get(line, 0) > 0:
+                # A keyless family (heartbeats) can only be compared by
+                # bytes. An identical line already present is the same
+                # row, so consume one and skip it.
+                keyless_budget[line] -= 1
+                skipped_already_present += 1
+                continue
+
         dated.append((shards.shard_date_for(row, subdir), line))
+
+    if conflicts:
+        report.update(status="FAILED", failures=conflicts, conflicts=conflicts)
+        raise MigrationError(
+            f"{subdir}: refusing to migrate -- {len(conflicts)} row(s) exist in BOTH the "
+            f"monolith and the shards under the same dedup key with different content. "
+            f"Neither copy may be discarded automatically. First: {conflicts[0]}"
+        )
 
     written = shards.append_lines(base_dir, subdir, season, dated, target_bytes=target_bytes)
 
@@ -178,24 +272,49 @@ def migrate_family(
     after_keys, after_keyless, after_malformed = _key_counter(after_lines, subdir)
     after_line_counts = Counter(after_lines)
 
+    # *** WHAT THE SHARD SET MUST CONTAIN AFTERWARDS ***
+    # Everything that was already in the shards, plus exactly the
+    # monolith lines this run decided to append. With no pre-existing
+    # shards (the normal cutover) `preexisting_*` are empty and
+    # `appended_lines` is `before_lines`, so every check below is
+    # identical to the original monolith-only proof.
+    appended_lines = [line for _, line in dated]
+    expected_line_counts = preexisting_counts + Counter(appended_lines)
+    expected_keys, expected_keyless, expected_malformed = _key_counter(
+        preexisting_lines + appended_lines, subdir
+    )
+
     largest = max((path.stat().st_size for path in shard_files), default=0)
     duplicate_keys = sum(count - 1 for count in after_keys.values() if count > 1)
+    # The load-bearing one: no key that was in the monolith may be
+    # absent from the shards, however it got there.
     missing_keys = sum(
         max(count - after_keys.get(key, 0), 0) for key, count in before_keys.items()
     )
     gained_keys = sum(
-        max(count - before_keys.get(key, 0), 0) for key, count in after_keys.items()
+        max(count - expected_keys.get(key, 0), 0) for key, count in after_keys.items()
+    )
+    # No pre-existing shard line may have been disturbed.
+    preexisting_lost = sum(
+        max(count - after_line_counts.get(line, 0), 0)
+        for line, count in preexisting_counts.items()
     )
 
-    # Order preservation: the original index of each line, read back in
-    # (date, part, file-order), must be non-decreasing WITHIN each shard.
+    # Order preservation: the original index of each MONOLITH line, read
+    # back in (date, part, file-order), must be non-decreasing WITHIN
+    # each shard. Lines that were already in the shards before this run
+    # are skipped -- they have no position in the monolith to preserve.
     order_violations = 0
     original_index: dict[str, list[int]] = {}
     for position, line in enumerate(before_lines):
         original_index.setdefault(line, []).append(position)
     for path in shard_files:
         previous = -1
+        budget = Counter(preexisting_counts)
         for line in _read_lines(path):
+            if budget.get(line, 0) > 0:
+                budget[line] -= 1
+                continue
             # Identical lines are interchangeable by definition, so take
             # the earliest original position that keeps the sequence
             # monotonic if one exists.
@@ -207,18 +326,25 @@ def migrate_family(
             previous = nxt
 
     failures: list[str] = []
-    if len(after_lines) != len(before_lines):
-        failures.append(f"row count {len(before_lines)} in vs {len(after_lines)} out")
-    if after_line_counts != before_line_counts:
+    if len(after_lines) != len(preexisting_lines) + len(appended_lines):
+        failures.append(
+            f"row count {len(preexisting_lines)} existing + {len(appended_lines)} appended "
+            f"vs {len(after_lines)} out"
+        )
+    if after_line_counts != expected_line_counts:
         failures.append("raw line multiset differs (byte-level inequality)")
-    if after_keys != before_keys:
+    if preexisting_lost:
+        failures.append(f"{preexisting_lost} pre-existing shard line(s) lost")
+    if after_keys != expected_keys:
         failures.append(f"key multiset differs (missing={missing_keys} gained={gained_keys})")
+    if missing_keys:
+        failures.append(f"{missing_keys} monolith dedup key(s) absent from the shard set")
     if duplicate_keys:
         failures.append(f"{duplicate_keys} duplicate dedup key(s) in the shard set")
-    if after_keyless != before_keyless:
-        failures.append(f"keyless rows {before_keyless} in vs {after_keyless} out")
-    if after_malformed != before_malformed:
-        failures.append(f"malformed rows {before_malformed} in vs {after_malformed} out")
+    if after_keyless != expected_keyless:
+        failures.append(f"keyless rows {expected_keyless} expected vs {after_keyless} out")
+    if after_malformed != expected_malformed:
+        failures.append(f"malformed rows {expected_malformed} expected vs {after_malformed} out")
     if order_violations:
         failures.append(f"{order_violations} row(s) out of original order within a shard")
     if largest > target_bytes:
@@ -227,6 +353,11 @@ def migrate_family(
     report.update(
         rows_in=len(before_lines),
         rows_out=len(after_lines),
+        preexisting_shard_rows=len(preexisting_lines),
+        preexisting_shards=len(existing_shards),
+        rows_appended=len(appended_lines),
+        rows_already_present=skipped_already_present,
+        preexisting_rows_lost=preexisting_lost,
         distinct_keys_in=len(before_keys),
         distinct_keys_out=len(after_keys),
         keyless_rows=after_keyless,
@@ -239,7 +370,7 @@ def migrate_family(
         rows_per_shard=per_shard,
         largest_shard_bytes=largest,
         files_touched=sorted(str(path) for path in written),
-        byte_identical=after_line_counts == before_line_counts,
+        byte_identical=after_line_counts == expected_line_counts,
     )
 
     if failures:
@@ -268,6 +399,16 @@ def main_with_args(argv: list[str] | None = None) -> int:
         action="store_true",
         help="prove the migration against a COPY; the real tree is never touched",
     )
+    parser.add_argument(
+        "--allow-existing-shards",
+        action="store_true",
+        help=(
+            "migrate even though shards already exist beside the monolith: append only the "
+            "monolith rows whose dedup key is not already in the shards, and fail on any "
+            "same-key/different-bytes conflict. The documented recovery for a writer landing "
+            "mid-cutover (docs/CUTOVER_SHARDING.md)."
+        ),
+    )
     parser.add_argument("--report", type=Path, default=None)
     parser.add_argument(
         "--target-bytes",
@@ -293,6 +434,14 @@ def main_with_args(argv: list[str] | None = None) -> int:
             if legacy.is_file():
                 (workspace / family).mkdir(parents=True, exist_ok=True)
                 shutil.copy2(legacy, shards.legacy_monolith_path(workspace, family, args.season))
+            # Any shards that already exist come along too. Without them
+            # a dry run of the coexistence path would rehearse against an
+            # empty shard set -- i.e. prove something other than what the
+            # real run is about to do.
+            for shard in shards.shard_paths(base_dir, family, args.season):
+                destination = shards.shard_dir(workspace, family, args.season) / shard.name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(shard, destination)
 
     reports: list[dict] = []
     failed = False
@@ -300,7 +449,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
         for family in args.families:
             try:
                 reports.append(
-                    migrate_family(workspace, family, args.season, target_bytes=args.target_bytes)
+                    migrate_family(
+                        workspace,
+                        family,
+                        args.season,
+                        target_bytes=args.target_bytes,
+                        allow_existing_shards=args.allow_existing_shards,
+                    )
                 )
             except MigrationError as exc:
                 failed = True

@@ -83,6 +83,19 @@ jobs:
           # The research-data branch is an ORPHAN carrying data and no
           # code, so a worktree checkout of it can never disturb main.
           git fetch origin research-data --depth=1
+
+          # This is the ONLY writer that pushes to research-data with raw
+          # git rather than through GitDurableStore, so it is the one
+          # writer the in-code maintenance-window check cannot reach.
+          # Check it here instead: exit 2 is "state unknown", which fails
+          # closed exactly like the library does. Without this, a manual
+          # dispatch of this workflow could land a commit in the middle
+          # of the shard cutover -- see docs/CUTOVER_SHARDING.md.
+          if ! python scripts/research_maintenance_window.py --status --branch research-data; then
+            echo "::error::research-data is frozen for maintenance (or its state is unreadable); refusing to push."
+            exit 1
+          fi
+
           rm -rf /tmp/rd && git worktree add /tmp/rd origin/research-data --detach
 
           mkdir -p /tmp/rd/data/research_cache/preseason

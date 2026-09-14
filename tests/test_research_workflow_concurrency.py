@@ -150,3 +150,74 @@ def test_capture_workflow_is_the_scanner_and_is_scheduled():
     assert "research_scan_and_capture.py" in text
     assert re.search(r"^\s+-\s*cron:", text, re.MULTILINE), "capture workflow is no longer scheduled"
     assert capture in _durable_store_writers()
+
+
+# =========================================================================
+# THE CUTOVER CENSUS
+#
+# The concurrency group above SERIALIZES writers. It does not STOP one,
+# which is the whole problem during a storage cutover: a capture that
+# runs between the merge and the migration holds the group entirely
+# legitimately and lands its shard anyway.
+#
+# docs/CUTOVER_SHARDING.md therefore names every workflow that must be
+# disabled before a cutover. A census in prose goes stale the first time
+# someone adds a workflow, and the one that got forgotten would be the
+# one that broke the cutover -- so it is asserted here instead.
+# =========================================================================
+
+RUNBOOK = Path(__file__).resolve().parent.parent / "docs" / "CUTOVER_SHARDING.md"
+
+
+def test_the_cutover_runbook_exists():
+    assert RUNBOOK.is_file(), "the cutover runbook is what steps A-I are executed from"
+
+
+@pytest.mark.parametrize("workflow", _durable_store_writers(), ids=lambda p: p.name)
+def test_every_durable_store_writer_is_named_in_the_cutover_runbook(workflow: Path):
+    """A writer missing from the freeze list is a writer that keeps
+    running through the cutover."""
+    name = re.search(r"^name:\s*(.+)$", workflow.read_text(encoding="utf-8"), re.MULTILINE)
+    assert name, f"{workflow.name} has no name: line"
+    runbook = RUNBOOK.read_text(encoding="utf-8")
+    assert name.group(1).strip() in runbook, (
+        f"{workflow.name} can write the durable store but is not named in "
+        f"docs/CUTOVER_SHARDING.md -- it would keep running through a cutover"
+    )
+
+
+def test_the_conductor_is_in_the_freeze_list_even_though_it_writes_nothing():
+    """It dispatches Research Capture runs, and sits in its OWN
+    concurrency group rather than the writers' -- so leaving it enabled
+    keeps triggering the very writer the freeze is meant to stop."""
+    conductor = WORKFLOWS / "research-collection-conductor.yml"
+    name = re.search(r"^name:\s*(.+)$", conductor.read_text(encoding="utf-8"), re.MULTILINE)
+    assert name.group(1).strip() in RUNBOOK.read_text(encoding="utf-8")
+
+
+def test_the_raw_git_pusher_checks_the_maintenance_window_itself():
+    """`preseason-research-fetch.yml` pushes to research-data with raw
+    git rather than through GitDurableStore, so the in-code freeze cannot
+    reach it. It has to check the window in the workflow, and must fail
+    on a non-zero exit -- `--status` returns 1 for OPEN and 2 for
+    UNKNOWN, and both must refuse."""
+    text = (WORKFLOWS / "preseason-research-fetch.yml").read_text(encoding="utf-8")
+    push = text.index("git push origin HEAD:research-data")
+    guard = text.find("research_maintenance_window.py --status")
+    assert guard != -1, "the raw-git pusher does not consult the maintenance window"
+    assert guard < push, "the window is checked after the push, which guards nothing"
+
+
+def test_no_other_workflow_pushes_to_research_data_with_raw_git():
+    """If a second raw-git pusher appears it needs the same explicit
+    gate, because no library call sits between it and the branch."""
+    offenders = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        if f"git push origin HEAD:{DURABLE_BRANCH}" not in text:
+            continue
+        if "research_maintenance_window.py --status" not in text:
+            offenders.append(path.name)
+    assert not offenders, (
+        f"{offenders} push research-data with raw git and never check the maintenance window"
+    )
