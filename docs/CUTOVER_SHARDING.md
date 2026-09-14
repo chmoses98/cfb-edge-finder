@@ -155,19 +155,28 @@ Only after A and B both pass.
 
 ### D. Migrate
 
-In a fresh checkout of `research-data`, at the merged code:
+Two checkouts, because the code and the data live on different branches:
+run the MERGED code from `main`, pointed at a **separate, fresh** working
+copy of `research-data`.
 
 ```bash
-python scripts/migrate_research_shards.py \
-    --data-repo-dir <checkout> --season 2026 \
+git clone https://github.com/chmoses98/cfb-edge-finder /tmp/code
+git -C /tmp/code checkout main && git -C /tmp/code pull
+
+git clone --branch research-data \
+    https://github.com/chmoses98/cfb-edge-finder /tmp/data
+git -C /tmp/data rev-parse HEAD     # record this; it is the rollback point
+
+python /tmp/code/scripts/migrate_research_shards.py \
+    --data-repo-dir /tmp/data --season 2026 \
     --dry-run --report /tmp/migration-dry-run.json
 ```
 
 Review the dry-run report, then apply:
 
 ```bash
-python scripts/migrate_research_shards.py \
-    --data-repo-dir <checkout> --season 2026 \
+python /tmp/code/scripts/migrate_research_shards.py \
+    --data-repo-dir /tmp/data --season 2026 \
     --report /tmp/migration.json
 ```
 
@@ -198,15 +207,28 @@ Expected baseline, from the rehearsal against the corpus at `b3f9bbc`:
 ### F. Verify the monoliths are gone
 
 ```bash
+cd /tmp/data
 git ls-tree -r --name-only HEAD -- data/research | grep -E '/2026\.jsonl$' && echo "STILL PRESENT" || echo "clean"
-python scripts/check_research_blob_sizes.py --data-repo-dir <checkout> --strict
+python /tmp/code/scripts/check_research_blob_sizes.py --data-repo-dir /tmp/data --strict
 ```
 
 `--strict` **without** `--allow-legacy-monolith`: after the migration
 there is no legacy monolith left, so any oversize blob is a genuine
 regression.
 
-Commit and push the migrated corpus.
+Then commit and push the migrated corpus:
+
+```bash
+cd /tmp/data
+git add -A data/research
+git commit -m "research: migrate season monoliths to UTC-date shards"
+git push origin HEAD:research-data      # expect NO GH001, NO 50 MB warning
+```
+
+The maintenance window does **not** block this, and must not: it gates
+`GitDurableStore`, and this is a raw `git push` by the operator
+performing the cutover. That is the one write the window exists to
+protect. Never `--force`.
 
 ### G. Close the maintenance window
 
