@@ -53,37 +53,28 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cfb_edge_finder.research import shards  # noqa: E402
-
-DEDUP_KEY_FIELDS: dict[str, tuple[str, ...]] = {
-    shards.OBSERVATIONS_SUBDIR: ("observation_key",),
-    shards.ATTRIBUTIONS_SUBDIR: ("attribution_key",),
-    shards.SHADOW_SUBDIR: ("shadow_key",),
-    shards.CAPTURE_STATE_SUBDIR: ("game_id", "kalshi_market_ticker", "timing_label", "state"),
-    shards.SETTLEMENTS_SUBDIR: (
-        "game_id",
-        "kalshi_market_ticker",
-        "status",
-        "derived_contract_settlement",
-        "official_kalshi_settlement",
-    ),
-    shards.V2_SHADOW_SUBDIR: ("observation_key", "v2_model_version"),
-}
-"""The dedup identity the LIVE append path enforces for each family,
-restated here so the proof checks the same notion of "a key" that
-production does. `heartbeats` is absent on purpose: it has no dedup key
-(every invocation is its own row), so for it the byte-multiset and count
-checks are the whole proof."""
+from cfb_edge_finder.research import persistence, shards  # noqa: E402
 
 
 def dedup_key_of(row: dict, subdir: str) -> str | None:
-    fields = DEDUP_KEY_FIELDS.get(subdir)
-    if not fields:
-        return None
-    values = [row.get(field) for field in fields]
-    if any(value is None for value in values):
-        return None
-    return "|".join(str(value) for value in values)
+    """THE dedup identity, taken straight from the module that enforces
+    it on the write path.
+
+    Deliberately NOT restated here. An earlier draft did restate it, and
+    required every field of the settlement fingerprint to be non-null --
+    but production stringifies the outcome fields, and every real
+    settlement row carries a null `official_kalshi_settlement`. The proof
+    therefore counted all 9,544 settlement rows as "keyless" and its
+    duplicate/missing check silently proved nothing about that family.
+    One source of truth removes the whole class of bug."""
+    key_fn = persistence.dedup_key_fn_for(subdir)
+    return None if key_fn is None else key_fn(row)
+
+
+KEYED_FAMILIES = tuple(f for f in shards.SHARDED_FAMILIES if persistence.dedup_key_fn_for(f))
+"""`heartbeats` is absent on purpose: it has no dedup key (every
+invocation is its own row), so for it the byte-multiset and count checks
+are the whole proof."""
 
 
 class MigrationError(RuntimeError):

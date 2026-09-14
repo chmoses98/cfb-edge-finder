@@ -318,44 +318,63 @@ def test_each_family_migrates_with_full_equivalence(tmp_path, family):
     assert sorted(after) == sorted(before)
 
 
-def test_the_migration_dedup_key_matches_what_production_enforces():
-    """If these two ever drift, the proof would be checking a different
-    notion of 'duplicate' than the append path actually prevents."""
-    row = {"observation_key": "k1"}
-    assert migrate.dedup_key_of(row, shards.OBSERVATIONS_SUBDIR) == persistence.observation_key_of(row)
+def test_the_migration_dedup_key_is_the_one_production_enforces():
+    """If these two ever drift, the proof checks a different notion of
+    'duplicate' than the append path actually prevents."""
+    for family in migrate.KEYED_FAMILIES:
+        assert persistence.dedup_key_fn_for(family) is not None
 
-    attribution = {"attribution_key": "a1"}
-    assert migrate.dedup_key_of(attribution, shards.ATTRIBUTIONS_SUBDIR) == persistence.attribution_key_of(
-        attribution
-    )
 
-    shadow = {"shadow_key": "s1"}
-    assert migrate.dedup_key_of(shadow, shards.SHADOW_SUBDIR) == persistence.shadow_key_of(shadow)
+def test_a_settlement_with_a_null_outcome_is_still_keyed():
+    """The bug the first dry run against the real corpus exposed.
 
-    state = {
-        "game_id": "g1",
-        "kalshi_market_ticker": "MKT-1",
-        "timing_label": "T_60",
-        "state": "CAPTURED",
-    }
-    assert migrate.dedup_key_of(state, shards.CAPTURE_STATE_SUBDIR) == persistence._capture_state_fact_key(state)
-
+    Production's settlement fingerprint STRINGIFIES the outcome fields,
+    so a row whose `official_kalshi_settlement` is null still has a key.
+    An earlier migration draft restated the rule and required every field
+    to be non-null, which made all 9,544 real settlement rows 'keyless'
+    and the duplicate/missing check vacuous for that whole family."""
     settlement = {
         "game_id": "g1",
         "kalshi_market_ticker": "MKT-1",
-        "status": "settled",
-        "derived_contract_settlement": "YES",
-        "official_kalshi_settlement": "YES",
+        "status": "pending_not_final",
+        "derived_contract_settlement": None,
+        "official_kalshi_settlement": None,
     }
-    assert migrate.dedup_key_of(settlement, shards.SETTLEMENTS_SUBDIR) == persistence._settlement_fact_key(
-        settlement
-    )
+    key = migrate.dedup_key_of(settlement, shards.SETTLEMENTS_SUBDIR)
+    assert key is not None
+    assert key == persistence.settlement_fact_key(settlement)
+
+
+def test_a_family_of_null_outcome_settlements_is_proved_not_skipped(tmp_path):
+    """End to end: the migration report must count these rows as keyed,
+    which is what makes its zero-duplicate/zero-missing claim mean
+    something for settlements."""
+    base = tmp_path / "data" / "research"
+    rows = [
+        {
+            "game_id": f"g{i}",
+            "kalshi_market_ticker": f"MKT-{i}",
+            "status": "pending_not_final",
+            "derived_contract_settlement": None,
+            "official_kalshi_settlement": None,
+            "settled_at": f"2026-09-1{i % 3}T10:00:00+00:00",
+        }
+        for i in range(30)
+    ]
+    _write_monolith(base, shards.SETTLEMENTS_SUBDIR, rows)
+    report = migrate.migrate_family(base, shards.SETTLEMENTS_SUBDIR, SEASON)
+
+    assert report["status"] == "MIGRATED"
+    assert report["keyless_rows"] == 0, "settlement rows were not keyed by the proof"
+    assert report["distinct_keys_out"] == len(rows)
+    assert report["duplicate_keys"] == 0
+    assert report["missing_keys"] == 0
 
 
 def test_heartbeats_have_no_dedup_key_and_are_proved_by_count_and_bytes():
     """Deliberate: every invocation is its own row, so a key-based check
     would be meaningless there."""
-    assert shards.HEARTBEATS_SUBDIR not in migrate.DEDUP_KEY_FIELDS
+    assert shards.HEARTBEATS_SUBDIR not in migrate.KEYED_FAMILIES
     assert migrate.dedup_key_of({"run_id": "r1"}, shards.HEARTBEATS_SUBDIR) is None
 
 

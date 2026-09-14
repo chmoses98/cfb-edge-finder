@@ -436,7 +436,7 @@ def read_shadow_rows(base_dir: Path, season: int) -> list[dict]:
 # settlement_key -- callers fold the log (see `latest_settlements`).
 
 
-def _settlement_fact_key(obj: dict) -> str | None:
+def settlement_fact_key(obj: dict) -> str | None:
     game_id = obj.get("game_id")
     ticker = obj.get("kalshi_market_ticker")
     if game_id is None or ticker is None:
@@ -456,7 +456,7 @@ def append_settlement_rows(
 ) -> AppendResult:
     dicts = [r.model_dump(mode="json") for r in rows]
     return append_sharded_json_rows(
-        base_dir, SETTLEMENTS_SUBDIR, season, dicts, key_fn=_settlement_fact_key
+        base_dir, SETTLEMENTS_SUBDIR, season, dicts, key_fn=settlement_fact_key
     )
 
 
@@ -575,7 +575,7 @@ def read_attribution_rows(source: PathSource) -> list[ObservationAttribution]:
 # --- Capture-state log ---------------------------------------------------
 
 
-def _capture_state_fact_key(obj: dict) -> str | None:
+def capture_state_fact_key(obj: dict) -> str | None:
     required = ("game_id", "kalshi_market_ticker", "timing_label", "state")
     if any(obj.get(f) is None for f in required):
         return None
@@ -595,12 +595,47 @@ def append_capture_state_rows(
     different shard."""
     dicts = [r.model_dump(mode="json") for r in rows]
     return append_sharded_json_rows(
-        base_dir, CAPTURE_STATE_SUBDIR, season, dicts, key_fn=_capture_state_fact_key
+        base_dir, CAPTURE_STATE_SUBDIR, season, dicts, key_fn=capture_state_fact_key
     )
 
 
 def read_capture_state_rows(source: PathSource) -> list[CaptureStateRecord]:
     return [CaptureStateRecord.model_validate(obj) for obj in _read_all(source)]
+
+
+_settlement_fact_key = settlement_fact_key
+_capture_state_fact_key = capture_state_fact_key
+"""Back-compat aliases. The public names exist because
+`scripts/migrate_research_shards.py` must key its equivalence proof on
+THE SAME function the append path enforces -- restating the rule there
+made the settlements check silently vacuous (every real row carries a
+null `official_kalshi_settlement`, which a stricter restatement rejected
+as keyless)."""
+
+
+def dedup_key_fn_for(subdir: str):
+    """THE dedup identity the append path enforces for `subdir`, or None
+    for a family that has none (heartbeats: every invocation is its own
+    row). Callers that need to reason about duplicates -- the migration's
+    equivalence proof above all -- must go through this rather than
+    restate the rule."""
+    return {
+        OBSERVATIONS_SUBDIR: observation_key_of,
+        ATTRIBUTIONS_SUBDIR: attribution_key_of,
+        SHADOW_SUBDIR: shadow_key_of,
+        CAPTURE_STATE_SUBDIR: capture_state_fact_key,
+        SETTLEMENTS_SUBDIR: settlement_fact_key,
+        shards.V2_SHADOW_SUBDIR: v2_shadow_key_of,
+    }.get(subdir)
+
+
+def v2_shadow_key_of(obj: dict) -> str | None:
+    """Mirrors research.v2_shadow.dedup_key: observation_key|model."""
+    key = obj.get("observation_key")
+    version = obj.get("v2_model_version")
+    if isinstance(key, str) and isinstance(version, str):
+        return f"{key}|{version}"
+    return None
 
 
 def latest_capture_states(rows: Iterable[CaptureStateRecord]) -> dict[tuple[str, str, str], CaptureStateRecord]:
