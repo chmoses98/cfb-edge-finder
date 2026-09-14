@@ -39,7 +39,14 @@ jobs:
       #
       # Read-only: fetches the data branch shallowly into a temp dir and
       # never writes to it. `--strict` because on the durable branch a
-      # blob over the shard target is already a defect worth failing on.
+      # blob over the shard target is already a defect worth failing on --
+      # except a pre-sharding `{season}.jsonl`, which
+      # `--allow-legacy-monolith` reports as MIGRATION_PENDING instead.
+      # Without that, this step would be red on every pull request until
+      # the corpus was migrated, INCLUDING the pull request that adds the
+      # migration, which cannot run before it merges. It retires itself:
+      # once the corpus is sharded there is no legacy monolith left and
+      # any oversize blob fails normally.
       - name: Durable-store blob size guard
         run: |
           set -euo pipefail
@@ -52,7 +59,8 @@ jobs:
                   mkdir -p "$CORPUS/$(dirname "$tracked")"
                   git show "origin/research-data:$tracked" > "$CORPUS/$tracked"
                 done || true
-            python scripts/check_research_blob_sizes.py --data-repo-dir "$CORPUS" --strict
+            python scripts/check_research_blob_sizes.py \
+              --data-repo-dir "$CORPUS" --strict --allow-legacy-monolith
           else
             echo "(research-data branch not reachable; nothing to size-check)"
           fi

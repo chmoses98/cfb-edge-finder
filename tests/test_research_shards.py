@@ -234,6 +234,55 @@ def test_oversize_blobs_can_be_restricted_to_specific_paths(tmp_path):
     assert len(shards.oversize_blobs(tmp_path, limit_bytes=100)) == 1
 
 
+def test_a_legacy_monolith_is_recognised_as_such(tmp_path):
+    """So the guard can tell "not migrated yet" (a known condition with a
+    named remedy) from "a shard grew past its limit" (a regression)."""
+    root = tmp_path / "data" / "research"
+    legacy = shards.legacy_monolith_path(root, shards.OBSERVATIONS_SUBDIR, SEASON)
+    shard = shards.shard_path(root, shards.OBSERVATIONS_SUBDIR, SEASON, "2026-09-12", 1)
+    assert shards.is_legacy_monolith(legacy, root)
+    assert not shards.is_legacy_monolith(shard, root)
+    # Not a known family, and not the right depth: neither qualifies.
+    assert not shards.is_legacy_monolith(root / "football_state" / "2026.jsonl", root)
+    assert not shards.is_legacy_monolith(root / "2026.jsonl", root)
+    assert not shards.is_legacy_monolith(tmp_path / "elsewhere" / "2026.jsonl", root)
+
+
+def test_the_guard_distinguishes_an_unmigrated_corpus_from_a_regression(tmp_path):
+    """The deadlock this avoids: without the distinction the guard is red
+    on every pull request until migration runs -- including the pull
+    request that adds the migration, which cannot run before it merges."""
+    import subprocess
+    import sys
+
+    root = tmp_path / "data" / "research"
+    legacy = shards.legacy_monolith_path(root, shards.OBSERVATIONS_SUBDIR, SEASON)
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(b"x" * 5000)
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "check_research_blob_sizes.py"
+    base = [sys.executable, str(script), "--data-repo-dir", str(tmp_path),
+            "--target", "1000", "--limit", "2000", "--strict"]
+
+    strict = subprocess.run(base, capture_output=True, text=True)
+    assert strict.returncode == 1, "an oversize blob must fail by default"
+
+    allowed = subprocess.run([*base, "--allow-legacy-monolith"], capture_output=True, text=True)
+    assert allowed.returncode == 0, allowed.stdout + allowed.stderr
+    assert "MIGRATION_PENDING" in allowed.stdout
+    assert "migrate_research_shards.py" in allowed.stdout
+
+    # A SHARD of the same size is a regression either way -- the
+    # allowance must not become a blanket exemption.
+    legacy.unlink()
+    shard = shards.shard_path(root, shards.OBSERVATIONS_SUBDIR, SEASON, "2026-09-12", 1)
+    shard.parent.mkdir(parents=True)
+    shard.write_bytes(b"x" * 5000)
+    regressed = subprocess.run([*base, "--allow-legacy-monolith"], capture_output=True, text=True)
+    assert regressed.returncode == 1, "an oversize SHARD must still fail"
+    assert "[FAIL]" in regressed.stdout
+
+
 # --- 4. legacy monolith reads --------------------------------------------
 
 

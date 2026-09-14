@@ -23,6 +23,20 @@ Two thresholds, on purpose:
 
 `--strict` promotes target warnings to failures, which is what a CI job
 guarding the storage layout wants.
+
+`--allow-legacy-monolith` reports a PRE-SHARDING `{season}.jsonl` as
+MIGRATION_PENDING rather than a failure. That distinction matters: an
+unmigrated corpus is a known condition with a named remedy
+(scripts/migrate_research_shards.py), and failing on it would make CI
+red on every pull request until the migration ran -- including the pull
+request that introduces the migration. It retires itself: once the
+corpus is sharded no legacy monolith exists, and any oversize blob after
+that is a genuine regression in the write path that fails normally.
+
+The BLOCKING guard against a GH001 outage is not this script -- it is
+`research/git_durable_store.py`, which refuses to push a changed blob
+above the hard limit. This is the early-warning report for artifacts
+that are NOT sharded and could drift between pushes.
 """
 
 from __future__ import annotations
@@ -45,6 +59,11 @@ def main() -> int:
     parser.add_argument("--target", type=int, default=shards.SHARD_TARGET_BYTES)
     parser.add_argument("--limit", type=int, default=shards.PUSH_REFUSAL_BYTES)
     parser.add_argument("--strict", action="store_true", help="treat target warnings as failures")
+    parser.add_argument(
+        "--allow-legacy-monolith",
+        action="store_true",
+        help="report an unmigrated {season}.jsonl as MIGRATION_PENDING rather than a failure",
+    )
     parser.add_argument("--json", type=Path, default=None)
     args = parser.parse_args()
 
@@ -58,6 +77,13 @@ def main() -> int:
     files = [p for p in root.rglob("*") if p.is_file()]
     largest = max((p.stat().st_size for p in files), default=0)
 
+    def pending(path: Path) -> bool:
+        return args.allow_legacy_monolith and shards.is_legacy_monolith(path, root)
+
+    blocking_limit = [(p, s) for p, s in over_limit if not pending(p)]
+    blocking_target = [(p, s) for p, s in over_target if not pending(p)]
+    unmigrated = [(p, s) for p, s in over_target if pending(p)]
+
     print(f"corpus root        : {root}")
     print(f"files scanned      : {len(files)}")
     print(f"largest blob       : {largest / 1_000_000:.2f} MB")
@@ -65,8 +91,22 @@ def main() -> int:
     print(f"hard    (<= {args.limit / 1_000_000:>5.0f} MB): {len(over_limit)} over")
 
     for path, size in over_target:
-        severity = "FAIL" if (path, size) in over_limit or args.strict else "WARN"
+        if pending(path):
+            severity = "MIGRATION_PENDING"
+        elif (path, size) in over_limit or args.strict:
+            severity = "FAIL"
+        else:
+            severity = "WARN"
         print(f"  [{severity}] {path.relative_to(root)} is {size / 1_000_000:.2f} MB")
+
+    if unmigrated:
+        print(
+            "\nNOTE: the file(s) above are PRE-SHARDING season monoliths. Not a regression -- "
+            "run `python scripts/migrate_research_shards.py --data-repo-dir <checkout> "
+            "--season <season>` to relocate them into UTC-date shards. Until then the durable "
+            "store will refuse to push them (research/git_durable_store.py), which is what "
+            "GitHub was already doing with GH001."
+        )
 
     if args.json is not None:
         args.json.write_text(
@@ -79,6 +119,7 @@ def main() -> int:
                     "limit_bytes": args.limit,
                     "over_target": [[str(p), s] for p, s in over_target],
                     "over_limit": [[str(p), s] for p, s in over_limit],
+                    "migration_pending": [[str(p), s] for p, s in unmigrated],
                 },
                 indent=2,
                 sort_keys=True,
@@ -87,16 +128,19 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    if over_limit:
+    if blocking_limit:
         print(
             "\nFAIL: a blob is above the durable-store hard limit; a push carrying it "
             "would be rejected by GitHub with GH001.",
             file=sys.stderr,
         )
         return 1
-    if over_target and args.strict:
+    if blocking_target and args.strict:
         print("\nFAIL (--strict): a blob is above the shard target size.", file=sys.stderr)
         return 1
+    if unmigrated:
+        print(f"\nOK with {len(unmigrated)} migration(s) pending; no shard is over its limit.")
+        return 0
     print("\nOK: every durable-store blob is within the configured limits.")
     return 0
 

@@ -423,5 +423,28 @@ def oversize_blobs(
     return found
 
 
+LEGACY_MONOLITH_RE = re.compile(r"^(\d{4})\.jsonl$")
+
+
+def is_legacy_monolith(path: Path, root: Path) -> bool:
+    """True when `path` is a PRE-SHARDING `{season}.jsonl` of a known
+    family, i.e. `<root>/<family>/<season>.jsonl`.
+
+    Exists so the size guard can tell "this corpus has not been migrated
+    yet" apart from "a shard grew past its limit". The first is a known,
+    tracked condition with a named remedy
+    (scripts/migrate_research_shards.py); the second is a regression in
+    the write path. Reporting them identically would make the guard red
+    on every PR until migration ran -- including the PR that introduces
+    the migration."""
+    if LEGACY_MONOLITH_RE.match(path.name) is None:
+        return False
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        return False
+    return len(relative.parts) == 2 and relative.parts[0] in FAMILY_DATE_FIELDS
+
+
 def describe_blobs(blobs: Sequence[tuple[Path, int]]) -> str:
     return "; ".join(f"{path} is {size / 1_000_000:.2f} MB" for path, size in blobs)
