@@ -46,7 +46,8 @@ without the market universe changing much.
 ## 2. Baseline profile
 
 Measured against the real corpus (`origin/research-data`,
-`data/research/observations/2026.jsonl`) and the last pre-change scheduled
+`data/research/observations/2026.jsonl`, since sharded by UTC date --
+see docs/MILESTONE_E.md) and the last pre-change scheduled
 run on `main@6015276`.
 
 **Live run 18** (run id `33075615623`, 2026-08-27 13:12 UTC) — the "Scan

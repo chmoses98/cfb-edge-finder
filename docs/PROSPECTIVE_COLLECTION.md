@@ -183,9 +183,13 @@ run, a retried job attempt).
 ## 6. Persistence
 
 - **Branch**: `research-data` (orphan; never `main`).
-- **Path**: `data/research/observations/{season}.jsonl`,
-  `data/research/capture_state/{season}.jsonl`,
-  `data/research/settlements/{season}.jsonl`.
+- **Path**: `data/research/{observations,capture_state,settlements}/{season}/{YYYY-MM-DD}.partNNN.jsonl`
+  — one shard per UTC capture date (`research/shards.py`). The
+  pre-2026-09-14 layout was one `{season}.jsonl` monolith per family;
+  `observations/2026.jsonl` reached 99.72 MiB and crossed GitHub's
+  100 MiB blob limit, failing every durable push with GH001. Readers
+  still accept a legacy monolith while one exists; writes never do.
+  Dedup is computed across ALL shards, never per shard.
 - **Append-only**: existing lines are never rewritten, reordered, or
   re-serialized. One appending, fsync'd batch per file per scan attempt.
 - **Canonical key**: `observation_key = f(season, game_id, market_ticker,

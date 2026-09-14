@@ -8,6 +8,33 @@ ledger once one exists). This is everything under `src/`, `tests/`,
 `docs/`, `config/`, `scripts/`, and small, deliberately-curated files under
 `data/`.
 
+## Per-blob size ceiling (learned the hard way, 2026-09-14)
+
+GitHub refuses any blob over **100 MiB** (104,857,600 bytes) at
+pre-receive with `GH001`, and warns above 50 MB. This is not advisory
+for a git-backed durable store: the refusal rejects the WHOLE push, so
+one oversize file stops every other write on the branch with it.
+
+That happened. `data/research/observations/2026.jsonl` -- one file per
+family-season, appended to every ten minutes -- reached 99.72 MiB, and
+the next append crossed the limit. Every durable push failed, so every
+prospective capture failed, including CLOSING lines that can never be
+recovered after kickoff.
+
+The rule that follows: **anything append-only in git must be bounded by
+construction, not by hope.** The research corpus is now sharded by the
+UTC date of each row's own timestamp, with a rollover at 45 MB
+(`research/shards.py`), so no single blob can grow without limit. The
+durable store refuses to push a changed blob above 90 MB rather than
+letting GitHub reject the branch, and CI runs the same check against the
+live corpus. Git LFS was deliberately NOT used: it moves the problem
+into a quota-bearing pointer store and changes how every consumer reads
+the data, where the actual defect was an unbounded file.
+
+An artifact that is genuinely a single document (the football-state
+snapshot, a v2 parquet) cannot be sharded this way. Those are the ones
+the size guard exists to catch before they become the next incident.
+
 ## What does not stay in git (V1 recommendation)
 
 Raw high-frequency Kalshi price captures, large historical/backtest
