@@ -18,6 +18,10 @@ other has to fail here.
 
 from __future__ import annotations
 
+import json
+import os
+import sys
+
 import pytest
 
 from cfb_edge_finder.accounting import store
@@ -26,6 +30,12 @@ from cfb_edge_finder.accounting.import_routed_wagers import (
     build_record,
     import_rows,
     mint_wager_id,
+)
+
+#: `scripts/` is not a package, so the delivery entry point is imported by path.
+#: The tests below import it inside the test body, after this runs.
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
 )
 
 #: Exactly what the router sends -- no wager_id, no season, no week.
@@ -212,3 +222,125 @@ def test_the_row_lands_in_the_named_seasons_ledger(tmp_path):
 
     assert store.ledger_path(tmp_path, SEASON).exists()
     assert not store.ledger_path(tmp_path, 2025).exists()
+
+
+# ------------------------------------------ the script the router actually runs
+
+class TestPayloadEnvelope:
+    """The batch label appears twice, so the two copies are made unable to
+    disagree quietly.
+
+    MLB's importer reads `importBatchId` from the payload ENVELOPE; this ledger
+    reads `import_batch_id` from the ROW. The router emits both, and a row's
+    identity downstream depends on that label.
+    """
+
+    def write(self, tmp_path, payload):
+        path = tmp_path / "CFB.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return str(path)
+
+    def envelope(self, **row_overrides):
+        return {
+            "importBatchId": ROUTER_ROW["import_batch_id"],
+            "rows": [dict(ROUTER_ROW, **row_overrides)],
+        }
+
+    def test_the_routers_own_payload_is_accepted(self, tmp_path):
+        """The positive control. Without it, every refusal below would pass
+        just as happily against a reader that rejects everything."""
+        from import_routed_wagers import read_payload
+
+        batch, rows = read_payload(self.write(tmp_path, self.envelope()))
+
+        assert batch == ROUTER_ROW["import_batch_id"]
+        assert rows == [ROUTER_ROW]
+
+    def test_a_row_naming_a_different_batch_is_refused(self, tmp_path):
+        from import_routed_wagers import read_payload
+
+        with pytest.raises(ValueError, match="different import batch"):
+            read_payload(self.write(tmp_path, self.envelope(import_batch_id="other")))
+
+    def test_an_envelope_without_a_batch_label_is_refused(self, tmp_path):
+        from import_routed_wagers import read_payload
+
+        payload = self.envelope()
+        del payload["importBatchId"]
+
+        with pytest.raises(ValueError, match="no importBatchId"):
+            read_payload(self.write(tmp_path, payload))
+
+    def test_a_bare_list_of_rows_is_refused(self, tmp_path):
+        """The shape somebody writes by hand. Accepting it would mean accepting
+        a batch with no label at all."""
+        from import_routed_wagers import read_payload
+
+        with pytest.raises(ValueError, match="not an object"):
+            read_payload(self.write(tmp_path, [ROUTER_ROW]))
+
+
+def test_the_script_has_no_default_season(tmp_path):
+    """A College Football season spans two calendar years. A default would land
+    real wagers in the wrong year's accounting on a run nobody looked at."""
+    import import_routed_wagers as script
+
+    with pytest.raises(SystemExit):
+        script.main(["--payload", str(tmp_path / "x.json"), "--base-dir", str(tmp_path)])
+
+
+def test_the_script_prints_no_wager(tmp_path, capsys):
+    """This repository is public and so are its Actions logs."""
+    import import_routed_wagers as script
+
+    payload = tmp_path / "CFB.json"
+    payload.write_text(json.dumps({
+        "importBatchId": ROUTER_ROW["import_batch_id"], "rows": [ROUTER_ROW],
+    }), encoding="utf-8")
+
+    assert script.main([
+        "--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
+        "--season", str(SEASON),
+    ]) == script.EXIT_OK
+
+    printed = capsys.readouterr().out
+    assert "written:         1" in printed
+    for sensitive in (ROUTER_ROW["market_ticker"], "0.47", "11.94", "25.0",
+                      ROUTER_ROW["source_bet_key"]):
+        assert sensitive not in printed, printed
+
+
+def test_a_refused_row_fails_the_script(tmp_path):
+    """A payload that reached here was already judged importable by the router,
+    so a row this ledger will not take means the two repositories disagree
+    about what is valid."""
+    import import_routed_wagers as script
+
+    payload = tmp_path / "CFB.json"
+    payload.write_text(json.dumps({
+        "importBatchId": ROUTER_ROW["import_batch_id"],
+        "rows": [dict(ROUTER_ROW, side="MAYBE")],
+    }), encoding="utf-8")
+
+    assert script.main([
+        "--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
+        "--season", str(SEASON),
+    ]) == script.EXIT_REFUSED
+
+
+def test_running_the_script_twice_writes_one_row(tmp_path):
+    """The no-op proof, through the path the workflow actually takes."""
+    import import_routed_wagers as script
+
+    payload = tmp_path / "CFB.json"
+    payload.write_text(json.dumps({
+        "importBatchId": ROUTER_ROW["import_batch_id"], "rows": [ROUTER_ROW],
+    }), encoding="utf-8")
+    argv = ["--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
+            "--season", str(SEASON)]
+
+    assert script.main(argv) == script.EXIT_OK
+    assert script.main(argv) == script.EXIT_OK
+
+    rows = store.read_rows(store.ledger_path(tmp_path / "ledger", SEASON))
+    assert len(rows) == 1
