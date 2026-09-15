@@ -54,6 +54,12 @@ def imported_modules(path: Path) -> set[str]:
             names.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             names.add(node.module)
+            # `from cfb_edge_finder import sizing` binds the sizing package just
+            # as `import cfb_edge_finder.sizing` does, but the package name
+            # lives on the ALIAS, not on node.module. Recording only the module
+            # let that phrasing -- the most natural one to write -- through
+            # undetected, so each imported name is recorded too.
+            names.update(f"{node.module}.{alias.name}" for alias in node.names)
     return names
 
 
@@ -165,6 +171,18 @@ def test_the_ops_health_lock_probe_agrees_with_this_test_module():
     assert ops.sizing_is_disconnected() is True
 
 
+def test_both_probes_guard_exactly_the_same_packages():
+    """Agreeing on a clean repo is not agreement.
+
+    Both probes returned "no offenders" while one of them was not scanning the
+    accounting package at all -- so the test above passed on a probe that would
+    have reported the lock healthy with a real sizing import sitting in an
+    unscanned package. Equality of the two lists is the property that actually
+    prevents that; identical answers on a repo with nothing to find is not.
+    """
+    assert set(_ops_module().GUARDED_PACKAGES) == set(GUARDED_PACKAGES)
+
+
 def test_the_lock_probe_is_not_fooled_by_a_docstring_mentioning_sizing():
     """`recommendation/card.py` names the sizing package while explaining
     that it does NOT import it. A text-search probe reported the lock as
@@ -173,6 +191,41 @@ def test_the_lock_probe_is_not_fooled_by_a_docstring_mentioning_sizing():
     assert SIZING_PACKAGE in card.read_text(encoding="utf-8")
     assert SIZING_PACKAGE not in imported_modules(card)
     assert _ops_module().sizing_is_disconnected() is True
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "import cfb_edge_finder.sizing",
+        "import cfb_edge_finder.sizing.kelly_math",
+        "from cfb_edge_finder.sizing import kelly_math",
+        "from cfb_edge_finder.sizing.kelly_math import size_position",
+        "from cfb_edge_finder import sizing",
+        "from cfb_edge_finder import sizing as s",
+    ],
+)
+def test_every_way_of_importing_sizing_is_detected(statement, tmp_path):
+    """One undetected phrasing is a lock that does not lock.
+
+    `from cfb_edge_finder import sizing` used to pass both probes, because the
+    package name is on the alias rather than on the module. Each shape is now
+    asserted by name so the gap cannot quietly reopen.
+    """
+    path = tmp_path / "candidate.py"
+    path.write_text(statement, encoding="utf-8")
+    names = imported_modules(path)
+    assert any(
+        name == SIZING_PACKAGE or name.startswith(SIZING_PACKAGE + ".") for name in names
+    ), f"{statement!r} would reach sizing undetected; saw {sorted(names)}"
+
+
+def test_the_detector_still_ignores_a_docstring_that_names_sizing(tmp_path):
+    """The other half. Widening the detector must not make it text-search-ish:
+    the sentence in `recommendation/card.py` explaining that sizing is NOT
+    imported must still not register as an import."""
+    path = tmp_path / "candidate.py"
+    path.write_text('"""This module does not import cfb_edge_finder.sizing."""\n', encoding="utf-8")
+    assert imported_modules(path) == set()
 
 
 def test_the_lock_probe_detects_a_real_import(tmp_path, monkeypatch):

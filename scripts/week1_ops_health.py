@@ -192,6 +192,10 @@ def sizing_import_offenders() -> list[str]:
                     names.update(alias.name for alias in node.names)
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     names.add(node.module)
+                    # See tests/test_sizing_disconnection.py: the package name
+                    # of `from cfb_edge_finder import sizing` is on the alias,
+                    # not the module. Both probes record both.
+                    names.update(f"{node.module}.{alias.name}" for alias in node.names)
             if any(n == SIZING_PACKAGE or n.startswith(SIZING_PACKAGE + ".") for n in names):
                 offenders.append(str(path.relative_to(REPO_ROOT)))
     return offenders
