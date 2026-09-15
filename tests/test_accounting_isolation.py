@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import ast
 import importlib
-import re
 import pkgutil
+import re
 from pathlib import Path
 
 import pytest

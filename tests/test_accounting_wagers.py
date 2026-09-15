@@ -11,9 +11,9 @@ from cfb_edge_finder.accounting import (
     FORBIDDEN_PROVENANCE_FIELDS,
     SCHEMA_VERSION,
     AccountedWager,
+    store,
     validate,
 )
-from cfb_edge_finder.accounting import store
 
 
 def make(**overrides) -> dict:
