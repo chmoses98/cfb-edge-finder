@@ -36,7 +36,15 @@ def main(argv=None) -> int:
         print(f"no ledger for season {args.season} at {path}", file=sys.stderr)
         return 1
 
-    print(report.render(report.summarize(store.read_rows(path), args.season)))
+    # Settlements live in their own append-only file. Absent is the record for
+    # "not settled yet", so a missing file is a legitimate empty list rather
+    # than a reason to fail.
+    settlement_path = store.settlement_ledger_path(args.base_dir, args.season)
+    settlements = store.read_rows(settlement_path) if settlement_path.exists() else []
+
+    print(report.render(report.summarize(
+        store.read_rows(path), args.season, settlements=settlements,
+    )))
     return 0
 
 

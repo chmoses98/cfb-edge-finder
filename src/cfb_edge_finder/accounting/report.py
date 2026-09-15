@@ -83,11 +83,28 @@ class WagerSummary:
         return self.wagers > 0 and self.profit_loss_unestablished == 0
 
 
-def summarize(rows: list, season: int) -> WagerSummary:
-    """One season's ledger, added up. Rows are raw dicts, as the store stores."""
+def summarize(rows: list, season: int, settlements: list = ()) -> WagerSummary:
+    """One season's ledger, added up. Rows are raw dicts, as the store stores.
+
+    SETTLEMENT IS A SEPARATE ROW, JOINED HERE ON ``source_bet_key``.
+    It is a later and separate observation than the wager, so it lives in its
+    own append-only file rather than being edited into one. A wager with no
+    settlement row is unsettled -- that absence IS the record, which is why no
+    PENDING row is ever written.
+
+    A wager carrying its own settlement fields is honoured as a fallback. The
+    router never sends one, but the field exists on the record, and silently
+    ignoring a populated field would be the same class of defect as silently
+    dropping one.
+    """
     summary = WagerSummary(season=season)
+    by_key = {
+        s.get("source_bet_key"): s for s in settlements
+        if isinstance(s, dict) and s.get("source_bet_key")
+    }
 
     for row in rows:
+        settlement = by_key.get(row.get("source_bet_key")) or row
         summary.wagers += 1
         summary.contracts += _number(row.get("contracts"))
         summary.staked += _number(row.get("stake"))
@@ -96,9 +113,9 @@ def summarize(rows: list, season: int) -> WagerSummary:
         key = (row.get("market_ticker"), row.get("side"))
         summary.markets[key] = summary.markets.get(key, 0) + 1
 
-        if row.get("settlement_status") == SETTLED:
+        if settlement.get("settlement_status") == SETTLED:
             summary.settled += 1
-            result = row.get("result")
+            result = settlement.get("result")
             if result == "WON":
                 summary.won += 1
             elif result == "LOST":
@@ -108,7 +125,7 @@ def summarize(rows: list, season: int) -> WagerSummary:
         else:
             summary.unsettled += 1
 
-        profit_loss = row.get("net_profit_loss")
+        profit_loss = settlement.get("net_profit_loss")
         if isinstance(profit_loss, (int, float)) and not isinstance(profit_loss, bool):
             summary.realized_profit_loss += float(profit_loss)
             summary.profit_loss_established += 1
