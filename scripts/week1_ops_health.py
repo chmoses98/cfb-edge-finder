@@ -149,6 +149,10 @@ def probe_safety_locks() -> dict[str, bool]:
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Kept in step with tests/test_sizing_disconnection.py, which asserts the
+    # two lists are identical. A package guarded there but missing here is a
+    # probe that reports the lock healthy while it is broken.
+    "accounting",
     "decision",
     "recommendation",
     "research",
@@ -192,6 +196,10 @@ def sizing_import_offenders() -> list[str]:
                     names.update(alias.name for alias in node.names)
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     names.add(node.module)
+                    # See tests/test_sizing_disconnection.py: the package name
+                    # of `from cfb_edge_finder import sizing` is on the alias,
+                    # not the module. Both probes record both.
+                    names.update(f"{node.module}.{alias.name}" for alias in node.names)
             if any(n == SIZING_PACKAGE or n.startswith(SIZING_PACKAGE + ".") for n in names):
                 offenders.append(str(path.relative_to(REPO_ROOT)))
     return offenders
