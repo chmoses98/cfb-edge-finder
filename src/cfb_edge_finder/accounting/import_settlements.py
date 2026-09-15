@@ -1,0 +1,116 @@
+"""Import settlements the router attributed, for wagers already in the ledger.
+
+THE ONE RULE THAT MATTERS HERE
+-------------------------------
+A settlement may only be written for a wager this ledger already holds. A row
+whose ``source_bet_key`` matches nothing is REFUSED, not written -- an orphan
+settlement is a payout attributed to a bet this repository has no record of,
+and it would show up in every total while belonging to nothing.
+
+WHAT THIS DOES NOT DECIDE
+--------------------------
+Nothing here computes a return. The router owns attributing a position's
+settlement to an order, and owns refusing where it cannot; this reads what it
+sent, checks it against the wagers on disk, and writes.
+
+RE-RUNNING IS A NO-OP
+----------------------
+``store.append_settlements`` keys on ``source_bet_key`` because a market settles
+once, so a second pass over the same settlements writes nothing.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import fields as dataclass_fields
+from pathlib import Path
+
+from .settlement import SCHEMA_VERSION, WagerSettlement, validate
+from .store import append_settlements, existing_keys, ledger_path
+
+#: Prefix on every minted id, so a routed settlement is identifiable as one.
+ID_PREFIX = "stl"
+
+
+class SettlementRefused(Exception):
+    """This settlement cannot be filed, and filing it anyway would be worse."""
+
+
+def mint_settlement_id(source_bet_key: str) -> str:
+    """Derived from the WAGER's key alone, for the same reason the wager's id is.
+
+    Not from the result, the payout or the settlement time: a correction to any
+    of those must land on the same row rather than beside it.
+    """
+    if not isinstance(source_bet_key, str) or not source_bet_key.strip():
+        raise SettlementRefused("source_bet_key is required to mint a settlement id")
+    digest = hashlib.sha256(source_bet_key.encode("utf-8")).hexdigest()[:24]
+    return f"{ID_PREFIX}-{digest}"
+
+
+def build_record(row: dict) -> WagerSettlement:
+    """One router settlement row, as a typed record this ledger will accept."""
+    known = {f.name for f in dataclass_fields(WagerSettlement)}
+    unknown = sorted(set(row) - known)
+    if unknown:
+        raise SettlementRefused(f"router row carried unknown field(s): {unknown}")
+
+    record = WagerSettlement(
+        settlement_id=mint_settlement_id(row.get("source_bet_key")),
+        schema_version=SCHEMA_VERSION,
+        source_bet_key=row.get("source_bet_key"),
+        market_ticker=row.get("market_ticker"),
+        side=row.get("side"),
+        settlement_status=row.get("settlement_status"),
+        settled_at=row.get("settled_at"),
+        result=row.get("result"),
+        gross_return=row.get("gross_return"),
+        net_profit_loss=row.get("net_profit_loss"),
+        refusals=list(row.get("refusals") or []),
+        venue=row.get("venue") or "kalshi",
+    )
+
+    problems = validate(record.to_dict())
+    if problems:
+        raise SettlementRefused("; ".join(problems))
+    return record
+
+
+def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
+    """Write every settlement whose wager is on disk. Returns counts and reasons.
+
+    A settlement for a wager this ledger does not hold is refused per row and
+    does not stop the others.
+    """
+    if not isinstance(season, int) or isinstance(season, bool):
+        raise SettlementRefused(f"season must be an int naming the ledger; got {season!r}")
+
+    # The wagers this ledger actually holds, read once.
+    known_wagers = existing_keys(ledger_path(base_dir, season))
+
+    built: list[dict] = []
+    refusals: list[tuple[int, str]] = []
+
+    for index, row in enumerate(rows):
+        try:
+            record = build_record(row)
+            if record.source_bet_key not in known_wagers:
+                raise SettlementRefused(
+                    "no wager with this source_bet_key is in the "
+                    f"{season} ledger; a settlement attributed to a bet this "
+                    "repository has no record of would count in every total "
+                    "while belonging to nothing"
+                )
+            built.append(record.to_dict())
+        except SettlementRefused as exc:
+            refusals.append((index, str(exc)))
+
+    result = append_settlements(base_dir, season, built) if built else None
+
+    return {
+        "written": result.written if result else 0,
+        "already_present": result.skipped_duplicate if result else 0,
+        "refused": len(refusals),
+        "refusals": refusals,
+        "keys_written": list(result.keys_written) if result else [],
+    }

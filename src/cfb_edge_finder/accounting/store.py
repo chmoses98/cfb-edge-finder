@@ -41,6 +41,11 @@ from pathlib import Path
 
 WAGERS_SUBDIR = "wagers"
 
+#: Settlements live beside the wagers, not inside them. A settlement is a LATER
+#: and SEPARATE observation than the wager it settles, and this store's whole
+#: guarantee is that a row written is a row that stays written.
+SETTLEMENTS_SUBDIR = "settlements"
+
 #: Never `main`. Bot-written data stays out of reviewed code history, matching
 #: the `research-data` convention this repo already established.
 DATA_BRANCH = "accounting-data"
@@ -55,6 +60,10 @@ class AppendResult:
 
 def ledger_path(base_dir: Path, season: int) -> Path:
     return Path(base_dir) / WAGERS_SUBDIR / f"{season}.jsonl"
+
+
+def settlement_ledger_path(base_dir: Path, season: int) -> Path:
+    return Path(base_dir) / SETTLEMENTS_SUBDIR / f"{season}.jsonl"
 
 
 def source_bet_key_of(obj: dict) -> str | None:
@@ -88,6 +97,56 @@ def read_rows(path: Path) -> list[dict]:
 
 def existing_keys(path: Path) -> set[str]:
     return {k for k in (source_bet_key_of(row) for row in read_rows(path)) if k is not None}
+
+
+def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
+    """Append every settlement whose wager is not already settled on disk.
+
+    KEYED ON ``source_bet_key``, THE WAGER'S KEY, BECAUSE A MARKET SETTLES ONCE.
+    A second observation of the same settlement is therefore a duplicate rather
+    than a correction, and re-running the settlement pass is a no-op for the
+    same structural reason re-running the import is.
+
+    That also means an unsettled wager is recorded by having NO ROW HERE.
+    `settlement.validate` refuses a PENDING row outright: a row that has to be
+    superseded later has no place in a store whose guarantee is that rows are
+    not superseded.
+    """
+    from .settlement import validate
+
+    path = settlement_ledger_path(base_dir, season)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    on_disk = existing_keys(path)
+    seen: set[str] = set()
+    to_write: list[tuple[str, dict]] = []
+    skipped = 0
+
+    for row in rows:
+        problems = validate(row)
+        if problems:
+            raise ValueError(
+                f"refusing to write an invalid settlement row: {'; '.join(problems)}"
+            )
+        key = source_bet_key_of(row)
+        if key is None or key in on_disk or key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+        to_write.append((key, row))
+
+    if to_write:
+        with path.open("a", encoding="utf-8") as handle:
+            for _key, row in to_write:
+                handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    return AppendResult(
+        written=len(to_write),
+        skipped_duplicate=skipped,
+        keys_written=tuple(k for k, _ in to_write),
+    )
 
 
 def append_wagers(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
