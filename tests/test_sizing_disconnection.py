@@ -21,6 +21,12 @@ SRC = REPO_ROOT / "src" / "cfb_edge_finder"
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # The wager ledger records bets the owner already placed. It is guarded
+    # for exactly that reason: it is the one package that legitimately knows
+    # stakes and outcomes, so it is the most natural place for someone to
+    # reach for sizing math ("we have the stakes right here, just size the
+    # next one"). Recording a stake and choosing one must stay different acts.
+    "accounting",
     "decision",
     "recommendation",
     "research",

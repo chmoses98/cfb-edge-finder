@@ -149,6 +149,10 @@ def probe_safety_locks() -> dict[str, bool]:
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Kept in step with tests/test_sizing_disconnection.py, which asserts the
+    # two lists are identical. A package guarded there but missing here is a
+    # probe that reports the lock healthy while it is broken.
+    "accounting",
     "decision",
     "recommendation",
     "research",
