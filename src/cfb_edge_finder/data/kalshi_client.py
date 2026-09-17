@@ -157,6 +157,65 @@ class KalshiClient:
                 break
         return items
 
+    def get_json(self, path: str, params: dict[str, object] | None = None) -> dict:
+        """Public single-GET escape hatch carrying this client's retry and
+        backoff behaviour.
+
+        *** WHY THIS IS PUBLIC ***
+        The market-discovery catalog (`catalog/`) needs its own pagination
+        -- see catalog/pagination.py for why: `_paginate` below returns a
+        bare list and so cannot tell a caller that a sweep ended early,
+        and a silently truncated sweep is the exact failure this
+        repository already shipped once. Rather than duplicate the
+        retry/429/`Retry-After`/transport-reset handling that `_get` has
+        earned through live incidents, the catalog layer drives its
+        pagination through this one method.
+
+        Raising on failure is deliberate and load-bearing: the caller must
+        be able to tell a failed request from an empty result."""
+        return self._get(path, params)
+
+    def fetch_milestones(
+        self,
+        category: str | None = None,
+        competition: str | None = None,
+        milestone_type: str | None = None,
+        min_start_date: str | None = None,
+        max_start_date: str | None = None,
+    ) -> list[dict]:
+        """Raw GET /milestones response (paginated).
+
+        A sports milestone is Kalshi's own identifier for ONE physical
+        game, naming the event tickers attached to it -- which makes it
+        the canonical join key for "everything you can bet on this game"
+        with no external schedule provider involved.
+
+        *** THE FILTER THAT ACTUALLY WORKS ***
+        A milestone payload has NO `competition` field (live-verified
+        against 24,000 of them), so filtering on one returns HTTP 200 with
+        zero rows. College football is `milestone_type="football_game"`
+        plus `details.league == "NCAAFB"`, and the league is not a query
+        parameter -- it must be filtered client-side. `competition` is
+        accepted here only so a caller who has read Kalshi's docs is not
+        surprised by its absence; passing it will filter everything out.
+
+        Note this returns a bare list and so cannot report a truncated
+        sweep. The catalog deliberately does not use it, driving
+        `catalog.pagination.paginate` through `get_json` instead; it is
+        kept for ad-hoc and diagnostic use, consistent with the other
+        fetch_* methods here."""
+        return self._paginate(
+            "/milestones",
+            {
+                "category": category,
+                "competition": competition,
+                "type": milestone_type,
+                "min_start_date": min_start_date,
+                "max_start_date": max_start_date,
+            },
+            "milestones",
+        )
+
     def exchange_status(self) -> dict:
         return self._get("/exchange/status")
 

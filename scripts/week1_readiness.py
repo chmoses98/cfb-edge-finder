@@ -114,10 +114,20 @@ class Findings:
 
 def cron_interval_minutes(workflow_path: Path) -> float | None:
     """Cadence read from the workflow itself, so this check cannot drift
-    out of agreement with the schedule it is judging."""
+    out of agreement with the schedule it is judging.
+
+    Returns None when the workflow has no ACTIVE schedule -- a
+    commented-out `cron:` line is not a cadence. The original regex
+    matched anywhere in the file, so once the 2026 market-discovery pivot
+    hibernated the research collector by commenting its schedule out, this
+    kept reporting a live 10-minute cadence for a workflow that no longer
+    runs at all. A readiness check that reports a schedule which does not
+    exist is worse than one that reports nothing."""
     if not workflow_path.exists():
         return None
-    match = re.search(r'cron:\s*"([^"]+)"', workflow_path.read_text(encoding="utf-8"))
+    match = re.search(
+        r'^(?!\s*#)\s*-\s*cron:\s*"([^"]+)"', workflow_path.read_text(encoding="utf-8"), re.MULTILINE
+    )
     if not match:
         return None
     minute, hour = match.group(1).split()[:2]

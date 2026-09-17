@@ -250,10 +250,20 @@ def test_readiness_flags_duplicate_persistence(tmp_path):
 
 
 def test_readiness_reads_cadence_from_the_workflow_itself():
+    """Cadence is read from the workflow, and a HIBERNATED workflow has no
+    cadence at all.
+
+    Both research workflows were hibernated by the 2026 market-discovery
+    pivot (schedules commented out, nothing deleted). The original probe
+    regex matched a `cron:` line anywhere in the file, so it kept
+    reporting 10.0 for a collector that no longer runs -- a readiness
+    check asserting a schedule that does not exist."""
     from scripts.week1_readiness import cron_interval_minutes  # type: ignore[import-not-found]
 
-    assert cron_interval_minutes(REPO_ROOT / ".github/workflows/research-capture.yml") == 10.0
-    assert cron_interval_minutes(REPO_ROOT / ".github/workflows/research-settlement.yml") == 360.0
+    assert cron_interval_minutes(REPO_ROOT / ".github/workflows/research-capture.yml") is None
+    assert cron_interval_minutes(REPO_ROOT / ".github/workflows/research-settlement.yml") is None
+    # The live catalog IS scheduled, and is read correctly.
+    assert cron_interval_minutes(REPO_ROOT / ".github/workflows/kalshi-market-catalog.yml") == 30.0
 
 
 def test_readiness_never_reports_actionable_output(tmp_path):

@@ -10,6 +10,7 @@ than hoped for.
 from __future__ import annotations
 
 import inspect
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -355,15 +356,44 @@ def _workflow(name: str) -> str:
     return (REPO_ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
 
 
-def test_collector_cadence_and_concurrency_unchanged():
+ACTIVE_CRON = re.compile(r'^(?!\s*#)\s*-\s*cron:\s*"([^"]+)"', re.MULTILINE)
+r"""An ACTIVE schedule line. The `(?!\s*#)` is the whole point: these tests
+originally asserted `'cron: "*/10 * * * *"' in capture`, which a
+commented-out schedule still satisfies, so they would have gone on
+reporting the collector's cadence as intact after it was hibernated."""
+
+
+def test_collector_is_hibernated_but_revivable():
+    """The 2026 market-discovery pivot took the projection model off the
+    live path, so the model-feeding collector no longer runs on a
+    schedule. What must remain true: nothing was deleted, the schedule is
+    one uncomment away, a human can still dispatch it, and if it IS
+    revived it still holds the single-writer lock without cancelling
+    queued runs. See docs/MODEL_RETIREMENT_2026.md."""
     capture = _workflow("research-capture.yml")
-    assert 'cron: "*/10 * * * *"' in capture
+    assert ACTIVE_CRON.search(capture) is None, "collector schedule is live again -- was that deliberate?"
+    assert 'cron: "*/10 * * * *"' in capture, "the hibernated cadence must stay recorded, not be deleted"
+    assert "workflow_dispatch:" in capture
     assert "group: research-data-write" in capture
     assert "cancel-in-progress: false" in capture
 
 
-def test_settlement_cadence_unchanged():
-    assert 'cron: "0 */6 * * *"' in _workflow("research-settlement.yml")
+def test_settlement_is_hibernated_but_revivable():
+    settlement = _workflow("research-settlement.yml")
+    assert ACTIVE_CRON.search(settlement) is None
+    assert 'cron: "0 */6 * * *"' in settlement
+    assert "workflow_dispatch:" in settlement
+
+
+def test_the_live_catalog_is_the_only_scheduled_writer_now():
+    """The point of the retirement: exactly one scheduled workflow writes
+    the repo, and it is the market catalog -- which consumes no secret and
+    produces no projection."""
+    workflows = (REPO_ROOT / ".github" / "workflows").glob("*.yml")
+    scheduled = sorted(
+        path.name for path in workflows if ACTIVE_CRON.search(path.read_text(encoding="utf-8"))
+    )
+    assert scheduled == ["kalshi-market-catalog.yml"], f"unexpected scheduled workflows: {scheduled}"
 
 
 def test_conductor_is_not_in_the_writers_concurrency_group():
