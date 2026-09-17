@@ -39,8 +39,8 @@ from pathlib import Path
 
 from cfb_edge_finder.catalog.artifacts import (
     build_catalog,
-    build_flat_index,
     catalog_content_fingerprint,
+    write_catalog_artifacts,
     write_json,
 )
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
@@ -76,7 +76,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--include-raw",
         action="store_true",
-        help="Embed each market's raw Kalshi payload in the flat index (larger, fully lossless)",
+        help="Embed each market's raw Kalshi payload (larger, fully lossless)",
+    )
+    parser.add_argument(
+        "--flat",
+        action="store_true",
+        help=(
+            "Also write cfb_markets_flat.json, one row per contract across the whole slate. Off by "
+            "default: it duplicates every contract already published per game, and a live slate makes "
+            "it a ~50MB file that would be rewritten whenever any price moves."
+        ),
     )
     parser.add_argument(
         "--fail-on-incomplete",
@@ -123,19 +132,24 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  error: {error}", file=sys.stderr)
         return 1
 
-    catalog = build_catalog(run, include_raw=False)
-    flat = build_flat_index(run, include_raw=args.include_raw)
+    out_dir = Path(args.out_dir)
+    artifacts = write_catalog_artifacts(
+        run, out_dir, include_raw=args.include_raw, write_flat=args.flat
+    )
+    catalog = build_catalog(run, include_raw=False, include_markets=False)
     fingerprint = catalog_content_fingerprint(catalog)
     catalog["capture"]["content_fingerprint"] = fingerprint
-
-    out_dir = Path(args.out_dir)
-    catalog_bytes = write_json(out_dir / "cfb_market_catalog.json", catalog)
-    flat_bytes = write_json(out_dir / "cfb_markets_flat.json", flat)
+    catalog_bytes = artifacts.catalog_bytes
+    flat_bytes = artifacts.flat_bytes
 
     status_path = out_dir / "cfb_catalog_status.json"
     write_json(
         status_path,
         {
+            "game_files_written": artifacts.game_files_written,
+            "game_files_unchanged": artifacts.game_files_unchanged,
+            "game_files_pruned": artifacts.game_files_pruned,
+            "game_bytes_total": artifacts.game_bytes_total,
             "captured_at": catalog["capture"]["captured_at"],
             "content_fingerprint": fingerprint,
             "capture_complete": catalog["completeness"]["capture_complete"],
@@ -159,6 +173,12 @@ def main(argv: list[str] | None = None) -> int:
         f"{totals['markets']} markets / {totals['unknown_family_markets']} unknown-family "
         f"({catalog['discovery']['requests_made']} requests, "
         f"{round((datetime.now(UTC) - started).total_seconds(), 1)}s) fingerprint={fingerprint[:12]}"
+    )
+    print(
+        f"  index {catalog_bytes / 1e6:.2f} MB + {len(run.games)} game files "
+        f"{artifacts.game_bytes_total / 1e6:.2f} MB "
+        f"({artifacts.game_files_written} written, {artifacts.game_files_unchanged} unchanged, "
+        f"{artifacts.game_files_pruned} pruned)"
     )
 
     if args.print_summary:

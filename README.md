@@ -26,9 +26,14 @@ touches an order or portfolio endpoint, and has no ability to place a bet.
 
 | Artifact | What it is |
 |---|---|
-| `data/live/cfb_market_catalog.json` | **Primary product.** One entry per physical game: every Kalshi event, every contract, raw settlement rules, executable prices, quoted sizes, liquidity, and per-game completeness diagnostics. |
-| `data/live/cfb_markets_flat.json` | One row per contract, for search and joins. |
+| `data/live/cfb_market_catalog.json` | **Primary product.** The slate index (~0.7 MB): every game's identity, events, per-family market counts, completeness diagnostics, and a pointer to its detail file. |
+| `data/live/games/<game_key>.json` | One game's complete inventory: every contract with raw settlement rules, executable prices, quoted sizes and liquidity. |
 | `data/live/cfb_catalog_status.json` | Counts and a content fingerprint, for change detection. |
+
+A live capture is 239 games and 15,312 contracts. Inlined into one file
+that is **52 MB** — not ingestible, and not something to commit every 30
+minutes. Split, the index is 59× smaller, an unchanged slate rewrites
+nothing, and a single price move rewrites exactly one small file.
 
 Refreshed by `.github/workflows/kalshi-market-catalog.yml` every 30
 minutes in the Thursday-Sunday slate window and 6-hourly otherwise,

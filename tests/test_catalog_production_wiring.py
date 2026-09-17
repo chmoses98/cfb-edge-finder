@@ -178,30 +178,51 @@ def test_the_production_entrypoint_imports_and_parses_its_arguments():
     assert module._parse_args(["--horizon-days", "-1"]).horizon_days == -1.0
 
 
-def test_the_entrypoint_writes_all_three_artifacts(stubbed_client, tmp_path, monkeypatch):
+def test_the_entrypoint_publishes_the_index_and_per_game_files(stubbed_client, tmp_path):
     """A full production run, faked only at the socket."""
     import importlib.util
 
-    client, _transport = stubbed_client
+    _client, _transport = stubbed_client
     path = Path(__file__).resolve().parents[1] / "scripts" / "build_kalshi_cfb_catalog.py"
     spec = importlib.util.spec_from_file_location("build_kalshi_cfb_catalog_run", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    exit_code = module.main(["--out-dir", str(tmp_path), "--print-summary"])
-    assert exit_code == 0
+    assert module.main(["--out-dir", str(tmp_path), "--print-summary"]) == 0
 
     catalog = json.loads((tmp_path / "cfb_market_catalog.json").read_text())
-    flat = json.loads((tmp_path / "cfb_markets_flat.json").read_text())
     status = json.loads((tmp_path / "cfb_catalog_status.json").read_text())
 
     assert catalog["totals"]["physical_games"] == 1
     assert catalog["totals"]["markets"] == 1
-    assert flat["market_count"] == 1
+
+    # The index points at a detail file that exists and holds the contracts.
+    entry = catalog["games"][0]
+    detail_path = tmp_path / entry["markets_file"]
+    assert detail_path.is_file(), f"index points at a missing detail file: {entry['markets_file']}"
+    assert len(json.loads(detail_path.read_text())["markets"]) == 1
+
+    # The flat index duplicates the whole slate, so it is OFF by default.
+    assert not (tmp_path / "cfb_markets_flat.json").exists()
+
     # The workflow's change detection reads exactly these keys.
     assert status["content_fingerprint"] == catalog["capture"]["content_fingerprint"]
     for key in ("physical_games", "markets", "capture_complete", "content_fingerprint"):
         assert key in status, f"the catalog workflow reads status[{key!r}]"
+
+
+def test_the_flat_index_is_written_when_asked(stubbed_client, tmp_path):
+    import importlib.util
+
+    _client, _transport = stubbed_client
+    path = Path(__file__).resolve().parents[1] / "scripts" / "build_kalshi_cfb_catalog.py"
+    spec = importlib.util.spec_from_file_location("build_kalshi_cfb_catalog_flat", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module.main(["--out-dir", str(tmp_path), "--flat"]) == 0
+    flat = json.loads((tmp_path / "cfb_markets_flat.json").read_text())
+    assert flat["market_count"] == 1
 
 
 def test_the_entrypoint_refuses_to_publish_an_empty_catalog(tmp_path, monkeypatch):

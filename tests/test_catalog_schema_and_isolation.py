@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from cfb_edge_finder.catalog.artifacts import build_catalog, build_flat_index, write_json
+from cfb_edge_finder.catalog.artifacts import build_catalog, build_flat_index
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
 from cfb_edge_finder.catalog.mechanics import (
     bid_ask_spread,
@@ -182,7 +182,7 @@ def _fake():
 
 
 def test_artifact_contains_no_model_generated_field():
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     keys = _all_keys(catalog)
     for forbidden in FORBIDDEN_ARTIFACT_KEYS:
         assert forbidden not in keys, f"catalog exposes a model-shaped key: {forbidden!r}"
@@ -190,7 +190,7 @@ def test_artifact_contains_no_model_generated_field():
 
 
 def test_catalog_schema_top_level_shape():
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     for key in ("schema_version", "capture", "discovery", "totals", "completeness", "games"):
         assert key in catalog, f"missing top-level key {key!r}"
     assert catalog["schema_version"].startswith("cfb_market_catalog/")
@@ -208,7 +208,7 @@ def test_catalog_schema_top_level_shape():
 
 
 def test_every_game_carries_full_diagnostics():
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     required = {
         "related_event_tickers_reported",
         "events_fetched",
@@ -233,7 +233,7 @@ def test_every_game_carries_full_diagnostics():
 
 def test_every_market_carries_the_mandated_contract_fields():
     """The field list the mission requires be preserved where available."""
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     required = {
         "market_ticker",
         "event_ticker",
@@ -279,23 +279,66 @@ def test_every_market_carries_the_mandated_contract_fields():
 
 
 def test_combo_eligibility_is_recorded_per_game():
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     coverage = catalog["games"][0]["completeness"]["multivariate_market_coverage"]
     assert coverage["combo_eligible_event_tickers"] == ["KXNCAAFGAME-26SEP19UGAARK"]
     assert coverage["combo_markets_enumerable_per_game"] is False
     assert "dynamically instantiated" in coverage["note"].lower()
 
 
-def test_artifact_round_trips_as_json(tmp_path: Path):
+def test_published_artifacts_round_trip_as_json(tmp_path: Path):
+    """The PUBLISHED layout: a slate index plus one detail file per game."""
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
     run = MarketDiscovery(_fake()).run(as_of=NOW)
-    path = tmp_path / "cfb_market_catalog.json"
-    write_json(path, build_catalog(run))
-    reloaded = json.loads(path.read_text())
-    assert reloaded["totals"]["markets"] == 3
-    # Deterministic bytes for an unchanged capture.
-    first = path.read_bytes()
-    write_json(path, build_catalog(MarketDiscovery(_fake()).run(as_of=NOW)))
-    assert path.read_bytes() == first
+    artifacts = write_catalog_artifacts(run, tmp_path)
+
+    index = json.loads((tmp_path / "cfb_market_catalog.json").read_text())
+    assert index["totals"]["markets"] == 3
+    assert artifacts.game_files_written == 1
+
+    entry = index["games"][0]
+    assert "markets" not in entry, "the index must not inline contracts"
+    assert entry["markets_file"] == "games/26SEP19UGAARK.json"
+    assert entry["market_count"] == 3
+
+    detail = json.loads((tmp_path / entry["markets_file"]).read_text())
+    assert len(detail["markets"]) == 3
+    assert detail["game_key"] == entry["game_key"]
+
+    # Deterministic bytes, and a re-publish over an unchanged slate
+    # rewrites nothing at all.
+    first = (tmp_path / "cfb_market_catalog.json").read_bytes()
+    again = write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), tmp_path)
+    assert (tmp_path / "cfb_market_catalog.json").read_bytes() == first
+    assert again.game_files_written == 0
+    assert again.game_files_unchanged == 1
+
+
+def test_the_index_is_smaller_than_inlining_everything():
+    """The reason for the split: a live capture inlined into one file
+    measured 52 MB -- neither ingestible nor commitable every 30 minutes."""
+    from cfb_edge_finder.catalog.artifacts import _encode
+
+    run = MarketDiscovery(_fake()).run(as_of=NOW)
+    assert len(_encode(build_catalog(run, include_markets=False))) < len(
+        _encode(build_catalog(run, include_markets=True))
+    )
+
+
+def test_a_game_that_leaves_the_slate_has_its_detail_file_pruned(tmp_path: Path):
+    """A stale file would keep advertising a finished game's menu as
+    current, and `games/` would grow without bound."""
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
+    run = MarketDiscovery(_fake()).run(as_of=NOW)
+    write_catalog_artifacts(run, tmp_path)
+    orphan = tmp_path / "games" / "26SEP01GONEGAME.json"
+    orphan.write_text("{}")
+
+    result = write_catalog_artifacts(run, tmp_path)
+    assert result.game_files_pruned == 1
+    assert not orphan.exists()
 
 
 def test_flat_index_schema():
@@ -375,7 +418,7 @@ def test_quote_age_is_reported():
 
 def test_mechanics_block_has_no_game_opinion():
     run = MarketDiscovery(_fake()).run(as_of=NOW)
-    catalog = build_catalog(run)
+    catalog = build_catalog(run, include_markets=True)
     mechanics = catalog["games"][0]["markets"][0]["mechanics"]
     assert set(mechanics) == {
         "yes_mid",
@@ -481,7 +524,7 @@ def test_published_strike_matches_the_contract_title():
     in the title."""
     import re
 
-    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW), include_markets=True)
     checked = 0
     for game in catalog["games"]:
         for market in game["markets"]:

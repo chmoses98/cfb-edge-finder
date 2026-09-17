@@ -121,8 +121,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/live/cfb_market_catalog.json data/live/cfb_markets_flat.json \
-                  data/live/cfb_catalog_status.json
+          # The whole tree: the slate index plus data/live/games/*.json.
+          # Per-game files mean a price move in one game rewrites one small
+          # file rather than a 52 MB blob, and a game leaving the slate has
+          # its file pruned -- both of which `git add data/live` records.
+          git add -A data/live
 
           if git diff --cached --quiet; then
             echo "catalog byte-identical; nothing to commit"

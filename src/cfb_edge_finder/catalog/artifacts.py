@@ -1,15 +1,35 @@
 """Serialize a capture into the published artifacts.
 
-TWO ARTIFACTS, TWO JOBS
-  data/live/cfb_market_catalog.json  -- the primary product. Structured
-      around PHYSICAL GAMES: one entry per game, holding that game's
-      complete market inventory plus its completeness diagnostics. Built
-      to be read end-to-end by an external handicapper or ChatGPT, so the
-      raw Kalshi payload is omitted here (every betting-relevant field is
-      still present as a named key).
-  data/live/cfb_markets_flat.json    -- one row per contract, for search
-      and joins. Carries the raw payload when asked, so nothing captured
-      is ever unreachable.
+THE SHAPE, AND WHY IT IS SPLIT
+  data/live/cfb_market_catalog.json   -- the SLATE INDEX. One entry per
+      physical game: identity, its Kalshi events, how many markets of each
+      family it has, its completeness diagnostics, and a pointer to its
+      detail file. A few hundred KB, so it can be read end-to-end.
+  data/live/games/<game_key>.json     -- ONE GAME'S COMPLETE INVENTORY.
+      Every contract with full semantics, settlement rules, executable
+      prices, quoted sizes and mechanics.
+  data/live/cfb_markets_flat.json     -- optional; one row per contract
+      across the whole slate, for search and joins.
+
+*** WHY NOT ONE FILE ***
+A live capture is 239 games and 15,312 contracts. Each contract carries
+its own settlement rules, and that is not padding -- it is the thing a
+handicapper has to read to know what the contract means. One file holding
+all of them measured **52 MB**, and stayed above 31 MB even with compact
+separators and every dispensable field stripped. The mission's two
+requirements for the primary artifact -- "compact enough that ChatGPT can
+ingest/read it efficiently" and "retaining all betting-relevant contract
+information" -- cannot both hold in a single 15,000-contract document.
+
+Splitting resolves it without dropping anything, because it matches how
+the artifact is actually read: nobody asks "what can I bet across 239
+games", they ask "what can I bet on THIS game". Read the index (~300 KB),
+then one game file (typically 10-600 KB).
+
+It also fixes the storage cost. A 52 MB blob rewritten whenever any price
+moves -- which, during a slate, is constantly -- is exactly the storage
+explosion this mission warns against. Per-game files mean a commit touches
+only the games that actually changed.
 
 *** WHY DETERMINISM IS ENFORCED, NOT HOPED FOR ***
 These files are committed by a scheduled job. If key order or list order
@@ -32,6 +52,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -66,7 +87,15 @@ def _event_summary(event_ticker: str, event: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def game_to_dict(game: CatalogGame, include_raw: bool = False) -> dict[str, Any]:
+def game_detail_filename(game_key: str) -> str:
+    """Per-game detail file name. Kept to the game key so the index's
+    pointer is derivable and a stale file is recognizable."""
+    return f"{game_key}.json"
+
+
+def game_to_dict(game: CatalogGame, include_raw: bool = False, include_markets: bool = True) -> dict[str, Any]:
+    """One game. `include_markets=False` yields the index entry: identity,
+    events, counts and diagnostics, but not the contracts themselves."""
     milestone = game.milestone
     contracts = sorted(game.contracts, key=lambda c: c.market_ticker)
 
@@ -92,7 +121,6 @@ def game_to_dict(game: CatalogGame, include_raw: bool = False) -> dict[str, Any]
         "events": [_event_summary(t, e) for t, e in sorted(game.events.items())],
         "market_count": len(contracts),
         "family_distribution": game.family_distribution,
-        "markets": [contract_to_dict(c, include_raw=include_raw) for c in contracts],
         "completeness": {
             **game.completeness.to_dict(),
             # The two coverage axes are reported separately and never
@@ -108,11 +136,20 @@ def game_to_dict(game: CatalogGame, include_raw: bool = False) -> dict[str, Any]
             },
         },
     }
+    if include_markets:
+        payload["markets"] = [contract_to_dict(c, include_raw=include_raw) for c in contracts]
+    else:
+        payload["markets_file"] = f"games/{game_detail_filename(game.game_key)}"
     return payload
 
 
-def build_catalog(run: CatalogRun, include_raw: bool = False) -> dict[str, Any]:
-    """The primary, game-structured artifact."""
+def build_catalog(run: CatalogRun, include_raw: bool = False, include_markets: bool = False) -> dict[str, Any]:
+    """The primary artifact: the slate index.
+
+    `include_markets=True` inlines every contract, producing the single
+    monolithic document. That is what the audit and the tests use, and it
+    is NOT what gets published -- a live capture of it measured 52 MB. See
+    this module's docstring."""
     games = sorted(run.games.values(), key=lambda g: (g.kickoff is None, g.kickoff, g.game_key))
 
     family_totals: Counter[str] = Counter()
@@ -126,6 +163,12 @@ def build_catalog(run: CatalogRun, include_raw: bool = False) -> dict[str, Any]:
 
     return {
         "schema_version": CATALOG_SCHEMA_VERSION,
+        "artifact_layout": (
+            "slate index; each game's full contract inventory is in its own file named by "
+            "games[].markets_file"
+        )
+        if not include_markets
+        else "monolithic; every contract inlined under games[].markets",
         "capture": {
             "captured_at": _iso(run.captured_at),
             "source": "kalshi_public_rest_v2",
@@ -183,7 +226,9 @@ def build_catalog(run: CatalogRun, include_raw: bool = False) -> dict[str, Any]:
                 "note": MULTIVARIATE_COVERAGE_NOTE,
             },
         },
-        "games": [game_to_dict(g, include_raw=include_raw) for g in games],
+        "games": [
+            game_to_dict(g, include_raw=include_raw, include_markets=include_markets) for g in games
+        ],
         "season_level_events": [
             _event_summary(t, e) for t, e in sorted(run.season_level_events.items())
         ],
@@ -249,15 +294,109 @@ def catalog_content_fingerprint(catalog: dict[str, Any]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> int:
-    """Write deterministically and atomically. Returns bytes written.
+def _encode(payload: dict[str, Any]) -> str:
+    """The one encoder every artifact goes through.
 
-    The temp-file-then-replace dance matters because these files are read
-    by other processes (and by a human mid-slate) while a scheduled job may
-    be rewriting them: a reader must never see a half-written catalog."""
+    `indent=1` costs ~10% on a document this shape and buys nothing: these
+    files are read by machines, and a human inspecting one has `jq`. Sorted
+    keys and a trailing newline keep the output byte-stable, which is what
+    makes "rewrite only if changed" work at all."""
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str) + "\n"
+
+
+def _write_text(path: Path, encoded: str) -> int:
+    """Atomic write. The temp-file-then-replace dance matters because these
+    files are read by other processes (and by a human mid-slate) while a
+    scheduled job may be rewriting them: a reader must never see a
+    half-written catalog."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    encoded = json.dumps(payload, sort_keys=True, indent=1, default=str) + "\n"
     temp = path.with_suffix(path.suffix + ".tmp")
     temp.write_text(encoded, encoding="utf-8")
     temp.replace(path)
     return len(encoded)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> int:
+    """Write one artifact deterministically and atomically."""
+    return _write_text(path, _encode(payload))
+
+@dataclass(frozen=True)
+class WrittenArtifacts:
+    """What a publish actually produced, so the caller can report it."""
+
+    catalog_path: Path
+    catalog_bytes: int
+    game_files_written: int
+    game_files_unchanged: int
+    game_files_pruned: int
+    game_bytes_total: int
+    flat_path: Path | None = None
+    flat_bytes: int = 0
+
+    @property
+    def total_bytes(self) -> int:
+        return self.catalog_bytes + self.game_bytes_total + self.flat_bytes
+
+
+def write_catalog_artifacts(
+    run: CatalogRun,
+    out_dir: Path,
+    include_raw: bool = False,
+    write_flat: bool = False,
+) -> WrittenArtifacts:
+    """Publish the slate index and one detail file per game.
+
+    A game file is rewritten only when its bytes actually change, so a
+    refresh over an unchanged game touches nothing -- which is what keeps
+    a 30-minute cadence from rewriting tens of megabytes every tick.
+
+    Detail files for games no longer on the slate are PRUNED, otherwise
+    `games/` grows without bound and a stale file silently advertises a
+    finished game's menu as current."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    games_dir = out_dir / "games"
+    games_dir.mkdir(parents=True, exist_ok=True)
+
+    written = unchanged = pruned = 0
+    game_bytes = 0
+    expected: set[str] = set()
+
+    for game in run.games.values():
+        filename = game_detail_filename(game.game_key)
+        expected.add(filename)
+        path = games_dir / filename
+        payload = game_to_dict(game, include_raw=include_raw, include_markets=True)
+        encoded = _encode(payload)
+        game_bytes += len(encoded)
+        if path.is_file() and path.read_text(encoding="utf-8") == encoded:
+            unchanged += 1
+            continue
+        _write_text(path, encoded)
+        written += 1
+
+    for stale in sorted(games_dir.glob("*.json")):
+        if stale.name not in expected:
+            stale.unlink()
+            pruned += 1
+
+    catalog = build_catalog(run, include_raw=False, include_markets=False)
+    catalog["capture"]["content_fingerprint"] = catalog_content_fingerprint(catalog)
+    catalog_path = out_dir / "cfb_market_catalog.json"
+    catalog_bytes = write_json(catalog_path, catalog)
+
+    flat_path = None
+    flat_bytes = 0
+    if write_flat:
+        flat_path = out_dir / "cfb_markets_flat.json"
+        flat_bytes = write_json(flat_path, build_flat_index(run, include_raw=include_raw))
+
+    return WrittenArtifacts(
+        catalog_path=catalog_path,
+        catalog_bytes=catalog_bytes,
+        game_files_written=written,
+        game_files_unchanged=unchanged,
+        game_files_pruned=pruned,
+        game_bytes_total=game_bytes,
+        flat_path=flat_path,
+        flat_bytes=flat_bytes,
+    )

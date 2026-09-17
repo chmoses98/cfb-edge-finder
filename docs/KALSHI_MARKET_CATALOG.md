@@ -308,7 +308,38 @@ Two substring bugs the test suite caught, both worth knowing about:
 
 ## 4. Output schema
 
-### `data/live/cfb_market_catalog.json` — the primary product
+### Layout: an index plus one file per game
+
+A live capture is **239 games and 15,312 contracts**. Every contract
+carries its own settlement rules, which is not padding — it is the thing a
+handicapper reads to know what the contract means. Inlined into one
+document that measured **52 MB**, and stayed above 31 MB with compact
+separators and every dispensable field stripped.
+
+The mission's two requirements for the primary artifact — *compact enough
+that ChatGPT can ingest it efficiently* and *retaining all betting-relevant
+contract information* — cannot both hold in a single 15,000-contract file.
+Splitting resolves it without dropping anything, because it matches how the
+artifact is read: nobody asks "what can I bet across 239 games", they ask
+"what can I bet on THIS game".
+
+| Artifact | Live size | Contents |
+|---|---|---|
+| `data/live/cfb_market_catalog.json` | **0.71 MB** | Slate index: every game's identity, events, per-family counts, completeness, and a pointer to its detail file |
+| `data/live/games/<game_key>.json` | 14–701 KB (median 150 KB) | That game's complete contract inventory |
+| `data/live/cfb_markets_flat.json` | ~50 MB | Optional (`--flat`), off by default: one row per contract slate-wide |
+
+Measured at live scale: the index is **59× smaller** than the monolithic
+file. Re-publishing an unchanged slate rewrites **0** game files; a single
+price move rewrites **exactly 1**. That is the difference between a commit
+of a few KB and a commit of 52 MB, every thirty minutes, for the whole
+season.
+
+Detail files for games that leave the slate are **pruned** — otherwise
+`games/` grows without bound and a stale file keeps advertising a finished
+game's menu as current.
+
+### `data/live/cfb_market_catalog.json` — the slate index
 
 ```
 schema_version: "cfb_market_catalog/1.0.0"
@@ -326,16 +357,18 @@ totals:       physical_games, events, markets, season_level_events,
 completeness: capture_complete, games_incomplete[], games_incomplete_count,
               native_game_markets_complete,
               multivariate_market_coverage{}
-games[]:      game_key, title, kickoff,
+games[]:      game_key, title, kickoff, market_count, family_distribution,
+              markets_file  <- "games/<game_key>.json"
               identity{source, milestone_id, milestone_status, league,
                        division, conference, tier, season_year, season_type,
                        season_week, main_game_event_ticker},
               events[]{event_ticker, series_ticker, title, sub_title,
                        competition, competition_scope, mutually_exclusive,
                        settlement_sources},
-              market_count, family_distribution{},
-              markets[]  ← see below
               completeness{...}
+
+Each per-game detail file (`games/<game_key>.json`) is that same entry
+with `markets[]` inlined in place of `markets_file`.
 season_level_events[]:  CFB inventory with no physical game
 ```
 
@@ -360,10 +393,10 @@ exchange_index  fee_type  fee_multiplier
 mechanics{...}
 ```
 
-The primary artifact omits the raw Kalshi payload so it stays efficient to
-ingest end-to-end; every betting-relevant field is present as a named key.
-`cfb_markets_flat.json --include-raw` carries the untouched payload, so
-nothing captured is ever unreachable.
+Detail files omit the raw Kalshi payload by default so they stay efficient
+to read; every betting-relevant field is present as a named key.
+`--include-raw` embeds the untouched payload, so nothing captured is ever
+unreachable.
 
 ### Market mechanics
 

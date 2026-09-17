@@ -473,21 +473,21 @@ def test_fingerprint_ignores_capture_time_but_notices_a_price_change():
     run_one = MarketDiscovery(_rich_game_fake()).run(as_of=NOW)
     later = datetime(2026, 9, 17, 23, 30, tzinfo=UTC)
     run_two = MarketDiscovery(_rich_game_fake()).run(as_of=later)
-    assert catalog_content_fingerprint(build_catalog(run_one)) == catalog_content_fingerprint(
-        build_catalog(run_two)
+    assert catalog_content_fingerprint(build_catalog(run_one, include_markets=True)) == catalog_content_fingerprint(
+        build_catalog(run_two, include_markets=True)
     )
 
     moved = _rich_game_fake()
     moved.markets_by_event["KXNCAAFGAME-26SEP19UGAARK"][0]["yes_ask_dollars"] = "0.5500"
     run_three = MarketDiscovery(moved).run(as_of=NOW)
-    assert catalog_content_fingerprint(build_catalog(run_three)) != catalog_content_fingerprint(
-        build_catalog(run_one)
+    assert catalog_content_fingerprint(build_catalog(run_three, include_markets=True)) != catalog_content_fingerprint(
+        build_catalog(run_one, include_markets=True)
     )
 
 
 def test_flat_index_covers_every_catalog_market():
     run = MarketDiscovery(_rich_game_fake()).run(as_of=NOW)
-    catalog = build_catalog(run)
+    catalog = build_catalog(run, include_markets=True)
     flat = build_flat_index(run)
     catalog_tickers = {m["market_ticker"] for g in catalog["games"] for m in g["markets"]}
     flat_tickers = {m["market_ticker"] for m in flat["markets"]}

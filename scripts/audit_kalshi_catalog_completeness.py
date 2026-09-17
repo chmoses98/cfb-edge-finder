@@ -48,7 +48,12 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from cfb_edge_finder.catalog.artifacts import build_catalog, build_flat_index, write_json
+from cfb_edge_finder.catalog.artifacts import (
+    build_catalog,
+    catalog_content_fingerprint,
+    write_catalog_artifacts,
+    write_json,
+)
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
 from cfb_edge_finder.catalog.identity import parse_event_ticker
 from cfb_edge_finder.catalog.pagination import SweepStats, paginate
@@ -144,7 +149,9 @@ def main(argv: list[str] | None = None) -> int:
 
     _hdr("STEP 1: build the catalog exactly as production does")
     run = MarketDiscovery(client.get_json).run(as_of=started, horizon_days=args.horizon_days)
-    catalog = build_catalog(run)
+    # include_markets=True: the audit diffs contract sets, so it needs them
+    # inlined. This is NOT the published shape -- see artifacts.py.
+    catalog = build_catalog(run, include_markets=True)
     totals = catalog["totals"]
     print(
         f"catalog: {totals['physical_games']} games / {totals['events']} events / "
@@ -164,9 +171,28 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write_catalog:
         out_dir = Path(args.write_catalog)
-        write_json(out_dir / "cfb_market_catalog.json", catalog)
-        write_json(out_dir / "cfb_markets_flat.json", build_flat_index(run))
-        print(f"wrote the audited catalog to {out_dir}")
+        artifacts = write_catalog_artifacts(run, out_dir)
+        write_json(
+            out_dir / "cfb_catalog_status.json",
+            {
+                "captured_at": catalog["capture"]["captured_at"],
+                "capture_complete": catalog["completeness"]["capture_complete"],
+                "physical_games": totals["physical_games"],
+                "events": totals["events"],
+                "markets": totals["markets"],
+                "unknown_family_markets": totals["unknown_family_markets"],
+                "games_incomplete_count": catalog["completeness"]["games_incomplete_count"],
+                "requests_made": catalog["discovery"]["requests_made"],
+                "content_fingerprint": catalog_content_fingerprint(
+                    build_catalog(run, include_markets=False)
+                ),
+            },
+        )
+        print(
+            f"wrote the audited catalog to {out_dir}: index "
+            f"{artifacts.catalog_bytes / 1e6:.2f} MB + {artifacts.game_files_written} game files "
+            f"{artifacts.game_bytes_total / 1e6:.2f} MB"
+        )
 
     _hdr("STEP 2: independent rediscovery (series -> markets, no milestones, no /events)")
     audit_stats = SweepStats()
