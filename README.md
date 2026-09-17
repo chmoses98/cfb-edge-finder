@@ -1,16 +1,76 @@
 # cfb-edge-finder
 
-Foundation for a quantitative college-football market-pricing and
-betting-research system, targeting Kalshi's CFB markets. Milestone A
-(architecture/schemas) and Milestone B (real schedule/team ingestion) are
-done -- **no projection model or betting recommendation logic exists
-yet.** See `docs/ROADMAP.md` for what comes next.
+**A Kalshi market discovery, capture and normalization system for college
+football.** It answers one question, reliably:
+
+> For this physical college-football game, what EXACTLY can I bet on
+> Kalshi right now?
+
+It does **not** predict games. The projection model this repository used
+to build was retired from the live path in September 2026 because it did
+not produce an edge worth wagering on -- see
+`docs/MODEL_RETIREMENT_2026.md`. The live artifact carries no model
+probability, no fair value, no expected score and no edge; the judgement
+about what a price is worth belongs to whoever reads the catalog.
+
+## The live path
+
+```bash
+python scripts/build_kalshi_cfb_catalog.py --out-dir data/live --print-summary
+```
+
+**No credentials.** Kalshi's market-data endpoints are public reads and
+physical-game identity comes from Kalshi's own `football_game` milestones,
+so the live path needs no `CFBD_API_KEY` and no Kalshi key. It never
+touches an order or portfolio endpoint, and has no ability to place a bet.
+
+| Artifact | What it is |
+|---|---|
+| `data/live/cfb_market_catalog.json` | **Primary product.** One entry per physical game: every Kalshi event, every contract, raw settlement rules, executable prices, quoted sizes, liquidity, and per-game completeness diagnostics. |
+| `data/live/cfb_markets_flat.json` | One row per contract, for search and joins. |
+| `data/live/cfb_catalog_status.json` | Counts and a content fingerprint, for change detection. |
+
+Refreshed by `.github/workflows/kalshi-market-catalog.yml` every 30
+minutes in the Thursday-Sunday slate window and 6-hourly otherwise,
+committing only when the market surface actually changed.
+
+### What makes it trustworthy
+
+- **Discovery is never filtered by market family.** Classification happens
+  *after* discovery and is a label, never a gate. A family Kalshi invents
+  tomorrow is captured and labelled `unknown` -- never dropped. The
+  previous architecture drove discovery from eight hardcoded series; the
+  live exchange carries **145 CFB series, 98 with open events**.
+- **A request failure is never a zero.** Every sweep reports whether it
+  completed. A failed event fetch marks its game `INCOMPLETE` and names
+  the event in the artifact; it cannot reduce to "0 markets".
+- **Two independent discovery paths.** Milestones are the spine; a dynamic
+  series sweep runs alongside and reports anything the milestones did not
+  name, so a gap is a number in the output instead of silence.
+- **Completeness is claimed separately for native and combo markets.**
+  Kalshi's CFB combos are dynamically instantiated and cannot be
+  enumerated per game, and the artifact says so rather than implying
+  coverage it does not have.
+
+See `docs/KALSHI_MARKET_CATALOG.md` for the discovery flow, the live
+endpoint behaviour it was built from, and the output schema.
+
+---
 
 This is a separate, from-scratch repository. It reuses architectural
 *patterns* audited from the production MLB system at
 `chmoses98/edge-finder-api` (see `docs/MLB_ARCHITECTURE_AUDIT.md`), but no
 code or MLB-specific logic was copied, and that repository was not
 modified to produce this one.
+
+## Retired research (preserved, not deleted)
+
+Everything below this line predates the pivot. All of it still exists, all
+of its tests still pass, and every manual workflow is still dispatchable --
+but none of it is on the live path, and four scheduled workflows that fed
+the model are hibernated. `docs/MODEL_RETIREMENT_2026.md` is the plan:
+what was hibernated, what is preserved, how to revive any of it, and the
+one irreversible consequence.
 
 ## What's here
 
@@ -83,6 +143,12 @@ prints a notice -- no live 2026 data is fetched or implied.
 
 ## Documentation map
 
+- `docs/KALSHI_MARKET_CATALOG.md` -- **the live path**: discovery
+  architecture, verified Kalshi endpoint behaviour, output schema,
+  completeness semantics, automation cadence, known limitations.
+- `docs/MODEL_RETIREMENT_2026.md` -- **the pivot**: what was retired from
+  the live path, what was hibernated and why, what is preserved, how to
+  revive it, and the Actions/storage before-and-after.
 - `docs/ARCHITECTURE.md` -- component diagram, game/projection flow,
   Kalshi flow, coverage-ledger design, uncertainty approach.
 - `docs/SCHEMAS.md` -- canonical game ID, and every schema's rationale.
