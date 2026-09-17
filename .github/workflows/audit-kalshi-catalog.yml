@@ -24,6 +24,10 @@ on:
       - "scripts/audit_kalshi_catalog_completeness.py"
       - "scripts/build_kalshi_cfb_catalog.py"
       - "src/cfb_edge_finder/catalog/**"
+      # The client is the catalog's only network seam: a change there can
+      # break the live run without touching catalog/ at all, which is
+      # exactly how a missing get_json reached a runner once.
+      - "src/cfb_edge_finder/data/kalshi_client.py"
       - ".github/workflows/audit-kalshi-catalog.yml"
   workflow_dispatch:
     inputs:
