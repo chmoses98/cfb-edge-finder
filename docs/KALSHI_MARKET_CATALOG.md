@@ -466,6 +466,37 @@ rest.
 
 ---
 
+## 5b. Request cost
+
+Measured on the live exchange (2026-09-17):
+
+| | Requests | Catalog build + full audit |
+|---|---|---|
+| Per-event market fetching | ~14,000 | 10.5 min |
+| Bulk series prefetch | ~400 | **3 min 40 s** |
+
+Per-event fetching is the obviously-correct primitive, but ~239 live games
+x ~29 events each does not fit inside a 30-minute cadence with a 30-minute
+job timeout. Markets are bulk-loaded one series at a time and bucketed by
+event, and the `/events` sweep the reconciliation path already needed is
+reused as an event index (which also removes the per-event
+`GET /events/{ticker}`).
+
+The completeness guarantee is unchanged, because an index can answer
+NEGATIVELY and that answer must never be trusted blindly. The bulk result
+is used only for a **non-empty** bucket from a series that swept to
+**completion**; an empty bucket, a series whose sweep died mid-chain, and
+a series never swept at all each fall through to a direct per-event fetch.
+Absence is always confirmed, never inferred.
+
+`discovery.events_served_from_prefetch` and
+`discovery.events_fetched_individually` are published per capture, so a
+cheap run and an expensive one are distinguishable and a jump in
+individual fetches -- meaning the bulk sweeps are degrading -- is visible
+even when the menu comes out complete.
+
+---
+
 ## 6. Automation
 
 `.github/workflows/kalshi-market-catalog.yml`:

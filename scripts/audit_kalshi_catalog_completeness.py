@@ -46,8 +46,9 @@ import json
 import sys
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
+from pathlib import Path
 
-from cfb_edge_finder.catalog.artifacts import build_catalog
+from cfb_edge_finder.catalog.artifacts import build_catalog, build_flat_index, write_json
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
 from cfb_edge_finder.catalog.identity import parse_event_ticker
 from cfb_edge_finder.catalog.pagination import SweepStats, paginate
@@ -127,6 +128,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--horizon-days", type=float, default=10.0)
     parser.add_argument("--per-stratum", type=int, default=4, help="Games to audit per stratum")
     parser.add_argument("--audit-all", action="store_true", help="Audit every discovered game, not a sample")
+    parser.add_argument(
+        "--write-catalog",
+        default=None,
+        help=(
+            "Directory to write the catalog this audit already built. Without it the caller has to "
+            "rebuild the catalog from scratch to look at it, which doubles a ten-minute run for no "
+            "new information."
+        ),
+    )
     args = parser.parse_args(argv)
 
     started = datetime.now(UTC)
@@ -151,6 +161,12 @@ def main(argv: list[str] | None = None) -> int:
     print("\n--- status distribution (whole slate) ---")
     for status, count in totals["status_distribution"].items():
         print(f"  {status:28} {count:6}")
+
+    if args.write_catalog:
+        out_dir = Path(args.write_catalog)
+        write_json(out_dir / "cfb_market_catalog.json", catalog)
+        write_json(out_dir / "cfb_markets_flat.json", build_flat_index(run))
+        print(f"wrote the audited catalog to {out_dir}")
 
     _hdr("STEP 2: independent rediscovery (series -> markets, no milestones, no /events)")
     audit_stats = SweepStats()
@@ -244,7 +260,35 @@ def main(argv: list[str] | None = None) -> int:
         series_counts = Counter(t.split("-")[0] for t in slate_missing)
         print(f"\nmissing markets by series: {dict(series_counts.most_common(20))}")
 
+    # The verdict repeats the headline numbers rather than only pointing
+    # back at STEP 1. A CI log is read from the END -- the log API returns
+    # a bounded tail -- so a verdict that references figures printed ten
+    # thousand lines earlier is a verdict nobody can actually check.
     _hdr("VERDICT")
+    print("--- what the catalog captured ---")
+    print(f"  physical games            {totals['physical_games']}")
+    print(f"  events                    {totals['events']}")
+    print(f"  markets                   {totals['markets']}")
+    print(f"  season-level events       {totals['season_level_events']}")
+    print(f"  unknown-family markets    {totals['unknown_family_markets']}")
+    print(f"  capture_complete          {catalog['completeness']['capture_complete']}")
+    print(f"  games incomplete          {catalog['completeness']['games_incomplete_count']}")
+    disc = catalog["discovery"]
+    print(f"  milestones considered     {disc['milestones_considered']}")
+    print(f"  milestones selected       {disc['milestones_selected']}")
+    print(f"  CFB series discovered     {disc['series_discovered']}")
+    print(f"  series with open events   {disc['series_with_open_events']}")
+    print(f"  events only in series sweep {disc['events_only_in_series_sweep_count']}")
+    print(f"  events from prefetch      {disc['events_served_from_prefetch']}")
+    print(f"  events fetched one-by-one {disc['events_fetched_individually']}")
+    print("\n--- family distribution ---")
+    for family, count in totals["family_distribution"].items():
+        print(f"  {family:28} {count:6}")
+    print("\n--- market status distribution ---")
+    for status_value, count in totals["status_distribution"].items():
+        print(f"  {status_value:28} {count:6}")
+    print()
+
     audited_missing = sum(len(m) for _k, m, _e in discrepancies)
     print(f"audited games:            {len(audited)} ({len(audited_keys)} distinct)")
     print(f"audited games with gaps:  {len(discrepancies)}")
