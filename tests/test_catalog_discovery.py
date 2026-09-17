@@ -502,3 +502,119 @@ def test_raw_payload_is_preserved_when_requested():
     row = next(m for m in flat["markets"] if m["market_ticker"] == "KXNCAAFGAME-26SEP19UGAARK-UGA")
     assert row["raw"]["yes_ask_dollars"] == "0.1200"
     assert row["raw"]["price_level_structure"] == "linear_cent"
+
+
+# =========================================================================
+# BULK PREFETCH
+#
+# Per-event market fetching is the obviously-correct primitive but costs
+# ~14,000 requests on a live slate -- a real audit run was still going
+# after 17 minutes against a 30-minute cadence. Markets are therefore
+# bulk-loaded one series at a time and bucketed by event.
+#
+# The risk this introduces is a NEGATIVE answer from an index: "the bucket
+# for this event is empty" must never be published as "this event has no
+# markets" when the truth is "the bulk sweep failed, or never ran for that
+# series". These tests pin that.
+# =========================================================================
+
+
+def test_prefetch_serves_events_without_per_event_requests():
+    api = _rich_game_fake()
+    run = MarketDiscovery(api).run(as_of=NOW)
+    assert run.games["26SEP19UGAARK"].completeness.markets_discovered == 13
+    assert run.events_served_from_prefetch == 5
+    assert run.events_fetched_individually == 0
+    # The expensive per-event query must not appear at all.
+    per_event = [p for path, p in api.calls if path == "/markets" and p.get("event_ticker")]
+    assert per_event == [], f"per-event market fetches were still issued: {per_event}"
+
+
+def test_prefetch_bounds_its_sweep_with_min_close_ts():
+    """Without a close-time bound the sweep re-reads a whole season of
+    settled markets every run (KXNCAAFSPREAD alone is 9,360 markets)."""
+    api = _rich_game_fake()
+    MarketDiscovery(api).run(as_of=NOW)
+    series_sweeps = [p for path, p in api.calls if path == "/markets" and p.get("series_ticker")]
+    assert series_sweeps, "no bulk series sweep was issued"
+    assert all("min_close_ts" in p for p in series_sweeps)
+    assert all(int(p["min_close_ts"]) < NOW.timestamp() for p in series_sweeps)
+
+
+def test_an_empty_bucket_is_confirmed_by_a_direct_fetch_not_assumed():
+    """THE risk of an index: absence must be confirmed. Here the bulk
+    sweep returns nothing at all, so every event must fall back to a
+    direct per-event fetch and the menu must come out complete."""
+    api = _rich_game_fake(serve_series_markets=False)
+    run = MarketDiscovery(api).run(as_of=NOW)
+    game = run.games["26SEP19UGAARK"]
+    assert game.completeness.markets_discovered == 13, "markets were lost to an empty index"
+    assert game.completeness.native_game_markets_complete is True
+    assert run.events_served_from_prefetch == 0
+    assert run.events_fetched_individually == 5
+
+
+def test_a_failed_series_sweep_falls_back_rather_than_publishing_a_partial_bucket():
+    """A series sweep that dies mid-chain leaves a NON-EMPTY but truncated
+    bucket. Trusting it would publish a partial menu as complete, so a
+    series that did not sweep cleanly is never trusted."""
+    game = "26SEP19UGAARK"
+    event = f"KXNCAAFSPREAD-{game}"
+
+    class TruncatedSeriesSweep(FakeKalshi):
+        def __call__(self, path, params=None):
+            params = dict(params or {})
+            # Bulk series sweep dies on its second page; per-event is fine.
+            if path == "/markets" and params.get("series_ticker") and params.get("cursor"):
+                raise RuntimeError("HTTP 429 Too Many Requests")
+            return super().__call__(path, params)
+
+    api = TruncatedSeriesSweep(
+        milestones=[make_milestone(game, (event,))],
+        events={event: make_event(event)},
+        markets_by_event={
+            event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(10)]
+        },
+        series=CFB_SERIES,
+        events_by_series={"KXNCAAFSPREAD": [make_event(event)]},
+        page_size=4,
+    )
+    run = MarketDiscovery(api).run(as_of=NOW)
+    completeness = run.games[game].completeness
+    # All 10 recovered via the per-event fallback, not the truncated 4.
+    assert completeness.markets_discovered == 10
+    assert completeness.native_game_markets_complete is True
+    assert run.events_fetched_individually == 1
+
+
+def test_a_series_never_swept_still_gets_its_markets():
+    """A milestone can name an event whose series our CFB heuristic did
+    not select. The milestone path must not depend on that heuristic."""
+    game = "26SEP19UGAARK"
+    unlisted = f"KXWEIRDSERIES-{game}"
+    api = FakeKalshi(
+        milestones=[make_milestone(game, (unlisted,))],
+        events={unlisted: make_event(unlisted)},
+        markets_by_event={unlisted: [make_market(f"{unlisted}-A", floor_strike=None)]},
+        series=CFB_SERIES,  # KXWEIRDSERIES is NOT among them
+    )
+    run = MarketDiscovery(api).run(as_of=NOW)
+    assert run.games[game].completeness.markets_discovered == 1
+    assert run.events_fetched_individually == 1
+
+
+def test_prefetch_and_per_event_paths_produce_identical_catalogs():
+    """The optimization must not change the answer -- only the cost."""
+    fast = build_catalog(MarketDiscovery(_rich_game_fake()).run(as_of=NOW))
+    slow = build_catalog(MarketDiscovery(_rich_game_fake(serve_series_markets=False)).run(as_of=NOW))
+    for catalog in (fast, slow):
+        catalog["discovery"].pop("requests_made", None)
+    assert fast["games"] == slow["games"]
+    assert fast["totals"] == slow["totals"]
+
+
+def test_the_bulk_path_is_dramatically_cheaper():
+    """The reason this exists at all."""
+    cheap = MarketDiscovery(_rich_game_fake()).run(as_of=NOW)
+    expensive = MarketDiscovery(_rich_game_fake(serve_series_markets=False)).run(as_of=NOW)
+    assert cheap.stats.requests_made < expensive.stats.requests_made

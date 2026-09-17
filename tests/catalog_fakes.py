@@ -174,6 +174,7 @@ class FakeKalshi:
         multivariate: list[dict[str, Any]] | None = None,
         fail_paths: dict[str, Exception] | None = None,
         page_size: int = 200,
+        serve_series_markets: bool = True,
     ) -> None:
         self.milestones = milestones or []
         self.events = events or {}
@@ -183,6 +184,7 @@ class FakeKalshi:
         self.multivariate = multivariate or []
         self.fail_paths = fail_paths or {}
         self.page_size = page_size
+        self.serve_series_markets = serve_series_markets
         self.calls: list[tuple[str, dict[str, Any]]] = []
 
     def __call__(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -196,7 +198,23 @@ class FakeKalshi:
             return self._page(self.milestones, "milestones", params)
         if path == "/markets":
             event_ticker = str(params.get("event_ticker") or "")
-            return self._page(list(self.markets_by_event.get(event_ticker, [])), "markets", params)
+            if event_ticker:
+                return self._page(list(self.markets_by_event.get(event_ticker, [])), "markets", params)
+            series_ticker = str(params.get("series_ticker") or "")
+            if series_ticker:
+                # The bulk prefetch path: every market of one series,
+                # across all its events. `serve_series_markets=False`
+                # simulates a deployment where the bulk sweep yields
+                # nothing, which must fall back to per-event fetching
+                # rather than publishing an empty menu.
+                if not self.serve_series_markets:
+                    return self._page([], "markets", params)
+                markets: list[dict[str, Any]] = []
+                for ev_ticker, ev_markets in sorted(self.markets_by_event.items()):
+                    if ev_ticker.split("-")[0] == series_ticker:
+                        markets.extend(ev_markets)
+                return self._page(markets, "markets", params)
+            return self._page([], "markets", params)
         if path == "/series":
             return self._page(self.series, "series", params)
         if path == "/events":

@@ -58,7 +58,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from cfb_edge_finder.catalog.classification import (
@@ -87,6 +87,15 @@ TRADEABLE_STATUS_VALUES = frozenset({"active", "open"})
 UNOPENED_STATUS_VALUES = frozenset({"unopened", "initialized"})
 PAUSED_STATUS_VALUES = frozenset({"paused"})
 CLOSED_STATUS_VALUES = frozenset({"closed", "finalized", "settled", "determined"})
+
+PREFETCH_CLOSE_BUFFER_DAYS = 7.0
+"""How far back the bulk market prefetch reaches, via /markets'
+`min_close_ts`. Markets for an upcoming game always close in the future, so
+this cannot hide anything in the published horizon; it exists only to keep
+the sweep from re-reading a whole season of settled markets on every run
+(KXNCAAFSPREAD alone carries 9,360 markets across 47 pages unfiltered).
+A week of slack covers a game that has just finished but whose markets have
+not finalized yet."""
 
 
 @dataclass
@@ -224,6 +233,14 @@ class CatalogRun:
     events_only_in_milestones: list[str] = field(default_factory=list)
     stats: SweepStats = field(default_factory=SweepStats)
     errors: list[str] = field(default_factory=list)
+    prefetched_events: int = 0
+    prefetched_markets: int = 0
+    events_served_from_prefetch: int = 0
+    events_fetched_individually: int = 0
+    """How many events came from the bulk index vs. a direct per-event
+    fetch. Published so a cheap run and an expensive one are
+    distinguishable, and so a sudden jump in individual fetches -- which
+    means the bulk sweeps are failing or missing series -- is visible."""
 
     @property
     def total_contracts(self) -> int:
@@ -290,6 +307,53 @@ class MarketDiscovery:
     def fetch_multivariate_collections(self, stats: SweepStats) -> PageSweep:
         return self._sweep("/multivariate_event_collections", {}, "multivariate_contracts", stats)
 
+    def fetch_series_markets(self, series_ticker: str, min_close_ts: int | None, stats: SweepStats) -> PageSweep:
+        """Every market of one SERIES in one paginated sweep.
+
+        *** WHY THIS EXISTS: A MEASURED 25x REQUEST REDUCTION ***
+        Fetching markets per event is the obviously-correct primitive, and
+        it is what `fetch_event_markets` does -- but the live slate has
+        ~239 games x ~29 events each, so a per-event sweep costs ~14,000
+        requests. A real audit run against the live exchange was still
+        going after 17 minutes, against a 30-minute refresh cadence and a
+        30-minute job timeout. A capture that cannot finish inside its own
+        cadence is not a capture.
+
+        One sweep per series (~98 series, a few pages each) covers the same
+        markets in roughly 400 requests. `min_close_ts` bounds it further
+        by excluding markets that closed long ago; markets for an upcoming
+        game always close in the future, so nothing in the published
+        horizon is filtered out by it.
+
+        This does NOT weaken the completeness guarantee. The sweep's
+        `complete` flag is tracked per series, and the caller falls back to
+        a per-event fetch whenever the series sweep did not complete, the
+        series was never swept, or the bucket for an event comes back
+        empty -- so an empty bucket is always confirmed directly rather
+        than published as "no markets"."""
+        return self._sweep(
+            "/markets", {"series_ticker": series_ticker, "min_close_ts": min_close_ts}, "markets", stats
+        )
+
+    def prefetch_markets_by_series(
+        self, series_tickers: list[str], min_close_ts: int | None, stats: SweepStats
+    ) -> tuple[dict[str, list[dict[str, Any]]], set[str]]:
+        """Bulk-load markets for many series, bucketed by event ticker.
+
+        Returns (markets_by_event, fully_swept_series). Only a series in
+        `fully_swept_series` may be trusted for a negative answer."""
+        markets_by_event: dict[str, list[dict[str, Any]]] = {}
+        fully_swept: set[str] = set()
+        for series_ticker in sorted(series_tickers):
+            sweep = self.fetch_series_markets(series_ticker, min_close_ts, stats)
+            if sweep.complete:
+                fully_swept.add(series_ticker)
+            for market in sweep.items:
+                event_ticker = market.get("event_ticker")
+                if isinstance(event_ticker, str) and event_ticker:
+                    markets_by_event.setdefault(event_ticker, []).append(market)
+        return markets_by_event, fully_swept
+
     # --- orchestration --------------------------------------------------
     def run(
         self,
@@ -316,6 +380,23 @@ class MarketDiscovery:
         run.milestones_selected = len(selected)
 
         series_fees = self._series_fee_index(run)
+        cfb_series = sorted(
+            ticker
+            for ticker, series in series_fees.items()
+            if self._series_looks_college_football(ticker, series)
+        )
+
+        # ---- bulk prefetch: markets and events, in series-sized sweeps -
+        # Per-event fetching is ~14,000 requests on a live slate and could
+        # not finish inside the refresh cadence (see
+        # fetch_series_markets' docstring). These two index builds cover
+        # the same ground in ~400, and every negative answer they give is
+        # confirmed by a direct per-event fetch before it is published.
+        min_close_ts = int((now - timedelta(days=PREFETCH_CLOSE_BUFFER_DAYS)).timestamp())
+        market_index, fully_swept_series = self.prefetch_markets_by_series(cfb_series, min_close_ts, run.stats)
+        event_index, series_events = self._build_event_index(cfb_series, run)
+        run.prefetched_events = len(event_index)
+        run.prefetched_markets = sum(len(v) for v in market_index.values())
 
         for milestone in selected:
             game_key = milestone.game_key
@@ -330,11 +411,21 @@ class MarketDiscovery:
             game = run.games.setdefault(game_key, CatalogGame(game_key=game_key, milestone=milestone))
             if game.milestone is None:
                 game.milestone = milestone
-            self._capture_game_events(game, list(milestone.event_tickers), run, series_fees)
+            self._capture_game_events(
+                game,
+                list(milestone.event_tickers),
+                run,
+                series_fees,
+                market_index=market_index,
+                event_index=event_index,
+                fully_swept_series=fully_swept_series,
+            )
 
         # ---- path 2: independent series sweep, for visibility ----------
         if include_series_reconciliation:
-            self._reconcile_with_series_sweep(run, series_fees)
+            self._reconcile_with_series_sweep(
+                run, series_fees, series_events, market_index, event_index, fully_swept_series
+            )
 
         # ---- combo eligibility, honestly scoped ------------------------
         if include_multivariate:
@@ -360,6 +451,35 @@ class MarketDiscovery:
                 index[ticker] = series
         return index
 
+    def _build_event_index(
+        self, cfb_series: list[str], run: CatalogRun
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        """One /events sweep per CFB series, indexed by event ticker.
+
+        The list endpoint returns FULL event objects (title, sub_title,
+        product_metadata, settlement_sources), so this removes the
+        per-event GET /events/{ticker} call as well -- and it is the same
+        sweep the reconciliation path needs, so it is paid for once and
+        used twice. `with_nested_markets` is deliberately NOT requested:
+        it returned 1 market for events that genuinely had 22."""
+        event_index: dict[str, dict[str, Any]] = {}
+        series_events: dict[str, dict[str, Any]] = {}
+        for series_ticker in cfb_series:
+            sweep = self.fetch_series_events(series_ticker, run.stats)
+            if not sweep.complete:
+                run.series_sweep_complete = False
+                run.errors.append(f"event sweep incomplete for {series_ticker}: {sweep.failure_reason}")
+            if sweep.items:
+                run.series_with_open_events += 1
+            for event in sweep.items:
+                event_ticker = str(event.get("event_ticker") or event.get("ticker") or "")
+                if not event_ticker:
+                    continue
+                event_index[event_ticker] = event
+                if is_cfb_event(event):
+                    series_events[event_ticker] = event
+        return event_index, series_events
+
     def _capture_game_events(
         self,
         game: CatalogGame,
@@ -367,12 +487,18 @@ class MarketDiscovery:
         run: CatalogRun,
         series_fees: dict[str, dict[str, Any]],
         from_series_sweep: bool = False,
+        market_index: dict[str, list[dict[str, Any]]] | None = None,
+        event_index: dict[str, dict[str, Any]] | None = None,
+        fully_swept_series: set[str] | None = None,
     ) -> None:
         completeness = game.completeness
         if not from_series_sweep:
             completeness.related_event_tickers_reported = max(
                 completeness.related_event_tickers_reported, len(event_tickers)
             )
+        market_index = market_index if market_index is not None else {}
+        event_index = event_index if event_index is not None else {}
+        fully_swept_series = fully_swept_series if fully_swept_series is not None else set()
 
         for event_ticker in event_tickers:
             if event_ticker in game.events:
@@ -384,7 +510,7 @@ class MarketDiscovery:
                 run.season_level_events.setdefault(event_ticker, {"event_ticker": event_ticker})
                 continue
 
-            event = self.fetch_event(event_ticker, run.stats)
+            event = event_index.get(event_ticker) or self.fetch_event(event_ticker, run.stats)
             if event is None:
                 completeness.failed_event_tickers.append(event_ticker)
                 completeness.api_failures += 1
@@ -394,16 +520,29 @@ class MarketDiscovery:
             if from_series_sweep:
                 completeness.events_added_by_series_sweep.append(event_ticker)
 
-            sweep = self.fetch_event_markets(event_ticker, run.stats)
-            if not sweep.complete:
-                completeness.pagination_failed_event_tickers.append(event_ticker)
-                completeness.api_failures += 1
-
             series_ticker = str(event.get("series_ticker") or parts.series_ticker)
+
+            # Trust the bulk index ONLY for a non-empty bucket from a
+            # series that swept completely. An empty bucket, or a series
+            # whose sweep failed or was never run, falls through to a
+            # direct per-event fetch -- so "no markets" is always a
+            # confirmed answer rather than an absence in an index.
+            prefetched = market_index.get(event_ticker)
+            if prefetched and series_ticker in fully_swept_series:
+                markets = prefetched
+                run.events_served_from_prefetch += 1
+            else:
+                sweep = self.fetch_event_markets(event_ticker, run.stats)
+                markets = sweep.items
+                run.events_fetched_individually += 1
+                if not sweep.complete:
+                    completeness.pagination_failed_event_tickers.append(event_ticker)
+                    completeness.api_failures += 1
+
             series = series_fees.get(series_ticker) or {}
             settlement_sources = event.get("settlement_sources") or []
 
-            for market in sweep.items:
+            for market in markets:
                 contract = build_contract(
                     market,
                     game_key=game.game_key,
@@ -457,35 +596,27 @@ class MarketDiscovery:
             else:
                 c.markets_classified += 1
 
-    def _reconcile_with_series_sweep(self, run: CatalogRun, series_fees: dict[str, dict[str, Any]]) -> None:
-        """Independently discover CFB events and attach anything the
-        milestone path did not name.
+    def _reconcile_with_series_sweep(
+        self,
+        run: CatalogRun,
+        series_fees: dict[str, dict[str, Any]],
+        series_events: dict[str, dict[str, Any]],
+        market_index: dict[str, list[dict[str, Any]]],
+        event_index: dict[str, dict[str, Any]],
+        fully_swept_series: set[str],
+    ) -> None:
+        """Attach anything the milestone path did not name.
 
-        Series selection is read from Kalshi at runtime, so a family
-        launched today is swept today. It is not an allowlist: it decides
-        only where to LOOK for events, and every event found is kept
-        regardless of which series produced it."""
-        candidates = [
-            ticker
-            for ticker, series in series_fees.items()
-            if self._series_looks_college_football(ticker, series)
-        ]
+        `series_events` comes from `_build_event_index`, which swept every
+        CFB series Kalshi currently lists -- selection read at runtime, so
+        a family launched today is swept today. It is not an allowlist: it
+        decides only where to LOOK, and every event found is kept
+        regardless of which series produced it.
 
+        This path exists to make a milestone's omission VISIBLE. A single
+        discovery path fails silently; a gap here becomes
+        `discovery.events_only_in_series_sweep` in the artifact."""
         milestone_events = {ticker for game in run.games.values() for ticker in game.events}
-        series_events: dict[str, dict[str, Any]] = {}
-
-        for series_ticker in sorted(candidates):
-            sweep = self.fetch_series_events(series_ticker, run.stats)
-            if not sweep.complete:
-                run.series_sweep_complete = False
-                run.errors.append(f"event sweep incomplete for {series_ticker}: {sweep.failure_reason}")
-            if sweep.items:
-                run.series_with_open_events += 1
-            for event in sweep.items:
-                event_ticker = str(event.get("event_ticker") or event.get("ticker") or "")
-                if not event_ticker or not is_cfb_event(event):
-                    continue
-                series_events[event_ticker] = event
 
         for event_ticker, event in sorted(series_events.items()):
             if event_ticker in milestone_events:
@@ -496,7 +627,16 @@ class MarketDiscovery:
                 continue
             run.events_only_in_series_sweep.append(event_ticker)
             game = run.games.setdefault(parts.game_key, CatalogGame(game_key=parts.game_key, milestone=None))
-            self._capture_game_events(game, [event_ticker], run, series_fees, from_series_sweep=True)
+            self._capture_game_events(
+                game,
+                [event_ticker],
+                run,
+                series_fees,
+                from_series_sweep=True,
+                market_index=market_index,
+                event_index=event_index,
+                fully_swept_series=fully_swept_series,
+            )
 
         run.events_only_in_milestones = sorted(milestone_events - set(series_events))
 

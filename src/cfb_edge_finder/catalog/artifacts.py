@@ -150,6 +150,14 @@ def build_catalog(run: CatalogRun, include_raw: bool = False) -> dict[str, Any]:
             "events_only_in_series_sweep": sorted(run.events_only_in_series_sweep),
             "events_only_in_series_sweep_count": len(run.events_only_in_series_sweep),
             "requests_made": run.stats.requests_made,
+            # A cheap run and an expensive one must be distinguishable. A
+            # jump in events_fetched_individually means the bulk series
+            # sweeps are failing or missing series, which is a cost and
+            # reliability signal even when the menu comes out complete.
+            "events_served_from_prefetch": run.events_served_from_prefetch,
+            "events_fetched_individually": run.events_fetched_individually,
+            "prefetched_events": run.prefetched_events,
+            "prefetched_markets": run.prefetched_markets,
             "request_failures": run.stats.request_failures,
             "pagination_failures": run.stats.pagination_failures,
             "failed_paths": sorted(run.stats.failed_paths),
