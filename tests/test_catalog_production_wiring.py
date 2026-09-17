@@ -239,3 +239,62 @@ def test_fetch_milestones_sends_type_not_competition(stubbed_client):
     assert params.get("type") == "football_game"
     # None-valued params are pruned by the client, so `competition` must be absent.
     assert "competition" not in params
+
+
+# --- the workflow's status reporter ---------------------------------------
+def _reporter():
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "report_catalog_status.py"
+    spec = importlib.util.spec_from_file_location("report_catalog_status", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_status_reporter_annotates_an_incomplete_capture(tmp_path, capsys):
+    status = tmp_path / "s.json"
+    status.write_text(
+        json.dumps(
+            {"physical_games": 40, "markets": 900, "capture_complete": False, "games_incomplete_count": 2}
+        )
+    )
+    assert _reporter().main(["--status-file", str(status)]) == 0
+    out = capsys.readouterr().out
+    assert "::warning title=Catalog capture incomplete::" in out
+    assert "2 game(s) incomplete" in out
+
+
+def test_status_reporter_never_fails_the_run(tmp_path, capsys):
+    """A scheduled job must not go red for a transient Kalshi blip -- that
+    is what made the retired collector's notifications worthless."""
+    reporter = _reporter()
+    assert reporter.main(["--status-file", str(tmp_path / "absent.json")]) == 0
+    unreadable = tmp_path / "bad.json"
+    unreadable.write_text("{not json")
+    assert reporter.main(["--status-file", str(unreadable)]) == 0
+    assert "unreadable" in capsys.readouterr().out.lower()
+
+
+def test_status_reporter_reads_the_keys_the_builder_writes(tmp_path, capsys):
+    """Pins the contract between the builder's status file and the
+    workflow's reporter, which are edited independently."""
+    status = tmp_path / "cfb_catalog_status.json"
+    status.write_text(
+        json.dumps(
+            {
+                "physical_games": 41,
+                "events": 300,
+                "markets": 1200,
+                "capture_complete": True,
+                "elapsed_seconds": 95.2,
+                "unknown_family_markets": 3,
+                "requests_made": 412,
+                "content_fingerprint": "abc123def4567890",
+            }
+        )
+    )
+    assert _reporter().main(["--status-file", str(status)]) == 0
+    out = capsys.readouterr().out
+    assert "catalog complete: 41 games / 1200 markets" in out
+    assert "412" in out

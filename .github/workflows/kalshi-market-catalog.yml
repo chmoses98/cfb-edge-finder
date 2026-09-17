@@ -151,27 +151,8 @@ jobs:
           done
           exit 1
       - name: Surface an incomplete capture without failing the run
-        # An INCOMPLETE capture is published WITH its diagnostics rather
-        # than suppressed, and reported here as a warning. Failing the job
-        # for a transient Kalshi blip is what made the retired collector's
-        # notifications worthless; the next tick recovers on its own.
         if: always()
-        run: |
-          if [ -f data/live/cfb_catalog_status.json ]; then
-            python3 - <<'PY'
-          import json
-          status = json.load(open("data/live/cfb_catalog_status.json"))
-          if not status.get("capture_complete", False):
-              print(
-                  f"::warning title=Catalog capture incomplete::"
-                  f"{status.get('games_incomplete_count')} game(s) incomplete; "
-                  f"published with diagnostics. Games={status.get('physical_games')} "
-                  f"markets={status.get('markets')}"
-              )
-          else:
-              print(
-                  f"catalog complete: {status.get('physical_games')} games / "
-                  f"{status.get('markets')} markets in {status.get('elapsed_seconds')}s"
-              )
-          PY
-          fi
+        # A script on disk rather than a heredoc nested inside a shell
+        # `if` inside a YAML block scalar: that shape is three quoting
+        # layers deep, cannot be run outside CI, and cannot be tested.
+        run: python3 scripts/report_catalog_status.py

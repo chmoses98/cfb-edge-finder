@@ -133,8 +133,8 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Directory to write the catalog this audit already built. Without it the caller has to "
-            "rebuild the catalog from scratch to look at it, which doubles a ten-minute run for no "
-            "new information."
+            "rebuild it from scratch just to look at it, spending a second full capture for no new "
+            "information."
         ),
     )
     args = parser.parse_args(argv)

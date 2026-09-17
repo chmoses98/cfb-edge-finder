@@ -68,19 +68,16 @@ jobs:
             ${{ github.event.inputs.audit_all == 'true' && '--audit-all' || '' }}
       - name: Show the catalog the audit produced
         if: always()
+        # Deliberately a COMPACT summary. An earlier version dumped 6 KB of
+        # raw game JSON here, which pushed the audit's own verdict out of
+        # the bounded tail the job-log API returns -- i.e. it made the
+        # result of the audit unreadable in the place people read results.
+        # The full artifact is uploaded below for anyone who wants it.
         run: |
-          echo "--- artifact sizes ---"
-          ls -l /tmp/catalog/ || { echo "no catalog written (the audit failed before step 1 finished)"; exit 0; }
-          echo "--- one full game entry, as a reader would see it ---"
-          python3 - <<'PY'
-          import json
-          catalog = json.load(open("/tmp/catalog/cfb_market_catalog.json"))
-          games = sorted(catalog["games"], key=lambda g: -g["market_count"])
-          if games:
-              game = dict(games[0])
-              game["markets"] = game["markets"][:3]
-              print(json.dumps(game, indent=1)[:6000])
-          PY
+          ls -l /tmp/catalog/ || { echo "no catalog written"; exit 0; }
+          python3 scripts/report_catalog_status.py \
+            --status-file /tmp/catalog/cfb_catalog_status.json || true
+          python3 scripts/print_catalog_sample.py --catalog /tmp/catalog/cfb_market_catalog.json
       - name: Upload the catalog artifacts
         if: always()
         uses: actions/upload-artifact@v4
