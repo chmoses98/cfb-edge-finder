@@ -57,14 +57,8 @@ _LIQUIDITY = ("liquidity_dollars", "liquidity")
 _NOTIONAL = ("notional_value_dollars", "notional_value")
 
 
-def _first_number(payload: dict[str, Any], keys: tuple[str, ...]) -> float | None:
-    """Return the first key that parses as a number, or None.
-
-    A `*_dollars`/`*_fp` string is already in the unit we want (dollars or
-    whole contracts). A bare `yes_bid`-style key is integer CENTS in
-    Kalshi's older representation, so it is divided by 100 -- otherwise a
-    99c ask would be recorded as $99.00 and every mechanic derived from it
-    would be nonsense."""
+def _raw_number(payload: dict[str, Any], keys: tuple[str, ...]) -> tuple[str, float] | None:
+    """First key that parses as a number, with the key it came from."""
     for key in keys:
         if key not in payload:
             continue
@@ -72,15 +66,50 @@ def _first_number(payload: dict[str, Any], keys: tuple[str, ...]) -> float | Non
         if value is None or value == "":
             continue
         try:
-            number = float(value)
+            return key, float(value)
         except (TypeError, ValueError):
             continue
-        if key.endswith("_dollars") or key.endswith("_fp"):
-            return number
-        if key in ("volume", "volume_24h", "open_interest"):
-            return number  # counts, not money
-        return number / 100.0
     return None
+
+
+def _first_money(payload: dict[str, Any], keys: tuple[str, ...]) -> float | None:
+    """A MONEY field, normalized to dollars per $1 contract.
+
+    A `*_dollars` string is already in dollars. A bare `yes_bid`-style key
+    is integer CENTS in Kalshi's older representation and is divided by
+    100 -- otherwise a 99c ask would be recorded as $99.00 and every
+    mechanic derived from it would be nonsense."""
+    found = _raw_number(payload, keys)
+    if found is None:
+        return None
+    key, number = found
+    if key.endswith("_dollars") or key.endswith("_fp"):
+        return number
+    return number / 100.0
+
+
+def _first_count(payload: dict[str, Any], keys: tuple[str, ...]) -> float | None:
+    """A COUNT of contracts -- quoted size, volume, open interest.
+
+    Never unit-converted. These are quantities, not money: a 730-contract
+    bid is 730 whether Kalshi spells the key `yes_bid_size_fp` or
+    `yes_bid_size`, and dividing the bare spelling by 100 would report it
+    as 7.3 contracts."""
+    found = _raw_number(payload, keys)
+    return None if found is None else found[1]
+
+
+def _first_strike(payload: dict[str, Any], keys: tuple[str, ...]) -> float | None:
+    """A STRIKE -- a contract parameter in the units of the underlying.
+
+    Never unit-converted, and deliberately separate from the money path.
+    A strike is POINTS (a 3.5-point spread, a 48.5-point total), not
+    cents: routing it through the money accessor turned `floor_strike:
+    3.5` into 0.035 and silently corrupted the line on every spread and
+    total in the catalog. Caught by inspecting a rendered artifact against
+    the contract title it came from."""
+    found = _raw_number(payload, keys)
+    return None if found is None else found[1]
 
 
 def _first_value(payload: dict[str, Any], keys: tuple[str, ...]) -> Any:
@@ -226,8 +255,8 @@ def build_contract(
         rules_secondary=market.get("rules_secondary"),
         market_type=market.get("market_type"),
         strike_type=market.get("strike_type"),
-        floor_strike=_first_number(market, ("floor_strike",)),
-        cap_strike=_first_number(market, ("cap_strike",)),
+        floor_strike=_first_strike(market, ("floor_strike",)),
+        cap_strike=_first_strike(market, ("cap_strike",)),
         functional_strike=market.get("functional_strike"),
         custom_strike=market.get("custom_strike") or None,
         early_close_condition=market.get("early_close_condition"),
@@ -237,23 +266,23 @@ def build_contract(
     )
 
     quote = ContractQuote(
-        yes_bid=_first_number(market, _YES_BID),
-        yes_ask=_first_number(market, _YES_ASK),
-        no_bid=_first_number(market, _NO_BID),
-        no_ask=_first_number(market, _NO_ASK),
-        yes_bid_size=_first_number(market, _YES_BID_SIZE),
-        yes_ask_size=_first_number(market, _YES_ASK_SIZE),
-        no_bid_size=_first_number(market, _NO_BID_SIZE),
-        no_ask_size=_first_number(market, _NO_ASK_SIZE),
-        last_price=_first_number(market, _LAST),
-        previous_price=_first_number(market, _PREV),
+        yes_bid=_first_money(market, _YES_BID),
+        yes_ask=_first_money(market, _YES_ASK),
+        no_bid=_first_money(market, _NO_BID),
+        no_ask=_first_money(market, _NO_ASK),
+        yes_bid_size=_first_count(market, _YES_BID_SIZE),
+        yes_ask_size=_first_count(market, _YES_ASK_SIZE),
+        no_bid_size=_first_count(market, _NO_BID_SIZE),
+        no_ask_size=_first_count(market, _NO_ASK_SIZE),
+        last_price=_first_money(market, _LAST),
+        previous_price=_first_money(market, _PREV),
     )
 
     liquidity = ContractLiquidity(
-        volume=_first_number(market, _VOLUME),
-        volume_24h=_first_number(market, _VOLUME_24H),
-        open_interest=_first_number(market, _OPEN_INTEREST),
-        liquidity_dollars=_first_number(market, _LIQUIDITY),
+        volume=_first_count(market, _VOLUME),
+        volume_24h=_first_count(market, _VOLUME_24H),
+        open_interest=_first_count(market, _OPEN_INTEREST),
+        liquidity_dollars=_first_money(market, _LIQUIDITY),
     )
 
     return CatalogContract(
@@ -276,7 +305,7 @@ def build_contract(
         exchange_index=market.get("exchange_index"),
         fee_type=fee_type,
         fee_multiplier=fee_multiplier,
-        notional_value=_first_number(market, _NOTIONAL),
+        notional_value=_first_money(market, _NOTIONAL),
         captured_at=captured_at,
         raw=dict(market),
     )

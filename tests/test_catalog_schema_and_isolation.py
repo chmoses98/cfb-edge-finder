@@ -156,7 +156,12 @@ def _fake():
     markets = {
         f"KXNCAAFGAME-{game}": [make_market(f"KXNCAAFGAME-{game}-UGA", floor_strike=None)],
         f"KXNCAAFSPREAD-{game}": [
-            make_market(f"KXNCAAFSPREAD-{game}-UGA{i}", floor_strike=i + 0.5) for i in (3, 4)
+            make_market(
+                f"KXNCAAFSPREAD-{game}-UGA{i}",
+                title=f"Georgia wins by over {i}.5 points",
+                floor_strike=i + 0.5,
+            )
+            for i in (3, 4)
         ],
     }
     return FakeKalshi(
@@ -388,3 +393,109 @@ def test_mechanics_block_has_no_game_opinion():
         "seconds_until_close",
         "seconds_until_occurrence",
     }
+
+
+# =========================================================================
+# UNIT SEMANTICS
+#
+# Kalshi spells money, counts and strikes with overlapping conventions, and
+# getting one wrong corrupts data silently rather than raising. A single
+# tolerant "parse a number" helper routed STRIKES through the cents path
+# and published `floor_strike: 3.5` (a 3.5-point spread) as 0.035 --
+# wrong on every spread and total in the catalog, and invisible unless you
+# read a rendered artifact against the contract title it came from.
+# =========================================================================
+
+
+def _build(market: dict):
+    from cfb_edge_finder.catalog.contract import build_contract
+
+    return build_contract(
+        market,
+        game_key="26SEP19UGAARK",
+        series_ticker="KXNCAAFSPREAD",
+        settlement_sources=[],
+        fee_type="quadratic",
+        fee_multiplier=1,
+        captured_at=NOW,
+    )
+
+
+def test_a_strike_is_points_and_is_never_unit_converted():
+    contract = _build(
+        {
+            "ticker": "KXNCAAFSPREAD-26SEP19UGAARK-UGA3",
+            "title": "Georgia wins by over 3.5 points",
+            "floor_strike": 3.5,
+            "cap_strike": 10.5,
+            "status": "active",
+        }
+    )
+    assert contract.semantics.floor_strike == pytest.approx(3.5), "a 3.5-point line became something else"
+    assert contract.semantics.cap_strike == pytest.approx(10.5)
+
+
+def test_a_large_total_strike_survives_intact():
+    """A 48.5-point total published as 0.485 would look like a price and
+    read as plausible, which is what makes this failure dangerous."""
+    contract = _build({"ticker": "T", "floor_strike": 48.5, "status": "active"})
+    assert contract.semantics.floor_strike == pytest.approx(48.5)
+
+
+def test_quoted_sizes_are_contract_counts_in_both_spellings():
+    fp = _build({"ticker": "A", "yes_bid_size_fp": "730.00", "yes_ask_size_fp": "10.00"})
+    bare = _build({"ticker": "B", "yes_bid_size": 730, "yes_ask_size": 10})
+    assert fp.quote.yes_bid_size == pytest.approx(730.0)
+    assert bare.quote.yes_bid_size == pytest.approx(730.0), "a 730-contract bid was rescaled"
+    assert fp.quote.yes_ask_size == bare.quote.yes_ask_size
+
+
+def test_volume_and_open_interest_are_counts_in_both_spellings():
+    fp = _build({"ticker": "A", "volume_fp": "1500.00", "open_interest_fp": "220.00"})
+    bare = _build({"ticker": "B", "volume": 1500, "open_interest": 220})
+    assert fp.liquidity.volume == pytest.approx(1500.0)
+    assert bare.liquidity.volume == pytest.approx(1500.0)
+    assert fp.liquidity.open_interest == bare.liquidity.open_interest == pytest.approx(220.0)
+
+
+def test_money_fields_normalize_to_dollars_from_either_spelling():
+    dollars = _build({"ticker": "A", "yes_ask_dollars": "0.1200", "liquidity_dollars": "12.5000"})
+    cents = _build({"ticker": "B", "yes_ask": 12, "liquidity": 1250})
+    assert dollars.quote.yes_ask == cents.quote.yes_ask == pytest.approx(0.12)
+    assert dollars.liquidity.liquidity_dollars == cents.liquidity.liquidity_dollars == pytest.approx(12.5)
+
+
+def test_a_strike_and_a_price_of_the_same_magnitude_do_not_collide():
+    """The regression in one assertion: the same number means different
+    things in the two fields, and both must survive."""
+    contract = _build(
+        {"ticker": "T", "floor_strike": 3.5, "yes_ask_dollars": "0.3500", "status": "active"}
+    )
+    assert contract.semantics.floor_strike == pytest.approx(3.5)
+    assert contract.quote.yes_ask == pytest.approx(0.35)
+
+
+def test_published_strike_matches_the_contract_title():
+    """End-to-end through the artifact, the way the bug was actually
+    found: the number in `floor_strike` must match the number Kalshi wrote
+    in the title."""
+    import re
+
+    catalog = build_catalog(MarketDiscovery(_fake()).run(as_of=NOW))
+    checked = 0
+    for game in catalog["games"]:
+        for market in game["markets"]:
+            if market["floor_strike"] is None:
+                continue
+            # Skip the period token ("1H", "2Q") so the number matched is
+            # the line, not the half.
+            title = re.sub(r"\b[1-4][HQ]\b", "", market["title"] or "")
+            found = re.search(r"(\d+(?:\.\d+)?)", title)
+            if not found:
+                continue
+            assert market["floor_strike"] == pytest.approx(float(found.group(1))), (
+                f"{market['market_ticker']}: floor_strike {market['floor_strike']} "
+                f"disagrees with its own title {market['title']!r}"
+            )
+            checked += 1
+    assert checked > 0, "no strike-bearing market was checked -- the fixture lost its ladders"
