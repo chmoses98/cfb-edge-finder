@@ -1,0 +1,39 @@
+name: Investigate Kalshi Milestones (manual)
+
+# Manual-only, read-only, credential-free. This repository's dev
+# environment has no network egress to Kalshi's API hosts (organization
+# policy -- the agent proxy answers 403 to CONNECT for
+# api.elections.kalshi.com, trading-api.kalshi.com and api.kalshi.com),
+# so empirical evidence about Kalshi's current CFB market surface has to
+# be gathered from a GitHub-hosted runner. Same established pattern as
+# validate-kalshi-cfb-live.yml.
+#
+# This workflow exists to ANSWER QUESTIONS, not to produce production
+# data: it prints its findings to the job log and writes nothing back to
+# the repository.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: investigate-kalshi-milestones
+  cancel-in-progress: false
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install requests
+        run: pip install requests
+      - name: Investigate Kalshi CFB milestone/event/market surface
+        # Unauthenticated GETs against Kalshi's public market-data API
+        # only. No Authorization header, no order/portfolio endpoint, no
+        # secret consumed.
+        run: python3 scripts/investigate_kalshi_milestones_live.py
