@@ -61,6 +61,21 @@ against the workflow files at this PR's head.
 | 3 | `research-weekly-report.yml` — Research Weekly Report | `workflow_dispatch` only | `research_weekly_report.py`, `research_season_report.py` -> `GitDurableStore` | Locks 1 + 2 |
 | 4 | `preseason-research-fetch.yml` — Preseason Research Cache Fetch | `workflow_dispatch` only | **raw `git push origin HEAD:research-data`** — does *not* go through `GitDurableStore` | Lock 1, plus the explicit `--status` gate added to the push step |
 | 5 | `research-collection-conductor.yml` — Collection Conductor | `schedule: 17 * * * *`, `workflow_dispatch` | Writes nothing itself; **dispatches** Research Capture runs. Sits in its own `research-collection-conductor` group, so it does **not** queue behind `research-data-write` | Lock 1 (disable it too — otherwise it keeps dispatching #1) |
+| 6 | `kalshi-market-catalog.yml` — Kalshi CFB Market Catalog | `schedule` (30 min in the Thu-Sun slate window, 6-hourly otherwise), `workflow_dispatch` | `build_kalshi_cfb_catalog.py` -> raw `git commit`/`git push` of `data/live/cfb_market_catalog.json`, `cfb_markets_flat.json` and `cfb_catalog_status.json` on the **working branch**, not `research-data` | Locks 1 + 2 are the wrong instrument — see the note below |
+
+
+**#6 is a different animal from #1-#5 and the cutover should treat it as
+such.** The market catalog is the post-pivot LIVE data path: it writes
+`data/live/`, never the `research-data` durable store, and it carries no
+model output, so freezing it does not protect the research corpus from
+anything — it just blinds the operator to what is currently tradeable
+during the very window a cutover happens in. It shares the
+`research-data-write` concurrency group only because this repository
+enforces a single repo-writer lock
+(`tests/test_research_workflow_concurrency.py`), which is a correctness
+guarantee worth honouring even where contention is unlikely. **Freeze it
+only if a cutover is actually rewriting `data/live/` itself**; otherwise
+leave it running and let it keep the catalog fresh.
 
 #4 is the reason Lock 2 alone is insufficient and the workflow-disable
 step is mandatory: a raw `git push` consults no library. It now consults

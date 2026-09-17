@@ -153,6 +153,10 @@ GUARDED_PACKAGES = (
     # two lists are identical. A package guarded there but missing here is a
     # probe that reports the lock healthy while it is broken.
     "accounting",
+    # The market catalog is the live path after the 2026 discovery pivot:
+    # it is what a human reads to decide what to bet, which makes it the
+    # most attractive place to bolt a suggested stake onto a price.
+    "catalog",
     "decision",
     "recommendation",
     "research",

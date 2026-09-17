@@ -124,7 +124,8 @@ def q1_ncaaf_milestones() -> list[dict]:
     statuses = Counter(str((m.get("details") or {}).get("status")) for m in ncaaf)
     print(f"NCAAFB milestone detail.status: {dict(statuses)}")
     seasons = Counter(
-        f"{(m.get('details') or {}).get('season', {}).get('year')}-{(m.get('details') or {}).get('season', {}).get('type')}"
+        f"{((m.get('details') or {}).get('season') or {}).get('year')}-"
+        f"{((m.get('details') or {}).get('season') or {}).get('type')}"
         for m in ncaaf
     )
     print(f"NCAAFB milestone seasons: {dict(sorted(seasons.items()))}")

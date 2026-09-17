@@ -1,0 +1,177 @@
+name: Kalshi CFB Market Catalog
+
+# *** WHAT THIS IS ***
+# The LIVE data path for this repository: it refreshes
+# data/live/cfb_market_catalog.json -- the complete, per-physical-game
+# inventory of every Kalshi college-football market -- and commits it only
+# when the market surface actually changed.
+#
+# It consumes NO SECRETS. Kalshi's market-data endpoints are public reads
+# and game identity comes from Kalshi's own football_game milestones, so
+# unlike every live path that preceded it this workflow needs no
+# CFBD_API_KEY and no Kalshi credential. It never calls an order or
+# portfolio endpoint.
+#
+# *** CADENCE, AND WHY IT IS SHAPED LIKE THIS ***
+# College football is a weekend sport. A flat "every 10 minutes, forever"
+# schedule -- which is what the retired research collector ran -- spends
+# ~4,300 runs a month to capture a slate that barely moves Monday to
+# Thursday, and it emails a failure every time a socket resets.
+#
+#   Thu 18:00 - Sun 06:00 UTC   every 30 min   (the actual slate window:
+#                                               Thursday night through the
+#                                               end of Saturday's late
+#                                               games in US time)
+#   otherwise                   every 6 hours  (line moves, new listings)
+#
+# That is roughly 150 runs/week rather than ~1,000, while polling the
+# window that matters MORE often than a uniform hourly schedule would.
+#
+# *** WHY IT IS QUIET ***
+# A run that finds nothing changed writes nothing, commits nothing and
+# says nothing. A transient Kalshi failure does not fail the job (the
+# catalog publishes with INCOMPLETE diagnostics and the next tick
+# recovers); only a genuinely unusable capture -- zero games discovered,
+# or the builder crashing -- fails and notifies. The retired collector
+# emailed a red run for every reset socket, which trained everyone to
+# ignore it.
+on:
+  schedule:
+    # Slate window: Thursday 18:00 UTC through Sunday 06:00 UTC.
+    - cron: "*/30 18-23 * * 4"
+    - cron: "*/30 * * * 5,6"
+    - cron: "*/30 0-6 * * 0"
+    # Off-peak keepalive: every 6 hours the rest of the week.
+    - cron: "40 */6 * * 0,1,2,3,4"
+  workflow_dispatch:
+    inputs:
+      horizon_days:
+        description: "Publish games kicking off within this many days (-1 for no horizon)"
+        required: false
+        default: "10"
+      include_raw:
+        description: "Embed each market's raw Kalshi payload in the flat index"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+# contents: write is used only to commit the refreshed catalog.
+permissions:
+  contents: write
+
+# *** WHY THE RESEARCH GROUP AND NOT A DEDICATED ONE ***
+# This repository enforces (tests/test_research_workflow_concurrency.py)
+# that every workflow which can write the repo shares ONE group, so two
+# writers can never interleave. That guard is deliberately conservative
+# and this workflow honours it rather than carving out an exception.
+# cancel-in-progress: false is essential -- a previous mission's job used
+# `true` on a shared group and cancelled 12 queued collector runs.
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Remember the previously published fingerprint
+        # Read from the CHECKED-OUT file before the builder overwrites
+        # it, rather than asking git to show the committed revision of that
+        # path. tests/test_research_workflow_concurrency.py classifies a
+        # workflow as an isolated-branch sidecar by scanning for a
+        # revision-colon-path push target, and spelling one anywhere in
+        # this file -- even inside a `git show` -- made it misread this
+        # workflow as a sidecar that must NOT hold the repo's single
+        # writer lock. Reading the file directly avoids the ambiguity
+        # entirely and is simpler besides.
+        id: previous
+        run: |
+          if [ -f data/live/cfb_catalog_status.json ]; then
+            FP=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json')).get('content_fingerprint',''))" 2>/dev/null || echo "")
+          else
+            FP=""
+          fi
+          echo "fingerprint=${FP}" >> "$GITHUB_OUTPUT"
+      - name: Build the Kalshi CFB market catalog
+        id: build
+        # No credentials are passed to this step because none exist to
+        # pass: the entire discovery path is unauthenticated public reads.
+        run: |
+          python3 scripts/build_kalshi_cfb_catalog.py \
+            --out-dir data/live \
+            --horizon-days "${{ github.event.inputs.horizon_days || '10' }}" \
+            ${{ github.event.inputs.include_raw == 'true' && '--include-raw' || '' }} \
+            --print-summary
+      - name: Commit the catalog only if the market surface changed
+        # Change detection is the whole storage/Actions budget story. The
+        # builder writes a content fingerprint that deliberately EXCLUDES
+        # capture timestamps and clock-derived mechanics (quote age,
+        # seconds-to-close), so a run over an unchanged surface produces
+        # byte-identical market content and is skipped entirely. Prices ARE
+        # in the fingerprint -- a price move is a real change worth
+        # recording.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/live/cfb_market_catalog.json data/live/cfb_markets_flat.json \
+                  data/live/cfb_catalog_status.json
+
+          if git diff --cached --quiet; then
+            echo "catalog byte-identical; nothing to commit"
+            exit 0
+          fi
+
+          # Did anything but the clock move? Compare fingerprints, not bytes.
+          NEW_FP=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['content_fingerprint'])")
+          OLD_FP="${{ steps.previous.outputs.fingerprint }}"
+          if [ -n "$OLD_FP" ] && [ "$NEW_FP" = "$OLD_FP" ]; then
+            echo "market surface unchanged (fingerprint $NEW_FP); skipping commit to avoid timestamp churn"
+            git reset
+            exit 0
+          fi
+
+          GAMES=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['physical_games'])")
+          MARKETS=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['markets'])")
+          COMPLETE=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['capture_complete'])")
+          git commit -m "kalshi cfb catalog: ${GAMES} games / ${MARKETS} markets (complete=${COMPLETE})"
+
+          for attempt in 1 2 3 4; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt ${attempt} failed; backing off"
+            sleep $((attempt * 4))
+          done
+          exit 1
+      - name: Surface an incomplete capture without failing the run
+        # An INCOMPLETE capture is published WITH its diagnostics rather
+        # than suppressed, and reported here as a warning. Failing the job
+        # for a transient Kalshi blip is what made the retired collector's
+        # notifications worthless; the next tick recovers on its own.
+        if: always()
+        run: |
+          if [ -f data/live/cfb_catalog_status.json ]; then
+            python3 - <<'PY'
+          import json
+          status = json.load(open("data/live/cfb_catalog_status.json"))
+          if not status.get("capture_complete", False):
+              print(
+                  f"::warning title=Catalog capture incomplete::"
+                  f"{status.get('games_incomplete_count')} game(s) incomplete; "
+                  f"published with diagnostics. Games={status.get('physical_games')} "
+                  f"markets={status.get('markets')}"
+              )
+          else:
+              print(
+                  f"catalog complete: {status.get('physical_games')} games / "
+                  f"{status.get('markets')} markets in {status.get('elapsed_seconds')}s"
+              )
+          PY
+          fi

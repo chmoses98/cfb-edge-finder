@@ -160,11 +160,46 @@ _TEAM_STAT_SUFFIXES = (
     "TEAMPASSTD",
 )
 
-_GAME_STAT_SUFFIXES = ("TOTALFG", "TOTALTD", "2PT", "DSTTD", "MOSTOT", "QHIGHSCORE", "HIGHSCORE")
+_GAME_STAT_SUFFIXES = ("TOTALFG", "TOTALTD", "2PT", "DSTTD", "QHIGHSCORE", "HIGHSCORE")
+
+_OVERTIME_SUFFIXES = ("OT", "MOSTOT")
+"""Matched by EQUALITY, never as a substring. A substring test here read
+"TOTALFG" as an overtime market, because "OT" sits inside "TOTALFG" at
+index 1 -- a silent misclassification of a real total-field-goals
+contract that the family test suite caught."""
 
 # Season-long / futures markets. Classified (not dropped) so the catalog
 # can separate "what can I bet on THIS GAME" from season-level inventory
 # that happens to share the college-football tag.
+_CONFERENCE_FUTURES_SUFFIXES = (
+    "SEC",
+    "BSEC",
+    "ACC",
+    "BACC",
+    "B10",
+    "BB10",
+    "B12",
+    "BB12",
+    "BIG12",
+    "BIGTEN",
+    "MWC",
+    "MAC",
+    "CUSA",
+    "AAC",
+    "IVY",
+    "PAC10",
+    "PAC12",
+    "SUNBELT",
+    "D3",
+    "FCS",
+    "CS",
+)
+"""A conference/subdivision code STANDING ALONE as the whole remainder is
+a champion market (KXNCAAFSEC = 'SEC Champion', KXNCAAFB10 = 'Big Ten
+Champion'). Matched by equality only: as a substring these would swallow
+genuine game series -- "CS" alone would capture KXNCAAFCSGAME, the FCS
+GAME series, and bury every FCS game's menu under season futures."""
+
 _FUTURES_MARKERS = (
     "CHAMPION",
     "WINS",
@@ -290,6 +325,13 @@ def classify_from_series_ticker(series_ticker: str | None) -> MarketClassificati
         )
 
     # Futures before game-level: KXNCAAFCONFMATCHUP must not match "GAME".
+    if rem in _CONFERENCE_FUTURES_SUFFIXES:
+        return MarketClassification(
+            family=MarketFamilyLabel.SEASON_FUTURES,
+            period=GamePeriod.SEASON,
+            confidence=ClassificationConfidence.STRUCTURAL,
+            rationale=f"series ticker {series_ticker!r} is a bare conference code => champion market",
+        )
     if any(marker in rem for marker in _FUTURES_MARKERS):
         return MarketClassification(
             family=MarketFamilyLabel.SEASON_FUTURES,
@@ -306,11 +348,17 @@ def classify_from_series_ticker(series_ticker: str | None) -> MarketClassificati
                 confidence=ClassificationConfidence.STRUCTURAL,
                 rationale=f"series ticker {series_ticker!r} names team statistic {suffix!r}",
             )
+    if rem in _OVERTIME_SUFFIXES:
+        return MarketClassification(
+            family=MarketFamilyLabel.OVERTIME,
+            period=GamePeriod.OVERTIME,
+            confidence=ClassificationConfidence.STRUCTURAL,
+            rationale=f"series ticker {series_ticker!r} is an overtime market",
+        )
     for suffix in _GAME_STAT_SUFFIXES:
         if rem == suffix:
-            family = MarketFamilyLabel.OVERTIME if "OT" in suffix else MarketFamilyLabel.GAME_STAT_PROP
             return MarketClassification(
-                family=family,
+                family=MarketFamilyLabel.GAME_STAT_PROP,
                 period=parsed.period,
                 confidence=ClassificationConfidence.STRUCTURAL,
                 rationale=f"series ticker {series_ticker!r} names game statistic {suffix!r}",
@@ -335,12 +383,30 @@ def classify_from_series_ticker(series_ticker: str | None) -> MarketClassificati
     return None
 
 
-_TEXT_TOTAL = re.compile(r"\b(total|combined|over/under|o/u)\b", re.I)
-_TEXT_SPREAD = re.compile(r"\bwin by|\bspread\b|\bmargin\b|\bcover\b", re.I)
+_TEXT_TOTAL = re.compile(r"\b(total|combined|over/under|o/u)\b|\b(over|under)\s+\d", re.I)
+"""`over 24.5` with no the word "total" anywhere is how Kalshi actually
+phrases a total ("Will the 1st half ... have over 24.5 points?"), so a
+bare over/under followed by a number counts. Checked AFTER the spread
+pattern, because "wins by over 4.5 points" contains both and is a
+spread."""
+
+_TEXT_SPREAD = re.compile(r"\bwins?\b[^.?]*\bby\b|\bspread\b|\bmargin\b|\bcover(s|ed)?\b", re.I)
+"""`wins? ... by` rather than the literal "win by": the live phrasing is
+"Arkansas wins 1H by over 4.5 points", which the contiguous form missed
+entirely -- and it would then have fallen through to the total pattern and
+been published as a total."""
 _TEXT_WINNER = re.compile(r"\bwho will win\b|\bwin the game\b|\bto win\b|\bwinner\b", re.I)
-_TEXT_FIRST_HALF = re.compile(r"\b(1st|first) half\b", re.I)
-_TEXT_SECOND_HALF = re.compile(r"\b(2nd|second) half\b", re.I)
-_TEXT_QUARTER = re.compile(r"\b(1st|2nd|3rd|4th|first|second|third|fourth) quarter\b", re.I)
+_TEXT_FIRST_HALF = re.compile(r"\b(1st|first) half\b|\b1H\b", re.I)
+_TEXT_SECOND_HALF = re.compile(r"\b(2nd|second) half\b|\b2H\b", re.I)
+_TEXT_QUARTER = re.compile(
+    r"\b(1st|2nd|3rd|4th|first|second|third|fourth) quarter\b|\b(?P<abbrev>[1-4])Q\b", re.I
+)
+"""Kalshi's own market titles abbreviate the period -- the live title is
+"Arkansas wins 1H by over 4.5 points", not "...1st half...". Matching only
+the spelled-out form classified every abbreviated half/quarter contract as
+a full-game one, which is a wrong LABEL on a correctly-captured market
+(the market is still published either way, but a reader filtering for
+full-game spreads would have seen a 1H spread in the results)."""
 _QUARTER_WORD_TO_PERIOD = {
     "1st": GamePeriod.FIRST_QUARTER,
     "first": GamePeriod.FIRST_QUARTER,
@@ -353,10 +419,20 @@ _QUARTER_WORD_TO_PERIOD = {
 }
 
 
+_QUARTER_DIGIT_TO_PERIOD = {
+    "1": GamePeriod.FIRST_QUARTER,
+    "2": GamePeriod.SECOND_QUARTER,
+    "3": GamePeriod.THIRD_QUARTER,
+    "4": GamePeriod.FOURTH_QUARTER,
+}
+
+
 def _period_from_text(text: str) -> GamePeriod:
     quarter = _TEXT_QUARTER.search(text)
     if quarter:
-        return _QUARTER_WORD_TO_PERIOD.get(quarter.group(1).lower(), GamePeriod.UNKNOWN)
+        if quarter.group("abbrev"):
+            return _QUARTER_DIGIT_TO_PERIOD.get(quarter.group("abbrev"), GamePeriod.UNKNOWN)
+        return _QUARTER_WORD_TO_PERIOD.get((quarter.group(1) or "").lower(), GamePeriod.UNKNOWN)
     if _TEXT_FIRST_HALF.search(text):
         return GamePeriod.FIRST_HALF
     if _TEXT_SECOND_HALF.search(text):
@@ -372,10 +448,10 @@ def classify_from_text(title: str | None, rules_primary: str | None = None) -> M
     if not text:
         return None
     period = _period_from_text(text)
-    if _TEXT_TOTAL.search(text):
-        base = MarketFamilyLabel.GAME_TOTAL
-    elif _TEXT_SPREAD.search(text):
+    if _TEXT_SPREAD.search(text):
         base = MarketFamilyLabel.GAME_SPREAD
+    elif _TEXT_TOTAL.search(text):
+        base = MarketFamilyLabel.GAME_TOTAL
     elif _TEXT_WINNER.search(text):
         base = MarketFamilyLabel.GAME_MONEYLINE
     else:
