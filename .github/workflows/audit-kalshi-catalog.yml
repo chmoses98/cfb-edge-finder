@@ -1,0 +1,83 @@
+name: Audit Kalshi Catalog Completeness (read-only)
+
+# *** WHY PUSH-TRIGGERED, AND WHY READ-ONLY ***
+# This dev environment has no network egress to Kalshi (organization
+# policy), so the catalog's completeness can only be measured from a
+# GitHub-hosted runner.
+#
+# It triggers on pushes to the audit/catalog code rather than only on
+# workflow_dispatch because a `workflow_dispatch` workflow is not
+# dispatchable until its file reaches the default branch, whereas a push
+# event runs the definition from the pushed commit.
+#
+# It requests NO write permission, deliberately. That keeps it outside the
+# single-repo-writer lock that tests/test_research_workflow_concurrency.py
+# enforces (a read-only workflow cannot race a writer), and it means the
+# audit can never alter what it is auditing. Its findings are read from the
+# job log, which is why the script's output is a bounded per-game table
+# rather than a raw dump.
+on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "scripts/audit_kalshi_catalog_completeness.py"
+      - "scripts/build_kalshi_cfb_catalog.py"
+      - "src/cfb_edge_finder/catalog/**"
+      - ".github/workflows/audit-kalshi-catalog.yml"
+  workflow_dispatch:
+    inputs:
+      audit_all:
+        description: "Audit every discovered game instead of a stratified sample"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-kalshi-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Build the catalog and audit it against an independent rediscovery
+        # Unauthenticated GETs against Kalshi's public market-data API
+        # only. No secret is consumed and no order endpoint is touched.
+        run: |
+          python3 -u scripts/audit_kalshi_catalog_completeness.py \
+            ${{ github.event.inputs.audit_all == 'true' && '--audit-all' || '' }}
+      - name: Show the catalog the audit produced
+        if: always()
+        run: |
+          python3 -u scripts/build_kalshi_cfb_catalog.py --out-dir /tmp/catalog --print-summary
+          echo "--- artifact sizes ---"
+          ls -l /tmp/catalog/
+          echo "--- one full game entry, as a reader would see it ---"
+          python3 - <<'PY'
+          import json
+          catalog = json.load(open("/tmp/catalog/cfb_market_catalog.json"))
+          games = sorted(catalog["games"], key=lambda g: -g["market_count"])
+          if games:
+              game = dict(games[0])
+              game["markets"] = game["markets"][:3]
+              print(json.dumps(game, indent=1)[:6000])
+          PY
+      - name: Upload the catalog artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-market-catalog
+          path: /tmp/catalog/
+          retention-days: 7
