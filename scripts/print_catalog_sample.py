@@ -46,8 +46,20 @@ def main(argv: list[str] | None = None) -> int:
 
     if games:
         sample = games[0]
-        print(f"\n=== {sample['game_key']}: first {args.markets} contracts as a reader sees them ===")
-        for market in (sample.get("markets") or [])[: args.markets]:
+        # The index does not inline contracts -- it names the detail file
+        # that holds them. Reading `sample["markets"]` here printed nothing
+        # at all after the artifact was split, which is exactly the kind of
+        # silent empty section this repository is trying to stop shipping.
+        markets = sample.get("markets")
+        if markets is None and sample.get("markets_file"):
+            detail_path = path.parent / sample["markets_file"]
+            if not detail_path.is_file():
+                print(f"\nindex points at a missing detail file: {sample['markets_file']}")
+                return 1
+            markets = json.loads(detail_path.read_text(encoding="utf-8")).get("markets") or []
+        markets = markets or []
+        print(f"\n=== {sample['game_key']}: first {args.markets} of {len(markets)} contracts ===")
+        for market in markets[: args.markets]:
             mechanics = market.get("mechanics") or {}
             print(
                 f"  {market['market_ticker']:44} {str(market.get('family')):22} "
