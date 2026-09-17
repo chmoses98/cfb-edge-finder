@@ -1,30 +1,50 @@
-name: Investigate Kalshi Milestones (manual)
+name: Investigate Kalshi Milestones (evidence capture)
 
-# Manual-only, read-only, credential-free. This repository's dev
-# environment has no network egress to Kalshi's API hosts (organization
-# policy -- the agent proxy answers 403 to CONNECT for
-# api.elections.kalshi.com, trading-api.kalshi.com and api.kalshi.com),
-# so empirical evidence about Kalshi's current CFB market surface has to
-# be gathered from a GitHub-hosted runner. Same established pattern as
-# validate-kalshi-cfb-live.yml.
+# *** WHY THIS WORKFLOW EXISTS, AND WHY IT IS PUSH-TRIGGERED ***
+# This repository's dev environment has no network egress to Kalshi's API
+# hosts (organization policy -- the agent proxy answers 403 to CONNECT for
+# api.elections.kalshi.com, trading-api.kalshi.com and api.kalshi.com
+# alike), so empirical evidence about Kalshi's current CFB market surface
+# has to be gathered from a GitHub-hosted runner. That is the same
+# constraint validate-kalshi-cfb-live.yml already works around.
 #
-# This workflow exists to ANSWER QUESTIONS, not to produce production
-# data: it prints its findings to the job log and writes nothing back to
-# the repository.
+# It is triggered by pushes to the probe itself (not only by
+# workflow_dispatch) for a mechanical reason: a `workflow_dispatch`
+# workflow is only dispatchable once its file exists on the default
+# branch, whereas a `push` event runs the workflow definition from the
+# pushed commit. Pushing an improved probe therefore runs that exact
+# probe, with no chicken-and-egg wait for a merge.
+#
+# *** WHY IT COMMITS ITS OUTPUT ***
+# Reading findings back out of a job log is lossy -- the log API returns
+# only a bounded tail, which silently hides exactly the early sections
+# (which /milestones filters work, what a raw milestone looks like) that
+# the architecture depends on. Committing the full transcript to the
+# branch makes the evidence complete, reviewable in the PR, and durable
+# as the audit trail behind the discovery design.
 on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "scripts/investigate_kalshi_milestones_live.py"
+      - ".github/workflows/investigate-kalshi-milestones.yml"
   workflow_dispatch:
 
+# contents: write is needed only to commit the evidence transcript back to
+# the same branch. This workflow never calls a Kalshi write/order endpoint
+# and consumes no secret beyond the checkout token.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: investigate-kalshi-milestones
-  cancel-in-progress: false
+  group: investigate-kalshi-milestones-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   investigate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,5 +55,32 @@ jobs:
       - name: Investigate Kalshi CFB milestone/event/market surface
         # Unauthenticated GETs against Kalshi's public market-data API
         # only. No Authorization header, no order/portfolio endpoint, no
-        # secret consumed.
-        run: python3 scripts/investigate_kalshi_milestones_live.py
+        # secret consumed. `|| true` so a probe crash still commits the
+        # transcript up to the failure -- a partial answer is evidence too,
+        # and losing it costs another full round trip.
+        run: |
+          mkdir -p docs/evidence
+          python3 -u scripts/investigate_kalshi_milestones_live.py \
+            > docs/evidence/kalshi_milestone_probe.txt 2>&1 || true
+          echo "--- transcript size ---"
+          wc -c docs/evidence/kalshi_milestone_probe.txt
+          echo "--- tail ---"
+          tail -40 docs/evidence/kalshi_milestone_probe.txt
+      - name: Commit evidence transcript
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/evidence/kalshi_milestone_probe.txt
+          if git diff --cached --quiet; then
+            echo "evidence unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "Kalshi CFB market-surface probe evidence (run ${{ github.run_id }})"
+          # The probe can take a while; another push may have landed since
+          # checkout, so rebase rather than fail or force.
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt $attempt failed; retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1

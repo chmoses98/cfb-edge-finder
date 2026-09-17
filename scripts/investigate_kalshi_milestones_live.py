@@ -54,7 +54,17 @@ import requests
 
 BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 TIMEOUT_SECONDS = 25.0
-MAX_PAGES = 60
+MAX_PAGES = 120
+PAGE_LIMIT = 200
+"""200, not 1000. Revision 1 of this probe requested limit=1000 and every
+single paginated call failed instantly (the whole run finished in 11s with
+zero milestones, zero events and zero control markets, while the
+NON-paginated probe calls in the multivariate section returned HTTP 200
+bodies just fine). A limit above an endpoint's own maximum is rejected
+outright, so the pagination helper -- not the endpoint -- was the thing
+that was broken. This revision also PRINTS the error body on a failed
+page so a repeat of that mistake is self-diagnosing rather than looking
+like an empty market universe."""
 
 # Known CFB series -- used HERE only as a brute-force control group to
 # audit milestone-driven discovery against. This is emphatically not a
@@ -89,6 +99,8 @@ def _get(path: str, params: dict[str, Any] | None = None) -> tuple[int, Any]:
                 return -1, None
             time.sleep(min(1.0 * (2**attempt), 8.0))
             continue
+        if resp.status_code >= 400 and resp.status_code not in (429,) and not (500 <= resp.status_code < 600):
+            print(f"    HTTP_{resp.status_code} {path} params={clean} body={resp.text[:300]!r}")
         if resp.status_code == 429 or 500 <= resp.status_code < 600:
             if attempt == 3:
                 return resp.status_code, None
@@ -99,6 +111,8 @@ def _get(path: str, params: dict[str, Any] | None = None) -> tuple[int, Any]:
         try:
             return resp.status_code, resp.json()
         except ValueError:
+            if resp.status_code >= 400:
+                print(f"    HTTP_{resp.status_code} {path} body={resp.text[:300]!r}")
             return resp.status_code, None
     return -1, None
 
@@ -110,7 +124,7 @@ def _paginate(path: str, params: dict[str, Any], list_key: str) -> tuple[list[di
     items: list[dict] = []
     cursor: str | None = None
     for page in range(MAX_PAGES):
-        page_params = dict(params, limit=1000)
+        page_params = dict(params, limit=PAGE_LIMIT)
         if cursor:
             page_params["cursor"] = cursor
         status, body = _get(path, page_params)
@@ -409,35 +423,87 @@ def section_5_unknown_series() -> None:
 
 
 def section_6_multivariate() -> None:
+    """Kalshi's combo/parlay surface. The question that matters for the
+    catalog's honesty: are CFB combo markets reachable from the physical
+    game (so a single-game menu can claim to cover them), or do they live
+    in a separate, dynamically-instantiated universe keyed off event
+    tickers we would have to enumerate ourselves? Output is deliberately
+    bounded -- an unfiltered dump of every associated ticker on the
+    exchange is tens of thousands of lines and answers nothing."""
     _hdr("6. MULTIVARIATE / COMBO EVENT SURFACE")
+
     for path, params in [
         ("/multivariate_event_collections", {}),
         ("/multivariate_event_collections", {"status": "open"}),
         ("/multivariate_event_collections", {"series_ticker": "KXNCAAFGAME"}),
     ]:
         status, body = _get(path, params)
-        items = body.get("multivariate_contracts") or body.get("collections") or [] if isinstance(body, dict) else []
         keys = sorted(body.keys()) if isinstance(body, dict) else None
-        print(f"  GET {path} {params} -> HTTP {status} items={len(items)} keys={keys}")
-        if status == 200 and isinstance(body, dict):
-            print(f"      body sample: {json.dumps(body)[:1200]}")
+        print(f"  GET {path} {params} -> HTTP {status} keys={keys}")
 
-    collections, complete, _ = _paginate("/multivariate_event_collections", {}, "multivariate_contracts")
-    if not collections:
-        collections, complete, _ = _paginate("/multivariate_event_collections", {}, "collections")
-    print(f"\ntotal multivariate collections listed: {len(collections)} complete={complete}")
-    cfb = [c for c in collections if "NCAAF" in json.dumps(c).upper() or "COLLEGE FOOTBALL" in json.dumps(c).upper()]
-    print(f"CFB-related multivariate collections: {len(cfb)}")
-    for c in cfb[:10]:
-        print(f"  {json.dumps(c)[:400]}")
-    if cfb:
-        print("\n--- FULL RAW JSON of one CFB multivariate collection ---")
-        print(json.dumps(cfb[0], indent=2, sort_keys=True))
-        ticker = cfb[0].get("collection_ticker") or cfb[0].get("ticker")
+    for list_key in ("multivariate_contracts", "collections"):
+        collections, complete, pages = _paginate("/multivariate_event_collections", {}, list_key)
+        if collections:
+            print(f"\nlist_key={list_key!r}: {len(collections)} collections (pages={pages} complete={complete})")
+            break
+    else:
+        print("\nNO multivariate collections listed under either known list key")
+        return
+
+    print("\n--- FULL RAW JSON of one collection, associated tickers elided ---")
+    sample = dict(collections[0])
+    assoc = sample.pop("associated_event_tickers", None)
+    if isinstance(assoc, list):
+        sample["associated_event_tickers"] = f"<{len(assoc)} tickers elided; sample: {assoc[:5]}>"
+    print(json.dumps(sample, indent=2, sort_keys=True)[:2500])
+
+    # Which collections reference a college-football event at all?
+    cfb_collections = []
+    for c in collections:
+        assoc = c.get("associated_event_tickers") or []
+        cfb_assoc = [t for t in assoc if isinstance(t, str) and "NCAAF" in t.upper()]
+        blob_cfb = "NCAAF" in json.dumps({k: v for k, v in c.items() if k != "associated_event_tickers"}).upper()
+        if cfb_assoc or blob_cfb:
+            cfb_collections.append((c, cfb_assoc))
+
+    print(f"\ncollections referencing an NCAAF event: {len(cfb_collections)} of {len(collections)}")
+    for c, cfb_assoc in cfb_collections[:15]:
+        print(
+            f"  collection={c.get('collection_ticker')!s:44} series={c.get('series_ticker')!s:32} "
+            f"ncaaf_events={len(cfb_assoc):4} total_events={len(c.get('associated_event_tickers') or []):5} "
+            f"single_market_per_event={c.get('is_single_market_per_event')}"
+        )
+        print(f"      title={str(c.get('title'))[:80]!r}")
+        if cfb_assoc:
+            print(f"      ncaaf event tickers (first 12): {cfb_assoc[:12]}")
+
+    # Are the referenced NCAAF events the SAME event tickers a milestone
+    # walk would already have found? If yes, combo coverage is derivable
+    # from the native game menu; if no, it is a separate universe.
+    all_cfb_events = sorted({t for _c, a in cfb_collections for t in a})
+    print(f"\ndistinct NCAAF event tickers referenced by multivariate collections: {len(all_cfb_events)}")
+    for t in all_cfb_events[:40]:
+        print(f"      {t}")
+
+    # Does a per-collection detail fetch expose anything the list does not?
+    if cfb_collections:
+        ticker = cfb_collections[0][0].get("collection_ticker") or cfb_collections[0][0].get("ticker")
         if ticker:
             status, body = _get(f"/multivariate_event_collections/{ticker}")
             print(f"\nGET /multivariate_event_collections/{ticker} -> HTTP {status}")
-            print(json.dumps(body, indent=2, sort_keys=True)[:2000] if status == 200 else "")
+            if status == 200 and isinstance(body, dict):
+                contract = body.get("multivariate_contract") or body
+                detail = dict(contract)
+                d_assoc = detail.pop("associated_event_tickers", None)
+                if isinstance(d_assoc, list):
+                    detail["associated_event_tickers"] = f"<{len(d_assoc)} tickers elided>"
+                print(json.dumps(detail, indent=2, sort_keys=True)[:1500])
+            # Can a combo market be LOOKED UP like a normal market?
+            status, body = _get("/markets", {"series_ticker": cfb_collections[0][0].get("series_ticker"), "limit": 5})
+            n = len(body.get("markets") or []) if isinstance(body, dict) else 0
+            print(f"\nGET /markets?series_ticker=<multivariate series> -> HTTP {status} markets={n}")
+            if n:
+                print(json.dumps((body.get("markets") or [])[0], indent=2, sort_keys=True)[:1200])
 
 
 def main() -> int:
