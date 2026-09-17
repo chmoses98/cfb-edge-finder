@@ -28,6 +28,7 @@ on:
       - "claude/**"
     paths:
       - "scripts/investigate_kalshi_milestones_live.py"
+      - "scripts/probe_kalshi_milestone_reconciliation.py"
       - ".github/workflows/investigate-kalshi-milestones.yml"
   workflow_dispatch:
 
@@ -60,17 +61,17 @@ jobs:
         # and losing it costs another full round trip.
         run: |
           mkdir -p docs/evidence
-          python3 -u scripts/investigate_kalshi_milestones_live.py \
-            > docs/evidence/kalshi_milestone_probe.txt 2>&1 || true
-          echo "--- transcript size ---"
-          wc -c docs/evidence/kalshi_milestone_probe.txt
+          python3 -u scripts/probe_kalshi_milestone_reconciliation.py \
+            > docs/evidence/kalshi_milestone_reconciliation.txt 2>&1 || true
+          echo "--- transcript sizes ---"
+          wc -c docs/evidence/*.txt
           echo "--- tail ---"
-          tail -40 docs/evidence/kalshi_milestone_probe.txt
+          tail -30 docs/evidence/kalshi_milestone_reconciliation.txt
       - name: Commit evidence transcript
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/evidence/kalshi_milestone_probe.txt
+          git add docs/evidence/
           if git diff --cached --quiet; then
             echo "evidence unchanged; nothing to commit"
             exit 0
