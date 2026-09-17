@@ -63,7 +63,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--no-series-reconciliation",
         action="store_true",
-        help="Skip the independent series sweep (faster, but a missed event becomes invisible again)",
+        help=(
+            "Do not ATTACH game-level events the milestones never named. The series event sweep still "
+            "runs either way -- it is what makes the bulk market prefetch cheap -- so this saves very "
+            "little time and costs the one thing the second path exists for: a milestone's omission "
+            "becomes invisible again instead of appearing as events_only_in_series_sweep."
+        ),
     )
     parser.add_argument(
         "--no-multivariate", action="store_true", help="Skip the combo-eligibility pass"
