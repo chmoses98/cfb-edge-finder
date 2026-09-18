@@ -34,11 +34,11 @@ Fee Rounding - API Documentation Documentation Index Fetch the complete document
  The balance changes by -$0.06 ; the trade fee plus rounding fee is exactly $0.005 . Accumulator across fills If three fills each add $0.004 of rounding overpayment, the accumulator carries it forward. Assuming the third fill has enough total fee to cover a $0.01 rebate: Fill Added Before Rebate Rebate Carried Forward 1 $0.004 $0.004 — $0.004 2 $0.004 $0.008 — $0.008 3 $0.004 $0.012 $0.010 $0.002 This table uses a non-direct member’s $0.01 precision. Direct-member rebates follow the same mechanics in $0.0001 increments. In either case, the rebate is capped so that the fill’s net fee cannot become negative. Fixed-Point Representation Historical Data Powered by This documentation is built and hosted on Mintlify, a developer documentation platform
 
 ### GET https://kalshi.com/docs/kalshi-fee-schedule.pdf
-  HTTP 429  33938 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32188 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ### GET https://kalshi.com/regulatory/fee-schedule
-  HTTP 429  33938 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32190 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ==============================================================================
@@ -116,8 +116,8 @@ open CFB events swept: 1937
 {
   "fee_multiplier": 1,
   "fee_type": "quadratic",
-  "ticker": "KXNCAAFTOPAPRANK",
-  "title": "College Football AP Poll Top Rank"
+  "ticker": "KXNCAAFPAC12QUAL",
+  "title": "College Football Pac-12 Championship Qualifiers"
 }
 
 --- do markets carry their own fee metadata? ---
@@ -126,7 +126,7 @@ open CFB events swept: 1937
 ==============================================================================
 C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE
 ==============================================================================
-built the real catalog: 241 games in 120s
+built the real catalog: 241 games in 119s
 contracts carrying a fee block: 15326
 
 --- is the fee computable? ---
@@ -146,13 +146,13 @@ contracts carrying a fee block: 15326
 
 --- worked examples from named LIVE contracts ---
 
-  KXNCAAF2HSPREAD-26SEP17SYRPITT-PITT11  (26SEP17SYRPITT)
-    'Pittsburgh wins 2H by over 10.5 points'
-    yes_ask=0.49  yes_mid=0.265  model=quadratic  mult=1.0  source=series  maker_fee_applies=False
-    published fee at ASK : $0.017493   <- the headline
-    recomputed by hand   : $0.017493
-    published fee at MID : $0.013635   <- market mechanic, NOT an executable-order fee
-    old whole-cent helper : $0.010000   (0.6x the real trade fee)
+  KXNCAAF2HSPREAD-26SEP17SYRPITT-PITT10  (26SEP17SYRPITT)
+    'Pittsburgh wins 2H by over 9.5 points'
+    yes_ask=0.47  yes_mid=0.245  model=quadratic  mult=1.0  source=series  maker_fee_applies=False
+    published fee at ASK : $0.017437   <- the headline
+    recomputed by hand   : $0.017437
+    published fee at MID : $0.012949   <- market mechanic, NOT an executable-order fee
+    old whole-cent helper : $0.020000   (1.15x the real trade fee; it rounded to a cent AND priced off the mid 0.245)
 
   KXNCAAFSPREAD-26SEP18MIAWAKE-MIA21  (26SEP18MIAWAKE)
     'Miami (FL) wins by over 20.5 points'
@@ -160,23 +160,23 @@ contracts carrying a fee block: 15326
     published fee at ASK : $0.017493   <- the headline
     recomputed by hand   : $0.017493
     published fee at MID : $0.017499   <- market mechanic, NOT an executable-order fee
-    old whole-cent helper : $0.010000   (0.6x the real trade fee)
+    old whole-cent helper : $0.020000   (1.14x the real trade fee; it rounded to a cent AND priced off the mid 0.505)
 
-  KXNCAAF2HSPREAD-26SEP17SYRPITT-SYR10  (26SEP17SYRPITT)
-    'Syracuse wins 2H by over 9.5 points'
+  KXNCAAF1HFT-26SEP17SYRPITT-PITTSYR  (26SEP17SYRPITT)
+    'Pittsburgh wins 1st Half / Syracuse wins game'
     yes_ask=0.01  yes_mid=0.005  model=quadratic  mult=1.0  source=series  maker_fee_applies=False
     published fee at ASK : $0.000693   <- the headline
     recomputed by hand   : $0.000693
     published fee at MID : $0.000349   <- market mechanic, NOT an executable-order fee
-    old whole-cent helper : $0.010000   (14.4x the real trade fee)
+    old whole-cent helper : $0.010000   (14.43x the real trade fee; it rounded to a cent AND priced off the mid 0.005)
 
   worked examples shown: 3
 
---- contracts quoted at $0.00 or $1.00: 184 ---
+--- contracts quoted at $0.00 or $1.00: 185 ---
   At those asks the quadratic schedule's P(1-P) term is 0, so the
   trade fee is exactly $0.00 -- correct, and a demonstration of why
   the mid figure cannot be the headline:
-  contracts whose fee at the ASK is $0.00 while the MID figure is not: 184
+  contracts whose fee at the ASK is $0.00 while the MID figure is not: 185
     e.g. ask=1.0 -> $0.000000, mid=0.5 -> $0.017500
     A consumer reading the mid figure as 'the fee' would book a cost
     that the executable order does not incur.
