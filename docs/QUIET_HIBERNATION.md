@@ -1,5 +1,16 @@
 # Quiet hibernation
 
+> **SUPERSEDED IN PART, 2026-09-17 (market-discovery pivot).** The
+> scheduled infrastructure this document describes is now HIBERNATED: the
+> projection model has been retired from the live path and the collector,
+> conductor, settlement and sidecar schedules are commented out. The
+> operating policy below (a scheduled run exits non-zero only when a human
+> must intervene now to preserve data integrity) still governs everything
+> that runs, and the new live path — `kalshi-market-catalog.yml` — was
+> designed to obey it. See **docs/MODEL_RETIREMENT_2026.md** for what was
+> hibernated, what is preserved, how to revive any of it, and the one
+> irreversible consequence (closing lines stop accruing).
+
 **Status as of 2026-09-06.** Active model development on this project has
 stopped. There is no defensible betting edge, nothing is being tuned, and no
 recommendation path is open. The only reason scheduled infrastructure still

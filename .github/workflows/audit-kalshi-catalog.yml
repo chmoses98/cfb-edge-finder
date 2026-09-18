@@ -1,0 +1,87 @@
+name: Audit Kalshi Catalog Completeness (read-only)
+
+# *** WHY PUSH-TRIGGERED, AND WHY READ-ONLY ***
+# This dev environment has no network egress to Kalshi (organization
+# policy), so the catalog's completeness can only be measured from a
+# GitHub-hosted runner.
+#
+# It triggers on pushes to the audit/catalog code rather than only on
+# workflow_dispatch because a `workflow_dispatch` workflow is not
+# dispatchable until its file reaches the default branch, whereas a push
+# event runs the definition from the pushed commit.
+#
+# It requests NO write permission, deliberately. That keeps it outside the
+# single-repo-writer lock that tests/test_research_workflow_concurrency.py
+# enforces (a read-only workflow cannot race a writer), and it means the
+# audit can never alter what it is auditing. Its findings are read from the
+# job log, which is why the script's output is a bounded per-game table
+# rather than a raw dump.
+on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "scripts/audit_kalshi_catalog_completeness.py"
+      - "scripts/build_kalshi_cfb_catalog.py"
+      - "src/cfb_edge_finder/catalog/**"
+      # The client is the catalog's only network seam: a change there can
+      # break the live run without touching catalog/ at all, which is
+      # exactly how a missing get_json reached a runner once.
+      - "src/cfb_edge_finder/data/kalshi_client.py"
+      - ".github/workflows/audit-kalshi-catalog.yml"
+  workflow_dispatch:
+    inputs:
+      audit_all:
+        description: "Audit every discovered game instead of a stratified sample"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-kalshi-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Build the catalog and audit it against an independent rediscovery
+        # Unauthenticated GETs against Kalshi's public market-data API
+        # only. No secret is consumed and no order endpoint is touched.
+        # --write-catalog saves the catalog this run ALREADY built; the
+        # next step reads it rather than rebuilding, which previously
+        # doubled a ten-minute job to show the same data twice.
+        run: |
+          python3 -u scripts/audit_kalshi_catalog_completeness.py \
+            --write-catalog /tmp/catalog \
+            ${{ github.event.inputs.audit_all == 'true' && '--audit-all' || '' }}
+      - name: Show the catalog the audit produced
+        if: always()
+        # Deliberately a COMPACT summary. An earlier version dumped 6 KB of
+        # raw game JSON here, which pushed the audit's own verdict out of
+        # the bounded tail the job-log API returns -- i.e. it made the
+        # result of the audit unreadable in the place people read results.
+        # The full artifact is uploaded below for anyone who wants it.
+        run: |
+          ls -l /tmp/catalog/ || { echo "no catalog written"; exit 0; }
+          python3 scripts/report_catalog_status.py \
+            --status-file /tmp/catalog/cfb_catalog_status.json || true
+          python3 scripts/print_catalog_sample.py --catalog /tmp/catalog/cfb_market_catalog.json
+      - name: Upload the catalog artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-market-catalog
+          path: /tmp/catalog/
+          retention-days: 7

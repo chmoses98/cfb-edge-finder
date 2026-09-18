@@ -27,6 +27,13 @@ GUARDED_PACKAGES = (
     # reach for sizing math ("we have the stakes right here, just size the
     # next one"). Recording a stake and choosing one must stay different acts.
     "accounting",
+    # The market catalog IS the live path after the 2026 discovery pivot:
+    # it is what a human reads to decide what to bet. That makes it the
+    # single most attractive place to "just add a suggested stake next to
+    # the price", which is exactly the line that must not be crossed --
+    # the catalog reports what the market offers and nothing about what to
+    # do about it.
+    "catalog",
     "decision",
     "recommendation",
     "research",

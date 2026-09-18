@@ -1,0 +1,1347 @@
+Kalshi CFB market-discovery investigation R3 @ 2026-09-17T22:10:33.388424+00:00
+BASE_URL=https://api.elections.kalshi.com/trade-api/v2  (unauthenticated, GET-only)
+
+==============================================================================
+A. /milestones -- WHAT VOCABULARY DOES THE DATA ACTUALLY USE?
+==============================================================================
+GET /exchange/status -> HTTP 200
+
+GET /milestones?limit=200 (UNFILTERED) -> HTTP 200
+  top-level keys: ['cursor', 'milestones']
+  milestones on first page: 200
+    PAGINATION_CAP_HIT /milestones
+
+FULL unfiltered /milestones sweep: 24000 milestones (complete=False)
+
+--- FULL RAW JSON of first milestone ---
+{
+  "category": "Elections",
+  "details": {
+    "main_game_event_ticker": "KXHOLBORNBYPARTY-26DEC31"
+  },
+  "end_date": "2000-01-02T00:00:00Z",
+  "id": "c06cc9ff-7f0d-5104-837e-4d7301fc4fa9",
+  "last_updated_ts": "2026-09-15T15:24:57.73357Z",
+  "notification_message": "Holborn and St Pancras by-election",
+  "primary_event_tickers": [
+    "KXHOLBORNBYPARTY-26DEC31"
+  ],
+  "related_event_tickers": [
+    "KXHOLBORNBYPARTY-26DEC31",
+    "KXHOLBORNPLACE2ND-26DEC31-2",
+    "KXHOLBORNVOTE-26DEC31GRN",
+    "KXHOLBORNVOTE-26DEC31LAB",
+    "KXHOLBORNVOTE-26DEC31RUK",
+    "KXHOLBORNGREENMOV-26OCT08",
+    "KXHOLBORNLABMOV-26OCT08"
+  ],
+  "source_ids": {},
+  "start_date": "2000-01-01T00:00:00Z",
+  "title": "Holborn and St Pancras by-election",
+  "type": "political_race"
+}
+
+--- milestones: key frequency across 24000 rows ---
+  category                          24000/24000  e.g. 'Elections'
+  details                           24000/24000  e.g. {'main_game_event_ticker': 'KXHOLBORNBYPARTY-26DEC31'}
+  end_date                          23993/24000  e.g. '2000-01-02T00:00:00Z'
+  id                                24000/24000  e.g. 'c06cc9ff-7f0d-5104-837e-4d7301fc4fa9'
+  last_updated_ts                   24000/24000  e.g. '2026-09-15T15:24:57.73357Z'
+  notification_message              24000/24000  e.g. 'Holborn and St Pancras by-election'
+  primary_event_tickers             24000/24000  e.g. ['KXHOLBORNBYPARTY-26DEC31']
+  related_event_tickers             24000/24000  e.g. ['KXHOLBORNBYPARTY-26DEC31', 'KXHOLBORNPLACE2ND-26DEC31-2', 'KXHOLBORN
+  source_id                         20796/24000  e.g. '6c9f4bdf-6483-4506-a326-aa4a6cec04fe'
+  source_ids                        24000/24000  e.g. {'source_3_id': '6c9f4bdf-6483-4506-a326-aa4a6cec04fe'}
+  start_date                        24000/24000  e.g. '2000-01-01T00:00:00Z'
+  title                             24000/24000  e.g. 'Holborn and St Pancras by-election'
+  type                              24000/24000  e.g. 'political_race'
+
+distinct 'category' values (6): {'Sports': 23813, 'Mentions': 97, 'Entertainment': 63, 'Companies': 20, 'Elections': 4, 'Financials': 3}
+
+distinct 'type' values (21): {'basketball_game': 7674, 'tennis_tournament_singles': 4872, 'soccer_tournament_multi_leg': 3229, 'baseball_tournament': 2209, 'table_tennis_match': 1724, 'hockey_tournament': 1429, 'football_game': 1286, 'esports_match': 824, 'mma_match': 248, 'company_report': 120, 'cricket_match': 97, 'darts_match': 97, 'artist_streams': 63, 'golf_tournament': 55, 'racing_tournament': 27, 'boxing_match': 18, 'rugby_match': 10, 'hockey_match': 7, 'golf_match': 6, 'political_race': 4, 'baseball_game': 1}
+
+milestones mentioning FOOTBALL anywhere: 1286
+  {"category": "Sports", "details": {"away_team_id": "d76c78bf-3249-4d7a-86d6-df7df6c0fb60", "division": "FBS", "home_team_id": "a1a9b074-3b37-4077-908a-f25a6f962a4d", "league": "NCAAFB", "main_game_event_ticker": "SIMNCAAFGAME", "season": {"sr_id": "335bbee1-5f56-4852-87ee-bff2a587fd19", "type": "REG
+  {"category": "Sports", "details": {"away_team_id": "a69a57af-f1a1-4d44-ab62-e220ebaa2a5c", "home_team_id": "64f72720-2e4a-4cc8-a39b-ca148aecb389", "league": "NFL", "main_game_event_ticker": "SIMNFLGAME", "player_id_mapping": {"00a4b082-e55a-4273-afa9-5b481d9d70ea": "2001fb35-b623-46f5-b2db-b6a78edc8
+  {"category": "Sports", "details": {"away_team_id": "9ecaede6-32bf-4088-8973-3a270b418198", "home_team_id": "6424157d-2915-4583-be61-c01a59afbe2e", "league": "UFL", "main_game_event_ticker": "SIMUFLGAME", "player_id_mapping": {"03210960-cddc-11ee-865e-6d293a2fea93": "7d65e176-5e73-4b5b-bca7-fa9b4774b
+  {"category": "Sports", "details": {"away_team_id": "611e3786-3bfe-4919-bbd5-bc70fc13d827", "home_team_id": "f95a55a7-8472-4ffa-be20-14547e3c32ff", "league": "NFL", "season": {"type": "PRE", "week": 0, "year": 2025}, "status": "closed"}, "end_date": "2025-08-01T03:54:11.506822Z", "id": "5075c66f-a910
+  {"category": "Sports", "details": {"away_team_id": "fe5f8219-fef4-4498-83d5-f6cc6f2cb7bf", "home_team_id": "a69a57af-f1a1-4d44-ab62-e220ebaa2a5c", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-08T02:56:21.090376Z", "id": "cf136b0e-8441
+  {"category": "Sports", "details": {"away_team_id": "b007a1ab-bca6-42c7-8706-62607a605866", "home_team_id": "bc65405b-5bda-425c-b7c5-681c382e6a5a", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-08T03:08:14.720622Z", "id": "83608293-bb31
+  {"category": "Sports", "details": {"away_team_id": "8b1ce23e-7d64-4213-85e9-7d12bc8c4d85", "home_team_id": "8e52cc75-cba8-4373-9b62-b535b53b3be8", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-08T08:00:00Z", "id": "051d173d-465b-4f0f
+  {"category": "Sports", "details": {"away_team_id": "f95a55a7-8472-4ffa-be20-14547e3c32ff", "home_team_id": "75685be6-4388-4bba-8bcb-d0b0c24feb50", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-09T02:12:53.863656Z", "id": "b6109dd5-344b
+  {"category": "Sports", "details": {"away_team_id": "05cc62a4-bd74-4b2c-ab7b-1b177b9f6790", "home_team_id": "e37050ce-354f-4dd0-b2d8-0bd1e9650eb7", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-09T02:36:18.628651Z", "id": "cd4380cf-3f07
+  {"category": "Sports", "details": {"away_team_id": "aa65dda6-9cb8-4c8b-812b-d0c1feaae54f", "home_team_id": "d1d64188-5cd5-4feb-97ff-8542c9dbeb43", "league": "NFL", "season": {"type": "PRE", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-09T03:08:23.727551Z", "id": "10d24eaf-c865
+
+milestones mentioning NCAAF anywhere: 951
+  {"category": "Sports", "details": {"away_team_id": "d76c78bf-3249-4d7a-86d6-df7df6c0fb60", "division": "FBS", "home_team_id": "a1a9b074-3b37-4077-908a-f25a6f962a4d", "league": "NCAAFB", "main_game_event_ticker": "SIMNCAAFGAME", "season": {"sr_id": "335bbee1-5f56-4852-87ee-bff2a587fd19", "type": "REG
+  {"category": "Sports", "details": {"away_team_id": "060a7218-e96c-4c89-ad3d-468987226942", "home_team_id": "89e2fc30-bf0f-42a8-884f-e0494afdeb9b", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-23T19:55:01.741955Z", "id": "51070cee
+  {"category": "Sports", "details": {"away_team_id": "d981e5d3-1c61-4038-ac55-8b5a36c4c3fd", "home_team_id": "35ce7734-dbbd-4c4e-985c-992d4d6b5a61", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-24T00:12:21.131988Z", "id": "64ab29c2
+  {"category": "Sports", "details": {"away_team_id": "a4a6a11a-d3fe-4a6c-9742-1cb853b47750", "home_team_id": "bf9c0c73-f449-49d1-a948-f0d907177168", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-24T02:03:03.500791Z", "id": "da16fc74
+  {"category": "Sports", "details": {"away_team_id": "49f26808-9595-45ec-946d-2aa58d67b782", "home_team_id": "2eafddaf-140c-4c46-9a18-3a8a9d671964", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-24T02:54:18.266538Z", "id": "ec7c7f37
+  {"category": "Sports", "details": {"away_team_id": "dc3f22cf-921a-423f-9d1b-ed0289cc7ee7", "home_team_id": "0c1080fa-b69c-48d6-b161-5694029980e8", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-24T03:52:22.259742Z", "id": "97783329-f
+  {"category": "Sports", "details": {"away_team_id": "4ee0688f-67c3-4450-b6b3-5907cd60bd9f", "home_team_id": "39bbb91b-8351-4c69-be69-4c08206c6884", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-29T02:18:43.241822Z", "id": "7681c007-7
+  {"category": "Sports", "details": {"away_team_id": "4d2f02d9-4a24-4357-b378-f2118861c5dc", "home_team_id": "91964dd4-5d02-4b91-9b46-665a9e792df6", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-29T02:18:42.115326Z", "id": "25ebf086-c
+  {"category": "Sports", "details": {"away_team_id": "383b2845-e118-43da-a0e8-974ad343b8e2", "home_team_id": "63512fa9-9e9d-4b93-a7f3-6fb0a1412c18", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "complete"}, "end_date": "2025-08-29T02:29:39.209813Z", "id": "f2c509db
+  {"category": "Sports", "details": {"away_team_id": "41b7f8fa-a692-46a3-b216-653e7800ca53", "home_team_id": "e33b83e5-1305-4de1-9def-9baef7b4eb1f", "league": "NCAAFB", "season": {"type": "REG", "week": 1, "year": 2025}, "status": "closed"}, "end_date": "2025-08-29T03:05:48.996338Z", "id": "17be1c9f-c
+
+retrying filters using OBSERVED values -- competitions=[] types=['artist_streams', 'baseball_game', 'baseball_tournament', 'basketball_game', 'boxing_match', 'company_report', 'cricket_match', 'darts_match', 'esports_match', 'football_game', 'golf_match', 'golf_tournament', 'hockey_match', 'hockey_tournament', 'mma_match', 'political_race', 'racing_tournament', 'rugby_match', 'soccer_tournament_multi_leg', 'table_tennis_match', 'tennis_tournament_singles']
+
+==============================================================================
+B-F. REAL CFB GAME SURFACE: series -> events -> physical games -> markets
+==============================================================================
+GET /series?category=Sports -> 3821 series (complete=True)
+CFB-looking series: 145
+
+--- /events filter probe (decides the shape of the production sweep) ---
+  /events?series_ticker=KXNCAAFSPREAD bare                   -> HTTP 200 events=5 keys=['cursor', 'events', 'milestones']
+  /events?series_ticker=KXNCAAFSPREAD status=open            -> HTTP 200 events=5 keys=['cursor', 'events', 'milestones']
+  /events?series_ticker=KXNCAAFSPREAD status=unopened        -> HTTP 200 events=0 keys=['cursor', 'events', 'milestones']
+  /events?series_ticker=KXNCAAFSPREAD with_nested_markets    -> HTTP 200 events=5 keys=['cursor', 'events', 'milestones']
+  /events?series_ticker=KXNCAAFSPREAD status=open,unopened   -> HTTP 200 events=5 keys=['cursor', 'events', 'milestones']
+
+--- EVENT SWEEP across all discovered CFB series (status=open) ---
+
+series with >=1 OPEN event: 98 of 145
+  KXNCAAF1H                      239 open events
+  KXNCAAFGAME                    239 open events
+  KXNCAAFTOTAL                   114 open events
+  KXNCAAFSPREAD                  112 open events
+  KXNCAAFWINS                     73 open events
+  KXNCAAFOT                       69 open events
+  KXNCAAF1HSPREAD                 67 open events
+  KXNCAAF1HTOTAL                  67 open events
+  KXNCAAFTEAMTOTAL                63 open events
+  KXNCAAF1QSPREAD                 39 open events
+  KXNCAAF1QTOTAL                  39 open events
+  KXNCAAF2QTOTAL                  39 open events
+  KXNCAAF3QTOTAL                  39 open events
+  KXNCAAF4QSPREAD                 39 open events
+  KXNCAAF2H                       39 open events
+  KXNCAAF2Q                       39 open events
+  KXNCAAF1Q                       39 open events
+  KXNCAAF2HSPREAD                 39 open events
+  KXNCAAF2QSPREAD                 39 open events
+  KXNCAAF4QTOTAL                  39 open events
+  KXNCAAF3QSPREAD                 39 open events
+  KXNCAAF4Q                       39 open events
+  KXNCAAF2HTOTAL                  39 open events
+  KXNCAAF3Q                       39 open events
+  KXNCAAFTOPAPRANK                30 open events
+  KXNCAAFDSTTD                    20 open events
+  KXNCAAFFIRSTTDTEAM              20 open events
+  KXNCAAFAWARD                    18 open events
+  KXNCAAFTOPCFPPOLL               16 open events
+  KXNCAAFCFPPOLL                  15 open events
+  KXNCAAF1HFT                     13 open events
+  KXNCAAFTEAMTD                   13 open events
+  KXNCAAFSEED                     12 open events
+  KXCFBUNRANKEDUPSET              10 open events
+  KXNCAAFCONFMATCHUP              10 open events
+  KXNCAAFAPRANK                   10 open events
+  KXNCAAFTFUT                      8 open events
+  KXNCAAFTEAMRECTD                 8 open events
+  KXNCAAFH2HWINS                   7 open events
+  KXNCAAF1HTEAMTOTAL               6 open events
+  KXNCAAFCOACHLEAVE                5 open events
+  KXNCAAFAPANY                     5 open events
+  KXNCAAFBIGTENLEADER              5 open events
+  KXNCAAFCFPCONF                   5 open events
+  KXNCAAFSECLEADER                 5 open events
+  KXNCAAFBIG12LEADER               4 open events
+  KXNCAAFJOINCONF                  4 open events
+  KXNCAAFLEADER                    4 open events
+  KXNCAAFACCLEADER                 4 open events
+  KXNCAAFB12REGTOP                 3 open events
+  KXNCAAFBIGTENREGTOP              3 open events
+  KXNCAAFAWARDFIN                  3 open events
+  KXNCAAFACCREGTOP                 3 open events
+  KXNCAAFSECREGTOP                 3 open events
+  KXNCAAFTEAMRECYDS                2 open events
+  KXNCAAFCONFLEAVE                 2 open events
+  KXNCAAFMWCQUAL                   1 open events
+  KXNCAAFSEC                       1 open events
+  KXNCAAFPLAYOFF                   1 open events
+  KXNCAAFBIGTENWINS                1 open events
+  KXNCAAFMOSTOT                    1 open events
+  KXNCAAFACCQUAL                   1 open events
+  KXNCAAFFINALIST                  1 open events
+  KXNCAAFMWC                       1 open events
+  KXNCAAFPAC12QUAL                 1 open events
+  KXNCAAFCOACHOUT                  1 open events
+  KXNCAAFB10                       1 open events
+  KXNCAAFHIGHSCORE                 1 open events
+  KXNCAAFCUSA                      1 open events
+  KXNCAAFSECQ                      1 open events
+
+total open CFB events: 1946
+distinct physical game keys (event-ticker suffix): 271
+event tickers NOT matching the game-key pattern: 277
+      UNPARSED KXNCAAFMWCQUAL-26
+      UNPARSED KXNCAAFSEC-26
+      UNPARSED KXNCAAFPLAYOFF-26
+      UNPARSED KXNCAAFBIGTENWINS-26W10
+      UNPARSED KXNCAAFAWARD-26APPOY
+      UNPARSED KXNCAAFAWARD-26BEDN
+      UNPARSED KXNCAAFAWARD-26BILE
+      UNPARSED KXNCAAFAWARD-26BRON
+      UNPARSED KXNCAAFAWARD-26BROY
+      UNPARSED KXNCAAFAWARD-26BUTK
+      UNPARSED KXNCAAFAWARD-26DAVE
+      UNPARSED KXNCAAFAWARD-26DOAK
+      UNPARSED KXNCAAFAWARD-26EDDI
+      UNPARSED KXNCAAFAWARD-26JIMT
+      UNPARSED KXNCAAFAWARD-26JOHN
+      UNPARSED KXNCAAFAWARD-26LOUG
+      UNPARSED KXNCAAFAWARD-26MAXW
+      UNPARSED KXNCAAFAWARD-26OUTL
+      UNPARSED KXNCAAFAWARD-26PAUL
+      UNPARSED KXNCAAFAWARD-26RAYG
+      UNPARSED KXNCAAFAWARD-26RIMI
+      UNPARSED KXNCAAFAWARD-26WALT
+      UNPARSED KXNCAAFMOSTOT-26
+      UNPARSED KXNCAAFACCQUAL-26
+      UNPARSED KXNCAAFFINALIST-27
+
+--- events: key frequency across 400 rows ---
+  category                            400/400  e.g. 'Sports'
+  collateral_return_type              400/400  e.g. 'MECNET'
+  event_ticker                        400/400  e.g. 'KXNCAAFMWCQUAL-26'
+  exchange_index                      400/400  e.g. 0
+  last_updated_ts                     400/400  e.g. '2026-08-27T20:39:59.203888Z'
+  mutually_exclusive                  400/400  e.g. False
+  product_metadata                    400/400  e.g. {'competition': 'NCAA Football', 'competition_scope': 'Conference Cham
+  series_ticker                       400/400  e.g. 'KXNCAAFMWCQUAL'
+  settlement_sources                  400/400  e.g. [{'name': 'Kalshi using information originating from the NCAA', 'url':
+  strike_period                       400/400  e.g. <always empty>
+  sub_title                           400/400  e.g. '2026 season'
+  title                               400/400  e.g. 'College Football Mountain West Championship Game Qualifiers'
+
+events-per-physical-game distribution: {1: 32, 2: 124, 3: 3, 4: 44, 5: 1, 7: 4, 8: 24, 23: 13, 24: 6, 25: 4, 26: 3, 27: 7, 28: 5, 29: 1}
+
+--- richest physical games by event count ---
+  26SEP19UGAARK           29 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP19UKTXAM           28 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP19MSSTSCAR         28 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP19FLAAUB           28 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP19MSUND            28 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP19PURUCLA          28 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTEAMTOTAL', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL']
+  26SEP17SYRPITT          27 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL', 'KXNCAAF3Q']
+  26SEP18MIAWAKE          27 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL', 'KXNCAAF3Q']
+  26SEP18HOUTTU           27 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL', 'KXNCAAF3Q']
+  26SEP19ASUKU            27 events  series=['KXNCAAF1H', 'KXNCAAF1HFT', 'KXNCAAF1HSPREAD', 'KXNCAAF1HTOTAL', 'KXNCAAF1Q', 'KXNCAAF1QSPREAD', 'KXNCAAF1QTOTAL', 'KXNCAAF2H', 'KXNCAAF2HSPREAD', 'KXNCAAF2HTOTAL', 'KXNCAAF2Q', 'KXNCAAF2QSPREAD', 'KXNCAAF2QTOTAL', 'KXNCAAF3Q']
+
+--- thinnest physical games by event count ---
+  26NOV17R1                1 events  series=['KXNCAAFCFPPOLL']
+  26NOV17R2                1 events  series=['KXNCAAFCFPPOLL']
+  26NOV17R3                1 events  series=['KXNCAAFCFPPOLL']
+  26NOV24R1                1 events  series=['KXNCAAFCFPPOLL']
+  26NOV24R2                1 events  series=['KXNCAAFCFPPOLL']
+  26NOV24R3                1 events  series=['KXNCAAFCFPPOLL']
+  26DEC01R1                1 events  series=['KXNCAAFCFPPOLL']
+  26DEC01R2                1 events  series=['KXNCAAFCFPPOLL']
+  26DEC01R3                1 events  series=['KXNCAAFCFPPOLL']
+  29APR01ALOHA             1 events  series=['KXNCAAFSTADIUM']
+
+--- B. milestone back-reference on an event ---
+GET /events/KXNCAAF1HSPREAD-26SEP19UGAARK -> HTTP 200, keys=['category', 'collateral_return_type', 'event_ticker', 'exchange_index', 'last_updated_ts', 'mutually_exclusive', 'product_metadata', 'series_ticker', 'settlement_sources', 'strike_period', 'sub_title', 'title']
+milestone-ish fields on the event: NONE
+
+--- FULL RAW JSON of one CFB EVENT (markets elided) ---
+{
+  "category": "Sports",
+  "collateral_return_type": "",
+  "event_ticker": "KXNCAAF1HSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "last_updated_ts": "0001-01-01T00:00:00Z",
+  "mutually_exclusive": false,
+  "product_metadata": {
+    "competition": "NCAA Football",
+    "competition_scope": "1st Half Spread"
+  },
+  "series_ticker": "KXNCAAF1HSPREAD",
+  "settlement_sources": [
+    {
+      "name": "Kalshi using information originating from the NCAA",
+      "url": "https://www.ncaa.com/sports/football/fbs"
+    },
+    {
+      "name": "ESPN",
+      "url": "https://www.espn.com"
+    }
+  ],
+  "strike_period": "",
+  "sub_title": "UGA vs ARK (Sep 19)",
+  "title": "Georgia vs Arkansas: 1st Half Spread"
+}
+
+==============================================================================
+D. IS AN EVENT'S INLINE MARKET LIST SUFFICIENT?
+==============================================================================
+auditing physical game 26SEP19UGAARK (29 events)
+  KXNCAAF1HSPREAD-26SEP19UGAARK                inline=  22 nested=   1 /markets=  22 complete=True
+  KXNCAAF1QSPREAD-26SEP19UGAARK                inline=  14 nested=   1 /markets=  14 complete=True
+  KXNCAAF1QTOTAL-26SEP19UGAARK                 inline=  11 nested=   1 /markets=  11 complete=True
+  KXNCAAF2QTOTAL-26SEP19UGAARK                 inline=  11 nested=   1 /markets=  11 complete=True
+  KXNCAAFTEAMTOTAL-26SEP19UGAARK               inline=  27 nested=   1 /markets=  27 complete=True
+  KXNCAAF3QTOTAL-26SEP19UGAARK                 inline=  11 nested=   1 /markets=  11 complete=True
+  KXNCAAF4QSPREAD-26SEP19UGAARK                inline=  14 nested=   1 /markets=  14 complete=True
+  KXNCAAF1HTOTAL-26SEP19UGAARK                 inline=  15 nested=   1 /markets=  15 complete=True
+  KXNCAAF2H-26SEP19UGAARK                      inline=   3 nested=   1 /markets=   3 complete=True
+  KXNCAAFDSTTD-26SEP19UGAARK                   inline=   1 nested=   1 /markets=   1 complete=True
+  KXNCAAFOT-26SEP19UGAARK                      inline=   1 nested=   1 /markets=   1 complete=True
+  KXNCAAF1H-26SEP19UGAARK                      inline=   3 nested=   1 /markets=   3 complete=True
+
+TOTALS for this game: inline=133 /markets=133
+*** Inline and paginated agree for this game (still page /markets: one game is not proof).
+
+==============================================================================
+C. RAW MARKET FIELD INVENTORY (across all families of one game)
+==============================================================================
+markets for physical game 26SEP19UGAARK: 303 across 29 series
+
+--- markets: key frequency across 303 rows ---
+  can_close_early                     303/303  e.g. True
+  close_time                          303/303  e.g. '2026-09-21T16:00:00Z'
+  created_time                        303/303  e.g. '2026-09-14T16:17:18.2457Z'
+  custom_strike                       208/303  e.g. {'football_team': '7780c9bf-4db2-4a56-bdda-03e8dc0374af'}
+  early_close_condition               303/303  e.g. 'This market will close and expire after the event occurs.'
+  event_ticker                        303/303  e.g. 'KXNCAAF1HSPREAD-26SEP19UGAARK'
+  exchange_index                      303/303  e.g. 0
+  expected_expiration_time            303/303  e.g. '2026-09-19T19:00:00Z'
+  expiration_time                     303/303  e.g. '2026-09-21T16:00:00Z'
+  expiration_value                    303/303  e.g. <always empty>
+  floor_strike                        274/303  e.g. 4.5
+  last_price_dollars                  303/303  e.g. '0.0000'
+  latest_expiration_time              303/303  e.g. '2026-09-21T16:00:00Z'
+  liquidity_dollars                   303/303  e.g. '0.0000'
+  market_type                         303/303  e.g. 'binary'
+  no_ask_dollars                      303/303  e.g. '0.9900'
+  no_bid_dollars                      303/303  e.g. '0.8800'
+  no_sub_title                        303/303  e.g. 'Arkansas wins 1H by over 4.5 points'
+  notional_value_dollars              303/303  e.g. '1.0000'
+  occurrence_datetime                 303/303  e.g. '2026-09-19T19:00:00Z'
+  open_interest_fp                    303/303  e.g. '0.00'
+  open_time                           303/303  e.g. '2026-09-14T16:20:00Z'
+  previous_price_dollars              303/303  e.g. '0.0000'
+  previous_yes_ask_dollars            303/303  e.g. '0.0900'
+  previous_yes_bid_dollars            303/303  e.g. '0.0100'
+  price_level_structure               303/303  e.g. 'linear_cent'
+  price_ranges                        303/303  e.g. [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}]
+  result                              303/303  e.g. <always empty>
+  rules_primary                       303/303  e.g. 'If Arkansas wins by more than 4.5 points in the 1st half of the Georg
+  rules_secondary                     303/303  e.g. 'Note: Only points scored during the 1st half of play count towards th
+  settlement_timer_seconds            303/303  e.g. 180
+  status                              303/303  e.g. 'active'
+  strike_type                         303/303  e.g. 'greater'
+  ticker                              303/303  e.g. 'KXNCAAF1HSPREAD-26SEP19UGAARK-ARK5'
+  title                               303/303  e.g. 'Arkansas wins 1H by over 4.5 points'
+  updated_time                        303/303  e.g. '2026-09-14T16:20:00.424395Z'
+  volume_24h_fp                       303/303  e.g. '0.00'
+  volume_fp                           303/303  e.g. '0.00'
+  yes_ask_dollars                     303/303  e.g. '0.1200'
+  yes_ask_size_fp                     303/303  e.g. '10.00'
+  yes_bid_dollars                     303/303  e.g. '0.0100'
+  yes_bid_size_fp                     303/303  e.g. '730.00'
+  yes_sub_title                       303/303  e.g. 'Arkansas wins 1H by over 4.5 points'
+
+--- status / type distributions for game 26SEP19UGAARK ---
+  status                   {'active': 303}
+  market_type              {'binary': 303}
+  strike_type              {'greater': 273, 'structured': 23, 'custom': 6, 'greater_or_equal': 1}
+  result                   {'': 303}
+  can_close_early          {'True': 303}
+  response_price_units     {'None': 303}
+
+--- ONE FULL RAW MARKET PER SERIES (contract grammar per family) ---
+
+===== series KXNCAAF1H =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-05T16:19:28.821509Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF1H-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.8800",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.1400",
+  "no_bid_dollars": "0.1200",
+  "no_sub_title": "Georgia wins 1st Half",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "2119.93",
+  "open_time": "2026-09-05T16:23:00Z",
+  "previous_price_dollars": "0.8900",
+  "previous_yes_ask_dollars": "0.8900",
+  "previous_yes_bid_dollars": "0.8700",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins the 1st half of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st half of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "structured",
+  "ticker": "KXNCAAF1H-26SEP19UGAARK-UGA",
+  "title": "Georgia wins the 1st half",
+  "updated_time": "2026-09-05T16:23:00.733661Z",
+  "volume_24h_fp": "1688.21",
+  "volume_fp": "2150.53",
+  "yes_ask_dollars": "0.8800",
+  "yes_ask_size_fp": "590.00",
+  "yes_bid_dollars": "0.8600",
+  "yes_bid_size_fp": "50.00",
+  "yes_sub_title": "Georgia wins 1st Half"
+}
+
+===== series KXNCAAF1HFT =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-14T16:36:35.122682Z",
+  "custom_strike": {
+    "1st Half Result": "Arkansas wins 1st Half",
+    "Fulltime Result": "Georgia wins game"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF1HFT-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.0100",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "1.0000",
+  "no_bid_dollars": "0.9100",
+  "no_sub_title": "Arkansas wins 1H / Georgia wins game",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "5.00",
+  "open_time": "2026-09-14T16:40:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.0800",
+  "previous_yes_bid_dollars": "0.0000",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Arkansas wins the 1st half and Georgia wins the full game in the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "This market resolves based on the combination of the 1st half and full game (including overtime) result of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026. If either the first half or full game result is incorrect, the market resolves to No as both results have to be correct in order for the market to resolve Yes. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 300,
+  "status": "active",
+  "strike_type": "custom",
+  "ticker": "KXNCAAF1HFT-26SEP19UGAARK-ARKUGA",
+  "title": "Arkansas wins 1st Half / Georgia wins game",
+  "updated_time": "2026-09-14T16:50:58.094369Z",
+  "volume_24h_fp": "5.00",
+  "volume_fp": "5.00",
+  "yes_ask_dollars": "0.0900",
+  "yes_ask_size_fp": "5.00",
+  "yes_bid_dollars": "0.0000",
+  "yes_bid_size_fp": "0.00",
+  "yes_sub_title": "Arkansas wins 1H / Georgia wins game"
+}
+
+===== series KXNCAAF1HSPREAD =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-14T16:17:18.2457Z",
+  "custom_strike": {
+    "football_team": "7780c9bf-4db2-4a56-bdda-03e8dc0374af"
+  },
+  "early_close_condition": "This market will close and expire after the event occurs.",
+  "event_ticker": "KXNCAAF1HSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 4.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.9900",
+  "no_bid_dollars": "0.8800",
+  "no_sub_title": "Arkansas wins 1H by over 4.5 points",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-14T16:20:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.0900",
+  "previous_yes_bid_dollars": "0.0100",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Arkansas wins by more than 4.5 points in the 1st half of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st half of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF1HSPREAD-26SEP19UGAARK-ARK5",
+  "title": "Arkansas wins 1H by over 4.5 points",
+  "updated_time": "2026-09-14T16:20:00.424395Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.1200",
+  "yes_ask_size_fp": "10.00",
+  "yes_bid_dollars": "0.0100",
+  "yes_bid_size_fp": "730.00",
+  "yes_sub_title": "Arkansas wins 1H by over 4.5 points"
+}
+
+===== series KXNCAAF1HTEAMTOTAL =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-15T17:17:53.449883Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire early if the event occurs.",
+  "event_ticker": "KXNCAAF1HTEAMTOTAL-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 30.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "1.0000",
+  "no_bid_dollars": "0.5400",
+  "no_sub_title": "Georgia over 30.5 1H points scored",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-15T17:20:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.4600",
+  "previous_yes_bid_dollars": "0.0000",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia scores over 30.5 points in the 1st half of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF1HTEAMTOTAL-26SEP19UGAARK-UGA31",
+  "title": "Georgia scores over 30.5 1H points",
+  "updated_time": "2026-09-15T17:20:00.393518Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.4600",
+  "yes_ask_size_fp": "2144.00",
+  "yes_bid_dollars": "0.0000",
+  "yes_bid_size_fp": "0.00",
+  "yes_sub_title": "Georgia over 30.5 1H points scored"
+}
+
+===== series KXNCAAF1HTOTAL =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-14T16:17:18.900823Z",
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF1HTOTAL-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 13.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.1700",
+  "no_bid_dollars": "0.0100",
+  "no_sub_title": "Over 13.5 1H points scored",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-14T16:20:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.9700",
+  "previous_yes_bid_dollars": "0.8900",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If the teams collectively score more than 13.5 points in the 1st half of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st half of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF1HTOTAL-26SEP19UGAARK-14",
+  "title": "Over 13.5 1H points scored",
+  "updated_time": "2026-09-14T16:32:06.767974Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.9900",
+  "yes_ask_size_fp": "762.00",
+  "yes_bid_dollars": "0.8300",
+  "yes_bid_size_fp": "1.00",
+  "yes_sub_title": "Over 13.5 1H points scored"
+}
+
+===== series KXNCAAF1Q =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:45.43805Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF1Q-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.5400",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.4700",
+  "no_bid_dollars": "0.2500",
+  "no_sub_title": "Georgia wins 1st Quarter",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "15.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.9100",
+  "previous_yes_bid_dollars": "0.4900",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins the 1st quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "structured",
+  "ticker": "KXNCAAF1Q-26SEP19UGAARK-UGA",
+  "title": "Georgia wins the 1st quarter",
+  "updated_time": "2026-09-16T16:26:00.241594Z",
+  "volume_24h_fp": "23.00",
+  "volume_fp": "23.00",
+  "yes_ask_dollars": "0.7500",
+  "yes_ask_size_fp": "30.00",
+  "yes_bid_dollars": "0.5300",
+  "yes_bid_size_fp": "50.00",
+  "yes_sub_title": "Georgia wins 1st Quarter"
+}
+
+===== series KXNCAAF1QSPREAD =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:46.053827Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after the event occurs.",
+  "event_ticker": "KXNCAAF1QSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 3.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.4500",
+  "no_bid_dollars": "0.3700",
+  "no_sub_title": "Georgia wins 1Q by over 3.5 points",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.6400",
+  "previous_yes_bid_dollars": "0.6000",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins by more than 3.5 points in the 1st quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF1QSPREAD-26SEP19UGAARK-UGA4",
+  "title": "Georgia wins 1Q by over 3.5 points",
+  "updated_time": "2026-09-16T16:32:15.119107Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.6300",
+  "yes_ask_size_fp": "3356.19",
+  "yes_bid_dollars": "0.5500",
+  "yes_bid_size_fp": "100.00",
+  "yes_sub_title": "Georgia wins 1Q by over 3.5 points"
+}
+
+===== series KXNCAAF1QTOTAL =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:46.453493Z",
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF1QTOTAL-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 7.5,
+  "last_price_dollars": "0.6800",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.3600",
+  "no_bid_dollars": "0.3300",
+  "no_sub_title": "Over 7.5 1Q points scored",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "42.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.6500",
+  "previous_yes_bid_dollars": "0.6300",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If the teams collectively score more than 7.5 points in the 1st quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 1st quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF1QTOTAL-26SEP19UGAARK-8",
+  "title": "Over 7.5 1Q points scored",
+  "updated_time": "2026-09-16T16:32:15.129576Z",
+  "volume_24h_fp": "42.00",
+  "volume_fp": "42.00",
+  "yes_ask_dollars": "0.6700",
+  "yes_ask_size_fp": "3200.00",
+  "yes_bid_dollars": "0.6400",
+  "yes_bid_size_fp": "100.00",
+  "yes_sub_title": "Over 7.5 1Q points scored"
+}
+
+===== series KXNCAAF2H =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:18:08.483869Z",
+  "custom_strike": {
+    "football_team": "7780c9bf-4db2-4a56-bdda-03e8dc0374af"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF2H-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.9700",
+  "no_bid_dollars": "0.5800",
+  "no_sub_title": "Arkansas wins 2nd Half",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:21:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.4100",
+  "previous_yes_bid_dollars": "0.0300",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Arkansas wins the 2nd half (including overtime) of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd half (including overtime) of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "structured",
+  "ticker": "KXNCAAF2H-26SEP19UGAARK-ARK",
+  "title": "Arkansas wins the 2nd half",
+  "updated_time": "2026-09-16T16:21:00.272638Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.4200",
+  "yes_ask_size_fp": "100.00",
+  "yes_bid_dollars": "0.0300",
+  "yes_bid_size_fp": "100.00",
+  "yes_sub_title": "Arkansas wins 2nd Half"
+}
+
+===== series KXNCAAF2HSPREAD =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:18:08.936482Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after the event occurs.",
+  "event_ticker": "KXNCAAF2HSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 10.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.6600",
+  "no_bid_dollars": "0.4600",
+  "no_sub_title": "Georgia wins 2H by over 10.5 points",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:21:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.7700",
+  "previous_yes_bid_dollars": "0.1900",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins by more than 10.5 points in the 2nd half (including overtime) of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd half (including overtime) of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF2HSPREAD-26SEP19UGAARK-UGA11",
+  "title": "Georgia wins 2H by over 10.5 points",
+  "updated_time": "2026-09-16T16:22:45.552602Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.5400",
+  "yes_ask_size_fp": "250.00",
+  "yes_bid_dollars": "0.3400",
+  "yes_bid_size_fp": "489.00",
+  "yes_sub_title": "Georgia wins 2H by over 10.5 points"
+}
+
+===== series KXNCAAF2HTOTAL =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:18:09.293573Z",
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF2HTOTAL-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 44.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.9900",
+  "no_bid_dollars": "0.8600",
+  "no_sub_title": "Over 44.5 2H points scored",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:21:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.4400",
+  "previous_yes_bid_dollars": "0.0100",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If the teams collectively score more than 44.5 points in the 2nd half (including overtime) of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd half (including overtime) of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF2HTOTAL-26SEP19UGAARK-45",
+  "title": "Over 44.5 2H points scored",
+  "updated_time": "2026-09-16T16:22:45.568001Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.1400",
+  "yes_ask_size_fp": "450.00",
+  "yes_bid_dollars": "0.0100",
+  "yes_bid_size_fp": "300.00",
+  "yes_sub_title": "Over 44.5 2H points scored"
+}
+
+===== series KXNCAAF2Q =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:46.853Z",
+  "custom_strike": {
+    "football_team": "7780c9bf-4db2-4a56-bdda-03e8dc0374af"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF2Q-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.0900",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.9400",
+  "no_bid_dollars": "0.7000",
+  "no_sub_title": "Arkansas wins 2nd Quarter",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "1.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.2600",
+  "previous_yes_ask_dollars": "0.3100",
+  "previous_yes_bid_dollars": "0.0100",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Arkansas wins the 2nd quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "structured",
+  "ticker": "KXNCAAF2Q-26SEP19UGAARK-ARK",
+  "title": "Arkansas wins the 2nd quarter",
+  "updated_time": "2026-09-16T16:32:15.150536Z",
+  "volume_24h_fp": "3.00",
+  "volume_fp": "4.00",
+  "yes_ask_dollars": "0.3000",
+  "yes_ask_size_fp": "8.23",
+  "yes_bid_dollars": "0.0600",
+  "yes_bid_size_fp": "8.00",
+  "yes_sub_title": "Arkansas wins 2nd Quarter"
+}
+
+===== series KXNCAAF2QSPREAD =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:47.297209Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after the event occurs.",
+  "event_ticker": "KXNCAAF2QSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 9.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.6600",
+  "no_bid_dollars": "0.3800",
+  "no_sub_title": "Georgia wins 2Q by over 9.5 points",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.5200",
+  "previous_yes_bid_dollars": "0.4200",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins by more than 9.5 points in the 2nd quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF2QSPREAD-26SEP19UGAARK-UGA10",
+  "title": "Georgia wins 2Q by over 9.5 points",
+  "updated_time": "2026-09-16T16:32:15.192201Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.6200",
+  "yes_ask_size_fp": "750.00",
+  "yes_bid_dollars": "0.3400",
+  "yes_bid_size_fp": "7.00",
+  "yes_sub_title": "Georgia wins 2Q by over 9.5 points"
+}
+
+===== series KXNCAAF2QTOTAL =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:47.683459Z",
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF2QTOTAL-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 7.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.2900",
+  "no_bid_dollars": "0.0400",
+  "no_sub_title": "Over 7.5 2Q points scored",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.8900",
+  "previous_yes_bid_dollars": "0.7900",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If the teams collectively score more than 7.5 points in the 2nd quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 2nd quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF2QTOTAL-26SEP19UGAARK-8",
+  "title": "Over 7.5 2Q points scored",
+  "updated_time": "2026-09-16T16:32:15.089599Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.9600",
+  "yes_ask_size_fp": "341.00",
+  "yes_bid_dollars": "0.7100",
+  "yes_bid_size_fp": "474.00",
+  "yes_sub_title": "Over 7.5 2Q points scored"
+}
+
+===== series KXNCAAF3Q =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:48.111388Z",
+  "custom_strike": {
+    "football_team": "7780c9bf-4db2-4a56-bdda-03e8dc0374af"
+  },
+  "early_close_condition": "This market will close and expire after a winner is declared.",
+  "event_ticker": "KXNCAAF3Q-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.9900",
+  "no_bid_dollars": "0.6300",
+  "no_sub_title": "Arkansas wins 3rd Quarter",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.3700",
+  "previous_yes_bid_dollars": "0.0100",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Arkansas wins the 3rd quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 3rd quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "structured",
+  "ticker": "KXNCAAF3Q-26SEP19UGAARK-ARK",
+  "title": "Arkansas wins the 3rd quarter",
+  "updated_time": "2026-09-16T16:32:15.098128Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.3700",
+  "yes_ask_size_fp": "50.00",
+  "yes_bid_dollars": "0.0100",
+  "yes_bid_size_fp": "79280.00",
+  "yes_sub_title": "Arkansas wins 3rd Quarter"
+}
+
+===== series KXNCAAF3QSPREAD =====
+{
+  "can_close_early": true,
+  "close_time": "2026-09-21T16:00:00Z",
+  "created_time": "2026-09-16T16:22:48.548899Z",
+  "custom_strike": {
+    "football_team": "a92d6ac7-dbda-434a-b791-5b5959d1fb7b"
+  },
+  "early_close_condition": "This market will close and expire after the event occurs.",
+  "event_ticker": "KXNCAAF3QSPREAD-26SEP19UGAARK",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-09-19T19:00:00Z",
+  "expiration_time": "2026-09-21T16:00:00Z",
+  "expiration_value": "",
+  "floor_strike": 7.5,
+  "last_price_dollars": "0.0000",
+  "latest_expiration_time": "2026-09-21T16:00:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "no_ask_dollars": "0.7500",
+  "no_bid_dollars": "0.5000",
+  "no_sub_title": "Georgia wins 3Q by over 7.5 points",
+  "notional_value_dollars": "1.0000",
+  "occurrence_datetime": "2026-09-19T19:00:00Z",
+  "open_interest_fp": "0.00",
+  "open_time": "2026-09-16T16:26:00Z",
+  "previous_price_dollars": "0.0000",
+  "previous_yes_ask_dollars": "0.4300",
+  "previous_yes_bid_dollars": "0.2900",
+  "price_level_structure": "linear_cent",
+  "price_ranges": [
+    {
+      "end": "1.0000",
+      "start": "0.0000",
+      "step": "0.0100"
+    }
+  ],
+  "result": "",
+  "rules_primary": "If Georgia wins by more than 7.5 points in the 3rd quarter of the Georgia vs Arkansas college football game originally scheduled for Sep 19, 2026, then the market resolves to Yes.",
+  "rules_secondary": "Note: Only points scored during the 3rd quarter of play count towards this market. If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is not started within 48 hours, the market will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the NCAA. All trademarks, logos, and brand names are the property of their respective owners.",
+  "settlement_timer_seconds": 180,
+  "status": "active",
+  "strike_type": "greater",
+  "ticker": "KXNCAAF3QSPREAD-26SEP19UGAARK-UGA8",
+  "title": "Georgia wins 3Q by over 7.5 points",
+  "updated_time": "2026-09-16T16:32:15.102293Z",
+  "volume_24h_fp": "0.00",
+  "volume_fp": "0.00",
+  "yes_ask_dollars": "0.5000",
+  "yes_ask_size_fp": "50.00",
+  "yes_bid_dollars": "0.2500",
+  "yes_bid_size_fp": "50.00",
+  "yes_sub_title": "Georgia wins 3Q by over 7.5 points"
+}
+
+--- GET /markets/KXNCAAF1HSPREAD-26SEP19UGAARK-ARK5/orderbook -> HTTP 200 ---
+{
+  "orderbook_fp": {
+    "no_dollars": [
+      [
+        "0.0100",
+        "1634056.00"
+      ],
+      [
+        "0.1400",
+        "47083.00"
+      ],
+      [
+        "0.2700",
+        "18389.00"
+      ],
+      [
+        "0.4000",
+        "4996.00"
+      ],
+      [
+        "0.4500",
+        "1835.00"
+      ],
+      [
+        "0.5400",
+        "3525.00"
+      ],
+      [
+        "0.5500",
+        "17.00"
+      ],
+      [
+        "0.5600",
+        "371.00"
+      ],
+      [
+        "0.5700",
+        "42.00"
+      ],
+      [
+        "0.8000",
+        "50.00"
+      ],
+      [
+        "0.8400",
+        "25.00"
+      ],
+      [
+        "0.8800",
+        "10.00"
+      ]
+    ],
+    "yes_dollars": [
+      [
+        "0.0100",
+        "730.00"
+      ]
+    ]
+  }
+}
+
+==============================================================================
+F. FILTERS FOR AN AFFORDABLE SCHEDULED REFRESH
+==============================================================================
+  /markets status=open      {'series_ticker': 'KXNCAAFSPREAD', 'status': 'open'} -> HTTP 200 markets=200
+  /markets min_close_ts     {'series_ticker': 'KXNCAAFSPREAD', 'min_close_ts': 1789683090} -> HTTP 200 markets=200
+  /markets max_close_ts     {'series_ticker': 'KXNCAAFSPREAD', 'max_close_ts': 1790287890} -> HTTP 200 markets=200
+  /markets both close_ts    {'series_ticker': 'KXNCAAFSPREAD', 'min_close_ts': 1789683090, 'max_close_ts': 1790287890} -> HTTP 200 markets=200
+  /markets tickers=         {'tickers': 'KXNCAAF1HSPREAD-26SEP19UGAARK-ARK5'} -> HTTP 200 markets=1
+
+==============================================================================
+G. MULTIVARIATE / COMBO SURFACE FOR CFB
+==============================================================================
+total multivariate collections: 1389 (complete=True)
+collections referencing an NCAAF event: 3
+  KXMVESPORTSMULTIGAMEEXTENDED-R                 series=KXMVESPORTSMULTIGAMEEXTENDED   ncaaf_events= 1018 total= 2603 single_market_per_event=False size_min=2
+  KXMVECROSSCATEGORY-SHARD1-R                    series=KXMVECROSSCATEGORY-SHARD1      ncaaf_events= 1018 total= 2603 single_market_per_event=False size_min=2
+  KXMVECROSSCATEGORY-R                           series=KXMVECROSSCATEGORY             ncaaf_events= 1018 total= 2603 single_market_per_event=False size_min=2
+
+--- FULL RAW JSON of one CFB-referencing collection (assoc elided) ---
+{
+  "close_date": "2026-09-29T03:15:00Z",
+  "collection_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-R",
+  "description": "Choose any combination of game stats and props.",
+  "exchange_index": 1,
+  "functional_description": "The resulting market will only resolve to YES if every associated market resolves to YES. Scalar outcomes are multiplied (rounded down).",
+  "is_all_yes": false,
+  "is_ordered": false,
+  "is_single_market_per_event": false,
+  "open_date": "2026-09-17T15:55:42Z",
+  "series_ticker": "KXMVESPORTSMULTIGAMEEXTENDED",
+  "size_max": 0,
+  "size_min": 2,
+  "title": "What will happen across all games?"
+}
+
+sample NCAAF event tickers referenced: ['KXNCAAFGAME-26SEP17SYRPITT', 'KXNCAAFSPREAD-26SEP17SYRPITT', 'KXNCAAFTOTAL-26SEP17SYRPITT', 'KXNCAAFTEAMTOTAL-26SEP17SYRPITT', 'KXNCAAF1H-26SEP17SYRPITT', 'KXNCAAF1HSPREAD-26SEP17SYRPITT', 'KXNCAAF1HTOTAL-26SEP17SYRPITT', 'KXNCAAF1Q-26SEP17SYRPITT', 'KXNCAAF1QSPREAD-26SEP17SYRPITT', 'KXNCAAF1QTOTAL-26SEP17SYRPITT', 'KXNCAAFGAME-26SEP18MIAWAKE', 'KXNCAAFSPREAD-26SEP18MIAWAKE', 'KXNCAAFTOTAL-26SEP18MIAWAKE', 'KXNCAAFTEAMTOTAL-26SEP18MIAWAKE', 'KXNCAAF1H-26SEP18MIAWAKE']
+
+GET /markets?series_ticker=KXMVESPORTSMULTIGAMEEXTENDED -> HTTP 200 markets=5
+{
+  "can_close_early": true,
+  "close_time": "2026-08-18T03:20:38Z",
+  "created_time": "2026-08-17T17:34:12.143084Z",
+  "custom_strike": {
+    "Associated Events": "KXMLBGAME-26AUG171840MIAPHI,KXMLBGAME-26AUG171910SDNYM,KXMLBGAME-26AUG172005CWSCHC,KXMLBTOTAL-26AUG171905DETPIT,KXMLBTOTAL-26AUG171910AZBOS,KXMLBTOTAL-26AUG171940ATLMIN",
+    "Associated Market Sides": "yes,yes,yes,yes,yes,yes",
+    "Associated Markets": "KXMLBGAME-26AUG171840MIAPHI-PHI,KXMLBGAME-26AUG171910SDNYM-NYM,KXMLBGAME-26AUG172005CWSCHC-CHC,KXMLBTOTAL-26AUG171905DETPIT-8,KXMLBTOTAL-26AUG171910AZBOS-8,KXMLBTOTAL-26AUG171940ATLMIN-9",
+    "Multivariate Event Ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20264E1F9411A8E"
+  },
+  "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20264E1F9411A8E",
+  "exchange_index": 0,
+  "expected_expiration_time": "2026-08-18T06:05:00Z",
+  "expiration_time": "2026-08-21T00:05:00Z",
+  "expiration_value": "",
+  "last_price_dollars": "0.0440",
+  "latest_expiration_time": "2026-08-21T00:05:00Z",
+  "liquidity_dollars": "0.0000",
+  "market_type": "binary",
+  "mve_collection_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-R",
+  "mve_selected_legs": [
+    {
+      "event_ticker": "KXMLBGAME-26AUG171840MIAPHI"
+GET /events?series_ticker=KXMVESPORTSMULTIGAMEEXTENDED -> HTTP 200 events=0
+
+==============================================================================
+INVESTIGATION COMPLETE
+==============================================================================

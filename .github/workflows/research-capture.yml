@@ -65,9 +65,27 @@ name: Research Capture (scheduled scanner)
 # to exercise it; the `schedule` trigger only fires for the copy on the
 # default branch.
 
+#
+# *** HIBERNATED 2026-09-17 -- MARKET-DISCOVERY PIVOT ***
+# The scheduled trigger below is commented out, NOT deleted, and every
+# script, library and datum this workflow uses is untouched. Re-enable by
+# uncommenting the `schedule:` block; `workflow_dispatch` still works
+# today, so a human can run this at any time without any change at all.
+#
+# WHY: this workflow exists to feed the college-football projection model
+# (CFBD history fetch -> ratings/priors -> score model -> prospective
+# capture). That model is no longer trusted for wagering decisions and has
+# been removed from the live path; the live path is now
+# .github/workflows/kalshi-market-catalog.yml, which consumes no secret and
+# produces no projection. Leaving this on a 10-minute schedule spends
+# Actions minutes and a CFBD quota on a model nothing reads.
+#
+# See docs/MODEL_RETIREMENT_2026.md for the full retirement plan, what is
+# preserved, and the one genuinely irreversible consequence (closing lines
+# stop accruing while this is hibernated).
 on:
-  schedule:
-    - cron: "*/10 * * * *"
+#   schedule:
+#     - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       schedule_season:

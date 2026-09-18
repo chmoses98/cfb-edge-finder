@@ -142,14 +142,23 @@ def test_isolated_sidecars_never_squat_on_the_collectors_group(workflow: Path):
     assert _cancel_in_progress(text) == "false", f"{workflow.name} must queue, never cancel, its own writes"
 
 
-def test_capture_workflow_is_the_scanner_and_is_scheduled():
-    """Pins the assumption the two tests above rest on: the scanner really
-    is one of the guarded scheduled writers."""
+def test_capture_workflow_is_still_a_guarded_writer_while_hibernated():
+    """Pins the assumption the two tests above rest on: the scanner is
+    still one of the guarded writers, so if its schedule is ever revived
+    it inherits the single-writer lock rather than racing the catalog.
+
+    The original form of this test additionally required an ACTIVE cron
+    line. The 2026 market-discovery pivot hibernated the collector
+    (schedule commented out, nothing deleted -- see
+    docs/MODEL_RETIREMENT_2026.md), so what matters now is the guard, not
+    the cadence: a hibernated writer that keeps its concurrency group is
+    safe to wake up, and one that loses it is not."""
     capture = WORKFLOWS / "research-capture.yml"
     text = capture.read_text(encoding="utf-8")
     assert "research_scan_and_capture.py" in text
-    assert re.search(r"^\s+-\s*cron:", text, re.MULTILINE), "capture workflow is no longer scheduled"
     assert capture in _durable_store_writers()
+    assert _concurrency_group(text) == EXPECTED_GROUP
+    assert re.search(r"cron:", text), "the hibernated cadence must stay recorded, not be deleted"
 
 
 # =========================================================================

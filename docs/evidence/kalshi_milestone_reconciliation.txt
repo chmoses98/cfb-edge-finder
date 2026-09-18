@@ -1,0 +1,319 @@
+Kalshi milestone-reconciliation probe R4 @ 2026-09-17T22:15:46.891749+00:00
+
+==============================================================================
+1. NCAAFB MILESTONES VIA type=football_game
+==============================================================================
+type=football_game -> 2052 milestones (complete=True)
+league distribution: {'NCAAFB': 1519, 'NFL': 432, 'UFL': 40, 'CFL': 61}
+NCAAFB milestones: 1519
+NCAAFB milestone detail.status: {'created': 48, 'complete': 126, 'closed': 542, 'inprogress': 11, 'scheduled': 751, 'time-tbd': 41}
+NCAAFB milestone seasons: {'2022-REG': 1, '2025-PST': 9, '2025-REG': 941, '2026-REG': 568}
+
+NCAAFB milestones with start_date in the FUTURE: 239
+  ...of which carry related_event_tickers: 239
+
+--- FULL RAW JSON of the next upcoming NCAAFB milestone ---
+{
+  "category": "Sports",
+  "details": {
+    "away_team_id": "862690f7-6570-4a15-acb8-58f49d496859",
+    "conference": "ACC",
+    "division": "FBS",
+    "home_team_id": "17b70f39-2dd0-4497-a8f2-d68baff1abc2",
+    "league": "NCAAFB",
+    "main_game_event_ticker": "KXNCAAFGAME-26SEP17SYRPITT",
+    "season": {
+      "type": "REG",
+      "week": 3,
+      "year": 2026
+    },
+    "status": "scheduled",
+    "tier": "A_MINUS"
+  },
+  "id": "a852dcb8-dc87-4c25-8b9a-c007ca70ee2e",
+  "last_updated_ts": "2026-09-15T00:21:49.771721Z",
+  "notification_message": "The game is about to begin!",
+  "primary_event_tickers": [
+    "KXNCAAFGAME-26SEP17SYRPITT",
+    "KXNCAAFSPREAD-26SEP17SYRPITT",
+    "KXNCAAFTOTAL-26SEP17SYRPITT",
+    "KXNCAAFTEAMTOTAL-26SEP17SYRPITT",
+    "KXNCAAF1H-26SEP17SYRPITT",
+    "KXNCAAFOT-26SEP17SYRPITT",
+    "KXNCAAFFIRSTTDTEAM-26SEP17SYRPITT",
+    "KXNCAAF1HFT-26SEP17SYRPITT",
+    "KXNCAAFTEAMTD-26SEP17SYRPITT",
+    "KXNCAAF1HSPREAD-26SEP17SYRPITT",
+    "KXNCAAF1HTOTAL-26SEP17SYRPITT",
+    "KXNCAAFDSTTD-26SEP17SYRPITT",
+    "KXNCAAF2H-26SEP17SYRPITT",
+    "KXNCAAF2HSPREAD-26SEP17SYRPITT",
+    "KXNCAAF2HTOTAL-26SEP17SYRPITT",
+    "KXNCAAF1Q-26SEP17SYRPITT",
+    "KXNCAAF1QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF1QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF2Q-26SEP17SYRPITT",
+    "KXNCAAF2QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF2QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF3Q-26SEP17SYRPITT",
+    "KXNCAAF3QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF3QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF4Q-26SEP17SYRPITT",
+    "KXNCAAF4QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF4QTOTAL-26SEP17SYRPITT"
+  ],
+  "related_event_tickers": [
+    "KXNCAAFGAME-26SEP17SYRPITT",
+    "KXNCAAFSPREAD-26SEP17SYRPITT",
+    "KXNCAAFTOTAL-26SEP17SYRPITT",
+    "KXNCAAFTEAMTOTAL-26SEP17SYRPITT",
+    "KXNCAAF1H-26SEP17SYRPITT",
+    "KXNCAAFOT-26SEP17SYRPITT",
+    "KXNCAAFFIRSTTDTEAM-26SEP17SYRPITT",
+    "KXNCAAF1HFT-26SEP17SYRPITT",
+    "KXNCAAFTEAMTD-26SEP17SYRPITT",
+    "KXNCAAF1HSPREAD-26SEP17SYRPITT",
+    "KXNCAAF1HTOTAL-26SEP17SYRPITT",
+    "KXNCAAFDSTTD-26SEP17SYRPITT",
+    "KXNCAAF2H-26SEP17SYRPITT",
+    "KXNCAAF2HSPREAD-26SEP17SYRPITT",
+    "KXNCAAF2HTOTAL-26SEP17SYRPITT",
+    "KXNCAAF1Q-26SEP17SYRPITT",
+    "KXNCAAF1QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF1QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF2Q-26SEP17SYRPITT",
+    "KXNCAAF2QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF2QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF3Q-26SEP17SYRPITT",
+    "KXNCAAF3QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF3QTOTAL-26SEP17SYRPITT",
+    "KXNCAAF4Q-26SEP17SYRPITT",
+    "KXNCAAF4QSPREAD-26SEP17SYRPITT",
+    "KXNCAAF4QTOTAL-26SEP17SYRPITT"
+  ],
+  "source_id": "049b41b5-4c8a-4003-ac34-fe9e86c989fc",
+  "source_ids": {
+    "source_1_id": "2969338",
+    "source_2_id": "202609177BA78E34",
+    "source_3_id": "049b41b5-4c8a-4003-ac34-fe9e86c989fc",
+    "source_6_id": "17732877"
+  },
+  "start_date": "2026-09-17T23:30:00Z",
+  "title": "Syracuse at Pittsburgh",
+  "type": "football_game"
+}
+
+--- related_event_tickers for the next 8 upcoming NCAAFB milestones ---
+
+  2026-09-17T23:30:00+00:00  title='Syracuse at Pittsburgh'
+    primary(27): ['KXNCAAFGAME-26SEP17SYRPITT', 'KXNCAAFSPREAD-26SEP17SYRPITT', 'KXNCAAFTOTAL-26SEP17SYRPITT', 'KXNCAAFTEAMTOTAL-26SEP17SYRPITT', 'KXNCAAF1H-26SEP17SYRPITT', 'KXNCAAFOT-26SEP17SYRPITT']
+    related(27): ['KXNCAAFGAME-26SEP17SYRPITT', 'KXNCAAFSPREAD-26SEP17SYRPITT', 'KXNCAAFTOTAL-26SEP17SYRPITT', 'KXNCAAFTEAMTOTAL-26SEP17SYRPITT', 'KXNCAAF1H-26SEP17SYRPITT', 'KXNCAAFOT-26SEP17SYRPITT', 'KXNCAAFFIRSTTDTEAM-26SEP17SYRPITT', 'KXNCAAF1HFT-26SEP17SYRPITT', 'KXNCAAFTEAMTD-26SEP17SYRPITT', 'KXNCAAF1HSPREAD-26SEP17SYRPITT', 'KXNCAAF1HTOTAL-26SEP17SYRPITT', 'KXNCAAFDSTTD-26SEP17SYRPITT', 'KXNCAAF2H-26SEP17SYRPITT', 'KXNCAAF2HSPREAD-26SEP17SYRPITT', 'KXNCAAF2HTOTAL-26SEP17SYRPITT', 'KXNCAAF1Q-26SEP17SYRPITT', 'KXNCAAF1QSPREAD-26SEP17SYRPITT', 'KXNCAAF1QTOTAL-26SEP17SYRPITT', 'KXNCAAF2Q-26SEP17SYRPITT', 'KXNCAAF2QSPREAD-26SEP17SYRPITT']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-18T23:30:00+00:00  title='Miami (FL) at Wake Forest'
+    primary(27): ['KXNCAAFGAME-26SEP18MIAWAKE', 'KXNCAAFSPREAD-26SEP18MIAWAKE', 'KXNCAAFTOTAL-26SEP18MIAWAKE', 'KXNCAAFTEAMTOTAL-26SEP18MIAWAKE', 'KXNCAAF1H-26SEP18MIAWAKE', 'KXNCAAFOT-26SEP18MIAWAKE']
+    related(27): ['KXNCAAFGAME-26SEP18MIAWAKE', 'KXNCAAFSPREAD-26SEP18MIAWAKE', 'KXNCAAFTOTAL-26SEP18MIAWAKE', 'KXNCAAFTEAMTOTAL-26SEP18MIAWAKE', 'KXNCAAF1H-26SEP18MIAWAKE', 'KXNCAAFOT-26SEP18MIAWAKE', 'KXNCAAFTEAMTD-26SEP18MIAWAKE', 'KXNCAAFFIRSTTDTEAM-26SEP18MIAWAKE', 'KXNCAAF1HFT-26SEP18MIAWAKE', 'KXNCAAF1HSPREAD-26SEP18MIAWAKE', 'KXNCAAF1HTOTAL-26SEP18MIAWAKE', 'KXNCAAFDSTTD-26SEP18MIAWAKE', 'KXNCAAF2H-26SEP18MIAWAKE', 'KXNCAAF2HSPREAD-26SEP18MIAWAKE', 'KXNCAAF2HTOTAL-26SEP18MIAWAKE', 'KXNCAAF1Q-26SEP18MIAWAKE', 'KXNCAAF1QSPREAD-26SEP18MIAWAKE', 'KXNCAAF1QTOTAL-26SEP18MIAWAKE', 'KXNCAAF2Q-26SEP18MIAWAKE', 'KXNCAAF2QSPREAD-26SEP18MIAWAKE']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T00:00:00+00:00  title='Houston at Texas Tech'
+    primary(27): ['KXNCAAFGAME-26SEP18HOUTTU', 'KXNCAAFSPREAD-26SEP18HOUTTU', 'KXNCAAFTOTAL-26SEP18HOUTTU', 'KXNCAAFTEAMTOTAL-26SEP18HOUTTU', 'KXNCAAF1H-26SEP18HOUTTU', 'KXNCAAFOT-26SEP18HOUTTU']
+    related(27): ['KXNCAAFGAME-26SEP18HOUTTU', 'KXNCAAFSPREAD-26SEP18HOUTTU', 'KXNCAAFTOTAL-26SEP18HOUTTU', 'KXNCAAFTEAMTOTAL-26SEP18HOUTTU', 'KXNCAAF1H-26SEP18HOUTTU', 'KXNCAAFOT-26SEP18HOUTTU', 'KXNCAAFTEAMTD-26SEP18HOUTTU', 'KXNCAAFFIRSTTDTEAM-26SEP18HOUTTU', 'KXNCAAF1HFT-26SEP18HOUTTU', 'KXNCAAF1HSPREAD-26SEP18HOUTTU', 'KXNCAAF1HTOTAL-26SEP18HOUTTU', 'KXNCAAF2H-26SEP18HOUTTU', 'KXNCAAF2HSPREAD-26SEP18HOUTTU', 'KXNCAAF2HTOTAL-26SEP18HOUTTU', 'KXNCAAF1Q-26SEP18HOUTTU', 'KXNCAAF1QSPREAD-26SEP18HOUTTU', 'KXNCAAF1QTOTAL-26SEP18HOUTTU', 'KXNCAAF2Q-26SEP18HOUTTU', 'KXNCAAF2QSPREAD-26SEP18HOUTTU', 'KXNCAAF2QTOTAL-26SEP18HOUTTU']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T02:30:00+00:00  title='Portland St. at Oregon'
+    primary(8): ['KXNCAAFGAME-26SEP18PRSTORE', 'KXNCAAFSPREAD-26SEP18PRSTORE', 'KXNCAAFTOTAL-26SEP18PRSTORE', 'KXNCAAFTEAMTOTAL-26SEP18PRSTORE', 'KXNCAAF1H-26SEP18PRSTORE', 'KXNCAAFOT-26SEP18PRSTORE']
+    related(8): ['KXNCAAFGAME-26SEP18PRSTORE', 'KXNCAAFSPREAD-26SEP18PRSTORE', 'KXNCAAFTOTAL-26SEP18PRSTORE', 'KXNCAAFTEAMTOTAL-26SEP18PRSTORE', 'KXNCAAF1H-26SEP18PRSTORE', 'KXNCAAFOT-26SEP18PRSTORE', 'KXNCAAF1HSPREAD-26SEP18PRSTORE', 'KXNCAAF1HTOTAL-26SEP18PRSTORE']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T15:30:00+00:00  title='Coastal Carolina at Delaware'
+    primary(8): ['KXNCAAFGAME-26SEP19CCARDEL', 'KXNCAAFSPREAD-26SEP19CCARDEL', 'KXNCAAFTOTAL-26SEP19CCARDEL', 'KXNCAAFTEAMTOTAL-26SEP19CCARDEL', 'KXNCAAF1H-26SEP19CCARDEL', 'KXNCAAFOT-26SEP19CCARDEL']
+    related(8): ['KXNCAAFGAME-26SEP19CCARDEL', 'KXNCAAFSPREAD-26SEP19CCARDEL', 'KXNCAAFTOTAL-26SEP19CCARDEL', 'KXNCAAFTEAMTOTAL-26SEP19CCARDEL', 'KXNCAAF1H-26SEP19CCARDEL', 'KXNCAAFOT-26SEP19CCARDEL', 'KXNCAAF1HSPREAD-26SEP19CCARDEL', 'KXNCAAF1HTOTAL-26SEP19CCARDEL']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T16:00:00+00:00  title='Brown at New Haven'
+    primary(4): ['KXNCAAFGAME-26SEP19BRWNNHC', 'KXNCAAFSPREAD-26SEP19BRWNNHC', 'KXNCAAFTOTAL-26SEP19BRWNNHC', 'KXNCAAF1H-26SEP19BRWNNHC']
+    related(4): ['KXNCAAFGAME-26SEP19BRWNNHC', 'KXNCAAFSPREAD-26SEP19BRWNNHC', 'KXNCAAFTOTAL-26SEP19BRWNNHC', 'KXNCAAF1H-26SEP19BRWNNHC']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T16:00:00+00:00  title='North Carolina at Clemson'
+    primary(27): ['KXNCAAFGAME-26SEP19UNCCLEM', 'KXNCAAFSPREAD-26SEP19UNCCLEM', 'KXNCAAFTOTAL-26SEP19UNCCLEM', 'KXNCAAFTEAMTOTAL-26SEP19UNCCLEM', 'KXNCAAF1H-26SEP19UNCCLEM', 'KXNCAAFOT-26SEP19UNCCLEM']
+    related(27): ['KXNCAAFGAME-26SEP19UNCCLEM', 'KXNCAAFSPREAD-26SEP19UNCCLEM', 'KXNCAAFTOTAL-26SEP19UNCCLEM', 'KXNCAAFTEAMTOTAL-26SEP19UNCCLEM', 'KXNCAAF1H-26SEP19UNCCLEM', 'KXNCAAFOT-26SEP19UNCCLEM', 'KXNCAAF1HSPREAD-26SEP19UNCCLEM', 'KXNCAAF1HTOTAL-26SEP19UNCCLEM', 'KXNCAAFTEAMTD-26SEP19UNCCLEM', 'KXNCAAFFIRSTTDTEAM-26SEP19UNCCLEM', 'KXNCAAF1HFT-26SEP19UNCCLEM', 'KXNCAAF2H-26SEP19UNCCLEM', 'KXNCAAF2HSPREAD-26SEP19UNCCLEM', 'KXNCAAF2HTOTAL-26SEP19UNCCLEM', 'KXNCAAF1Q-26SEP19UNCCLEM', 'KXNCAAF1QSPREAD-26SEP19UNCCLEM', 'KXNCAAF1QTOTAL-26SEP19UNCCLEM', 'KXNCAAF2Q-26SEP19UNCCLEM', 'KXNCAAF2QSPREAD-26SEP19UNCCLEM', 'KXNCAAF2QTOTAL-26SEP19UNCCLEM']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+  2026-09-19T16:00:00+00:00  title='Mercer at Georgia Tech'
+    primary(8): ['KXNCAAFGAME-26SEP19MERGT', 'KXNCAAFSPREAD-26SEP19MERGT', 'KXNCAAFTOTAL-26SEP19MERGT', 'KXNCAAFTEAMTOTAL-26SEP19MERGT', 'KXNCAAF1H-26SEP19MERGT', 'KXNCAAFOT-26SEP19MERGT']
+    related(8): ['KXNCAAFGAME-26SEP19MERGT', 'KXNCAAFSPREAD-26SEP19MERGT', 'KXNCAAFTOTAL-26SEP19MERGT', 'KXNCAAFTEAMTOTAL-26SEP19MERGT', 'KXNCAAF1H-26SEP19MERGT', 'KXNCAAFOT-26SEP19MERGT', 'KXNCAAF1HSPREAD-26SEP19MERGT', 'KXNCAAF1HTOTAL-26SEP19MERGT']
+    details keys: ['away_team_id', 'conference', 'division', 'home_team_id', 'league', 'main_game_event_ticker', 'season', 'status', 'tier']
+
+==============================================================================
+3. THE `milestones` KEY INSIDE A /events RESPONSE
+==============================================================================
+top-level keys: ['cursor', 'events', 'milestones']
+
+--- raw `milestones` value ---
+[]
+
+--- one event from this list response (full) ---
+{
+  "category": "Sports",
+  "collateral_return_type": "MECNET",
+  "event_ticker": "KXNCAAFGAME-26SEP17SYRPITT",
+  "exchange_index": 0,
+  "last_updated_ts": "2026-09-04T01:08:27.954983Z",
+  "mutually_exclusive": true,
+  "product_metadata": {
+    "competition": "NCAA Football",
+    "competition_scope": "Game"
+  },
+  "series_ticker": "KXNCAAFGAME",
+  "settlement_sources": [
+    {
+      "name": "Kalshi using information originating from the NCAA",
+      "url": "https://www.ncaa.com/sports/football/fbs"
+    },
+    {
+      "name": "ESPN",
+      "url": "https://www.espn.com"
+    }
+  ],
+  "strike_period": "",
+  "sub_title": "SYR vs PITT (Sep 17)",
+  "title": "Syracuse vs Pittsburgh"
+}
+
+==============================================================================
+4. FULL STATUS VOCABULARY FOR CFB EVENTS AND MARKETS
+==============================================================================
+  /events?series_ticker=KXNCAAFGAME&status=None         -> HTTP 200 events=200
+  /events?series_ticker=KXNCAAFGAME&status=open         -> HTTP 200 events=200
+  /events?series_ticker=KXNCAAFGAME&status=unopened     -> HTTP 200 events=0
+  /events?series_ticker=KXNCAAFGAME&status=closed       -> HTTP 200 events=0
+  /events?series_ticker=KXNCAAFGAME&status=settled      -> HTTP 200 events=200
+  /events?series_ticker=KXNCAAFGAME&status=paused       -> HTTP 200 events=0
+  /events?series_ticker=KXNCAAFGAME&status=determined   -> HTTP 400 events=0
+  /events?series_ticker=KXNCAAFGAME&status=finalized    -> HTTP 400 events=0
+
+  /markets?series_ticker=KXNCAAFGAME&status=None         -> HTTP 200 markets=200
+  /markets?series_ticker=KXNCAAFGAME&status=open         -> HTTP 200 markets=200
+  /markets?series_ticker=KXNCAAFGAME&status=unopened     -> HTTP 200 markets=0
+  /markets?series_ticker=KXNCAAFGAME&status=closed       -> HTTP 200 markets=2
+  /markets?series_ticker=KXNCAAFGAME&status=settled      -> HTTP 200 markets=200
+  /markets?series_ticker=KXNCAAFGAME&status=paused       -> HTTP 200 markets=0
+  /markets?series_ticker=KXNCAAFGAME&status=active       -> HTTP 400 markets=0
+  /markets?series_ticker=KXNCAAFGAME&status=determined   -> HTTP 400 markets=0
+  /markets?series_ticker=KXNCAAFGAME&status=finalized    -> HTTP 400 markets=0
+
+unfiltered KXNCAAFGAME sweep: 1140 markets (complete=True)
+observed market status values: {'active': 478, 'finalized': 660, 'closed': 2}
+observed result values:       {'': 480, 'no': 329, 'yes': 329, 'scalar': 2}
+
+unfiltered KXNCAAFGAME event sweep: 1505 events (complete=True)
+product_metadata.competition values: {'NCAA Football': 1495, 'College Football Playoffs': 10}
+product_metadata.competition_scope values: {'Game': 1505}
+
+==============================================================================
+5. LARGEST MARKET COUNT ON ONE EVENT (is pagination genuinely required?)
+==============================================================================
+largest single-event market counts:
+     31  KXNCAAFSPREAD-26SEP18HOUTTU (complete=True)
+     31  KXNCAAFSPREAD-26SEP17SYRPITT (complete=True)
+     29  KXNCAAFSPREAD-26SEP19CCARDEL (complete=True)
+     29  KXNCAAFSPREAD-26SEP19ASUKU (complete=True)
+     27  KXNCAAFTEAMTOTAL-26SEP19UGAARK (complete=True)
+     25  KXNCAAFTEAMTOTAL-26SEP19CCARDEL (complete=True)
+     25  KXNCAAFTEAMTOTAL-26SEP19BUFFPSU (complete=True)
+     25  KXNCAAFTEAMTOTAL-26SEP18HOUTTU (complete=True)
+     25  KXNCAAFSPREAD-26SEP18MIAWAKE (complete=True)
+     24  KXNCAAFTEAMTOTAL-26SEP19TULNKSU (complete=True)
+     24  KXNCAAFTEAMTOTAL-26SEP19ASUKU (complete=True)
+     24  KXNCAAFTEAMTOTAL-26SEP19AKRMINN (complete=True)
+     24  KXNCAAFTEAMTOTAL-26SEP18MIAWAKE (complete=True)
+     24  KXNCAAFTEAMTOTAL-26SEP17SYRPITT (complete=True)
+     23  KXNCAAFTEAMTOTAL-26SEP19MERGT (complete=True)
+
+events exceeding one 200-item page: 0 of 70 sampled
+NOTE: no sampled event exceeded 200 markets, but per-event pagination stays mandatory --
+      Kalshi adds ladder rungs as a game approaches, and an unpaged sweep would
+      silently truncate the first event that crosses the boundary.
+
+==============================================================================
+2. RECONCILIATION: milestone path vs series path
+==============================================================================
+series path: 145 CFB series -> 1946 open events
+milestone path: 1519 NCAAFB milestones -> 7513 referenced events
+
+in BOTH:                  1637
+ONLY in series path:      309
+ONLY in milestone path:   5876
+
+--- sample ONLY-in-milestone event tickers (would the series path miss them?) ---
+      KXNCAAF-26
+      KXNCAAF1H-26AUG27AUSCFUR
+      KXNCAAF1H-26AUG27CARKUTM
+      KXNCAAF1H-26AUG27CHATUWGA
+      KXNCAAF1H-26AUG27CHSOLINW
+      KXNCAAF1H-26AUG27CUWVDAV
+      KXNCAAF1H-26AUG27EIUMURR
+      KXNCAAF1H-26AUG27GSCELON
+      KXNCAAF1H-26AUG27HCUSELA
+      KXNCAAF1H-26AUG27LAFGTWN
+      KXNCAAF1H-26AUG27LCNWST
+      KXNCAAF1H-26AUG27LIUUND
+      KXNCAAF1H-26AUG27METOWS
+      KXNCAAF1H-26AUG27MHUYSU
+      KXNCAAF1H-26AUG27MVSUNICH
+      KXNCAAF1H-26AUG27NWIAWIU
+      KXNCAAF1H-26AUG27OHDUMORE
+      KXNCAAF1H-26AUG27SDSMTDRKE
+      KXNCAAF1H-26AUG27SIUUWFL
+      KXNCAAF1H-26AUG27STONDSU
+      KXNCAAF1H-26AUG27UVAWPRE
+      KXNCAAF1H-26AUG27WEBBPEAY
+      KXNCAAF1H-26AUG27WSUUST
+      KXNCAAF1H-26AUG28COLGFOR
+      KXNCAAF1H-26AUG28IDHOCP
+
+--- sample ONLY-in-series event tickers ---
+      KXCFBUNRANKEDUPSET-26W10
+      KXCFBUNRANKEDUPSET-26W11
+      KXCFBUNRANKEDUPSET-26W12
+      KXCFBUNRANKEDUPSET-26W3
+      KXCFBUNRANKEDUPSET-26W4
+      KXCFBUNRANKEDUPSET-26W5
+      KXCFBUNRANKEDUPSET-26W6
+      KXCFBUNRANKEDUPSET-26W7
+      KXCFBUNRANKEDUPSET-26W8
+      KXCFBUNRANKEDUPSET-26W9
+      KXNCAAF-27
+      KXNCAAFAAC-26
+      KXNCAAFAACQUAL-26
+      KXNCAAFACC-26
+      KXNCAAFACCLEADER-26PASSTD
+      KXNCAAFACCLEADER-26PASSYDS
+      KXNCAAFACCLEADER-26RECYDS
+      KXNCAAFACCLEADER-26RSHYDS
+      KXNCAAFACCQUAL-26
+      KXNCAAFACCREGTOP-27T3
+      KXNCAAFACCREGTOP-27T4
+      KXNCAAFACCREGTOP-27T5
+      KXNCAAFACCWINS-26W10
+      KXNCAAFAPANY-27R1
+      KXNCAAFAPANY-27T10
+
+--- status of up to 12 ONLY-in-milestone events ---
+      KXNCAAF-26                                   HTTP 200 series=KXNCAAF markets=0 statuses={}
+      KXNCAAF1H-26AUG27AUSCFUR                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27CARKUTM                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27CHATUWGA                    HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27CHSOLINW                    HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27CUWVDAV                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27EIUMURR                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27GSCELON                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27HCUSELA                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27LAFGTWN                     HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27LCNWST                      HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+      KXNCAAF1H-26AUG27LIUUND                      HTTP 200 series=KXNCAAF1H markets=3 statuses={'finalized': 3}
+
+==============================================================================
+PROBE COMPLETE
+==============================================================================

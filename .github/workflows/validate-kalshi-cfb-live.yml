@@ -21,6 +21,8 @@ on:
         type: choice
         options:
           - discovery
+          - milestone_surface
+          - milestone_reconciliation
           - market_detail
           - fees
           - fees_browser
@@ -65,6 +67,21 @@ jobs:
         # endpoint -- only GET requests against Kalshi's public market-data
         # API.
         run: python3 scripts/validate_kalshi_cfb_live.py
+      - name: Run live Kalshi CFB milestone/market-surface investigation
+        if: ${{ github.event.inputs.script == 'milestone_surface' }}
+        # scripts/investigate_kalshi_milestones_live.py -- the probe the
+        # market-discovery catalog architecture was designed from. Its
+        # captured transcripts are committed under docs/evidence/ as the
+        # evidence trail; re-dispatch this to re-measure the live surface
+        # after a Kalshi change. Read-only, credential-free, GET-only.
+        run: python3 scripts/investigate_kalshi_milestones_live.py
+      - name: Run live Kalshi milestone/series reconciliation probe
+        if: ${{ github.event.inputs.script == 'milestone_reconciliation' }}
+        # scripts/probe_kalshi_milestone_reconciliation.py -- confirms the
+        # milestone path and the series path still agree on the live CFB
+        # surface, and re-reads Kalshi's status vocabulary. Same read-only,
+        # credential-free contract.
+        run: python3 scripts/probe_kalshi_milestone_reconciliation.py
       - name: Run live Kalshi market-detail field probe
         if: ${{ github.event.inputs.script == 'market_detail' }}
         # scripts/validate_kalshi_market_detail_live.py -- same read-only,
