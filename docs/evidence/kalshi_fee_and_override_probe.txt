@@ -34,11 +34,11 @@ Fee Rounding - API Documentation Documentation Index Fetch the complete document
  The balance changes by -$0.06 ; the trade fee plus rounding fee is exactly $0.005 . Accumulator across fills If three fills each add $0.004 of rounding overpayment, the accumulator carries it forward. Assuming the third fill has enough total fee to cover a $0.01 rebate: Fill Added Before Rebate Rebate Carried Forward 1 $0.004 $0.004 — $0.004 2 $0.004 $0.008 — $0.008 3 $0.004 $0.012 $0.010 $0.002 This table uses a non-direct member’s $0.01 precision. Direct-member rebates follow the same mechanics in $0.0001 increments. In either case, the rebate is capped so that the fill’s net fee cannot become negative. Fixed-Point Representation Historical Data Powered by This documentation is built and hosted on Mintlify, a developer documentation platform
 
 ### GET https://kalshi.com/docs/kalshi-fee-schedule.pdf
-  HTTP 429  32198 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  33938 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ### GET https://kalshi.com/regulatory/fee-schedule
-  HTTP 429  32183 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  33938 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ==============================================================================
@@ -116,17 +116,17 @@ open CFB events swept: 1937
 {
   "fee_multiplier": 1,
   "fee_type": "quadratic",
-  "ticker": "KXNCAAFSEED",
-  "title": "College Football Playoff Seed"
+  "ticker": "KXNCAAFTOPAPRANK",
+  "title": "College Football AP Poll Top Rank"
 }
 
 --- do markets carry their own fee metadata? ---
-  fee-related market keys on KXCFBUNRANKEDUPSET-26W3-2: NONE
+  fee-related market keys on KXCFBUNRANKEDUPSET-26W3-5: NONE
 
 ==============================================================================
 C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE
 ==============================================================================
-built the real catalog: 241 games in 118s
+built the real catalog: 241 games in 120s
 contracts carrying a fee block: 15326
 
 --- is the fee computable? ---
@@ -146,23 +146,41 @@ contracts carrying a fee block: 15326
 
 --- worked examples from named LIVE contracts ---
 
-  KXNCAAF1H-26SEP17SYRPITT-PITT  (26SEP17SYRPITT)
-    'Pittsburgh wins the 1st half'
-    yes_ask=1.0  yes_mid=0.5  model=quadratic  mult=1.0  source=series
-    published fee at ASK : $0.000000   <- the headline
-    recomputed by hand   : $0.000000
-    published fee at MID : $0.017500   <- market mechanic, NOT an executable-order fee
+  KXNCAAF2HSPREAD-26SEP17SYRPITT-PITT11  (26SEP17SYRPITT)
+    'Pittsburgh wins 2H by over 10.5 points'
+    yes_ask=0.49  yes_mid=0.265  model=quadratic  mult=1.0  source=series  maker_fee_applies=False
+    published fee at ASK : $0.017493   <- the headline
+    recomputed by hand   : $0.017493
+    published fee at MID : $0.013635   <- market mechanic, NOT an executable-order fee
+    old whole-cent helper : $0.010000   (0.6x the real trade fee)
+
+  KXNCAAFSPREAD-26SEP18MIAWAKE-MIA21  (26SEP18MIAWAKE)
+    'Miami (FL) wins by over 20.5 points'
+    yes_ask=0.51  yes_mid=0.505  model=quadratic_with_maker_fees  mult=1.0  source=series  maker_fee_applies=True
+    published fee at ASK : $0.017493   <- the headline
+    recomputed by hand   : $0.017493
+    published fee at MID : $0.017499   <- market mechanic, NOT an executable-order fee
+    old whole-cent helper : $0.010000   (0.6x the real trade fee)
+
+  KXNCAAF2HSPREAD-26SEP17SYRPITT-SYR10  (26SEP17SYRPITT)
+    'Syracuse wins 2H by over 9.5 points'
+    yes_ask=0.01  yes_mid=0.005  model=quadratic  mult=1.0  source=series  maker_fee_applies=False
+    published fee at ASK : $0.000693   <- the headline
+    recomputed by hand   : $0.000693
+    published fee at MID : $0.000349   <- market mechanic, NOT an executable-order fee
+    old whole-cent helper : $0.010000   (14.4x the real trade fee)
+
+  worked examples shown: 3
+
+--- contracts quoted at $0.00 or $1.00: 184 ---
+  At those asks the quadratic schedule's P(1-P) term is 0, so the
+  trade fee is exactly $0.00 -- correct, and a demonstration of why
+  the mid figure cannot be the headline:
+  contracts whose fee at the ASK is $0.00 while the MID figure is not: 184
+    e.g. ask=1.0 -> $0.000000, mid=0.5 -> $0.017500
+    A consumer reading the mid figure as 'the fee' would book a cost
+    that the executable order does not incur.
 
 ==============================================================================
-C. FAILED: ZeroDivisionError: float division by zero
+PROBE COMPLETE
 ==============================================================================
-Traceback (most recent call last):
-  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 402, in <module>
-    sys.exit(main())
-             ^^^^^^
-  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 393, in main
-    audit_published_fee_blocks()
-  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 379, in audit_published_fee_blocks
-    f"  ({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the trade fee)")
-          ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ZeroDivisionError: float division by zero
