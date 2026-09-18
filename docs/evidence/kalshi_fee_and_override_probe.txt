@@ -34,11 +34,11 @@ Fee Rounding - API Documentation Documentation Index Fetch the complete document
  The balance changes by -$0.06 ; the trade fee plus rounding fee is exactly $0.005 . Accumulator across fills If three fills each add $0.004 of rounding overpayment, the accumulator carries it forward. Assuming the third fill has enough total fee to cover a $0.01 rebate: Fill Added Before Rebate Rebate Carried Forward 1 $0.004 $0.004 — $0.004 2 $0.004 $0.008 — $0.008 3 $0.004 $0.012 $0.010 $0.002 This table uses a non-direct member’s $0.01 precision. Direct-member rebates follow the same mechanics in $0.0001 increments. In either case, the rebate is capped so that the fill’s net fee cannot become negative. Fixed-Point Representation Historical Data Powered by This documentation is built and hosted on Mintlify, a developer documentation platform
 
 ### GET https://kalshi.com/docs/kalshi-fee-schedule.pdf
-  HTTP 429  32183 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32181 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ### GET https://kalshi.com/regulatory/fee-schedule
-  HTTP 429  32179 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32189 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ==============================================================================
@@ -116,8 +116,8 @@ open CFB events swept: 1930
 {
   "fee_multiplier": 1,
   "fee_type": "quadratic",
-  "ticker": "KXNCAAFTEAMRECYDS",
-  "title": "College Football Team Receiving Yards"
+  "ticker": "KXNCAAFUNDEFEATEDHOME",
+  "title": "College Football Teams to go Undefeated at Home"
 }
 
 --- do markets carry their own fee metadata? ---
@@ -126,7 +126,7 @@ open CFB events swept: 1930
 ==============================================================================
 C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE
 ==============================================================================
-built the real catalog: 241 games in 119s
+built the real catalog: 241 games in 121s
 contracts carrying a fee block: 15444
 
 --- is the fee computable? ---
@@ -141,6 +141,11 @@ contracts carrying a fee block: 15444
   contracts where the quoted no_ask != 1 - yes_ask: 15444
     (each one is a contract where deriving the NO fee from the YES ask
      would have priced a trade at a price nobody is offering)
+
+  contracts where quoted no_ask == 1 - yes_bid : 15444/15444
+  contracts where quoted no_bid == 1 - yes_ask : 15444/15444
+    => 1 - yes_ask is the NO BID (where you could SELL NO), not the NO ask.
+       Deriving a NO taker fee from it prices the wrong side of the spread.
     e.g. yes_ask=1.0 -> complement 0.0000, but the quoted no_ask is 1.0
   unavailable_reasons  : NONE
 
@@ -209,10 +214,10 @@ contracts quoted YES bid $0.00 / YES ask $1.00 : 269
   no_ask     {'1.0': 269}
 
 --- post-fix classification of the whole live surface ---
-  book_state           : {'empty_book': 269, 'two_sided': 15000, 'bid_only': 44, 'ask_only': 131}
-  two_sided_quote true : 15000
-  mid published        : 15000
-  mid NOT published    : 444
+  book_state           : {'empty_book': 269, 'two_sided': 14998, 'bid_only': 44, 'ask_only': 133}
+  two_sided_quote true : 14998
+  mid published        : 14998
+  mid NOT published    : 446
   is_sentinel_full_width_book : 269
 
 --- how are the 0/100 contracts classified now? ---
@@ -289,14 +294,14 @@ contracts quoted YES bid $0.00 / YES ask $1.00 : 269
   "yes_mid": null
 }
 
---- contrast: 15000 contracts with an ordinary quote ---
+--- contrast: 14998 contracts with an ordinary quote ---
   yes_bid_size         {'positive': 4000}  (first 4000)
   yes_ask_size         {'positive': 4000}  (first 4000)
   no_bid_size          {'null': 4000}  (first 4000)
   no_ask_size          {'null': 4000}  (first 4000)
 
 --- how many contracts lack a positive size on ONE side? ---
-  no positive yes_bid_size : 400 / 15444
+  no positive yes_bid_size : 402 / 15444
   no positive yes_ask_size : 313 / 15444
   no positive size on EITHER: 269
 
