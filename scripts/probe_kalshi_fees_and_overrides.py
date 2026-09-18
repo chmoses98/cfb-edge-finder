@@ -438,6 +438,108 @@ def audit_published_fee_blocks() -> None:
         print("    that the executable order does not incur.")
 
 
+# --------------------------------------------------------------------------
+# D. what is inside a 0/100 book?
+# --------------------------------------------------------------------------
+
+
+def probe_empty_book_shape() -> None:
+    """Characterize every live contract quoted $0.00 bid / $1.00 ask.
+
+    The question is precisely: does a 100-cent spread mean "nobody is
+    quoting" or "somebody is quoting 0 and 100"? Quoted SIZE answers it,
+    and no amount of reasoning about prices can."""
+    from cfb_edge_finder.catalog.artifacts import build_catalog
+    from cfb_edge_finder.catalog.discovery import MarketDiscovery
+    from cfb_edge_finder.data.kalshi_client import KalshiClient
+
+    _hdr("D. THE SHAPE OF A 0/100 BOOK, MEASURED LIVE")
+
+    client = KalshiClient()
+    run = MarketDiscovery(client.get_json).run()
+    catalog = build_catalog(run, include_markets=True)
+    markets = [m for g in catalog.get("games") or [] for m in (g.get("markets") or [])]
+    print(f"contracts in the live catalog: {len(markets)}")
+
+    def size(m: dict[str, Any], key: str) -> Any:
+        return m.get(key)
+
+    zero_hundred = [
+        m for m in markets
+        if m.get("yes_bid") in (0.0, 0) and m.get("yes_ask") in (1.0, 1)
+    ]
+    print(f"\ncontracts quoted YES bid $0.00 / YES ask $1.00 : {len(zero_hundred)}")
+    if not zero_hundred:
+        print("  none on this capture -- nothing to characterize")
+        return
+
+    def bucket(values: list[Any]) -> dict[str, int]:
+        out: Counter[str] = Counter()
+        for v in values:
+            if v is None:
+                out["null"] += 1
+            elif float(v) == 0.0:
+                out["zero"] += 1
+            else:
+                out["positive"] += 1
+        return dict(out)
+
+    print("\n--- quoted size and activity on those contracts ---")
+    for key in ("yes_bid_size", "yes_ask_size", "no_bid_size", "no_ask_size",
+                "volume", "volume_24h", "open_interest", "liquidity_dollars"):
+        print(f"  {key:20} {bucket([size(m, key) for m in zero_hundred])}")
+
+    no_size_at_all = [
+        m for m in zero_hundred
+        if not any(float(m.get(k) or 0.0) > 0.0
+                   for k in ("yes_bid_size", "yes_ask_size", "no_bid_size", "no_ask_size"))
+    ]
+    some_size = [m for m in zero_hundred if m not in no_size_at_all]
+    print(f"\n  0/100 contracts with NO positive size on any side : {len(no_size_at_all)}")
+    print(f"  0/100 contracts with SOME positive quoted size     : {len(some_size)}")
+
+    print("\n--- what the NO side says on those contracts ---")
+    for key in ("no_bid", "no_ask"):
+        vals = Counter(str(m.get(key)) for m in zero_hundred)
+        print(f"  {key:10} {dict(vals)}")
+
+    print("\n--- FULL RAW PAYLOAD of one 0/100 contract ---")
+    sample = no_size_at_all[0] if no_size_at_all else zero_hundred[0]
+    printable = {k: v for k, v in sample.items() if k not in ("raw", "mechanics", "fee")}
+    print(json.dumps(printable, indent=2, sort_keys=True, default=str)[:2200])
+    print("\n  its mechanics block:")
+    print(json.dumps(sample.get("mechanics"), indent=2, sort_keys=True, default=str))
+    if some_size:
+        print("\n--- and one 0/100 contract that DOES carry quoted size ---")
+        s2 = some_size[0]
+        print(f"  {s2['market_ticker']}  {s2.get('title', '')[:60]!r}")
+        print(f"    yes {s2.get('yes_bid')}/{s2.get('yes_ask')}  "
+              f"sizes {s2.get('yes_bid_size')}/{s2.get('yes_ask_size')}  "
+              f"no {s2.get('no_bid')}/{s2.get('no_ask')}  "
+              f"sizes {s2.get('no_bid_size')}/{s2.get('no_ask_size')}  "
+              f"vol={s2.get('volume')} oi={s2.get('open_interest')}")
+
+    # For contrast: what does a NORMAL contract's size look like? Without
+    # this, "size is zero" might just mean the catalog never captures size.
+    normal = [
+        m for m in markets
+        if m.get("yes_bid") not in (None, 0.0, 0) and m.get("yes_ask") not in (None, 1.0, 1)
+    ]
+    print(f"\n--- contrast: {len(normal)} contracts with an ordinary quote ---")
+    for key in ("yes_bid_size", "yes_ask_size", "no_bid_size", "no_ask_size"):
+        print(f"  {key:20} {bucket([size(m, key) for m in normal[:4000]])}  (first 4000)")
+
+    # How widespread is a one-sided or absent size generally? The fix has
+    # to hold for those too, not only for the 0/100 shape.
+    print("\n--- how many contracts lack a positive size on ONE side? ---")
+    no_bid_size = [m for m in markets if not float(m.get("yes_bid_size") or 0.0) > 0.0]
+    no_ask_size = [m for m in markets if not float(m.get("yes_ask_size") or 0.0) > 0.0]
+    print(f"  no positive yes_bid_size : {len(no_bid_size)} / {len(markets)}")
+    print(f"  no positive yes_ask_size : {len(no_ask_size)} / {len(markets)}")
+    print(f"  no positive size on EITHER: "
+          f"{len([m for m in markets if m in no_bid_size and m in no_ask_size])}")
+
+
 def main() -> int:
     print("Kalshi fee-rules + event-override probe")
     fetch_official_fee_rules()
@@ -446,6 +548,11 @@ def main() -> int:
         audit_published_fee_blocks()
     except Exception as exc:  # a probe reports its own failure; it never hides it
         _hdr(f"C. FAILED: {type(exc).__name__}: {exc}")
+        raise
+    try:
+        probe_empty_book_shape()
+    except Exception as exc:
+        _hdr(f"D. FAILED: {type(exc).__name__}: {exc}")
         raise
     _hdr("PROBE COMPLETE")
     return 0
