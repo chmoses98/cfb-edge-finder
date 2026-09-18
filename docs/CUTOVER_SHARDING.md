@@ -64,6 +64,14 @@ against the workflow files at this PR's head.
 | 6 | `kalshi-market-catalog.yml` — Kalshi CFB Market Catalog | `schedule` (30 min in the Thu-Sun slate window, 6-hourly otherwise), `workflow_dispatch` | `build_kalshi_cfb_catalog.py` -> raw `git commit`/`git push` of `data/live/cfb_market_catalog.json`, `cfb_markets_flat.json` and `cfb_catalog_status.json` on the **working branch**, not `research-data` | Locks 1 + 2 are the wrong instrument — see the note below |
 
 
+| 7 | `probe-kalshi-fees.yml` — Probe Kalshi Fees and Event Overrides (evidence capture) | `push` to `claude/**` touching the probe, `workflow_dispatch` | Commits an evidence transcript to `docs/evidence/` on the **feature branch it was pushed from**, never `research-data` and never `main` | Not applicable — it cannot fire on `main` at all (see note) |
+
+**#7 cannot affect a cutover.** It is an investigation tool: it triggers
+only on a push to a `claude/**` branch touching the probe itself, and it
+commits only to that same feature branch. It holds the shared writer lock
+because this repository requires any repo-writing workflow to, not because
+it can reach the durable store. Nothing needs freezing.
+
 **#6 is a different animal from #1-#5 and the cutover should treat it as
 such.** The market catalog is the post-pivot LIVE data path: it writes
 `data/live/`, never the `research-data` durable store, and it carries no
