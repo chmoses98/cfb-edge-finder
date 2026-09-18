@@ -28,9 +28,10 @@ this repository, to a human or an external handicapper reading the catalog.
 | `.github/workflows/kalshi-market-catalog.yml` | The only scheduled writer. Refreshes the catalog and commits on change. |
 | `scripts/build_kalshi_cfb_catalog.py` | Entrypoint. No credentials of any kind. |
 | `src/cfb_edge_finder/catalog/` | Discovery, classification, mechanics, artifacts. |
-| `data/live/cfb_market_catalog.json` | **Primary product.** Per-physical-game market inventory. |
-| `data/live/cfb_markets_flat.json` | One row per contract, for search and joins. |
+| `data/live/cfb_market_catalog.json` | **Primary product.** The slate index: one entry per physical game, pointing at its detail file. |
+| `data/live/games/<game_key>.json` | One game's complete contract inventory. |
 | `data/live/cfb_catalog_status.json` | Small status/fingerprint file for change detection. |
+| `docs/RUN_CFB_CONTRACT.md` | What a consuming session must do, including the completeness gate and the freshness rule. |
 
 **No secret is required.** Kalshi's market-data endpoints are public reads,
 and physical-game identity comes from Kalshi's own `football_game`
@@ -87,6 +88,53 @@ from the pivot forward it is also the better raw record — but it is a
 change-detected snapshot of the current surface, **not** a checkpointed
 pre-kickoff observation series, and it is not a substitute for a closing
 line captured at a known offset from kickoff.
+
+---
+
+## If CLV research is reintroduced later
+
+**The old collector stays hibernated. Do not re-enable it for this.** We
+accept the loss of its future projection-specific closing observations.
+
+That collector computed closing-line value against the retired projection
+model's own notion of a fair line, which is why it needed the model, the
+CFBD history fetch and a checkpoint schedule built around them. A CLV study
+does not actually require any of that. The measurement that matters is
+model-free:
+
+    CLV  =  the price you actually paid for a contract
+            vs
+            that same contract's final pre-kickoff Kalshi executable price
+
+Both sides are market observations. Neither needs a projection.
+
+If that work is picked up, implement it against the **new catalog**:
+
+- the wager side comes from the existing wager ledger
+  (`src/cfb_edge_finder/accounting/`), which already records what was paid;
+- the closing side comes from a catalog capture taken close to kickoff —
+  the same `data/live/games/<game_key>.json` contracts, joined on
+  `market_ticker`, using the executable price (`yes_ask`/`yes_bid`, not the
+  mid) and netting Kalshi's fee from `mechanics`;
+- `occurrence_datetime` and `close_time` on every contract say when
+  "pre-kickoff" ends, so the capture window is defined by the data rather
+  than by a separate schedule.
+
+**Two things such a system would need that the catalog does not do today**,
+stated plainly so nobody assumes otherwise:
+
+1. The catalog is a change-detected snapshot of the CURRENT surface. It is
+   not a checkpointed series captured at a known offset from kickoff. A CLV
+   study needs a deliberate near-kickoff capture — a small addition to the
+   catalog's cadence, not a revival of the old collector.
+2. Once a game kicks off it leaves the published horizon and its detail
+   file is pruned. A CLV study must persist the closing capture it cares
+   about at the time, rather than expecting to read it back later.
+
+It should NOT require the retired CFB projection model, and it must not
+become a route to reintroduce one onto the live path.
+
+**This mission does not implement any of it.**
 
 ---
 

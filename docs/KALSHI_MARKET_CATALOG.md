@@ -175,7 +175,11 @@ Three consequences:
 2. **A market carries no `series_ticker`.** The catalog takes it from the
    parent event, which knows it for certain.
 3. **Fee metadata is on the SERIES**, not the market (`fee_type:
-   "quadratic"`, `fee_multiplier: 1`), and is joined in per contract.
+   "quadratic"`, `fee_multiplier: 1`), and is joined in per contract. An
+   **event** may override it (`fee_type_override`,
+   `fee_multiplier_override`), and the override wins. Markets themselves
+   carry no fee keys at all — verified across the live CFB surface, see
+   `docs/evidence/kalshi_fee_and_override_probe.txt`.
 
 Top-of-book quoted size is on the market (`yes_bid_size_fp`,
 `yes_ask_size_fp`). Full depth is available per market from
@@ -390,7 +394,7 @@ occurrence_datetime  updated_time
 rules_primary  rules_secondary  early_close_condition  can_close_early
 settlement_timer_seconds  settlement_sources
 exchange_index  fee_type  fee_multiplier
-mechanics{...}
+fee{...}  mechanics{...}
 ```
 
 Detail files omit the raw Kalshi payload by default so they stay efficient
@@ -406,23 +410,201 @@ alone and would be identical whoever was playing:
 ```
 yes_mid  no_mid  yes_bid_ask_spread  yes_bid_ask_spread_cents
 implied_probability_yes_mid / _yes_ask / _yes_bid / _last
-two_sided_quote
-estimated_fee_per_contract_at_mid  fee_formula
-quote_age_seconds  seconds_until_close  seconds_until_occurrence
+two_sided_quote  yes_bid_is_executable  yes_ask_is_executable
+book_state  is_sentinel_full_width_book  mid_is_published  liquidity_basis
 ```
+
+Fees are **not** in this block — see below.
+
+Every value is a pure function of the quote, with no dependence on when it
+was computed. That is deliberate: clock-derived countdowns
+(`quote_age_seconds`, `seconds_until_close`, `seconds_until_occurrence`)
+were published in the first production build and caused **all 239 game
+files to be rewritten on every run** even when no price had moved,
+defeating the per-game change detection the split artifact exists for.
+They carried no information — each is a subtraction of two absolute
+timestamps already published — so they were removed rather than
+special-cased. A consumer computes them against its own clock.
 
 `implied_probability` is the price restated in probability units — which is
 what a $1 binary contract's price already is. A one-sided book yields
 `null` for the mid rather than an invented price; a price outside `[0,1]`
 yields `null` rather than a clipped, confident-looking 100%.
 
-Fee is Kalshi's published quadratic schedule,
-`ceil(fee_multiplier × 0.07 × contracts × P × (1−P))` in cents, with the
-multiplier taken from the series. The quadratic shape matters: a 2¢
-longshot and a 50¢ coin flip carry very different round-trip costs.
+#### Quoted prices vs. executable liquidity
+
+**A price field existing is not the same fact as liquidity existing**, and
+a live capture showed how badly that can read. 269 of 15,444 contracts are
+quoted **$0.00 bid / $1.00 ask with `yes_bid_size == 0` and
+`yes_ask_size == 0`** and `liquidity_dollars == 0`. Both price fields are
+numerically present, so the old test (`both prices are not None`) called it
+a two-sided quote and published:
+
+```
+yes_mid                      0.5
+implied_probability_yes_mid  0.5
+two_sided_quote              true
+yes_bid_ask_spread_cents     100.0
+```
+
+No market said 50%. The market said nothing. Worse, those 269 all carry
+**positive volume and open interest** — the sampled one had 29,913 OI and a
+$0.99 last price — so every activity measure makes them look healthy. They
+are real traded contracts whose book has emptied.
+
+Quoted **size** is the only field that separates the two facts, and the
+live payload settles how to read it: ordinary contracts carry positive
+`yes_bid_size` and `yes_ask_size` (4,000/4,000 sampled), the empty ones
+carry exactly 0. `no_bid_size` / `no_ask_size` are `null` on **every**
+contract in the catalog, ordinary ones included, so NO-side size carries no
+signal and is not consulted — a binary's YES and NO sides are the same
+book.
+
+| `book_state` | | Live |
+|---|---|---|
+| `two_sided` | positive quoted size on both sides | 14,999 |
+| `bid_only` | someone bids, nobody offers | 132 |
+| `ask_only` | someone offers, nobody bids | 44 |
+| `empty_book` | prices present, no size on either side | 269 |
+| `no_quote` | no price fields at all | 0 |
+
+`yes_mid`, `no_mid` and `implied_probability_yes_mid` are `null` unless
+`book_state == "two_sided"` — 445 contracts (2.9%) lose a published mid.
+`is_sentinel_full_width_book` names the 0/100 shape directly. The spread is
+still published, because a 100-cent spread is the *evidence* the book is
+empty; suppressing it would remove information rather than add safety. A
+null size counts as not-executable, so if Kalshi ever stopped publishing
+sizes every book would read as unexecutable — visible and safe — rather
+than silently reading as liquid.
+
+**The contract stays in the menu.** Discovery completeness and quote
+quality are different concepts, and a contract with no bid today may have
+one at kickoff. It is simply not price discovery until liquidity appears.
 
 `tests/test_catalog_schema_and_isolation.py` pins the exact key set of this
 block, so a model-shaped field cannot be added to it quietly.
+
+### Fees — `src/cfb_edge_finder/catalog/fees.py`
+
+Fees live in their own module and their own published block, for one
+reason: **what a fee number represents matters as much as its value**, and
+the earlier versions of this code got that wrong twice.
+
+**Kalshi's actual rounding rule.** Fees are six-decimal dollar amounts.
+The trade fee is the model fee rounded up to the nearest **$0.000001** —
+not to a cent ([fee rounding][fr]):
+
+```
+trade_fee     = ceil_6dp(model_fee)
+aligned_change= floor_precision(revenue − trade_fee)
+rounding_fee  = (revenue − trade_fee) − aligned_change
+net fee       = trade fee + rounding fee − rebate        (≥ $0.00)
+```
+
+An earlier helper here rounded up to a whole cent. On the exchange's own
+worked example that is a **2.75× overstatement** — $0.01 where the trade
+fee is $0.003639 — which is not a rounding nicety on a 2¢ longshot.
+
+**What is published, and what is deliberately not.** Only the trade fee
+is account-independent. The rounding fee, the rebate and the per-*order*
+fee accumulator all depend on the member's target balance precision
+($0.0001 direct, $0.01 non-direct), which a public catalog cannot know. So
+the `fee` block publishes the trade fee, sets `is_net_fee: false`, and
+lists the four things it excludes by name. The rounding and rebate
+mechanics *are* implemented, and are exercised against Kalshi's official
+worked examples in `tests/test_catalog_fees.py`, to prove the rules were
+read correctly — they are simply not published as though we knew an
+account's net cost.
+
+**Both executable sides are priced.** A consuming session may conclude the
+correct wager is NO, and pricing that must not require reimplementing the
+fee model. `model_trade_fee_at_yes_ask` and `model_trade_fee_at_no_ask` are
+each computed from **their own quoted ask**. The NO figure is deliberately
+never `1 − yes_ask`. The two sides mirror each other *across* the spread —
+`no_ask == 1 − yes_bid` and `no_bid == 1 − yes_ask`, verified on all 15,444
+live contracts — so `1 − yes_ask` is the NO **bid**, the price you could
+*sell* NO at. Pricing a NO *buy* from it is the wrong side of the spread,
+understating the cost by its full width. Quoted `no_ask` and `1 − yes_ask`
+disagreed on 15,444 of 15,444 live contracts; the two side fees differ on
+15,057. An absent `no_ask` yields a `null` NO fee. `executable_bases` and
+`non_executable_bases` name which is which, so nothing has to be inferred
+from a key name. `model_trade_fee_at_yes_mid` is retained as a market
+mechanic and goes `null` whenever the mid does.
+
+**Only named models are priced.** `SUPPORTED_FEE_MODELS` is an exact-match
+allowlist of `quadratic` and `quadratic_with_maker_fees` — the two observed
+live and the two whose formula is implemented and tested here. An earlier
+version matched any type *starting with* `quadratic`, which inverts the
+fail-closed rule: it opts every future string into an arithmetic never
+verified for it. A `quadratic_v2` with a different coefficient would have
+been priced with today's 0.07 and published as a measurement. A shared name
+prefix is not a shared formula; the point of a versioned name is that what
+follows it changes. Adding a model is a deliberate act — read the schedule,
+implement it, test it against the exchange's examples, then list it.
+Maker applicability is likewise not inferred from the name.
+
+**Effective schedule, with event precedence.** The block publishes the
+effective `fee_type`/`fee_multiplier` — the event's override if present,
+otherwise the series' — plus `source` (`event_override` / `series` /
+`unavailable`) so a reader can see which applied. The event object is
+already in hand during capture, so honouring the precedence costs no extra
+request. Live CFB carries **zero** overrides today (0 of 1,937 open
+events; the keys are absent from the payload), which is precisely why it is
+tested rather than assumed: nothing in production would notice if it broke.
+
+**Two quadratic spellings.** `quadratic` and `quadratic_with_maker_fees`
+(the latter on ~29% of live CFB markets, including the `KXNCAAFGAME`
+moneylines). The taker fee is identical under both; `_with_maker_fees`
+means the resting side is charged too, which `maker_fee_applies` reports.
+Matching only the exact string `quadratic` published a null fee on nearly
+a third of the menu — a defect the first production run on main exposed.
+
+**Measured on the live surface**, not asserted from fixtures — the first
+production run is what found `quadratic_with_maker_fees`, and a fee that
+is null on a third of the menu passes every test written against a
+fixture that lacks it. Section C of
+`docs/evidence/kalshi_fee_and_override_probe.txt` builds the real catalog
+and audits every published block:
+
+| | |
+|---|---|
+| contracts carrying a fee block | 15,326 |
+| computable at the ask | **15,326 / 15,326** (0 with an ask but no fee) |
+| `support` | `supported` on all 15,326 |
+| `source` | `series` on all 15,326 — **0 event overrides live** |
+| effective model | `quadratic` 10,672 / `quadratic_with_maker_fees` 4,654 |
+| effective multiplier | `1.0` on all 15,326 |
+| `is_net_fee` | `false` on all 15,326 |
+
+Three named live contracts, each recomputed by hand from the exchange's
+formula and matching the published figure exactly:
+
+```
+KXNCAAF2HSPREAD-26SEP17SYRPITT-PITT10  ask 0.47  -> $0.017437   (old helper $0.02,  1.15x)
+KXNCAAFSPREAD-26SEP18MIAWAKE-MIA21     ask 0.51  -> $0.017493   (old helper $0.02,  1.14x)
+KXNCAAF1HFT-26SEP17SYRPITT-PITTSYR     ask 0.01  -> $0.000693   (old helper $0.01, 14.43x)
+```
+
+The longshot is the case that mattered: the retired helper rounded a
+$0.000693 fee up to a whole cent, **14× the real cost**, on precisely the
+contracts where a cent of assumed fee decides whether a price clears.
+
+185 live contracts are quoted at an ask of $0.00 or $1.00. There the
+quadratic term `P(1−P)` is zero, so the trade fee is correctly $0.00
+while the mid-based figure reads $0.0175 — the sharpest available
+demonstration of why the mid figure cannot be the headline: a consumer
+reading it as *the* fee books a cost the executable order does not incur.
+
+**Missing metadata fails closed.** A missing `fee_type` is not treated as
+quadratic; a missing `fee_multiplier` is not treated as 1; a series whose
+metadata request failed is not treated as a series without fees. Each
+publishes `null` figures with a distinct `unavailable_reason`, and
+`maker_fee_applies` is `null` rather than `false` when the schedule is
+unknown. Every one of those defaults would be right in the ordinary case
+and silently wrong in exactly the case a consumer needs warning about — a
+data failure must not be published as a measurement.
+
+[fr]: https://docs.kalshi.com/getting_started/fee_rounding
 
 ### Determinism
 

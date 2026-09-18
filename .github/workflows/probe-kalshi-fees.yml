@@ -1,0 +1,85 @@
+name: Probe Kalshi Fees and Event Overrides (evidence capture)
+
+# *** WHY THIS EXISTS AND WHY IT COMMITS ITS OUTPUT ***
+# This repository's dev environment has no network egress to Kalshi's API
+# hosts OR to docs.kalshi.com (organization policy: 403 to CONNECT, and
+# WebFetch reports EGRESS_BLOCKED). The current official fee rules and the
+# live event fee-override surface can therefore only be read from a
+# GitHub-hosted runner.
+#
+# The transcript is committed because the job-log API returns only a
+# bounded tail, which silently hides exactly the parts that matter here --
+# the verbatim fee formulas and worked examples the code is being
+# corrected against. Committed evidence is also what makes the correction
+# reviewable rather than asserted.
+#
+# Push-triggered on the probe itself: a workflow_dispatch workflow is not
+# dispatchable until its file reaches the default branch, whereas push
+# runs the definition from the pushed commit.
+on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "scripts/probe_kalshi_fees_and_overrides.py"
+      - ".github/workflows/probe-kalshi-fees.yml"
+  workflow_dispatch:
+
+# contents: write is used only to commit the evidence transcript to this
+# same feature branch. No Kalshi write/order endpoint is ever called and
+# no secret beyond the checkout token is consumed.
+permissions:
+  contents: write
+
+# Shares the repository's single writer lock, as
+# tests/test_research_workflow_concurrency.py requires of any workflow
+# that can write the repo. cancel-in-progress: false because a queued
+# catalog run must never be cancelled by this probe.
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        # The package itself, not just requests: section C builds the real
+        # catalog and audits the fee blocks it publishes, which is the only
+        # way to see the corrected fee code meet the live surface. The first
+        # production run is what found `quadratic_with_maker_fees`; a
+        # fixture would not have.
+        run: |
+          pip install -e .
+          pip install requests pypdf
+      - name: Probe official fee rules and live event fee overrides
+        # Unauthenticated GETs against Kalshi's public docs and public
+        # market-data API only.
+        run: |
+          mkdir -p docs/evidence
+          python3 -u scripts/probe_kalshi_fees_and_overrides.py \
+            > docs/evidence/kalshi_fee_and_override_probe.txt 2>&1 || true
+          wc -c docs/evidence/kalshi_fee_and_override_probe.txt
+          tail -40 docs/evidence/kalshi_fee_and_override_probe.txt
+      - name: Commit evidence transcript
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/evidence/kalshi_fee_and_override_probe.txt
+          if git diff --cached --quiet; then
+            echo "evidence unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "Kalshi fee-rules and event-override probe evidence (run ${{ github.run_id }})"
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" \
+              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt ${attempt} failed; retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1

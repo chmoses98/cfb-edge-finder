@@ -67,6 +67,7 @@ from cfb_edge_finder.catalog.classification import (
     classify_market,
 )
 from cfb_edge_finder.catalog.contract import CatalogContract, build_contract
+from cfb_edge_finder.catalog.fees import resolve_effective_fee
 from cfb_edge_finder.catalog.identity import (
     MILESTONE_TYPE_FOOTBALL_GAME,
     MilestoneGame,
@@ -539,7 +540,16 @@ class MarketDiscovery:
                     completeness.pagination_failed_event_tickers.append(event_ticker)
                     completeness.api_failures += 1
 
-            series = series_fees.get(series_ticker) or {}
+            # Fee precedence, as Kalshi documents it: an event's
+            # fee_type_override / fee_multiplier_override wins over the
+            # parent series' fee_type / fee_multiplier. The event object is
+            # already in hand, so honouring this costs no extra request.
+            # A series we never resolved yields NO fee rather than a
+            # defaulted one -- see catalog/fees.py on failing closed.
+            series = series_fees.get(series_ticker)
+            effective_fee = resolve_effective_fee(
+                event, series, series_lookup_succeeded=series is not None
+            )
             settlement_sources = event.get("settlement_sources") or []
 
             for market in markets:
@@ -548,8 +558,7 @@ class MarketDiscovery:
                     game_key=game.game_key,
                     series_ticker=series_ticker,
                     settlement_sources=settlement_sources,
-                    fee_type=series.get("fee_type"),
-                    fee_multiplier=series.get("fee_multiplier"),
+                    effective_fee=effective_fee,
                     captured_at=run.captured_at,
                     classification=classify_market(
                         series_ticker, market.get("title"), market.get("rules_primary")

@@ -17,10 +17,10 @@ import pytest
 
 from cfb_edge_finder.catalog.artifacts import build_catalog, build_flat_index
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
+from cfb_edge_finder.catalog.fees import FeeModelSupport, FeeSource, resolve_effective_fee
 from cfb_edge_finder.catalog.mechanics import (
     bid_ask_spread,
     implied_probability,
-    kalshi_trading_fee,
     mid_price,
     quote_age_seconds,
 )
@@ -267,6 +267,7 @@ def test_every_market_carries_the_mandated_contract_fields():
         "rules_secondary",
         "fee_type",
         "fee_multiplier",
+        "fee",
         "exchange_index",
         "settlement_sources",
         "family",
@@ -374,8 +375,7 @@ def test_integer_cent_prices_are_also_accepted():
         game_key="g",
         series_ticker="KXNCAAFGAME",
         settlement_sources=[],
-        fee_type="quadratic",
-        fee_multiplier=1,
+        effective_fee=_quadratic_fee(),
         captured_at=NOW,
     )
     assert contract.quote.yes_ask == pytest.approx(0.12)
@@ -400,14 +400,20 @@ def test_implied_probability_is_the_price_restated():
     assert implied_probability(-0.5) is None
 
 
-def test_fee_is_quadratic_and_peaks_at_the_middle():
-    at_mid = kalshi_trading_fee(0.50)
-    at_edge = kalshi_trading_fee(0.02)
-    assert at_mid > at_edge
-    assert at_mid == pytest.approx(0.02)  # ceil(0.07 * 0.25 * 100c) = 2c
-    assert kalshi_trading_fee(None) is None
-    # A series with a different multiplier is honoured, not assumed.
-    assert kalshi_trading_fee(0.50, fee_multiplier=2) > at_mid
+def test_mechanics_no_longer_computes_fees_at_all():
+    """Fees left `mechanics` on purpose. The helper that used to live here
+    rounded UP TO A WHOLE CENT, but Kalshi rounds the model fee up to
+    $0.000001 -- so on the exchange's own worked example it published
+    $0.01 where the real trade fee is $0.003639, a 2.75x overstatement.
+    It also named a MID-based figure as though it were the fee on an
+    executable order. Both are corrected in catalog/fees.py, and nothing
+    in mechanics may quietly compute a fee again."""
+    import cfb_edge_finder.catalog.mechanics as mechanics_module
+
+    assert not hasattr(mechanics_module, "kalshi_trading_fee")
+    source = (SRC / "catalog" / "mechanics.py").read_text(encoding="utf-8")
+    body = source.split('"""', 2)[-1]  # skip the module docstring, which explains the history
+    assert "0.07" not in body, "a fee coefficient reappeared in mechanics; fees belong in fees.py"
 
 
 def test_quote_age_is_reported():
@@ -430,12 +436,21 @@ def test_mechanics_block_has_no_game_opinion():
         "implied_probability_yes_bid",
         "implied_probability_last",
         "two_sided_quote",
-        "estimated_fee_per_contract_at_mid",
-        "fee_formula",
-        "quote_age_seconds",
-        "seconds_until_close",
-        "seconds_until_occurrence",
+        "yes_bid_is_executable",
+        "yes_ask_is_executable",
+        "book_state",
+        "is_sentinel_full_width_book",
+        "mid_is_published",
+        "liquidity_basis",
     }
+    # Fee keys left this block entirely -- see catalog/fees.py and the
+    # per-contract "fee" block, which says what each figure represents.
+    assert not [k for k in mechanics if "fee" in k]
+    # Clock-derived countdowns are deliberately NOT published -- they made
+    # every game file churn on every capture. See mechanics.py.
+    assert "quote_age_seconds" not in mechanics
+    assert "seconds_until_close" not in mechanics
+    assert "seconds_until_occurrence" not in mechanics
 
 
 # =========================================================================
@@ -458,8 +473,7 @@ def _build(market: dict):
         game_key="26SEP19UGAARK",
         series_ticker="KXNCAAFSPREAD",
         settlement_sources=[],
-        fee_type="quadratic",
-        fee_multiplier=1,
+        effective_fee=_quadratic_fee(),
         captured_at=NOW,
     )
 
@@ -542,3 +556,275 @@ def test_published_strike_matches_the_contract_title():
             )
             checked += 1
     assert checked > 0, "no strike-bearing market was checked -- the fixture lost its ladders"
+
+
+# =========================================================================
+# FEE SCHEDULE -- what the PUBLISHED artifact says about fees
+#
+# The detailed arithmetic, the official worked examples and the
+# fail-closed rules live in tests/test_catalog_fees.py. What is asserted
+# here is the contract with a CONSUMER reading the artifact: the fee block
+# is present, it is self-describing, its headline is the executable price,
+# and it never invents a number it cannot justify.
+#
+# Two production defects sit behind these tests. The first run on main met
+# `quadratic_with_maker_fees` on ~29% of live markets and published a null
+# fee for all of them. The fix for that then rounded the model fee up to a
+# whole cent, which on Kalshi's own example overstates it 2.75x.
+# =========================================================================
+
+
+def _quadratic_fee(multiplier=1.0):
+    """The ordinary live case: a series on the quadratic schedule."""
+    return resolve_effective_fee({}, {"fee_type": "quadratic", "fee_multiplier": multiplier})
+
+
+def _fee_block_for(series, event=None, series_lookup_succeeded=True):
+    from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
+
+    contract = build_contract(
+        # Sizes on both sides: these tests are about FEES, and a mid is
+        # only published for an executable two-sided book.
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.49", "yes_ask_dollars": "0.51",
+         "yes_bid_size_fp": "250.00", "yes_ask_size_fp": "300.00"},
+        game_key="g",
+        series_ticker="KXNCAAFGAME",
+        settlement_sources=[],
+        effective_fee=resolve_effective_fee(
+            event or {}, series, series_lookup_succeeded=series_lookup_succeeded
+        ),
+        captured_at=NOW,
+    )
+    return contract_to_dict(contract, include_raw=False)
+
+
+def test_the_fee_block_is_computed_for_every_quadratic_schedule_kalshi_uses():
+    """Both live spellings. The taker fee is the same quadratic schedule
+    under each; `_with_maker_fees` means the resting side pays too."""
+    for fee_type in ("quadratic", "quadratic_with_maker_fees"):
+        block = _fee_block_for({"fee_type": fee_type, "fee_multiplier": 1})["fee"]
+        assert block["model_trade_fee_at_yes_ask"] is not None, (
+            f"fee_type={fee_type!r} published a null fee -- a consumer pricing a thesis gets no cost"
+        )
+        assert block["formula"] is not None
+        assert block["support"] == str(FeeModelSupport.SUPPORTED)
+
+
+def test_the_published_block_prices_BOTH_executable_sides():
+    """RUN CFB may conclude the correct wager is NO. The artifact must let
+    it price that without reimplementing the fee model, from the QUOTED
+    no_ask rather than a complement of the YES ask."""
+    from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
+
+    contract = build_contract(
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.40", "yes_ask_dollars": "0.60",
+         "no_bid_dollars": "0.35", "no_ask_dollars": "0.55",
+         "yes_bid_size_fp": "100.00", "yes_ask_size_fp": "100.00"},
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
+    )
+    block = contract_to_dict(contract, include_raw=False)["fee"]
+    assert block["basis_yes_ask"] == pytest.approx(0.60)
+    assert block["basis_no_ask"] == pytest.approx(0.55)
+    assert block["model_trade_fee_at_yes_ask"] is not None
+    assert block["model_trade_fee_at_no_ask"] is not None
+    # The NO fee comes from 0.55, not from 1 - 0.60 = 0.40. Those give
+    # different numbers, which is the whole reason not to derive it.
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        block["model_trade_fee_at_yes_ask"], rel=1e-6
+    )
+    assert block["executable_bases"] == ["basis_yes_ask", "basis_no_ask"]
+
+
+def test_a_contract_with_no_quoted_no_ask_publishes_a_null_no_fee():
+    from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
+
+    contract = build_contract(
+        {"ticker": "T", "event_ticker": "E", "status": "active", "yes_ask_dollars": "0.60"},
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
+    )
+    block = contract_to_dict(contract, include_raw=False)["fee"]
+    assert block["basis_no_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] is None
+    assert block["model_trade_fee_at_yes_ask"] is not None
+
+
+def test_a_future_quadratic_prefixed_schedule_is_not_priced_in_the_artifact():
+    """The allowlist, asserted at the PUBLISHED boundary rather than only
+    on the resolver: a `quadratic_v2` must reach a consumer as an
+    unpriced, explained gap."""
+    published = _fee_block_for({"fee_type": "quadratic_v2", "fee_multiplier": 1})
+    block = published["fee"]
+    assert block["support"] == str(FeeModelSupport.UNSUPPORTED_MODEL)
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] is None
+    assert block["maker_fee_applies"] is None
+    assert "quadratic_v2" in block["unavailable_reason"]
+    # The effective type is still published verbatim next to the block.
+    assert published["fee_type"] == "quadratic_v2"
+
+
+def test_the_headline_fee_is_the_one_a_taker_actually_pays():
+    """A YES purchase executes at the ASK. The mid-based figure is kept as
+    a market mechanic, but it must never be the number a consumer reads as
+    'the fee on this trade' -- at a 49/51 book it is the cheaper of the
+    two, so presenting it as the cost understates every taker buy."""
+    published = _fee_block_for({"fee_type": "quadratic", "fee_multiplier": 1})
+    block = published["fee"]
+    assert block["basis_yes_ask"] == pytest.approx(0.51)
+    assert block["basis_yes_mid"] == pytest.approx(0.50)
+    # 0.51 is further from 0.50 than the mid is, so P(1-P) is smaller.
+    assert block["model_trade_fee_at_yes_ask"] < block["model_trade_fee_at_yes_mid"]
+    assert "model_trade_fee_at_yes_ask" in block and "model_trade_fee_at_yes_mid" in block
+
+
+def test_the_published_fee_never_claims_to_be_an_account_net_fee():
+    """The catalog is public and account-agnostic. It cannot know a
+    member's rounding fee, rebate, per-order accumulator state or balance
+    precision, so it says so instead of implying a net cost."""
+    block = _fee_block_for({"fee_type": "quadratic", "fee_multiplier": 1})["fee"]
+    assert block["is_net_fee"] is False
+    assert set(block["excludes"]) == {
+        "rounding_fee", "rebate", "fee_accumulator", "user_balance_precision"
+    }
+    assert "net" in block["note"].lower()
+
+
+def test_maker_applicability_is_reported_and_is_never_guessed():
+    quadratic = _fee_block_for({"fee_type": "quadratic", "fee_multiplier": 1})["fee"]
+    with_maker = _fee_block_for({"fee_type": "quadratic_with_maker_fees", "fee_multiplier": 1})["fee"]
+    assert quadratic["maker_fee_applies"] is False
+    assert with_maker["maker_fee_applies"] is True
+    # An unknown schedule does not know whether makers pay. False would be
+    # a claim; None is the truth.
+    unknown = _fee_block_for({"fee_type": "per_contract_flat_rate", "fee_multiplier": 1})["fee"]
+    assert unknown["maker_fee_applies"] is None
+
+
+def test_an_unrecognized_non_quadratic_schedule_refuses_to_guess():
+    block = _fee_block_for({"fee_type": "per_contract_flat_rate", "fee_multiplier": 1})["fee"]
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["model_trade_fee_at_yes_mid"] is None
+    assert block["formula"] is None
+    assert block["support"] == str(FeeModelSupport.UNSUPPORTED_MODEL)
+    assert "per_contract_flat_rate" in block["unavailable_reason"]
+
+
+def test_missing_fee_metadata_publishes_no_fee_and_says_why():
+    """*** FAIL CLOSED ***
+    A missing fee_type must NOT be treated as quadratic and a missing
+    fee_multiplier must NOT be treated as 1, however plausible those
+    defaults are. Both are data failures, and a data failure published as
+    a number is indistinguishable from a measurement."""
+    for series in ({"fee_multiplier": 1}, {"fee_type": "quadratic"}, {}):
+        block = _fee_block_for(series)["fee"]
+        assert block["model_trade_fee_at_yes_ask"] is None, (
+            f"series {series} produced a fee from absent metadata"
+        )
+        assert block["unavailable_reason"]
+        assert block["support"] == str(FeeModelSupport.METADATA_UNAVAILABLE)
+    # And the effective values published alongside it stay honest.
+    published = _fee_block_for({})
+    assert published["fee_type"] is None
+    assert published["fee_multiplier"] is None
+
+
+def test_a_series_that_was_never_resolved_is_a_failure_not_a_default():
+    """The distinction that matters operationally: a series whose metadata
+    request failed is not the same as a series with no fee, and neither is
+    the same as a fee of 1x quadratic."""
+    block = _fee_block_for(None, series_lookup_succeeded=False)["fee"]
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["source"] == str(FeeSource.UNAVAILABLE)
+    assert "not resolved" in block["unavailable_reason"] or "lookup" in block["unavailable_reason"]
+
+
+def test_an_event_fee_override_wins_over_its_series():
+    """Kalshi layers fee overrides on the EVENT above the parent series.
+    The event object is already in hand during capture, so honouring the
+    precedence costs no extra request. Live CFB carries zero overrides
+    today (0 of 1,937 open events) -- which is exactly why this is tested
+    rather than trusted: nothing in production would notice if it broke."""
+    series = {"fee_type": "quadratic", "fee_multiplier": 1}
+    plain = _fee_block_for(series)["fee"]
+    assert plain["source"] == str(FeeSource.SERIES)
+    assert plain["multiplier"] == pytest.approx(1.0)
+
+    overridden = _fee_block_for(series, event={"fee_multiplier_override": 2})["fee"]
+    assert overridden["source"] == str(FeeSource.EVENT_OVERRIDE)
+    assert overridden["multiplier"] == pytest.approx(2.0)
+    assert overridden["model_trade_fee_at_yes_ask"] == pytest.approx(
+        2 * plain["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
+
+
+def test_a_cleared_override_falls_back_to_the_series():
+    """A null or empty override is the absence of an override, not an
+    instruction to forget the series fee."""
+    series = {"fee_type": "quadratic", "fee_multiplier": 1}
+    for event in (
+        {"fee_type_override": None, "fee_multiplier_override": None},
+        {"fee_type_override": "", "fee_multiplier_override": ""},
+    ):
+        block = _fee_block_for(series, event=event)["fee"]
+        assert block["source"] == str(FeeSource.SERIES)
+        assert block["model"] == "quadratic"
+        assert block["multiplier"] == pytest.approx(1.0)
+
+
+def test_an_override_to_an_unknown_fee_type_produces_no_guessed_fee():
+    """An override can move an event onto a schedule this code does not
+    model. That must publish no fee, not the series' quadratic one."""
+    block = _fee_block_for(
+        {"fee_type": "quadratic", "fee_multiplier": 1},
+        event={"fee_type_override": "some_future_schedule"},
+    )["fee"]
+    assert block["source"] == str(FeeSource.EVENT_OVERRIDE)
+    assert block["model"] == "some_future_schedule"
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["support"] == str(FeeModelSupport.UNSUPPORTED_MODEL)
+
+
+def test_an_unchanged_market_surface_rewrites_no_game_file_as_the_clock_moves():
+    """The churn defect, caught in production: clock-derived countdowns in
+    `mechanics` ticked every capture, so all 239 detail files (43 MB) were
+    rewritten on every run even when not one price had moved -- defeating
+    the per-game change detection the split artifact exists for.
+
+    Identical market data must produce byte-identical files no matter how
+    much wall-clock time passes between captures."""
+    import tempfile
+    from datetime import timedelta
+
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        first = write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), out)
+        assert first.game_files_written == 1
+
+        later = write_catalog_artifacts(
+            MarketDiscovery(_fake()).run(as_of=NOW + timedelta(hours=3)), out
+        )
+        assert later.game_files_written == 0, "the clock alone rewrote a game file"
+        assert later.game_files_unchanged == 1
+
+
+def test_a_real_price_move_still_rewrites_that_game_file():
+    """The other half: change detection must not be so aggressive that a
+    genuine price move is missed."""
+    import tempfile
+
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), out)
+
+        moved = _fake()
+        moved.markets_by_event["KXNCAAFGAME-26SEP19UGAARK"][0]["yes_ask_dollars"] = "0.7700"
+        after = write_catalog_artifacts(MarketDiscovery(moved).run(as_of=NOW), out)
+        assert after.game_files_written == 1

@@ -1,5 +1,15 @@
 """Market mechanics: arithmetic ON the quote, never a view ABOUT the game.
 
+*** FEES LIVE IN fees.py, NOT HERE ***
+Fee fields used to be computed in this block with a helper that rounded
+the quadratic model fee UP TO A WHOLE CENT. Kalshi's current documentation
+rounds the trade fee up to $0.000001, so that helper overstated the fee by
+~2.75x on the docs' own worked example -- and it published the result under
+a name ("estimated_fee_per_contract_at_mid") that read as the fee actually
+charged, which no credential-free catalog can know. Fee resolution and
+arithmetic now live in `catalog/fees.py`, and the artifact publishes a
+self-describing `fee` block beside this one.
+
 *** THE LINE THIS MODULE MUST NOT CROSS ***
 Everything here is derivable from the order book alone and would be
 identical no matter which teams were playing: the mid of the quoted
@@ -20,11 +30,21 @@ in through the artifact, so neither exists anywhere in this package.
 possibly far from the current quote. The mid of the live bid/ask is the
 honest answer to "what is this worth right now", and the raw bid, ask and
 last are all published alongside so a reader can disagree.
+
+*** AND WHY THE MID IS SOMETIMES NOT PUBLISHED AT ALL ***
+That answer holds only while both quoted sides are real. A live capture
+found 269 of 15,444 contracts quoted $0.00 bid / $1.00 ask with ZERO
+quoted size on both sides -- an empty book wearing a full-width spread.
+The mid of that is $0.50, which this module published as an implied
+probability of 50%. No market ever said that. Price fields existing and
+executable liquidity existing are different facts, and this module now
+keeps them apart: see `contract.ContractQuote.book_state` and the note
+above `contract_mechanics`.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -80,48 +100,46 @@ def seconds_until(moment: datetime | None, as_of: datetime) -> float | None:
     return round((moment - as_of).total_seconds(), 3)
 
 
-def kalshi_trading_fee(
-    price: float | None, contracts: float = 1.0, fee_multiplier: float | None = None
-) -> float | None:
-    """Kalshi's published quadratic trading fee, in dollars.
-
-        fee = ceil(multiplier * 0.07 * C * P * (1 - P))   [rounded up to a cent]
-
-    The quadratic shape is why fees matter most exactly where a catalog
-    reader is most likely to be looking: the fee peaks at a 50c contract
-    and shrinks toward either extreme, so a 2c longshot and a 50c coin flip
-    carry very different round-trip costs for the same stake.
-
-    `fee_multiplier` comes from the SERIES payload (live evidence: series
-    carry `fee_type: "quadratic"` and `fee_multiplier: 1`), so a series
-    that prices fees differently is honoured rather than assumed. Returns
-    None when the price is unknown -- never 0, which would read as free."""
-    if price is None or not (0.0 <= price <= 1.0):
-        return None
-    multiplier = 1.0 if fee_multiplier is None else float(fee_multiplier)
-    raw = multiplier * 0.07 * contracts * price * (1.0 - price)
-    cents = -(-round(raw * 100, 9) // 1)  # ceil to the next whole cent
-    return round(cents / 100.0, 4)
-
-
-def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None) -> dict[str, Any]:
+def contract_mechanics(contract: CatalogContract) -> dict[str, Any]:
     """The full mechanics block published per contract.
+
+    Every value here is a pure function of the QUOTE, with no dependence on
+    when it was computed -- which is what lets a game's detail file stay
+    byte-identical across captures while its market surface is unchanged.
+    See the note on countdowns at the bottom of the returned block.
 
     Deliberately excluded: anything about the GAME. If a future reader
     wants a model view, it belongs in a separate artifact that joins to
     this one by market_ticker -- not in here."""
-    now = as_of or contract.captured_at or datetime.now(UTC)
     quote = contract.quote
 
-    yes_mid = mid_price(quote.yes_bid, quote.yes_ask)
-    no_mid = mid_price(quote.no_bid, quote.no_ask)
+    # *** THE MIDPOINT IS PUBLISHED ONLY WHEN BOTH SIDES ARE EXECUTABLE ***
+    # A mid is the market's own estimate only if both numbers being
+    # averaged are prices someone is actually showing. Live, 269 of
+    # 15,444 contracts are quoted $0.00/$1.00 with zero size on both
+    # sides; averaging those gave $0.50 and the artifact published it as
+    # an implied probability. That is not a market saying "coin flip" --
+    # it is a market saying nothing at all, and the two are
+    # indistinguishable to a consumer once the number is printed.
+    #
+    # So `yes_mid`, `no_mid` and every mid-derived probability are null
+    # unless `book_state == "two_sided"`. The raw `yes_bid`, `yes_ask`,
+    # `no_bid`, `no_ask` and all four size fields are still published on
+    # the contract, so nothing is hidden -- a reader who wants the
+    # arithmetic can do it, knowing what it rests on. 445 of 15,444 live
+    # contracts (2.9%) lose a published mid this way: 269 empty books,
+    # plus 176 genuinely one-sided ones.
+    #
+    # The bid- and ask-based implied probabilities are KEPT: each
+    # restates a price Kalshi published, and `yes_bid_is_executable` /
+    # `yes_ask_is_executable` say whether that price can be traded on.
+    # The spread is kept for the same reason -- a 100-cent spread is the
+    # signal that the book is empty, so suppressing it would remove
+    # evidence rather than add safety.
+    executable_both_sides = quote.has_two_sided_yes_quote
+    yes_mid = mid_price(quote.yes_bid, quote.yes_ask) if executable_both_sides else None
+    no_mid = mid_price(quote.no_bid, quote.no_ask) if executable_both_sides else None
     yes_spread = bid_ask_spread(quote.yes_bid, quote.yes_ask)
-
-    fee_type = (contract.fee_type or "").lower()
-    fee_basis = yes_mid if yes_mid is not None else quote.yes_ask
-    fee_per_contract = (
-        kalshi_trading_fee(fee_basis, 1.0, contract.fee_multiplier) if fee_type in ("", "quadratic") else None
-    )
 
     return {
         "yes_mid": yes_mid,
@@ -132,12 +150,32 @@ def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None)
         "implied_probability_yes_ask": implied_probability(quote.yes_ask),
         "implied_probability_yes_bid": implied_probability(quote.yes_bid),
         "implied_probability_last": implied_probability(quote.last_price),
-        "two_sided_quote": quote.has_two_sided_yes_quote,
-        "estimated_fee_per_contract_at_mid": fee_per_contract,
-        "fee_formula": (
-            "ceil(fee_multiplier * 0.07 * contracts * P * (1-P)) in cents" if fee_per_contract is not None else None
-        ),
-        "quote_age_seconds": quote_age_seconds(contract.updated_time, now),
-        "seconds_until_close": seconds_until(contract.close_time, now),
-        "seconds_until_occurrence": seconds_until(contract.occurrence_datetime, now),
+        # --- what is actually executable, and why ---
+        "two_sided_quote": executable_both_sides,
+        "yes_bid_is_executable": quote.yes_bid_is_executable,
+        "yes_ask_is_executable": quote.yes_ask_is_executable,
+        "book_state": quote.book_state,
+        "is_sentinel_full_width_book": quote.is_sentinel_full_width_book,
+        "mid_is_published": executable_both_sides,
+        "liquidity_basis": "positive quoted yes_bid_size / yes_ask_size",
+        # *** WHY NO CLOCK-DERIVED COUNTDOWNS ARE PUBLISHED ***
+        # quote_age_seconds / seconds_until_close / seconds_until_occurrence
+        # used to be published here, and it was a real production defect:
+        # they tick on every capture, so EVERY game file's bytes changed on
+        # EVERY run even when not one price had moved. Measured live, that
+        # rewrote all 239 detail files (43 MB) per run, defeating the
+        # per-game change detection the split artifact exists for and
+        # putting 43 MB into every commit instead of only what moved.
+        #
+        # They carried no information either: each is a subtraction of two
+        # ABSOLUTE timestamps this artifact already publishes --
+        # `updated_time`, `close_time`, `occurrence_datetime` on the
+        # contract and `captured_at` on the capture. A consumer computes
+        # them exactly, against its own clock rather than the capture's,
+        # which is the more correct number anyway.
+        #
+        # Keeping them while skipping the rewrite would have been worse: an
+        # unrewritten file would then advertise a countdown that had
+        # silently expired. The helpers above remain for callers that want
+        # these values live.
     }

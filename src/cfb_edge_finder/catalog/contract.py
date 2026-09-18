@@ -37,6 +37,7 @@ from cfb_edge_finder.catalog.classification import (
     MarketClassification,
     MarketFamilyLabel,
 )
+from cfb_edge_finder.catalog.fees import EffectiveFee, fee_block
 
 # Field-name candidates, in preference order. First present-and-parseable
 # wins; all of them are kept in `raw` regardless.
@@ -153,9 +154,71 @@ class ContractQuote:
     last_price: float | None = None
     previous_price: float | None = None
 
+    # *** A PRICE FIELD EXISTING IS NOT LIQUIDITY EXISTING ***
+    # Measured on the live surface (section D of
+    # docs/evidence/kalshi_fee_and_override_probe.txt): 269 of 15,444
+    # contracts are quoted yes_bid $0.00 / yes_ask $1.00 with
+    # yes_bid_size == 0 AND yes_ask_size == 0 and liquidity_dollars == 0.
+    # Both price fields are numerically present, so the old
+    # "both prices are not None" test called those a two-sided quote and
+    # the mechanics block published a $0.50 midpoint -- a 50% "market
+    # probability" that no market ever expressed. Those same contracts
+    # carry POSITIVE volume and open interest (one had 29,913 OI and a
+    # last price of $0.99), so they are real, traded contracts whose book
+    # has simply emptied. They belong in the menu; they are just not
+    # price discovery.
+    #
+    # Executability is therefore decided by QUOTED SIZE, which is the
+    # only field that distinguishes "someone is offering this" from
+    # "this number is a placeholder". A null size counts as NOT
+    # executable: unknown size is not proven liquidity.
+    #
+    # NOTE ON THE NO SIDE: Kalshi publishes no_bid_size / no_ask_size as
+    # null on EVERY contract in the catalog -- ordinary ones included --
+    # so NO-side size carries no signal and is deliberately not consulted.
+    # A binary's YES and NO sides are the same book, so the YES-side size
+    # flags govern both.
+
+    @property
+    def yes_bid_is_executable(self) -> bool:
+        """Someone is bidding, in a size they have actually posted."""
+        return self.yes_bid is not None and (self.yes_bid_size or 0.0) > 0.0
+
+    @property
+    def yes_ask_is_executable(self) -> bool:
+        """Someone is offering, in a size they have actually posted."""
+        return self.yes_ask is not None and (self.yes_ask_size or 0.0) > 0.0
+
     @property
     def has_two_sided_yes_quote(self) -> bool:
-        return self.yes_bid is not None and self.yes_ask is not None
+        """Executable liquidity on BOTH sides -- not merely two numbers."""
+        return self.yes_bid_is_executable and self.yes_ask_is_executable
+
+    @property
+    def is_sentinel_full_width_book(self) -> bool:
+        """The exact live empty shape: $0.00 bid / $1.00 ask, no size on
+        either side. Named because it is the case a consumer is most
+        likely to misread -- a 100-cent spread looks like a wide market
+        rather than the absence of one."""
+        return (
+            self.yes_bid == 0.0
+            and self.yes_ask == 1.0
+            and not self.yes_bid_is_executable
+            and not self.yes_ask_is_executable
+        )
+
+    @property
+    def book_state(self) -> str:
+        """One machine-readable word for what the top of book actually is."""
+        if self.yes_bid is None and self.yes_ask is None:
+            return "no_quote"
+        if self.yes_bid_is_executable and self.yes_ask_is_executable:
+            return "two_sided"
+        if self.yes_bid_is_executable:
+            return "bid_only"
+        if self.yes_ask_is_executable:
+            return "ask_only"
+        return "empty_book"
 
 
 @dataclass(frozen=True)
@@ -210,8 +273,11 @@ class CatalogContract:
     occurrence_datetime: datetime | None
     updated_time: datetime | None
     exchange_index: int | None
-    fee_type: str | None
-    fee_multiplier: float | None
+    effective_fee: EffectiveFee
+    """The fee metadata that actually applies: an event override when
+    present, else the parent series. Carries its own source and
+    unavailability reason so a missing fee is never mistaken for a
+    computed one -- see catalog/fees.py."""
     notional_value: float | None
     captured_at: datetime
     raw: dict[str, Any]
@@ -231,8 +297,7 @@ def build_contract(
     game_key: str | None,
     series_ticker: str | None,
     settlement_sources: list[dict[str, Any]] | None,
-    fee_type: str | None,
-    fee_multiplier: float | None,
+    effective_fee: EffectiveFee,
     captured_at: datetime,
     classification: MarketClassification | None = None,
 ) -> CatalogContract:
@@ -303,8 +368,7 @@ def build_contract(
         occurrence_datetime=_parse_ts(market.get("occurrence_datetime")),
         updated_time=_parse_ts(market.get("updated_time")),
         exchange_index=market.get("exchange_index"),
-        fee_type=fee_type,
-        fee_multiplier=fee_multiplier,
+        effective_fee=effective_fee,
         notional_value=_first_money(market, _NOTIONAL),
         captured_at=captured_at,
         raw=dict(market),
@@ -366,8 +430,17 @@ def contract_to_dict(contract: CatalogContract, include_raw: bool) -> dict[str, 
         "settlement_timer_seconds": contract.semantics.settlement_timer_seconds,
         "settlement_sources": contract.semantics.settlement_sources,
         "exchange_index": contract.exchange_index,
-        "fee_type": contract.fee_type,
-        "fee_multiplier": contract.fee_multiplier,
+        # The EFFECTIVE values (event override if present, else series).
+        "fee_type": contract.effective_fee.fee_type,
+        "fee_multiplier": contract.effective_fee.fee_multiplier,
+        # Everything a reader needs to know what the fee figures ARE, and
+        # what they deliberately are not. See catalog/fees.py.
+        "fee": fee_block(
+            contract.effective_fee,
+            yes_ask=contract.quote.yes_ask,
+            yes_mid=mechanics.get("yes_mid"),
+            no_ask=contract.quote.no_ask,
+        ),
         "mechanics": mechanics,
         "classification_rationale": contract.classification.rationale,
     }
