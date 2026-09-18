@@ -156,12 +156,62 @@ here, and nothing in it should.**
 
 ### 8 — Use current contract prices to test for positive EV
 
+#### 8a — First: is there a book at all?
+
+**Read `book_state` before you read any price.** A price field existing is
+not the same fact as liquidity existing, and the difference is invisible
+once a number is printed.
+
+| `book_state` | Meaning | Live count |
+|---|---|---|
+| `two_sided` | positive quoted size on **both** the bid and the ask | 14,999 / 15,444 |
+| `bid_only` | someone bids, nobody offers | 132 |
+| `ask_only` | someone offers, nobody bids | 44 |
+| `empty_book` | price fields present, **no quoted size on either side** | 269 |
+| `no_quote` | no price fields at all | 0 |
+
+**The 0/100 trap.** 269 live contracts are quoted **$0.00 bid / $1.00 ask
+with zero size on both sides**. The midpoint of that is $0.50. It is
+arithmetically correct and it is not a market probability — no market said
+50%, the market said nothing. Those contracts also carry *positive volume
+and open interest* (one had 29,913 OI and a $0.99 last price), so every
+activity measure makes them look healthy. They are real traded contracts
+whose book has emptied.
+
+So:
+
+- **`yes_mid`, `no_mid` and `implied_probability_yes_mid` are `null`
+  unless `book_state == "two_sided"`.** `mid_is_published` says so
+  explicitly. 445 of 15,444 contracts (2.9%) have no published mid.
+- **`is_sentinel_full_width_book: true`** names the 0/100 shape directly.
+- **A 100-cent spread is not evidence of a 50/50 market.** It is evidence
+  there is no market. `yes_bid_ask_spread_cents` is still published
+  precisely because it is that evidence.
+- **Volume and open interest are history; quoted size is the offer.**
+  Never infer executability from activity.
+- `liquidity_basis` names the fields the flags were computed from
+  (`yes_bid_size` / `yes_ask_size`). Kalshi publishes `no_bid_size` /
+  `no_ask_size` as `null` on *every* contract, so NO-side size carries no
+  signal — a binary's YES and NO sides are the same book.
+
+**An empty book does not remove a contract from the menu.** Discovery
+completeness and quote quality are different concepts; a contract with no
+bid today may have one at kickoff. It is simply not price discovery until
+liquidity appears.
+
+#### 8b — Then: the price
+
 `mechanics` gives you the market's own arithmetic and nothing more:
 
-- `implied_probability_yes_mid` / `_yes_ask` / `_yes_bid` — the price
-  restated in probability units (a $1 binary's price *is* its probability);
-- `yes_bid_ask_spread_cents` — what crossing costs;
-- `two_sided_quote` — whether anyone is showing both sides.
+- `yes_bid_is_executable` / `yes_ask_is_executable` — whether that side
+  has positive quoted size. **These outrank any midpoint.**
+- `implied_probability_yes_ask` / `_yes_bid` — the published price restated
+  in probability units (a $1 binary's price *is* its probability). Always
+  present; pair each with its executability flag.
+- `implied_probability_yes_mid` — only when the book is two-sided.
+- `yes_bid_ask_spread_cents` — what crossing costs.
+- `two_sided_quote` — **executable liquidity on both sides**, not merely
+  two numbers being present.
 
 Fees are a separate, self-describing `fee` block on each contract, because
 what a fee figure *represents* matters as much as its value:
@@ -171,18 +221,37 @@ what a fee figure *represents* matters as much as its value:
 | `model` / `multiplier` | the **effective** schedule — an event's `fee_type_override`/`fee_multiplier_override` if present, otherwise the parent series' |
 | `source` | `event_override`, `series`, or `unavailable` — where those two values came from |
 | `support` | `supported`, `unsupported_model`, or `metadata_unavailable` |
-| **`model_trade_fee_at_yes_ask`** | **the headline.** Kalshi's model fee at the price a YES *buy* actually executes at, rounded up to $0.000001 as the exchange rounds it |
-| `model_trade_fee_at_yes_mid` | the same schedule at the mid — a market mechanic for comparing contracts, **not** the fee on any order you can send |
-| `basis_yes_ask` / `basis_yes_mid` | the prices those two figures were computed from |
+| **`model_trade_fee_at_yes_ask`** | **buying YES.** Kalshi's model fee at the price a YES buy actually executes at, rounded up to $0.000001 as the exchange rounds it |
+| **`model_trade_fee_at_no_ask`** | **buying NO.** The same schedule at the *quoted* NO ask — never `1 − yes_ask` |
+| `basis_yes_ask` / `basis_no_ask` | the two **executable** prices those figures were computed from |
+| `model_trade_fee_at_yes_mid` / `basis_yes_mid` | the same schedule at the mid — non-executable market arithmetic, and `null` whenever the mid is |
+| `executable_bases` / `non_executable_bases` | which bases you may act on, named, so you never have to infer it from a key |
 | `per_contracts` | how many contracts the figures cover (the schedule is linear in contracts) |
 | `maker_fee_applies` | `true` on `quadratic_with_maker_fees` (the resting side pays too), `false` on `quadratic`, **`null` when the schedule is unknown** |
 | `formula` | the arithmetic used, or `null` when no fee could be computed |
 | `is_net_fee` / `excludes` | always `false` / the four things it leaves out |
 | `unavailable_reason` | why there is no number, when there is no number |
 
-**Use `model_trade_fee_at_yes_ask` when you price a taker buy.** The mid
-figure is the smaller of the two at any book wider than a cent, so reading
-it as the cost understates every taker order.
+**Price the side you are actually buying:**
+
+| Your wager | Compare your probability against | Plus |
+|---|---|---|
+| **buying YES** | `basis_yes_ask` (the YES ask) | `model_trade_fee_at_yes_ask` |
+| **buying NO** | `basis_no_ask` (the NO ask) | `model_trade_fee_at_no_ask` |
+
+**Neither midpoint is an executable price.** Not `yes_mid`, not the NO
+complement. Both sides are priced from their own quoted ask, and the NO
+figure is **never** derived as `1 − yes_ask` — that complement is the price
+NO would trade at if the book were perfectly tight, which it generally is
+not. On a wide book the complement is better than anything you can execute
+at, so acting on it means pricing a trade nobody is offering. If `no_ask`
+is absent, `model_trade_fee_at_no_ask` is `null`; an absent price is not an
+invitation to invent one.
+
+The quadratic schedule is symmetric about $0.50, so on a tight book the two
+side fees are nearly identical — which is exactly why it is tempting to let
+one stand for the other. On a wide book they are not: at a 90¢ YES ask
+against a 30¢ NO ask, the NO fee is over **twice** the YES fee.
 
 **It is a TRADE fee, not a net fee.** Kalshi's net fee is
 `trade fee + rounding fee − rebate`, and the last two depend on your
@@ -198,6 +267,12 @@ defaulted to `quadratic` or to a multiplier of 1 — a plausible default
 would hide the failure on exactly the series that differs. Treat a `null`
 fee as unknown cost and price accordingly.
 
+**Only two fee models are priced**, by exact name: `quadratic` and
+`quadratic_with_maker_fees`. A future `quadratic_v2` or
+`quadratic_special` produces `support: "unsupported_model"` and `null`
+amounts, **not** today's formula applied to tomorrow's schedule. A shared
+name prefix is not a shared formula.
+
 Time-to-close and quote age are **not** published as countdowns, on
 purpose: they tick every capture, so publishing them rewrote all 239 game
 files on every run even when no price had moved. Compute them yourself from
@@ -206,9 +281,11 @@ the absolute timestamps that *are* published — `close_time`,
 the capture — against your own clock, which is the more correct number
 anyway.
 
-Compare **your** probability against the **executable** price (ask to buy
-YES, bid to sell), net of fee. A one-sided book (`two_sided_quote: false`)
-or a stale quote is a reason for caution, not a reason to assume a mid.
+Compare **your** probability against the **executable** price of the side
+you are buying, net of that side's fee. A one-sided or empty book
+(`two_sided_quote: false`) or a stale quote is a reason for caution, and
+never a reason to fall back on a mid — on those books there is no
+published mid to fall back on, by design.
 
 ### 9 — Compare every relevant expression of the same handicap
 

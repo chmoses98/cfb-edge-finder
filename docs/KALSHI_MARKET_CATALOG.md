@@ -410,7 +410,8 @@ alone and would be identical whoever was playing:
 ```
 yes_mid  no_mid  yes_bid_ask_spread  yes_bid_ask_spread_cents
 implied_probability_yes_mid / _yes_ask / _yes_bid / _last
-two_sided_quote
+two_sided_quote  yes_bid_is_executable  yes_ask_is_executable
+book_state  is_sentinel_full_width_book  mid_is_published  liquidity_basis
 ```
 
 Fees are **not** in this block — see below.
@@ -429,6 +430,56 @@ special-cased. A consumer computes them against its own clock.
 what a $1 binary contract's price already is. A one-sided book yields
 `null` for the mid rather than an invented price; a price outside `[0,1]`
 yields `null` rather than a clipped, confident-looking 100%.
+
+#### Quoted prices vs. executable liquidity
+
+**A price field existing is not the same fact as liquidity existing**, and
+a live capture showed how badly that can read. 269 of 15,444 contracts are
+quoted **$0.00 bid / $1.00 ask with `yes_bid_size == 0` and
+`yes_ask_size == 0`** and `liquidity_dollars == 0`. Both price fields are
+numerically present, so the old test (`both prices are not None`) called it
+a two-sided quote and published:
+
+```
+yes_mid                      0.5
+implied_probability_yes_mid  0.5
+two_sided_quote              true
+yes_bid_ask_spread_cents     100.0
+```
+
+No market said 50%. The market said nothing. Worse, those 269 all carry
+**positive volume and open interest** — the sampled one had 29,913 OI and a
+$0.99 last price — so every activity measure makes them look healthy. They
+are real traded contracts whose book has emptied.
+
+Quoted **size** is the only field that separates the two facts, and the
+live payload settles how to read it: ordinary contracts carry positive
+`yes_bid_size` and `yes_ask_size` (4,000/4,000 sampled), the empty ones
+carry exactly 0. `no_bid_size` / `no_ask_size` are `null` on **every**
+contract in the catalog, ordinary ones included, so NO-side size carries no
+signal and is not consulted — a binary's YES and NO sides are the same
+book.
+
+| `book_state` | | Live |
+|---|---|---|
+| `two_sided` | positive quoted size on both sides | 14,999 |
+| `bid_only` | someone bids, nobody offers | 132 |
+| `ask_only` | someone offers, nobody bids | 44 |
+| `empty_book` | prices present, no size on either side | 269 |
+| `no_quote` | no price fields at all | 0 |
+
+`yes_mid`, `no_mid` and `implied_probability_yes_mid` are `null` unless
+`book_state == "two_sided"` — 445 contracts (2.9%) lose a published mid.
+`is_sentinel_full_width_book` names the 0/100 shape directly. The spread is
+still published, because a 100-cent spread is the *evidence* the book is
+empty; suppressing it would remove information rather than add safety. A
+null size counts as not-executable, so if Kalshi ever stopped publishing
+sizes every book would read as unexecutable — visible and safe — rather
+than silently reading as liquid.
+
+**The contract stays in the menu.** Discovery completeness and quote
+quality are different concepts, and a contract with no bid today may have
+one at kickoff. It is simply not price discovery until liquidity appears.
 
 `tests/test_catalog_schema_and_isolation.py` pins the exact key set of this
 block, so a model-shaped field cannot be added to it quietly.
@@ -465,11 +516,29 @@ worked examples in `tests/test_catalog_fees.py`, to prove the rules were
 read correctly — they are simply not published as though we knew an
 account's net cost.
 
-**The headline is the executable price.** `model_trade_fee_at_yes_ask` is
-the fee a taker buying YES pays, because a YES buy executes at the ask.
-`model_trade_fee_at_yes_mid` is retained as a market mechanic under a name
-that cannot be mistaken for it. A mid-based fee presented as *the* fee
-understates every taker order.
+**Both executable sides are priced.** A consuming session may conclude the
+correct wager is NO, and pricing that must not require reimplementing the
+fee model. `model_trade_fee_at_yes_ask` and `model_trade_fee_at_no_ask` are
+each computed from **their own quoted ask**. The NO figure is deliberately
+never `1 − yes_ask`: that complement is the price NO would trade at if the
+book were perfectly tight, and on a wide book it is better than anything
+executable — deriving it would hand a consumer a fee on a price nobody is
+offering. An absent `no_ask` yields a `null` NO fee. `executable_bases` and
+`non_executable_bases` name which is which, so nothing has to be inferred
+from a key name. `model_trade_fee_at_yes_mid` is retained as a market
+mechanic and goes `null` whenever the mid does.
+
+**Only named models are priced.** `SUPPORTED_FEE_MODELS` is an exact-match
+allowlist of `quadratic` and `quadratic_with_maker_fees` — the two observed
+live and the two whose formula is implemented and tested here. An earlier
+version matched any type *starting with* `quadratic`, which inverts the
+fail-closed rule: it opts every future string into an arithmetic never
+verified for it. A `quadratic_v2` with a different coefficient would have
+been priced with today's 0.07 and published as a measurement. A shared name
+prefix is not a shared formula; the point of a versioned name is that what
+follows it changes. Adding a model is a deliberate act — read the schedule,
+implement it, test it against the exchange's examples, then list it.
+Maker applicability is likewise not inferred from the name.
 
 **Effective schedule, with event precedence.** The block publishes the
 effective `fee_type`/`fee_multiplier` — the event's override if present,

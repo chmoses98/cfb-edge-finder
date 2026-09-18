@@ -609,3 +609,29 @@ def test_the_doc_does_not_describe_fee_keys_that_no_longer_exist():
     doc = CONTRACT_DOC.read_text(encoding="utf-8")
     assert "estimated_fee_per_contract_at_mid" not in doc
     assert "model_trade_fee_at_yes_ask" in doc
+
+
+def test_the_doc_tells_a_consumer_how_to_price_the_NO_side():
+    """RUN CFB may conclude the correct wager is NO. The procedure must
+    name the executable NO price, and must forbid the complement."""
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    assert "model_trade_fee_at_no_ask" in doc
+    assert "basis_no_ask" in doc
+    assert "1 − yes_ask" in doc or "1 - yes_ask" in doc, "the doc does not warn off the complement"
+    assert "buying NO" in doc and "buying YES" in doc
+
+
+def test_the_doc_forbids_reading_an_empty_book_as_a_50_percent_market():
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    assert "book_state" in doc
+    assert "empty_book" in doc
+    assert "100-cent spread is not evidence of a 50/50 market" in doc
+    # And it must say the contract stays in the menu -- quote quality is
+    # not a discovery-completeness failure.
+    assert "does not remove a contract from the menu" in doc
+
+
+def test_the_doc_states_that_only_named_fee_models_are_priced():
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    assert "quadratic_v2" in doc
+    assert "prefix is not a shared formula" in doc

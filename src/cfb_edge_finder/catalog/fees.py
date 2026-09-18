@@ -102,6 +102,8 @@ class FeeSource(StrEnum):
 
 class FeeModelSupport(StrEnum):
     SUPPORTED = "supported"
+    """The fee_type is one of SUPPORTED_FEE_MODELS -- an exact match
+    against a model whose formula is implemented and tested here."""
     UNSUPPORTED_MODEL = "unsupported_model"
     """A fee_type this module has no formula for. The type is reported
     verbatim and no amount is computed -- a fabricated number would be
@@ -109,7 +111,29 @@ class FeeModelSupport(StrEnum):
     METADATA_UNAVAILABLE = "metadata_unavailable"
 
 
-_QUADRATIC_PREFIX = "quadratic"
+# *** AN EXPLICIT ALLOWLIST, NOT A PREFIX MATCH ***
+# These are the two fee models observed live on the CFB surface
+# (quadratic 10,672 contracts / quadratic_with_maker_fees 4,654, from
+# docs/evidence/kalshi_fee_and_override_probe.txt) and the two whose
+# formula is actually implemented and tested here against Kalshi's
+# published worked examples.
+#
+# An earlier version matched any fee_type STARTING WITH "quadratic".
+# That is the fail-closed rule inverted: it silently opts every future
+# string into an arithmetic that was never verified for it. If Kalshi
+# ships `quadratic_v2`, `quadratic_special` or `quadratic_tiered`, a
+# prefix match prices it with today's 0.07 coefficient and publishes the
+# result as a measurement -- and a NAME is not a formula. The whole point
+# of sharing a prefix is that a vendor can change what follows it.
+#
+# Adding a model here is therefore a deliberate act: read the schedule,
+# implement it, test it against the exchange's own examples, then list
+# it. Until then an unrecognized type publishes no amount, which is a
+# visible gap rather than a plausible wrong number.
+SUPPORTED_FEE_MODELS = frozenset({"quadratic", "quadratic_with_maker_fees"})
+
+# Of the supported models, those that charge the resting (maker) side too.
+MAKER_FEE_MODELS = frozenset({"quadratic_with_maker_fees"})
 
 
 @dataclass(frozen=True)
@@ -127,8 +151,10 @@ class EffectiveFee:
     unavailable_reason: str | None = None
 
     @property
-    def is_quadratic(self) -> bool:
-        return bool(self.fee_type) and str(self.fee_type).lower().startswith(_QUADRATIC_PREFIX)
+    def is_supported_model(self) -> bool:
+        """Membership of SUPPORTED_FEE_MODELS -- an exact match, never a
+        prefix. See the note on that set for why."""
+        return bool(self.fee_type) and str(self.fee_type).lower() in SUPPORTED_FEE_MODELS
 
     @property
     def maker_fee_applies(self) -> bool | None:
@@ -140,13 +166,16 @@ class EffectiveFee:
         whether maker fees apply" is a different statement from "they do
         not", and only the second one is a claim.
 
-        Within the quadratic family the answer is in the name -- Kalshi
-        spells it `quadratic` vs `quadratic_with_maker_fees`. For a
-        schedule outside that family we have no basis to assume the same
-        naming convention holds, so we do not answer."""
-        if not self.fee_type or not self.is_quadratic:
+        For the two models we have actually verified, maker applicability
+        is known: `quadratic` charges only the taker, and
+        `quadratic_with_maker_fees` charges both. For anything else we do
+        not infer it from the name -- a schedule called
+        `quadratic_v2_maker` might charge makers on a formula we have
+        never seen, and answering `True` would be a claim about a
+        schedule we cannot price."""
+        if not self.is_supported_model:
             return None
-        return "maker" in str(self.fee_type).lower()
+        return str(self.fee_type).lower() in MAKER_FEE_MODELS
 
     @property
     def computable(self) -> bool:
@@ -237,15 +266,17 @@ def resolve_effective_fee(
         source=source,
         support=FeeModelSupport.SUPPORTED,
     )
-    if not resolved.is_quadratic:
+    if not resolved.is_supported_model:
         return EffectiveFee(
             fee_type=str(fee_type),
             fee_multiplier=multiplier,
             source=source,
             support=FeeModelSupport.UNSUPPORTED_MODEL,
             unavailable_reason=(
-                f"fee model {fee_type!r} is not a quadratic schedule and has no implemented formula "
-                f"here; the type is reported verbatim and no amount is computed"
+                f"fee model {fee_type!r} has no implemented, tested formula here (supported: "
+                f"{', '.join(sorted(SUPPORTED_FEE_MODELS))}); the type is reported verbatim and no "
+                f"amount is computed. A shared name prefix is not a shared formula, so a model is "
+                f"priced only once its schedule has been read and verified."
             ),
         )
     return resolved
@@ -370,16 +401,34 @@ def fee_block(
     fee: EffectiveFee,
     yes_ask: float | None,
     yes_mid: float | None,
+    no_ask: float | None = None,
     contracts: float = 1.0,
 ) -> dict[str, Any]:
     """The self-describing fee block published per contract.
 
-    *** WHY THE ASK IS THE HEADLINE AND THE MID IS NOT ***
-    A taker buying YES pays the ASK, so the ask-based trade fee is the one
-    that bears on "does this price justify the thesis". The mid-based
-    figure is a market mechanic -- useful for comparing contracts, but it
-    is not the fee on any order you can actually send, and publishing it
-    as the headline let it masquerade as one."""
+    *** BOTH EXECUTABLE SIDES, BECAUSE EITHER MAY BE THE WAGER ***
+    A consuming session may well conclude that the correct bet is NO. It
+    must be able to price that side without reimplementing the fee model,
+    so the block carries the trade fee at the YES ask AND at the NO ask,
+    each computed from ITS OWN executable price.
+
+    The NO figure uses the quoted `no_ask`. It is deliberately NOT
+    `1 - yes_ask`: that complement is the price NO would trade at if the
+    book were perfectly tight, which it generally is not. Kalshi quotes
+    the NO side independently, and on a wide or one-sided book the
+    complement can be materially better than anything you can execute at
+    -- so deriving it would hand a consumer a fee on a price that does
+    not exist. If `no_ask` is absent, the NO-side fee is null. An absent
+    price is not an invitation to invent one.
+
+    *** WHY NEITHER MID IS A HEADLINE ***
+    A taker pays the ASK on whichever side it buys. The mid-based figure
+    is a market mechanic -- useful for comparing contracts -- but it is
+    not the fee on any order that can be sent, and publishing it as the
+    headline let it masquerade as one. Note the quadratic schedule is
+    symmetric about $0.50, so on a tight book the two side fees are
+    nearly equal; the point is that on a WIDE book they are not, and that
+    is exactly when a consumer needs the real number."""
     computable = fee.computable
     block: dict[str, Any] = {
         "model": fee.fee_type,
@@ -391,15 +440,29 @@ def fee_block(
         "excludes": list(NET_FEE_EXCLUDES),
         "per_contracts": contracts,
         "formula": MODEL_TRADE_FEE_FORMULA if computable else None,
+        # --- the two EXECUTABLE figures: buying YES, and buying NO ---
         "model_trade_fee_at_yes_ask": model_trade_fee(yes_ask, contracts, fee.fee_multiplier)
         if computable
         else None,
+        "basis_yes_ask": yes_ask,
+        "model_trade_fee_at_no_ask": model_trade_fee(no_ask, contracts, fee.fee_multiplier)
+        if computable
+        else None,
+        "basis_no_ask": no_ask,
+        # --- non-executable market arithmetic, labelled as such ---
         "model_trade_fee_at_yes_mid": model_trade_fee(yes_mid, contracts, fee.fee_multiplier)
         if computable
         else None,
-        "basis_yes_ask": yes_ask,
         "basis_yes_mid": yes_mid,
+        "executable_bases": ["basis_yes_ask", "basis_no_ask"],
+        "non_executable_bases": ["basis_yes_mid"],
         "unavailable_reason": fee.unavailable_reason,
         "note": NET_FEE_NOTE,
+        "side_note": (
+            "Buying YES executes at basis_yes_ask; buying NO executes at basis_no_ask. Each fee is "
+            "computed from its own side's quoted ask -- the NO figure is never derived as "
+            "1 - yes_ask, because that complement is not a price anyone is offering. A null figure "
+            "means that side had no quoted ask, not that it is free."
+        ),
     }
     return block

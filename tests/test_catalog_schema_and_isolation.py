@@ -436,6 +436,12 @@ def test_mechanics_block_has_no_game_opinion():
         "implied_probability_yes_bid",
         "implied_probability_last",
         "two_sided_quote",
+        "yes_bid_is_executable",
+        "yes_ask_is_executable",
+        "book_state",
+        "is_sentinel_full_width_book",
+        "mid_is_published",
+        "liquidity_basis",
     }
     # Fee keys left this block entirely -- see catalog/fees.py and the
     # per-contract "fee" block, which says what each figure represents.
@@ -577,8 +583,11 @@ def _fee_block_for(series, event=None, series_lookup_succeeded=True):
     from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
 
     contract = build_contract(
+        # Sizes on both sides: these tests are about FEES, and a mid is
+        # only published for an executable two-sided book.
         {"ticker": "T", "event_ticker": "E", "status": "active",
-         "yes_bid_dollars": "0.49", "yes_ask_dollars": "0.51"},
+         "yes_bid_dollars": "0.49", "yes_ask_dollars": "0.51",
+         "yes_bid_size_fp": "250.00", "yes_ask_size_fp": "300.00"},
         game_key="g",
         series_ticker="KXNCAAFGAME",
         settlement_sources=[],
@@ -600,6 +609,62 @@ def test_the_fee_block_is_computed_for_every_quadratic_schedule_kalshi_uses():
         )
         assert block["formula"] is not None
         assert block["support"] == str(FeeModelSupport.SUPPORTED)
+
+
+def test_the_published_block_prices_BOTH_executable_sides():
+    """RUN CFB may conclude the correct wager is NO. The artifact must let
+    it price that without reimplementing the fee model, from the QUOTED
+    no_ask rather than a complement of the YES ask."""
+    from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
+
+    contract = build_contract(
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.40", "yes_ask_dollars": "0.60",
+         "no_bid_dollars": "0.35", "no_ask_dollars": "0.55",
+         "yes_bid_size_fp": "100.00", "yes_ask_size_fp": "100.00"},
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
+    )
+    block = contract_to_dict(contract, include_raw=False)["fee"]
+    assert block["basis_yes_ask"] == pytest.approx(0.60)
+    assert block["basis_no_ask"] == pytest.approx(0.55)
+    assert block["model_trade_fee_at_yes_ask"] is not None
+    assert block["model_trade_fee_at_no_ask"] is not None
+    # The NO fee comes from 0.55, not from 1 - 0.60 = 0.40. Those give
+    # different numbers, which is the whole reason not to derive it.
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        block["model_trade_fee_at_yes_ask"], rel=1e-6
+    )
+    assert block["executable_bases"] == ["basis_yes_ask", "basis_no_ask"]
+
+
+def test_a_contract_with_no_quoted_no_ask_publishes_a_null_no_fee():
+    from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
+
+    contract = build_contract(
+        {"ticker": "T", "event_ticker": "E", "status": "active", "yes_ask_dollars": "0.60"},
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
+    )
+    block = contract_to_dict(contract, include_raw=False)["fee"]
+    assert block["basis_no_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] is None
+    assert block["model_trade_fee_at_yes_ask"] is not None
+
+
+def test_a_future_quadratic_prefixed_schedule_is_not_priced_in_the_artifact():
+    """The allowlist, asserted at the PUBLISHED boundary rather than only
+    on the resolver: a `quadratic_v2` must reach a consumer as an
+    unpriced, explained gap."""
+    published = _fee_block_for({"fee_type": "quadratic_v2", "fee_multiplier": 1})
+    block = published["fee"]
+    assert block["support"] == str(FeeModelSupport.UNSUPPORTED_MODEL)
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] is None
+    assert block["maker_fee_applies"] is None
+    assert "quadratic_v2" in block["unavailable_reason"]
+    # The effective type is still published verbatim next to the block.
+    assert published["fee_type"] == "quadratic_v2"
 
 
 def test_the_headline_fee_is_the_one_a_taker_actually_pays():

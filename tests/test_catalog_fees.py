@@ -38,7 +38,9 @@ import pytest
 from cfb_edge_finder.catalog.fees import (
     DIRECT_MEMBER_PRECISION_DOLLARS,
     FEE_GRANULARITY_DOLLARS,
+    MAKER_FEE_MODELS,
     NON_DIRECT_MEMBER_PRECISION_DOLLARS,
+    SUPPORTED_FEE_MODELS,
     FeeModelSupport,
     FeeSource,
     ceil_to_granularity,
@@ -367,4 +369,179 @@ def test_the_fee_is_quoted_per_a_stated_number_of_contracts():
     assert ten["per_contracts"] == pytest.approx(10.0)
     assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(
         10 * one["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
+
+
+# =========================================================================
+# THE SUPPORTED-MODEL SET IS AN ALLOWLIST, NOT A PREFIX
+#
+# Matching any fee_type that STARTS WITH "quadratic" inverts the
+# fail-closed rule: it opts every future string into an arithmetic that
+# was never verified for it. A name is not a formula, and the whole point
+# of a versioned prefix is that the vendor intends to change what follows
+# it. If Kalshi ships `quadratic_v2` with a different coefficient, a
+# prefix match prices it with today's 0.07 and publishes the result as a
+# measurement.
+# =========================================================================
+
+
+def test_only_the_two_verified_models_are_supported():
+    """The set is deliberately small, and grows only by someone reading a
+    new schedule, implementing it, and testing it against the exchange's
+    own examples."""
+    assert SUPPORTED_FEE_MODELS == {"quadratic", "quadratic_with_maker_fees"}
+    assert MAKER_FEE_MODELS == {"quadratic_with_maker_fees"}
+    assert MAKER_FEE_MODELS <= SUPPORTED_FEE_MODELS
+
+
+@pytest.mark.parametrize(
+    "future_model",
+    [
+        "quadratic_v2",
+        "quadratic_special",
+        "quadratic_new_schedule",
+        "quadratic_tiered",
+        "quadratic_with_maker_fees_v2",
+        "quadratic2",
+        "QUADRATIC_V2",
+    ],
+)
+def test_a_future_quadratic_prefixed_model_produces_no_guessed_fee(future_model):
+    """*** THE REGRESSION TEST FOR THE PREFIX DEFECT ***
+    Each of these would have been priced with today's formula under a
+    prefix match. None of them may produce a number."""
+    fee = resolve_effective_fee({}, {"fee_type": future_model, "fee_multiplier": 1})
+
+    assert fee.support is FeeModelSupport.UNSUPPORTED_MODEL, future_model
+    assert fee.computable is False
+    assert fee.is_supported_model is False
+    # The type is still reported verbatim -- the catalog says what Kalshi
+    # said, it just declines to price it.
+    assert fee.fee_type == future_model
+    assert fee.fee_multiplier == pytest.approx(1.0)
+    # The reason must name the model AND what IS supported, so a reader
+    # can tell "new schedule" from "capture failure" without guessing.
+    assert future_model in fee.unavailable_reason
+    assert "quadratic_with_maker_fees" in fee.unavailable_reason
+
+    block = fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)
+    assert block["model_trade_fee_at_yes_ask"] is None, future_model
+    assert block["model_trade_fee_at_no_ask"] is None, future_model
+    assert block["model_trade_fee_at_yes_mid"] is None, future_model
+    assert block["formula"] is None
+    # And maker applicability is not inferred from the name either: a
+    # model called `..._with_maker_fees_v2` might charge makers under a
+    # formula we have never seen, so we do not answer.
+    assert block["maker_fee_applies"] is None, future_model
+
+
+def test_the_two_supported_models_still_price_normally():
+    """The allowlist must not have closed the door on the live surface --
+    10,672 + 4,654 live contracts depend on these two."""
+    for model in sorted(SUPPORTED_FEE_MODELS):
+        fee = resolve_effective_fee({}, {"fee_type": model, "fee_multiplier": 1})
+        assert fee.support is FeeModelSupport.SUPPORTED, model
+        assert fee.is_supported_model is True
+        assert fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)[
+            "model_trade_fee_at_yes_ask"
+        ] == pytest.approx(model_trade_fee(0.51, 1, 1), abs=1e-12)
+
+
+def test_an_event_override_onto_a_future_model_is_also_refused():
+    """The allowlist applies to the EFFECTIVE model, wherever it came
+    from -- an override must not be a way around it."""
+    fee = resolve_effective_fee(
+        {"fee_type_override": "quadratic_v2"}, {"fee_type": "quadratic", "fee_multiplier": 1}
+    )
+    assert fee.source is FeeSource.EVENT_OVERRIDE
+    assert fee.support is FeeModelSupport.UNSUPPORTED_MODEL
+    assert fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)["model_trade_fee_at_yes_ask"] is None
+
+
+# =========================================================================
+# BOTH EXECUTABLE SIDES
+#
+# RUN CFB may conclude the correct wager is NO. Pricing that must not
+# require a consumer to reimplement the fee model, and the NO figure must
+# come from the QUOTED no_ask -- never from 1 - yes_ask, which is the
+# price NO would trade at if the book were perfectly tight. On a wide or
+# one-sided book the complement is better than anything executable, so
+# deriving it hands the consumer a fee on a price nobody is offering.
+# =========================================================================
+
+TIGHT = {"fee_type": "quadratic", "fee_multiplier": 1}
+
+
+def test_each_side_is_priced_from_its_own_quoted_ask():
+    """A genuinely wide book: YES asks 0.60, NO asks 0.55. The complement
+    of the YES ask is 0.40, which nobody is offering -- so a NO fee
+    derived from it would be priced off a fictional 40c."""
+    block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.55)
+
+    assert block["basis_yes_ask"] == pytest.approx(0.60)
+    assert block["basis_no_ask"] == pytest.approx(0.55)
+    assert block["model_trade_fee_at_yes_ask"] == pytest.approx(model_trade_fee(0.60, 1, 1), abs=1e-12)
+    assert block["model_trade_fee_at_no_ask"] == pytest.approx(model_trade_fee(0.55, 1, 1), abs=1e-12)
+    # It is NOT the complement of the YES ask.
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        model_trade_fee(1 - 0.60, 1, 1), abs=1e-12
+    )
+
+
+def test_the_two_side_fees_differ_when_the_spread_is_wide():
+    """On a tight book the quadratic schedule's symmetry about $0.50 makes
+    the two nearly equal, which is exactly why a consumer might assume one
+    stands for the other. On a wide book it does not."""
+    wide = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.90, yes_mid=0.50, no_ask=0.30)
+    assert wide["model_trade_fee_at_yes_ask"] != pytest.approx(
+        wide["model_trade_fee_at_no_ask"], rel=1e-6
+    )
+    # A 90c YES sits far from the middle, so its fee is much smaller than
+    # a 30c NO's -- a consumer reading one for the other is out by ~2.3x.
+    assert wide["model_trade_fee_at_no_ask"] > 2 * wide["model_trade_fee_at_yes_ask"]
+
+    tight = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.51, yes_mid=0.50, no_ask=0.49)
+    assert tight["model_trade_fee_at_yes_ask"] == pytest.approx(
+        tight["model_trade_fee_at_no_ask"], rel=1e-6
+    )
+
+
+def test_a_missing_no_ask_yields_a_null_no_fee_not_an_invented_complement():
+    """*** FAIL CLOSED, ON THE PRICE THIS TIME ***
+    A one-sided book has no NO ask. The complement of the YES ask is
+    arithmetic, not an offer."""
+    block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=None, no_ask=None)
+    assert block["basis_no_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] is None
+    # The YES side is unaffected -- one missing side does not void the other.
+    assert block["model_trade_fee_at_yes_ask"] is not None
+    assert "1 - yes_ask" in block["side_note"]
+
+
+def test_a_missing_yes_ask_yields_a_null_yes_fee_but_keeps_the_no_side():
+    block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=None, yes_mid=None, no_ask=0.55)
+    assert block["model_trade_fee_at_yes_ask"] is None
+    assert block["model_trade_fee_at_no_ask"] == pytest.approx(model_trade_fee(0.55, 1, 1), abs=1e-12)
+
+
+def test_the_block_labels_which_bases_are_executable():
+    """A consumer must not have to infer from a key name which figures it
+    may act on."""
+    block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.51, yes_mid=0.50, no_ask=0.49)
+    assert block["executable_bases"] == ["basis_yes_ask", "basis_no_ask"]
+    assert block["non_executable_bases"] == ["basis_yes_mid"]
+    for key in block["executable_bases"] + block["non_executable_bases"]:
+        assert key in block
+
+
+def test_both_side_fees_scale_with_contracts_together():
+    one = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.45)
+    ten = fee_block(
+        resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.45, contracts=10
+    )
+    assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(
+        10 * one["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
+    assert ten["model_trade_fee_at_no_ask"] == pytest.approx(
+        10 * one["model_trade_fee_at_no_ask"], rel=1e-4
     )
