@@ -34,11 +34,11 @@ Fee Rounding - API Documentation Documentation Index Fetch the complete document
  The balance changes by -$0.06 ; the trade fee plus rounding fee is exactly $0.005 . Accumulator across fills If three fills each add $0.004 of rounding overpayment, the accumulator carries it forward. Assuming the third fill has enough total fee to cover a $0.01 rebate: Fill Added Before Rebate Rebate Carried Forward 1 $0.004 $0.004 — $0.004 2 $0.004 $0.008 — $0.008 3 $0.004 $0.012 $0.010 $0.002 This table uses a non-direct member’s $0.01 precision. Direct-member rebates follow the same mechanics in $0.0001 increments. In either case, the rebate is capped so that the fill’s net fee cannot become negative. Fixed-Point Representation Historical Data Powered by This documentation is built and hosted on Mintlify, a developer documentation platform
 
 ### GET https://kalshi.com/docs/kalshi-fee-schedule.pdf
-  HTTP 429  33939 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32183 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ### GET https://kalshi.com/regulatory/fee-schedule
-  HTTP 429  33940 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32179 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ==============================================================================
@@ -116,8 +116,8 @@ open CFB events swept: 1930
 {
   "fee_multiplier": 1,
   "fee_type": "quadratic",
-  "ticker": "KXNCAAF1HWINNER",
-  "title": "College Football 1st Half Winner"
+  "ticker": "KXNCAAFTEAMRECYDS",
+  "title": "College Football Team Receiving Yards"
 }
 
 --- do markets carry their own fee metadata? ---
@@ -126,7 +126,7 @@ open CFB events swept: 1930
 ==============================================================================
 C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE
 ==============================================================================
-built the real catalog: 241 games in 121s
+built the real catalog: 241 games in 119s
 contracts carrying a fee block: 15444
 
 --- is the fee computable? ---
@@ -136,6 +136,12 @@ contracts carrying a fee block: 15444
   effective multiplier : {'1.0': 15444}
   maker_fee_applies    : {'False': 10759, 'True': 4685}
   computable at the ask: 15444/15444 contracts that HAVE an ask
+  NO side: 15444/15444 contracts that HAVE a quoted no_ask
+  contracts where the YES-ask and NO-ask fees DIFFER: 15057
+  contracts where the quoted no_ask != 1 - yes_ask: 15444
+    (each one is a contract where deriving the NO fee from the YES ask
+     would have priced a trade at a price nobody is offering)
+    e.g. yes_ask=1.0 -> complement 0.0000, but the quoted no_ask is 1.0
   unavailable_reasons  : NONE
 
   contracts with an ask but NO fee: 0
@@ -176,10 +182,7 @@ contracts carrying a fee block: 15444
   At those asks the quadratic schedule's P(1-P) term is 0, so the
   trade fee is exactly $0.00 -- correct, and a demonstration of why
   the mid figure cannot be the headline:
-  contracts whose fee at the ASK is $0.00 while the MID figure is not: 313
-    e.g. ask=1.0 -> $0.000000, mid=0.5 -> $0.017500
-    A consumer reading the mid figure as 'the fee' would book a cost
-    that the executable order does not incur.
+  contracts whose fee at the ASK is $0.00 while the MID figure is not: 0
 
 ==============================================================================
 D. THE SHAPE OF A 0/100 BOOK, MEASURED LIVE
@@ -204,6 +207,20 @@ contracts quoted YES bid $0.00 / YES ask $1.00 : 269
 --- what the NO side says on those contracts ---
   no_bid     {'0.0': 269}
   no_ask     {'1.0': 269}
+
+--- post-fix classification of the whole live surface ---
+  book_state           : {'empty_book': 269, 'two_sided': 15000, 'bid_only': 44, 'ask_only': 131}
+  two_sided_quote true : 15000
+  mid published        : 15000
+  mid NOT published    : 444
+  is_sentinel_full_width_book : 269
+
+--- how are the 0/100 contracts classified now? ---
+  book_state           : {'empty_book': 269}
+  0/100 contracts STILL publishing a mid probability: 0   <- must be 0
+  0/100 contracts still marked two_sided_quote      : 0   <- must be 0
+  0/100 contracts still present in the catalog      : 269   <- must equal the count above; they are NOT dropped
+  distinct yes_mid values on them                   : {'None'}
 
 --- FULL RAW PAYLOAD of one 0/100 contract ---
 {
@@ -255,25 +272,31 @@ contracts quoted YES bid $0.00 / YES ask $1.00 : 269
 
   its mechanics block:
 {
+  "book_state": "empty_book",
   "implied_probability_last": 0.99,
   "implied_probability_yes_ask": 1.0,
   "implied_probability_yes_bid": 0.0,
-  "implied_probability_yes_mid": 0.5,
-  "no_mid": 0.5,
-  "two_sided_quote": true,
+  "implied_probability_yes_mid": null,
+  "is_sentinel_full_width_book": true,
+  "liquidity_basis": "positive quoted yes_bid_size / yes_ask_size",
+  "mid_is_published": false,
+  "no_mid": null,
+  "two_sided_quote": false,
+  "yes_ask_is_executable": false,
   "yes_bid_ask_spread": 1.0,
   "yes_bid_ask_spread_cents": 100.0,
-  "yes_mid": 0.5
+  "yes_bid_is_executable": false,
+  "yes_mid": null
 }
 
---- contrast: 14999 contracts with an ordinary quote ---
+--- contrast: 15000 contracts with an ordinary quote ---
   yes_bid_size         {'positive': 4000}  (first 4000)
   yes_ask_size         {'positive': 4000}  (first 4000)
   no_bid_size          {'null': 4000}  (first 4000)
   no_ask_size          {'null': 4000}  (first 4000)
 
 --- how many contracts lack a positive size on ONE side? ---
-  no positive yes_bid_size : 401 / 15444
+  no positive yes_bid_size : 400 / 15444
   no positive yes_ask_size : 313 / 15444
   no positive size on EITHER: 269
 
