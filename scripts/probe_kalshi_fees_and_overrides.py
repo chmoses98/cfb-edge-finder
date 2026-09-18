@@ -340,6 +340,28 @@ def audit_published_fee_blocks() -> None:
     print(f"  effective multiplier : {dict(Counter(str(b['multiplier']) for b in blocks))}")
     print(f"  maker_fee_applies    : {dict(Counter(str(b['maker_fee_applies']) for b in blocks))}")
     print(f"  computable at the ask: {len(computable)}/{len(priceable)} contracts that HAVE an ask")
+    no_priceable = [b for b in blocks if b["basis_no_ask"] is not None]
+    no_computable = [b for b in blocks if b["model_trade_fee_at_no_ask"] is not None]
+    print(f"  NO side: {len(no_computable)}/{len(no_priceable)} contracts that HAVE a quoted no_ask")
+    differ = [
+        b for b in blocks
+        if b["model_trade_fee_at_yes_ask"] is not None
+        and b["model_trade_fee_at_no_ask"] is not None
+        and abs(b["model_trade_fee_at_yes_ask"] - b["model_trade_fee_at_no_ask"]) > 1e-9
+    ]
+    print(f"  contracts where the YES-ask and NO-ask fees DIFFER: {len(differ)}")
+    derived = [
+        b for b in blocks
+        if b["basis_no_ask"] is not None and b["basis_yes_ask"] is not None
+        and abs(b["basis_no_ask"] - (1.0 - b["basis_yes_ask"])) > 1e-9
+    ]
+    print(f"  contracts where the quoted no_ask != 1 - yes_ask: {len(derived)}")
+    print("    (each one is a contract where deriving the NO fee from the YES ask")
+    print("     would have priced a trade at a price nobody is offering)")
+    if derived:
+        b = derived[0]
+        print(f"    e.g. yes_ask={b['basis_yes_ask']} -> complement {1 - b['basis_yes_ask']:.4f}, "
+              f"but the quoted no_ask is {b['basis_no_ask']}")
     reasons = Counter(str(b["unavailable_reason"]) for b in blocks if b["unavailable_reason"])
     print(f"  unavailable_reasons  : {dict(reasons) or 'NONE'}")
 
@@ -502,6 +524,28 @@ def probe_empty_book_shape() -> None:
     for key in ("no_bid", "no_ask"):
         vals = Counter(str(m.get(key)) for m in zero_hundred)
         print(f"  {key:10} {dict(vals)}")
+
+    # *** HOW THE FIXED CODE CLASSIFIES THEM ***
+    print("\n--- post-fix classification of the whole live surface ---")
+    states = Counter(m["mechanics"]["book_state"] for m in markets)
+    print(f"  book_state           : {dict(states)}")
+    print(f"  two_sided_quote true : {sum(1 for m in markets if m['mechanics']['two_sided_quote'])}")
+    print(f"  mid published        : {sum(1 for m in markets if m['mechanics']['mid_is_published'])}")
+    print(f"  mid NOT published    : {sum(1 for m in markets if not m['mechanics']['mid_is_published'])}")
+    print(f"  is_sentinel_full_width_book : "
+          f"{sum(1 for m in markets if m['mechanics']['is_sentinel_full_width_book'])}")
+
+    print("\n--- how are the 0/100 contracts classified now? ---")
+    zh_states = Counter(m["mechanics"]["book_state"] for m in zero_hundred)
+    print(f"  book_state           : {dict(zh_states)}")
+    bad = [m for m in zero_hundred if m["mechanics"]["implied_probability_yes_mid"] is not None]
+    print(f"  0/100 contracts STILL publishing a mid probability: {len(bad)}   <- must be 0")
+    print(f"  0/100 contracts still marked two_sided_quote      : "
+          f"{sum(1 for m in zero_hundred if m['mechanics']['two_sided_quote'])}   <- must be 0")
+    print(f"  0/100 contracts still present in the catalog      : {len(zero_hundred)}"
+          f"   <- must equal the count above; they are NOT dropped")
+    mids = {str(m["mechanics"]["yes_mid"]) for m in zero_hundred}
+    print(f"  distinct yes_mid values on them                   : {mids}")
 
     print("\n--- FULL RAW PAYLOAD of one 0/100 contract ---")
     sample = no_size_at_all[0] if no_size_at_all else zero_hundred[0]
