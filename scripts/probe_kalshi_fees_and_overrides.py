@@ -401,8 +401,16 @@ def audit_published_fee_blocks() -> None:
         if block["model_trade_fee_at_yes_mid"] is not None:
             print(f"    published fee at MID : ${block['model_trade_fee_at_yes_mid']:.6f}   "
                   f"<- market mechanic, NOT an executable-order fee")
-        print(f"    old whole-cent helper : $0.010000   "
-              f"({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the real trade fee)")
+        # The retired helper's actual behaviour: ceil the model fee to a
+        # WHOLE CENT. Recomputed here rather than hardcoded, because it
+        # over- or under-states by different factors at different prices
+        # and a single illustrative number would misrepresent it.
+        mid = block["basis_yes_mid"]
+        old_basis = mid if mid is not None else ask
+        old_helper = math.ceil(mult * 0.07 * old_basis * (1 - old_basis) * 100 - 1e-9) / 100
+        print(f"    old whole-cent helper : ${old_helper:.6f}   "
+              f"({old_helper / block['model_trade_fee_at_yes_ask']:.2f}x the real trade fee; "
+              f"it rounded to a cent AND priced off the mid {old_basis})")
         assert abs(by_hand - block["model_trade_fee_at_yes_ask"]) < 1e-9
         shown += 1
     print(f"\n  worked examples shown: {shown}")
