@@ -487,6 +487,42 @@ means the resting side is charged too, which `maker_fee_applies` reports.
 Matching only the exact string `quadratic` published a null fee on nearly
 a third of the menu — a defect the first production run on main exposed.
 
+**Measured on the live surface**, not asserted from fixtures — the first
+production run is what found `quadratic_with_maker_fees`, and a fee that
+is null on a third of the menu passes every test written against a
+fixture that lacks it. Section C of
+`docs/evidence/kalshi_fee_and_override_probe.txt` builds the real catalog
+and audits every published block:
+
+| | |
+|---|---|
+| contracts carrying a fee block | 15,326 |
+| computable at the ask | **15,326 / 15,326** (0 with an ask but no fee) |
+| `support` | `supported` on all 15,326 |
+| `source` | `series` on all 15,326 — **0 event overrides live** |
+| effective model | `quadratic` 10,672 / `quadratic_with_maker_fees` 4,654 |
+| effective multiplier | `1.0` on all 15,326 |
+| `is_net_fee` | `false` on all 15,326 |
+
+Three named live contracts, each recomputed by hand from the exchange's
+formula and matching the published figure exactly:
+
+```
+KXNCAAF2HSPREAD-26SEP17SYRPITT-PITT10  ask 0.47  -> $0.017437   (old helper $0.02,  1.15x)
+KXNCAAFSPREAD-26SEP18MIAWAKE-MIA21     ask 0.51  -> $0.017493   (old helper $0.02,  1.14x)
+KXNCAAF1HFT-26SEP17SYRPITT-PITTSYR     ask 0.01  -> $0.000693   (old helper $0.01, 14.43x)
+```
+
+The longshot is the case that mattered: the retired helper rounded a
+$0.000693 fee up to a whole cent, **14× the real cost**, on precisely the
+contracts where a cent of assumed fee decides whether a price clears.
+
+185 live contracts are quoted at an ask of $0.00 or $1.00. There the
+quadratic term `P(1−P)` is zero, so the trade fee is correctly $0.00
+while the mid-based figure reads $0.0175 — the sharpest available
+demonstration of why the mid figure cannot be the headline: a consumer
+reading it as *the* fee books a cost the executable order does not incur.
+
 **Missing metadata fails closed.** A missing `fee_type` is not treated as
 quadratic; a missing `fee_multiplier` is not treated as 1; a series whose
 metadata request failed is not treated as a series without fees. Each
