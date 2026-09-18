@@ -57,8 +57,30 @@ committing only when the market surface actually changed.
   enumerated per game, and the artifact says so rather than implying
   coverage it does not have.
 
+### Consuming it
+
+```bash
+python scripts/run_cfb_preflight.py --last-successful-run-at <last successful run> --game <GAME_KEY>
+```
+
+`CATALOG FRESH` / `CATALOG STALE`, plus which games may be handicapped.
+Exit 0 = fresh and usable, 2 = stale, 3 = a requested game's discovery was
+incomplete.
+
+**The gate:** a game may not be used for handicapping unless its
+`native_game_markets_complete` is true. `capture_complete: false` at the
+slate level does **not** invalidate games that individually passed — each
+game's own completeness is authoritative. See
+`docs/RUN_CFB_CONTRACT.md`.
+
+**Freshness:** the catalog does not commit when nothing changed, so an old
+`captured_at` does not mean the collector stopped — and a recent one does
+not prove it is alive. Liveness comes from the last successful production
+run; the artifact corroborates it.
+
 See `docs/KALSHI_MARKET_CATALOG.md` for the discovery flow, the live
-endpoint behaviour it was built from, and the output schema.
+endpoint behaviour it was built from, and the output schema, and
+`docs/RUN_CFB_CONTRACT.md` for the consumer procedure.
 
 ---
 
@@ -151,6 +173,9 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/KALSHI_MARKET_CATALOG.md` -- **the live path**: discovery
   architecture, verified Kalshi endpoint behaviour, output schema,
   completeness semantics, automation cadence, known limitations.
+- `docs/RUN_CFB_CONTRACT.md` -- **the consumer contract**: the RUN CFB
+  procedure, the per-game completeness gate, and how freshness is
+  determined without guessing.
 - `docs/MODEL_RETIREMENT_2026.md` -- **the pivot**: what was retired from
   the live path, what was hibernated and why, what is preserved, how to
   revive it, and the Actions/storage before-and-after.

@@ -119,9 +119,26 @@ def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None)
 
     fee_type = (contract.fee_type or "").lower()
     fee_basis = yes_mid if yes_mid is not None else quote.yes_ask
-    fee_per_contract = (
-        kalshi_trading_fee(fee_basis, 1.0, contract.fee_multiplier) if fee_type in ("", "quadratic") else None
-    )
+
+    # *** WHY startswith AND NOT AN EXACT MATCH (production activation) ***
+    # The first production run on main found Kalshi returning a fee_type
+    # this code did not anticipate: `quadratic_with_maker_fees`, on 1,384
+    # of 4,811 sampled markets (~29%), INCLUDING the KXNCAAFGAME
+    # moneylines -- the most heavily traded family on the slate. An exact
+    # match against "quadratic" published `null` for every one of them, so
+    # a consumer deciding whether a price justifies a thesis got no fee
+    # estimate at all on nearly a third of the menu. At a 50c contract the
+    # fee is ~1.75c per round trip, which is not a rounding error.
+    #
+    # The TAKER fee is the same quadratic schedule under both spellings;
+    # the `_with_maker_fees` variant means the resting side is charged too.
+    # So the taker fee is computed for any quadratic-family schedule, and
+    # `maker_fee_applies` is published alongside so nobody mistakes a taker
+    # estimate for the whole cost. An unrecognized, NON-quadratic schedule
+    # still yields None rather than a guess -- the conservative default is
+    # kept for the case it was actually written for.
+    is_quadratic = fee_type.startswith("quadratic") or fee_type == ""
+    fee_per_contract = kalshi_trading_fee(fee_basis, 1.0, contract.fee_multiplier) if is_quadratic else None
 
     return {
         "yes_mid": yes_mid,
@@ -137,6 +154,8 @@ def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None)
         "fee_formula": (
             "ceil(fee_multiplier * 0.07 * contracts * P * (1-P)) in cents" if fee_per_contract is not None else None
         ),
+        "fee_is_taker_side_only": fee_per_contract is not None,
+        "maker_fee_applies": "maker" in fee_type if fee_type else None,
         "quote_age_seconds": quote_age_seconds(contract.updated_time, now),
         "seconds_until_close": seconds_until(contract.close_time, now),
         "seconds_until_occurrence": seconds_until(contract.occurrence_datetime, now),

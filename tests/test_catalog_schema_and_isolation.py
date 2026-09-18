@@ -432,6 +432,8 @@ def test_mechanics_block_has_no_game_opinion():
         "two_sided_quote",
         "estimated_fee_per_contract_at_mid",
         "fee_formula",
+        "fee_is_taker_side_only",
+        "maker_fee_applies",
         "quote_age_seconds",
         "seconds_until_close",
         "seconds_until_occurrence",
@@ -542,3 +544,64 @@ def test_published_strike_matches_the_contract_title():
             )
             checked += 1
     assert checked > 0, "no strike-bearing market was checked -- the fixture lost its ladders"
+
+
+# =========================================================================
+# FEE SCHEDULE
+#
+# The first production run on main found a fee_type this code did not
+# anticipate -- `quadratic_with_maker_fees` -- on ~29% of live markets,
+# including the KXNCAAFGAME moneylines. An exact match against "quadratic"
+# published a null fee for all of them, leaving a consumer with no cost
+# estimate on nearly a third of the menu.
+# =========================================================================
+
+
+def _mechanics_for_fee_type(fee_type):
+    from cfb_edge_finder.catalog.contract import build_contract
+    from cfb_edge_finder.catalog.mechanics import contract_mechanics
+
+    contract = build_contract(
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.49", "yes_ask_dollars": "0.51"},
+        game_key="g",
+        series_ticker="KXNCAAFGAME",
+        settlement_sources=[],
+        fee_type=fee_type,
+        fee_multiplier=1,
+        captured_at=NOW,
+    )
+    return contract_mechanics(contract)
+
+
+def test_fee_is_computed_for_every_quadratic_schedule_kalshi_uses():
+    """Both live spellings. The taker fee is the same quadratic schedule
+    under each; `_with_maker_fees` means the resting side pays too."""
+    for fee_type in ("quadratic", "quadratic_with_maker_fees"):
+        mechanics = _mechanics_for_fee_type(fee_type)
+        assert mechanics["estimated_fee_per_contract_at_mid"] is not None, (
+            f"fee_type={fee_type!r} published a null fee -- a consumer pricing a thesis gets no cost"
+        )
+        assert mechanics["fee_formula"] is not None
+
+
+def test_maker_fee_is_flagged_so_a_taker_estimate_is_not_mistaken_for_total_cost():
+    assert _mechanics_for_fee_type("quadratic_with_maker_fees")["maker_fee_applies"] is True
+    assert _mechanics_for_fee_type("quadratic")["maker_fee_applies"] is False
+    for fee_type in ("quadratic", "quadratic_with_maker_fees"):
+        assert _mechanics_for_fee_type(fee_type)["fee_is_taker_side_only"] is True
+
+
+def test_an_unrecognized_non_quadratic_schedule_still_refuses_to_guess():
+    """The conservative default is kept for the case it was written for: a
+    genuinely different schedule yields None, never a fabricated number."""
+    mechanics = _mechanics_for_fee_type("per_contract_flat_rate")
+    assert mechanics["estimated_fee_per_contract_at_mid"] is None
+    assert mechanics["fee_formula"] is None
+    assert mechanics["fee_is_taker_side_only"] is False
+
+
+def test_a_missing_fee_type_still_computes_the_published_schedule():
+    """Kalshi's documented default. An absent fee_type must not silently
+    mean 'free'."""
+    assert _mechanics_for_fee_type(None)["estimated_fee_per_contract_at_mid"] is not None
