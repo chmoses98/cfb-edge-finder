@@ -27,6 +27,16 @@ TWO QUESTIONS, BOTH OF WHICH MUST BE ANSWERED FROM PRIMARY SOURCES:
      contracts. The event object is already in the discovery path, so
      honouring the precedence costs no extra request -- but it has to be
      measured before it can be claimed either way.
+
+  C. Does the CORRECTED fee code produce an honest fee block on the REAL
+     surface? Fixtures cannot answer this: the first production run is
+     what found `quadratic_with_maker_fees`, and a fee that is null on a
+     third of the live menu passes every test written against a fixture
+     that does not contain it. So this probe builds the actual catalog
+     and audits the published `fee` blocks -- how many are computable,
+     where each effective fee came from, and what the numbers are on a
+     named live contract, priced by hand from the exchange's own formula
+     as a cross-check.
 """
 
 from __future__ import annotations
@@ -288,10 +298,102 @@ def probe_event_fee_overrides() -> None:
             print(f"  fee-related market keys on {mk[0].get('ticker')}: {fee_on_market or 'NONE'}")
 
 
+# --------------------------------------------------------------------------
+# C. the published fee block, on the live surface
+# --------------------------------------------------------------------------
+
+
+def audit_published_fee_blocks() -> None:
+    """Build the real catalog and check what its `fee` blocks actually say.
+
+    The point is not that the arithmetic is right -- unit tests cover
+    that against Kalshi's worked examples. The point is that the fee
+    metadata RESOLVES across the whole live surface: a fail-closed design
+    is only safe if it does not fail closed on everything."""
+    import math
+
+    from cfb_edge_finder.catalog.artifacts import build_catalog
+    from cfb_edge_finder.catalog.discovery import MarketDiscovery
+    from cfb_edge_finder.data.kalshi_client import KalshiClient
+
+    _hdr("C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE")
+
+    client = KalshiClient()
+    started = time.time()
+    run = MarketDiscovery(client.get_json).run()
+    catalog = build_catalog(run, include_markets=True)
+    games = catalog.get("games") or []
+    print(f"built the real catalog: {len(games)} games in {time.time() - started:.0f}s")
+
+    blocks = [m["fee"] for g in games for m in (g.get("markets") or [])]
+    print(f"contracts carrying a fee block: {len(blocks)}")
+    if not blocks:
+        print("  NO CONTRACTS -- cannot audit fees")
+        return
+
+    computable = [b for b in blocks if b["model_trade_fee_at_yes_ask"] is not None]
+    priceable = [b for b in blocks if b["basis_yes_ask"] is not None]
+    print("\n--- is the fee computable? ---")
+    print(f"  support distribution : {dict(Counter(b['support'] for b in blocks))}")
+    print(f"  effective fee source : {dict(Counter(b['source'] for b in blocks))}")
+    print(f"  effective model      : {dict(Counter(str(b['model']) for b in blocks))}")
+    print(f"  effective multiplier : {dict(Counter(str(b['multiplier']) for b in blocks))}")
+    print(f"  maker_fee_applies    : {dict(Counter(str(b['maker_fee_applies']) for b in blocks))}")
+    print(f"  computable at the ask: {len(computable)}/{len(priceable)} contracts that HAVE an ask")
+    reasons = Counter(str(b["unavailable_reason"]) for b in blocks if b["unavailable_reason"])
+    print(f"  unavailable_reasons  : {dict(reasons) or 'NONE'}")
+
+    # A null fee where an ask exists is the production defect this pass
+    # corrects. It must be zero, or the reason must be a real data gap.
+    null_with_ask = [b for b in priceable if b["model_trade_fee_at_yes_ask"] is None]
+    print(f"\n  contracts with an ask but NO fee: {len(null_with_ask)}")
+    for b in null_with_ask[:5]:
+        print(f"    model={b['model']!r} reason={b['unavailable_reason']!r}")
+
+    print("\n--- is the published fee NEVER dressed up as a net fee? ---")
+    print(f"  is_net_fee values    : {dict(Counter(str(b['is_net_fee']) for b in blocks))}")
+    print(f"  excludes (distinct)  : {sorted({tuple(b['excludes']) for b in blocks})}")
+
+    # A named worked example off the live surface, recomputed by hand from
+    # the exchange's own formula so the published number is checkable
+    # rather than merely present.
+    print("\n--- worked examples from named LIVE contracts ---")
+    shown = 0
+    for game in games:
+        for market in game.get("markets") or []:
+            block = market["fee"]
+            ask = block["basis_yes_ask"]
+            if ask is None or not ask or block["model_trade_fee_at_yes_ask"] is None:
+                continue
+            mult = block["multiplier"]
+            by_hand = math.ceil(mult * 0.07 * 1 * ask * (1 - ask) / 1e-6 - 1e-9) * 1e-6
+            print(f"\n  {market['market_ticker']}  ({game['game_key']})")
+            print(f"    {market['title'][:70]!r}")
+            print(f"    yes_ask={ask}  yes_mid={block['basis_yes_mid']}  "
+                  f"model={block['model']}  mult={mult}  source={block['source']}")
+            print(f"    published fee at ASK : ${block['model_trade_fee_at_yes_ask']:.6f}   <- the headline")
+            print(f"    recomputed by hand   : ${by_hand:.6f}")
+            print(f"    published fee at MID : ${block['model_trade_fee_at_yes_mid']:.6f}   "
+                  f"<- market mechanic, NOT an executable-order fee")
+            print(f"    old whole-cent helper would have said: $0.01"
+                  f"  ({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the trade fee)")
+            assert abs(by_hand - block["model_trade_fee_at_yes_ask"]) < 1e-9
+            shown += 1
+            if shown >= 3:
+                return
+        if shown >= 3:
+            return
+
+
 def main() -> int:
     print("Kalshi fee-rules + event-override probe")
     fetch_official_fee_rules()
     probe_event_fee_overrides()
+    try:
+        audit_published_fee_blocks()
+    except Exception as exc:  # a probe reports its own failure; it never hides it
+        _hdr(f"C. FAILED: {type(exc).__name__}: {exc}")
+        raise
     _hdr("PROBE COMPLETE")
     return 0
 

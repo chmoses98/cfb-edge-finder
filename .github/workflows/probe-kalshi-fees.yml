@@ -49,7 +49,14 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps
-        run: pip install requests pypdf
+        # The package itself, not just requests: section C builds the real
+        # catalog and audits the fee blocks it publishes, which is the only
+        # way to see the corrected fee code meet the live surface. The first
+        # production run is what found `quadratic_with_maker_fees`; a
+        # fixture would not have.
+        run: |
+          pip install -e .
+          pip install requests pypdf
       - name: Probe official fee rules and live event fee overrides
         # Unauthenticated GETs against Kalshi's public docs and public
         # market-data API only.
