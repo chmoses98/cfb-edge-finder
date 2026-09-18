@@ -408,8 +408,18 @@ yes_mid  no_mid  yes_bid_ask_spread  yes_bid_ask_spread_cents
 implied_probability_yes_mid / _yes_ask / _yes_bid / _last
 two_sided_quote
 estimated_fee_per_contract_at_mid  fee_formula
-quote_age_seconds  seconds_until_close  seconds_until_occurrence
+fee_is_taker_side_only  maker_fee_applies
 ```
+
+Every value is a pure function of the quote, with no dependence on when it
+was computed. That is deliberate: clock-derived countdowns
+(`quote_age_seconds`, `seconds_until_close`, `seconds_until_occurrence`)
+were published in the first production build and caused **all 239 game
+files to be rewritten on every run** even when no price had moved,
+defeating the per-game change detection the split artifact exists for.
+They carried no information — each is a subtraction of two absolute
+timestamps already published — so they were removed rather than
+special-cased. A consumer computes them against its own clock.
 
 `implied_probability` is the price restated in probability units — which is
 what a $1 binary contract's price already is. A one-sided book yields
@@ -420,6 +430,15 @@ Fee is Kalshi's published quadratic schedule,
 `ceil(fee_multiplier × 0.07 × contracts × P × (1−P))` in cents, with the
 multiplier taken from the series. The quadratic shape matters: a 2¢
 longshot and a 50¢ coin flip carry very different round-trip costs.
+
+Kalshi uses **two** quadratic spellings — `quadratic` and
+`quadratic_with_maker_fees` (the latter on ~29% of live CFB markets,
+including the `KXNCAAFGAME` moneylines). The taker fee is identical under
+both; `_with_maker_fees` means the resting side is charged too, which
+`maker_fee_applies` reports. Matching only the exact string `quadratic`
+published a null fee on nearly a third of the menu — a defect the first
+production run on main exposed. A genuinely non-quadratic schedule still
+yields `null` rather than a guess.
 
 `tests/test_catalog_schema_and_isolation.py` pins the exact key set of this
 block, so a model-shaped field cannot be added to it quietly.

@@ -434,10 +434,12 @@ def test_mechanics_block_has_no_game_opinion():
         "fee_formula",
         "fee_is_taker_side_only",
         "maker_fee_applies",
-        "quote_age_seconds",
-        "seconds_until_close",
-        "seconds_until_occurrence",
     }
+    # Clock-derived countdowns are deliberately NOT published -- they made
+    # every game file churn on every capture. See mechanics.py.
+    assert "quote_age_seconds" not in mechanics
+    assert "seconds_until_close" not in mechanics
+    assert "seconds_until_occurrence" not in mechanics
 
 
 # =========================================================================
@@ -605,3 +607,45 @@ def test_a_missing_fee_type_still_computes_the_published_schedule():
     """Kalshi's documented default. An absent fee_type must not silently
     mean 'free'."""
     assert _mechanics_for_fee_type(None)["estimated_fee_per_contract_at_mid"] is not None
+
+
+def test_an_unchanged_market_surface_rewrites_no_game_file_as_the_clock_moves():
+    """The churn defect, caught in production: clock-derived countdowns in
+    `mechanics` ticked every capture, so all 239 detail files (43 MB) were
+    rewritten on every run even when not one price had moved -- defeating
+    the per-game change detection the split artifact exists for.
+
+    Identical market data must produce byte-identical files no matter how
+    much wall-clock time passes between captures."""
+    import tempfile
+    from datetime import timedelta
+
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        first = write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), out)
+        assert first.game_files_written == 1
+
+        later = write_catalog_artifacts(
+            MarketDiscovery(_fake()).run(as_of=NOW + timedelta(hours=3)), out
+        )
+        assert later.game_files_written == 0, "the clock alone rewrote a game file"
+        assert later.game_files_unchanged == 1
+
+
+def test_a_real_price_move_still_rewrites_that_game_file():
+    """The other half: change detection must not be so aggressive that a
+    genuine price move is missed."""
+    import tempfile
+
+    from cfb_edge_finder.catalog.artifacts import write_catalog_artifacts
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), out)
+
+        moved = _fake()
+        moved.markets_by_event["KXNCAAFGAME-26SEP19UGAARK"][0]["yes_ask_dollars"] = "0.7700"
+        after = write_catalog_artifacts(MarketDiscovery(moved).run(as_of=NOW), out)
+        assert after.game_files_written == 1

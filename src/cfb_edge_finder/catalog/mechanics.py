@@ -24,7 +24,7 @@ last are all published alongside so a reader can disagree.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -104,13 +104,17 @@ def kalshi_trading_fee(
     return round(cents / 100.0, 4)
 
 
-def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None) -> dict[str, Any]:
+def contract_mechanics(contract: CatalogContract) -> dict[str, Any]:
     """The full mechanics block published per contract.
+
+    Every value here is a pure function of the QUOTE, with no dependence on
+    when it was computed -- which is what lets a game's detail file stay
+    byte-identical across captures while its market surface is unchanged.
+    See the note on countdowns at the bottom of the returned block.
 
     Deliberately excluded: anything about the GAME. If a future reader
     wants a model view, it belongs in a separate artifact that joins to
     this one by market_ticker -- not in here."""
-    now = as_of or contract.captured_at or datetime.now(UTC)
     quote = contract.quote
 
     yes_mid = mid_price(quote.yes_bid, quote.yes_ask)
@@ -156,7 +160,24 @@ def contract_mechanics(contract: CatalogContract, as_of: datetime | None = None)
         ),
         "fee_is_taker_side_only": fee_per_contract is not None,
         "maker_fee_applies": "maker" in fee_type if fee_type else None,
-        "quote_age_seconds": quote_age_seconds(contract.updated_time, now),
-        "seconds_until_close": seconds_until(contract.close_time, now),
-        "seconds_until_occurrence": seconds_until(contract.occurrence_datetime, now),
+        # *** WHY NO CLOCK-DERIVED COUNTDOWNS ARE PUBLISHED ***
+        # quote_age_seconds / seconds_until_close / seconds_until_occurrence
+        # used to be published here, and it was a real production defect:
+        # they tick on every capture, so EVERY game file's bytes changed on
+        # EVERY run even when not one price had moved. Measured live, that
+        # rewrote all 239 detail files (43 MB) per run, defeating the
+        # per-game change detection the split artifact exists for and
+        # putting 43 MB into every commit instead of only what moved.
+        #
+        # They carried no information either: each is a subtraction of two
+        # ABSOLUTE timestamps this artifact already publishes --
+        # `updated_time`, `close_time`, `occurrence_datetime` on the
+        # contract and `captured_at` on the capture. A consumer computes
+        # them exactly, against its own clock rather than the capture's,
+        # which is the more correct number anyway.
+        #
+        # Keeping them while skipping the rewrite would have been worse: an
+        # unrewritten file would then advertise a countdown that had
+        # silently expired. The helpers above remain for callers that want
+        # these values live.
     }

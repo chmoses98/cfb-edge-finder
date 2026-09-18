@@ -142,8 +142,15 @@ here, and nothing in it should.**
 - `estimated_fee_per_contract_at_mid` + `maker_fee_applies` — Kalshi's
   quadratic fee, peaking near 50¢; `fee_is_taker_side_only` is true, so a
   resting order on a `quadratic_with_maker_fees` series costs more;
-- `quote_age_seconds`, `seconds_until_close`, `two_sided_quote` — how real
-  the quote is.
+- `two_sided_quote` — whether anyone is showing both sides.
+
+Time-to-close and quote age are **not** published as countdowns, on
+purpose: they tick every capture, so publishing them rewrote all 239 game
+files on every run even when no price had moved. Compute them yourself from
+the absolute timestamps that *are* published — `close_time`,
+`occurrence_datetime`, `updated_time` on the contract and `captured_at` on
+the capture — against your own clock, which is the more correct number
+anyway.
 
 Compare **your** probability against the **executable** price (ask to buy
 YES, bid to sell), net of fee. A one-sided book (`two_sided_quote: false`)
