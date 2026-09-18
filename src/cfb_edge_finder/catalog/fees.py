@@ -413,13 +413,21 @@ def fee_block(
     each computed from ITS OWN executable price.
 
     The NO figure uses the quoted `no_ask`. It is deliberately NOT
-    `1 - yes_ask`: that complement is the price NO would trade at if the
-    book were perfectly tight, which it generally is not. Kalshi quotes
-    the NO side independently, and on a wide or one-sided book the
-    complement can be materially better than anything you can execute at
-    -- so deriving it would hand a consumer a fee on a price that does
-    not exist. If `no_ask` is absent, the NO-side fee is null. An absent
-    price is not an invitation to invent one.
+    `1 - yes_ask`, and the reason is sharper than "they might differ".
+    On a Kalshi binary the two sides mirror each other ACROSS the spread:
+
+        no_ask == 1 - yes_bid        no_bid == 1 - yes_ask
+
+    verified on all 15,444 live contracts. So `1 - yes_ask` is the NO
+    **BID** -- the price at which you could SELL NO. Using it as the NO
+    taker price is not a rounding difference; it is the wrong side of the
+    spread, understating the cost of buying NO by the full spread width.
+    The quoted `no_ask` and `1 - yes_ask` disagreed on 15,444 of 15,444
+    live contracts, and the YES-ask and NO-ask fees themselves differ on
+    15,057 of them.
+
+    If `no_ask` is absent, the NO-side fee is null. An absent price is not
+    an invitation to invent one.
 
     *** WHY NEITHER MID IS A HEADLINE ***
     A taker pays the ASK on whichever side it buys. The mid-based figure

@@ -520,10 +520,13 @@ account's net cost.
 correct wager is NO, and pricing that must not require reimplementing the
 fee model. `model_trade_fee_at_yes_ask` and `model_trade_fee_at_no_ask` are
 each computed from **their own quoted ask**. The NO figure is deliberately
-never `1 − yes_ask`: that complement is the price NO would trade at if the
-book were perfectly tight, and on a wide book it is better than anything
-executable — deriving it would hand a consumer a fee on a price nobody is
-offering. An absent `no_ask` yields a `null` NO fee. `executable_bases` and
+never `1 − yes_ask`. The two sides mirror each other *across* the spread —
+`no_ask == 1 − yes_bid` and `no_bid == 1 − yes_ask`, verified on all 15,444
+live contracts — so `1 − yes_ask` is the NO **bid**, the price you could
+*sell* NO at. Pricing a NO *buy* from it is the wrong side of the spread,
+understating the cost by its full width. Quoted `no_ask` and `1 − yes_ask`
+disagreed on 15,444 of 15,444 live contracts; the two side fees differ on
+15,057. An absent `no_ask` yields a `null` NO fee. `executable_bases` and
 `non_executable_bases` name which is which, so nothing has to be inferred
 from a key name. `model_trade_fee_at_yes_mid` is retained as a market
 mechanic and goes `null` whenever the mid does.

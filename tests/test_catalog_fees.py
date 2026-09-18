@@ -506,6 +506,33 @@ def test_the_two_side_fees_differ_when_the_spread_is_wide():
     )
 
 
+def test_the_complement_of_the_yes_ask_is_the_NO_BID_not_the_no_ask():
+    """*** WHY DERIVING THE NO PRICE IS THE WRONG SIDE OF THE SPREAD ***
+    A Kalshi binary's sides mirror across the spread -- verified on all
+    15,444 live contracts:
+
+        no_ask == 1 - yes_bid       no_bid == 1 - yes_ask
+
+    so `1 - yes_ask` is the price you could SELL NO at. Pricing a NO BUY
+    from it understates the cost by the full spread width. This test uses
+    the live 0.86/0.88 YES quote whose real NO side is 0.12/0.14."""
+    yes_bid, yes_ask = 0.86, 0.88
+    no_bid, no_ask = 0.12, 0.14
+
+    assert no_ask == pytest.approx(1 - yes_bid, abs=1e-9)
+    assert no_bid == pytest.approx(1 - yes_ask, abs=1e-9)
+
+    block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=yes_ask, yes_mid=0.87, no_ask=no_ask)
+    assert block["basis_no_ask"] == pytest.approx(no_ask)
+    # Had we derived it, we would have priced 0.12 -- the NO BID.
+    assert block["model_trade_fee_at_no_ask"] == pytest.approx(
+        model_trade_fee(no_ask, 1, 1), abs=1e-12
+    )
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        model_trade_fee(1 - yes_ask, 1, 1), abs=1e-12
+    )
+
+
 def test_a_missing_no_ask_yields_a_null_no_fee_not_an_invented_complement():
     """*** FAIL CLOSED, ON THE PRICE THIS TIME ***
     A one-sided book has no NO ask. The complement of the YES ask is

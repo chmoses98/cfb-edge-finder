@@ -239,14 +239,22 @@ what a fee figure *represents* matters as much as its value:
 | **buying YES** | `basis_yes_ask` (the YES ask) | `model_trade_fee_at_yes_ask` |
 | **buying NO** | `basis_no_ask` (the NO ask) | `model_trade_fee_at_no_ask` |
 
-**Neither midpoint is an executable price.** Not `yes_mid`, not the NO
-complement. Both sides are priced from their own quoted ask, and the NO
-figure is **never** derived as `1 − yes_ask` — that complement is the price
-NO would trade at if the book were perfectly tight, which it generally is
-not. On a wide book the complement is better than anything you can execute
-at, so acting on it means pricing a trade nobody is offering. If `no_ask`
-is absent, `model_trade_fee_at_no_ask` is `null`; an absent price is not an
-invitation to invent one.
+**Neither midpoint is an executable price**, and **`1 − yes_ask` is not the
+NO ask.** The two sides of a Kalshi binary mirror each other *across* the
+spread — verified on all 15,444 live contracts:
+
+```
+no_ask == 1 − yes_bid          no_bid == 1 − yes_ask
+```
+
+So `1 − yes_ask` is the NO **bid** — the price you could *sell* NO at.
+Using it to price a NO *buy* is not a rounding difference; it is the wrong
+side of the spread, and it understates your cost by the full spread width.
+The quoted `no_ask` and `1 − yes_ask` disagreed on **15,444 of 15,444**
+live contracts, and the two side fees themselves differ on **15,057**.
+
+If `no_ask` is absent, `model_trade_fee_at_no_ask` is `null`; an absent
+price is not an invitation to invent one.
 
 The quadratic schedule is symmetric about $0.50, so on a tight book the two
 side fees are nearly identical — which is exactly why it is tempting to let

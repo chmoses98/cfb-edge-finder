@@ -358,6 +358,26 @@ def audit_published_fee_blocks() -> None:
     print(f"  contracts where the quoted no_ask != 1 - yes_ask: {len(derived)}")
     print("    (each one is a contract where deriving the NO fee from the YES ask")
     print("     would have priced a trade at a price nobody is offering)")
+
+    # WHICH price is the complement of the YES ask, actually? On a Kalshi
+    # binary the NO ask mirrors the YES BID, so 1 - yes_ask is the NO
+    # BID -- the price you could SELL NO at. Using it as the NO taker
+    # price is not a rounding difference, it is the wrong side of the
+    # spread. Measured rather than assumed:
+    mirrors_bid = [
+        m for g in games for m in (g.get("markets") or [])
+        if m.get("no_ask") is not None and m.get("yes_bid") is not None
+        and abs(m["no_ask"] - (1.0 - m["yes_bid"])) < 1e-9
+    ]
+    complement_is_no_bid = [
+        m for g in games for m in (g.get("markets") or [])
+        if m.get("no_bid") is not None and m.get("yes_ask") is not None
+        and abs(m["no_bid"] - (1.0 - m["yes_ask"])) < 1e-9
+    ]
+    print(f"\n  contracts where quoted no_ask == 1 - yes_bid : {len(mirrors_bid)}/{len(blocks)}")
+    print(f"  contracts where quoted no_bid == 1 - yes_ask : {len(complement_is_no_bid)}/{len(blocks)}")
+    print("    => 1 - yes_ask is the NO BID (where you could SELL NO), not the NO ask.")
+    print("       Deriving a NO taker fee from it prices the wrong side of the spread.")
     if derived:
         b = derived[0]
         print(f"    e.g. yes_ask={b['basis_yes_ask']} -> complement {1 - b['basis_yes_ask']:.4f}, "
