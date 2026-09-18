@@ -8,7 +8,7 @@
 This is the one command a RUN CFB session runs before anything else. It
 answers two questions that must not be guessed at:
 
-  1. CATALOG FRESH or CATALOG STALE
+  1. CATALOG FRESH, CATALOG STALE, or CATALOG INCONSISTENT
   2. which games may be handicapped, and which must be refused
 
 *** WHY FRESHNESS NEEDS THE RUN HISTORY ***
@@ -30,6 +30,14 @@ or via the API:
 
 Without it, this script reports STALE and says why, rather than quietly
 falling back to the timestamp and calling it fresh.
+
+`--last-run-fingerprint` is corroboration, and it FAILS CLOSED. If the
+fingerprint you supply disagrees with the published one, the verdict is
+CATALOG INCONSISTENT and the exit code is 4 -- never 0 -- however recent
+the run was. A conflicting corroborating signal is worse evidence than
+none: it says the live run and the committed artifact describe different
+content. Supplying no fingerprint is allowed and can still be FRESH, but
+the output states that corroboration was not supplied.
 
 *** WHAT THIS SCRIPT WILL NEVER DO ***
 It never projects a game, prices a fair value, or recommends a wager. It
@@ -93,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
                     "freshness_reason": freshness.reason,
                     "minutes_since_last_success": freshness.minutes_since_last_success,
                     "fingerprint_matched": freshness.fingerprint_matched,
+                    "fingerprint_corroboration": freshness.fingerprint_corroboration,
                     "captured_at": slate.captured_at,
                     "capture_complete": slate.capture_complete,
                     "usable_games": len(slate.usable),
@@ -128,6 +137,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # Exit code is the machine-readable verdict: 0 only when the catalog is
     # fresh AND every explicitly requested game may be used.
+    #
+    # The mismatch check comes first and has its own code so that a caller
+    # reading only the exit status can tell "the collector may have died"
+    # from "the run and the artifact disagree, which is a fault to
+    # investigate". Both are nonzero; neither is ever 0.
+    if freshness.is_inconsistent:
+        return 4
     if not freshness.is_fresh:
         return 2
     if any(not v.may_handicap for v in requested):

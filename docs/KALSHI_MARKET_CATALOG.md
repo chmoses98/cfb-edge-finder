@@ -175,7 +175,11 @@ Three consequences:
 2. **A market carries no `series_ticker`.** The catalog takes it from the
    parent event, which knows it for certain.
 3. **Fee metadata is on the SERIES**, not the market (`fee_type:
-   "quadratic"`, `fee_multiplier: 1`), and is joined in per contract.
+   "quadratic"`, `fee_multiplier: 1`), and is joined in per contract. An
+   **event** may override it (`fee_type_override`,
+   `fee_multiplier_override`), and the override wins. Markets themselves
+   carry no fee keys at all — verified across the live CFB surface, see
+   `docs/evidence/kalshi_fee_and_override_probe.txt`.
 
 Top-of-book quoted size is on the market (`yes_bid_size_fp`,
 `yes_ask_size_fp`). Full depth is available per market from
@@ -390,7 +394,7 @@ occurrence_datetime  updated_time
 rules_primary  rules_secondary  early_close_condition  can_close_early
 settlement_timer_seconds  settlement_sources
 exchange_index  fee_type  fee_multiplier
-mechanics{...}
+fee{...}  mechanics{...}
 ```
 
 Detail files omit the raw Kalshi payload by default so they stay efficient
@@ -407,9 +411,9 @@ alone and would be identical whoever was playing:
 yes_mid  no_mid  yes_bid_ask_spread  yes_bid_ask_spread_cents
 implied_probability_yes_mid / _yes_ask / _yes_bid / _last
 two_sided_quote
-estimated_fee_per_contract_at_mid  fee_formula
-fee_is_taker_side_only  maker_fee_applies
 ```
+
+Fees are **not** in this block — see below.
 
 Every value is a pure function of the quote, with no dependence on when it
 was computed. That is deliberate: clock-derived countdowns
@@ -426,22 +430,73 @@ what a $1 binary contract's price already is. A one-sided book yields
 `null` for the mid rather than an invented price; a price outside `[0,1]`
 yields `null` rather than a clipped, confident-looking 100%.
 
-Fee is Kalshi's published quadratic schedule,
-`ceil(fee_multiplier × 0.07 × contracts × P × (1−P))` in cents, with the
-multiplier taken from the series. The quadratic shape matters: a 2¢
-longshot and a 50¢ coin flip carry very different round-trip costs.
-
-Kalshi uses **two** quadratic spellings — `quadratic` and
-`quadratic_with_maker_fees` (the latter on ~29% of live CFB markets,
-including the `KXNCAAFGAME` moneylines). The taker fee is identical under
-both; `_with_maker_fees` means the resting side is charged too, which
-`maker_fee_applies` reports. Matching only the exact string `quadratic`
-published a null fee on nearly a third of the menu — a defect the first
-production run on main exposed. A genuinely non-quadratic schedule still
-yields `null` rather than a guess.
-
 `tests/test_catalog_schema_and_isolation.py` pins the exact key set of this
 block, so a model-shaped field cannot be added to it quietly.
+
+### Fees — `src/cfb_edge_finder/catalog/fees.py`
+
+Fees live in their own module and their own published block, for one
+reason: **what a fee number represents matters as much as its value**, and
+the earlier versions of this code got that wrong twice.
+
+**Kalshi's actual rounding rule.** Fees are six-decimal dollar amounts.
+The trade fee is the model fee rounded up to the nearest **$0.000001** —
+not to a cent ([fee rounding][fr]):
+
+```
+trade_fee     = ceil_6dp(model_fee)
+aligned_change= floor_precision(revenue − trade_fee)
+rounding_fee  = (revenue − trade_fee) − aligned_change
+net fee       = trade fee + rounding fee − rebate        (≥ $0.00)
+```
+
+An earlier helper here rounded up to a whole cent. On the exchange's own
+worked example that is a **2.75× overstatement** — $0.01 where the trade
+fee is $0.003639 — which is not a rounding nicety on a 2¢ longshot.
+
+**What is published, and what is deliberately not.** Only the trade fee
+is account-independent. The rounding fee, the rebate and the per-*order*
+fee accumulator all depend on the member's target balance precision
+($0.0001 direct, $0.01 non-direct), which a public catalog cannot know. So
+the `fee` block publishes the trade fee, sets `is_net_fee: false`, and
+lists the four things it excludes by name. The rounding and rebate
+mechanics *are* implemented, and are exercised against Kalshi's official
+worked examples in `tests/test_catalog_fees.py`, to prove the rules were
+read correctly — they are simply not published as though we knew an
+account's net cost.
+
+**The headline is the executable price.** `model_trade_fee_at_yes_ask` is
+the fee a taker buying YES pays, because a YES buy executes at the ask.
+`model_trade_fee_at_yes_mid` is retained as a market mechanic under a name
+that cannot be mistaken for it. A mid-based fee presented as *the* fee
+understates every taker order.
+
+**Effective schedule, with event precedence.** The block publishes the
+effective `fee_type`/`fee_multiplier` — the event's override if present,
+otherwise the series' — plus `source` (`event_override` / `series` /
+`unavailable`) so a reader can see which applied. The event object is
+already in hand during capture, so honouring the precedence costs no extra
+request. Live CFB carries **zero** overrides today (0 of 1,937 open
+events; the keys are absent from the payload), which is precisely why it is
+tested rather than assumed: nothing in production would notice if it broke.
+
+**Two quadratic spellings.** `quadratic` and `quadratic_with_maker_fees`
+(the latter on ~29% of live CFB markets, including the `KXNCAAFGAME`
+moneylines). The taker fee is identical under both; `_with_maker_fees`
+means the resting side is charged too, which `maker_fee_applies` reports.
+Matching only the exact string `quadratic` published a null fee on nearly
+a third of the menu — a defect the first production run on main exposed.
+
+**Missing metadata fails closed.** A missing `fee_type` is not treated as
+quadratic; a missing `fee_multiplier` is not treated as 1; a series whose
+metadata request failed is not treated as a series without fees. Each
+publishes `null` figures with a distinct `unavailable_reason`, and
+`maker_fee_applies` is `null` rather than `false` when the schedule is
+unknown. Every one of those defaults would be right in the ordinary case
+and silently wrong in exactly the case a consumer needs warning about — a
+data failure must not be published as a measurement.
+
+[fr]: https://docs.kalshi.com/getting_started/fee_rounding
 
 ### Determinism
 

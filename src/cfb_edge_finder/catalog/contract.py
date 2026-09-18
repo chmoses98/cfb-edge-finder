@@ -37,6 +37,7 @@ from cfb_edge_finder.catalog.classification import (
     MarketClassification,
     MarketFamilyLabel,
 )
+from cfb_edge_finder.catalog.fees import EffectiveFee, fee_block
 
 # Field-name candidates, in preference order. First present-and-parseable
 # wins; all of them are kept in `raw` regardless.
@@ -210,8 +211,11 @@ class CatalogContract:
     occurrence_datetime: datetime | None
     updated_time: datetime | None
     exchange_index: int | None
-    fee_type: str | None
-    fee_multiplier: float | None
+    effective_fee: EffectiveFee
+    """The fee metadata that actually applies: an event override when
+    present, else the parent series. Carries its own source and
+    unavailability reason so a missing fee is never mistaken for a
+    computed one -- see catalog/fees.py."""
     notional_value: float | None
     captured_at: datetime
     raw: dict[str, Any]
@@ -231,8 +235,7 @@ def build_contract(
     game_key: str | None,
     series_ticker: str | None,
     settlement_sources: list[dict[str, Any]] | None,
-    fee_type: str | None,
-    fee_multiplier: float | None,
+    effective_fee: EffectiveFee,
     captured_at: datetime,
     classification: MarketClassification | None = None,
 ) -> CatalogContract:
@@ -303,8 +306,7 @@ def build_contract(
         occurrence_datetime=_parse_ts(market.get("occurrence_datetime")),
         updated_time=_parse_ts(market.get("updated_time")),
         exchange_index=market.get("exchange_index"),
-        fee_type=fee_type,
-        fee_multiplier=fee_multiplier,
+        effective_fee=effective_fee,
         notional_value=_first_money(market, _NOTIONAL),
         captured_at=captured_at,
         raw=dict(market),
@@ -366,8 +368,16 @@ def contract_to_dict(contract: CatalogContract, include_raw: bool) -> dict[str, 
         "settlement_timer_seconds": contract.semantics.settlement_timer_seconds,
         "settlement_sources": contract.semantics.settlement_sources,
         "exchange_index": contract.exchange_index,
-        "fee_type": contract.fee_type,
-        "fee_multiplier": contract.fee_multiplier,
+        # The EFFECTIVE values (event override if present, else series).
+        "fee_type": contract.effective_fee.fee_type,
+        "fee_multiplier": contract.effective_fee.fee_multiplier,
+        # Everything a reader needs to know what the fee figures ARE, and
+        # what they deliberately are not. See catalog/fees.py.
+        "fee": fee_block(
+            contract.effective_fee,
+            yes_ask=contract.quote.yes_ask,
+            yes_mid=mechanics.get("yes_mid"),
+        ),
         "mechanics": mechanics,
         "classification_rationale": contract.classification.rationale,
     }

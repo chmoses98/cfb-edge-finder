@@ -1,5 +1,15 @@
 """Market mechanics: arithmetic ON the quote, never a view ABOUT the game.
 
+*** FEES LIVE IN fees.py, NOT HERE ***
+Fee fields used to be computed in this block with a helper that rounded
+the quadratic model fee UP TO A WHOLE CENT. Kalshi's current documentation
+rounds the trade fee up to $0.000001, so that helper overstated the fee by
+~2.75x on the docs' own worked example -- and it published the result under
+a name ("estimated_fee_per_contract_at_mid") that read as the fee actually
+charged, which no credential-free catalog can know. Fee resolution and
+arithmetic now live in `catalog/fees.py`, and the artifact publishes a
+self-describing `fee` block beside this one.
+
 *** THE LINE THIS MODULE MUST NOT CROSS ***
 Everything here is derivable from the order book alone and would be
 identical no matter which teams were playing: the mid of the quoted
@@ -80,30 +90,6 @@ def seconds_until(moment: datetime | None, as_of: datetime) -> float | None:
     return round((moment - as_of).total_seconds(), 3)
 
 
-def kalshi_trading_fee(
-    price: float | None, contracts: float = 1.0, fee_multiplier: float | None = None
-) -> float | None:
-    """Kalshi's published quadratic trading fee, in dollars.
-
-        fee = ceil(multiplier * 0.07 * C * P * (1 - P))   [rounded up to a cent]
-
-    The quadratic shape is why fees matter most exactly where a catalog
-    reader is most likely to be looking: the fee peaks at a 50c contract
-    and shrinks toward either extreme, so a 2c longshot and a 50c coin flip
-    carry very different round-trip costs for the same stake.
-
-    `fee_multiplier` comes from the SERIES payload (live evidence: series
-    carry `fee_type: "quadratic"` and `fee_multiplier: 1`), so a series
-    that prices fees differently is honoured rather than assumed. Returns
-    None when the price is unknown -- never 0, which would read as free."""
-    if price is None or not (0.0 <= price <= 1.0):
-        return None
-    multiplier = 1.0 if fee_multiplier is None else float(fee_multiplier)
-    raw = multiplier * 0.07 * contracts * price * (1.0 - price)
-    cents = -(-round(raw * 100, 9) // 1)  # ceil to the next whole cent
-    return round(cents / 100.0, 4)
-
-
 def contract_mechanics(contract: CatalogContract) -> dict[str, Any]:
     """The full mechanics block published per contract.
 
@@ -121,29 +107,6 @@ def contract_mechanics(contract: CatalogContract) -> dict[str, Any]:
     no_mid = mid_price(quote.no_bid, quote.no_ask)
     yes_spread = bid_ask_spread(quote.yes_bid, quote.yes_ask)
 
-    fee_type = (contract.fee_type or "").lower()
-    fee_basis = yes_mid if yes_mid is not None else quote.yes_ask
-
-    # *** WHY startswith AND NOT AN EXACT MATCH (production activation) ***
-    # The first production run on main found Kalshi returning a fee_type
-    # this code did not anticipate: `quadratic_with_maker_fees`, on 1,384
-    # of 4,811 sampled markets (~29%), INCLUDING the KXNCAAFGAME
-    # moneylines -- the most heavily traded family on the slate. An exact
-    # match against "quadratic" published `null` for every one of them, so
-    # a consumer deciding whether a price justifies a thesis got no fee
-    # estimate at all on nearly a third of the menu. At a 50c contract the
-    # fee is ~1.75c per round trip, which is not a rounding error.
-    #
-    # The TAKER fee is the same quadratic schedule under both spellings;
-    # the `_with_maker_fees` variant means the resting side is charged too.
-    # So the taker fee is computed for any quadratic-family schedule, and
-    # `maker_fee_applies` is published alongside so nobody mistakes a taker
-    # estimate for the whole cost. An unrecognized, NON-quadratic schedule
-    # still yields None rather than a guess -- the conservative default is
-    # kept for the case it was actually written for.
-    is_quadratic = fee_type.startswith("quadratic") or fee_type == ""
-    fee_per_contract = kalshi_trading_fee(fee_basis, 1.0, contract.fee_multiplier) if is_quadratic else None
-
     return {
         "yes_mid": yes_mid,
         "no_mid": no_mid,
@@ -154,12 +117,6 @@ def contract_mechanics(contract: CatalogContract) -> dict[str, Any]:
         "implied_probability_yes_bid": implied_probability(quote.yes_bid),
         "implied_probability_last": implied_probability(quote.last_price),
         "two_sided_quote": quote.has_two_sided_yes_quote,
-        "estimated_fee_per_contract_at_mid": fee_per_contract,
-        "fee_formula": (
-            "ceil(fee_multiplier * 0.07 * contracts * P * (1-P)) in cents" if fee_per_contract is not None else None
-        ),
-        "fee_is_taker_side_only": fee_per_contract is not None,
-        "maker_fee_applies": "maker" in fee_type if fee_type else None,
         # *** WHY NO CLOCK-DERIVED COUNTDOWNS ARE PUBLISHED ***
         # quote_age_seconds / seconds_until_close / seconds_until_occurrence
         # used to be published here, and it was a real production defect:

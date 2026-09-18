@@ -20,15 +20,26 @@ python scripts/run_cfb_preflight.py \
 ```
 
 Exit codes are the verdict: **0** = fresh and every requested game usable,
-**2** = `CATALOG STALE`, **3** = a requested game may not be used.
+**2** = `CATALOG STALE`, **3** = a requested game may not be used, **4** =
+`CATALOG INCONSISTENT` (see below). Only **0** permits handicapping.
 
-Get the run timestamp from **Actions → "Kalshi CFB Market Catalog" → latest
-successful run**, or:
+Get the run timestamp and fingerprint from **Actions → "Kalshi CFB Market
+Catalog" → latest successful run on `main`**, or:
 
 ```
-/repos/chmoses98/cfb-edge-finder/actions/workflows/kalshi-market-catalog.yml/runs?status=success&per_page=1
-  -> .workflow_runs[0].updated_at
+/repos/chmoses98/cfb-edge-finder/actions/workflows/kalshi-market-catalog.yml/runs
+  ?branch=main&status=success&per_page=1
+  -> .workflow_runs[0].updated_at        # --last-successful-run-at
+  -> .workflow_runs[0].head_sha          # which commit produced it
 ```
+
+**`branch=main` is not optional.** Without it the API happily returns a
+successful run from any branch — including a feature branch, including one
+of your own. **A feature-branch workflow run must never certify the main
+catalog**: it read a different commit, may have written to a different
+place, and says nothing about whether the production collector on `main` is
+alive. Omitting the filter is how a dead production schedule gets certified
+by a green run that had nothing to do with it.
 
 ### 1 — Verify production freshness
 
@@ -36,10 +47,21 @@ successful run**, or:
 when the market surface has not changed, so that timestamp is the last
 *change*, not the last *observation*.
 
-| Committed `captured_at` | Last successful run | Verdict |
+| Committed `captured_at` | Last successful run on `main` | Verdict |
 |---|---|---|
-| 6 hours old | 12 min ago, fingerprint matches published | **FRESH** — re-observed and unchanged |
+| 6 hours old | 12 min ago, fingerprint **matches** published | **FRESH** — re-observed and unchanged |
 | 12 min old | none / failed | **STALE** — the collector stopped; you are reading its last gasp |
+| any | 12 min ago, fingerprint **disagrees** with published | **INCONSISTENT** (exit 4) — the run and the artifact describe different content |
+| any | 12 min ago, no fingerprint supplied | **FRESH**, but corroboration was not supplied — stated as such in the output |
+
+**A supplied fingerprint that disagrees fails closed.** It is worse
+evidence than no fingerprint at all: it is positive evidence that the
+committed artifact is not what the live run observed (a partial commit, a
+run against another branch, a hand-edited file). That is never freshness,
+no matter how recent the run, and `assess_freshness` checks it *before* it
+looks at run age. Supplying no fingerprint is allowed — freshness then
+rests on the run history alone, and the verdict says so out loud rather
+than implying two signals agreed.
 
 Tolerance is 3× the cadence for the current window:
 
@@ -139,10 +161,42 @@ here, and nothing in it should.**
 - `implied_probability_yes_mid` / `_yes_ask` / `_yes_bid` — the price
   restated in probability units (a $1 binary's price *is* its probability);
 - `yes_bid_ask_spread_cents` — what crossing costs;
-- `estimated_fee_per_contract_at_mid` + `maker_fee_applies` — Kalshi's
-  quadratic fee, peaking near 50¢; `fee_is_taker_side_only` is true, so a
-  resting order on a `quadratic_with_maker_fees` series costs more;
 - `two_sided_quote` — whether anyone is showing both sides.
+
+Fees are a separate, self-describing `fee` block on each contract, because
+what a fee figure *represents* matters as much as its value:
+
+| Field | What it is |
+|---|---|
+| `model` / `multiplier` | the **effective** schedule — an event's `fee_type_override`/`fee_multiplier_override` if present, otherwise the parent series' |
+| `source` | `event_override`, `series`, or `unavailable` — where those two values came from |
+| `support` | `supported`, `unsupported_model`, or `metadata_unavailable` |
+| **`model_trade_fee_at_yes_ask`** | **the headline.** Kalshi's model fee at the price a YES *buy* actually executes at, rounded up to $0.000001 as the exchange rounds it |
+| `model_trade_fee_at_yes_mid` | the same schedule at the mid — a market mechanic for comparing contracts, **not** the fee on any order you can send |
+| `basis_yes_ask` / `basis_yes_mid` | the prices those two figures were computed from |
+| `per_contracts` | how many contracts the figures cover (the schedule is linear in contracts) |
+| `maker_fee_applies` | `true` on `quadratic_with_maker_fees` (the resting side pays too), `false` on `quadratic`, **`null` when the schedule is unknown** |
+| `formula` | the arithmetic used, or `null` when no fee could be computed |
+| `is_net_fee` / `excludes` | always `false` / the four things it leaves out |
+| `unavailable_reason` | why there is no number, when there is no number |
+
+**Use `model_trade_fee_at_yes_ask` when you price a taker buy.** The mid
+figure is the smaller of the two at any book wider than a cent, so reading
+it as the cost understates every taker order.
+
+**It is a TRADE fee, not a net fee.** Kalshi's net fee is
+`trade fee + rounding fee − rebate`, and the last two depend on your
+balance precision ($0.0001 direct, $0.01 non-direct) and on a per-*order*
+accumulator carried across fills. A public, account-agnostic catalog cannot
+know any of that, so it publishes the component it can compute and names
+the rest in `excludes` rather than implying a net cost.
+
+**A `null` fee is a refusal, not free.** If `fee_type` or `fee_multiplier`
+was missing, or the schedule is one this code does not model, the figures
+are `null` and `unavailable_reason` says which. Missing metadata is never
+defaulted to `quadratic` or to a multiplier of 1 — a plausible default
+would hide the failure on exactly the series that differs. Treat a `null`
+fee as unknown cost and price accordingly.
 
 Time-to-close and quote age are **not** published as countdowns, on
 purpose: they tick every capture, so publishing them rewrote all 239 game

@@ -24,6 +24,7 @@ from cfb_edge_finder.catalog.consumer import (
 from cfb_edge_finder.catalog.freshness import (
     OFF_PEAK_CADENCE_MINUTES,
     SLATE_WINDOW_CADENCE_MINUTES,
+    STALENESS_TOLERANCE_MULTIPLE,
     CatalogFreshness,
     assess_freshness,
     expected_cadence_minutes,
@@ -312,6 +313,121 @@ def test_freshness_explanation_states_the_timestamp_is_not_an_observation():
 
 
 # =========================================================================
+# THE FINGERPRINT FAILS CLOSED
+#
+# A supplied fingerprint is CORROBORATION. Three outcomes, three
+# meanings, and the middle one is the whole point:
+#
+#   matches      the run re-observed the published content  -> FRESH
+#   DISAGREES    the run and the artifact describe different
+#                content                                   -> INCONSISTENT
+#   not supplied no corroboration either way; freshness rests
+#                on the run history alone, and says so      -> FRESH
+#
+# A mismatch is strictly WORSE evidence than no fingerprint: it is
+# positive evidence that what we are about to read is not what the live
+# run observed -- a partial commit, a run against another branch, a
+# hand-edited artifact. Returning FRESH for it (which this module
+# originally did) converts a detected fault into a green light.
+# =========================================================================
+
+
+def test_a_fingerprint_mismatch_is_never_fresh_however_recent_the_run():
+    verdict = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=2),
+        published_status={"captured_at": (FRIDAY - timedelta(minutes=2)).isoformat(),
+                          "content_fingerprint": "published_abc"},
+        last_run_fingerprint="run_reported_xyz",
+        now=FRIDAY,
+    )
+    assert verdict.freshness is CatalogFreshness.INCONSISTENT
+    assert verdict.is_fresh is False
+    assert verdict.is_inconsistent is True
+    assert verdict.fingerprint_matched is False
+    assert verdict.fingerprint_corroboration == "mismatch"
+    # The reason must name both sides -- a bare "inconsistent" is not
+    # actionable, and the first question is always "which is which".
+    assert "published_abc" in verdict.reason and "run_reported_xyz" in verdict.reason
+    assert "MISMATCH" in verdict.explain()
+
+
+def test_a_mismatch_outranks_a_perfectly_timely_run():
+    """The run arrived 1 minute into a 30-minute cadence -- as punctual as
+    it gets. Timeliness is not the question a mismatch raises."""
+    verdict = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=1),
+        published_status={"content_fingerprint": "A"},
+        last_run_fingerprint="B",
+        now=FRIDAY,
+    )
+    assert verdict.is_fresh is False
+    assert verdict.minutes_since_last_success == pytest.approx(1.0, abs=0.01)
+
+
+def test_a_mismatch_is_still_not_fresh_when_the_run_is_also_stale():
+    """Neither fault masks the other, and neither can produce FRESH."""
+    verdict = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(hours=9),
+        published_status={"content_fingerprint": "A"},
+        last_run_fingerprint="B",
+        now=FRIDAY,
+    )
+    assert verdict.is_fresh is False
+    assert verdict.freshness is CatalogFreshness.INCONSISTENT
+
+
+def test_no_fingerprint_supplied_may_be_fresh_but_says_so_out_loud():
+    """Absence of corroboration is not a fault -- but the verdict must not
+    imply two signals agreed when only one was consulted."""
+    verdict = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=10),
+        published_status={"content_fingerprint": "published_abc"},
+        last_run_fingerprint=None,
+        now=FRIDAY,
+    )
+    assert verdict.freshness is CatalogFreshness.FRESH
+    assert verdict.fingerprint_matched is None
+    assert verdict.fingerprint_corroboration == "not_supplied"
+    assert "NOT supplied" in verdict.reason
+    assert "NOT corroborated" in verdict.explain()
+
+
+def test_a_supplied_fingerprint_with_nothing_published_to_compare_is_not_a_match():
+    """Distinct from both: we tried to corroborate and could not. That is
+    reported as its own state rather than quietly counted as agreement."""
+    verdict = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=10),
+        published_status={"captured_at": FRIDAY.isoformat()},
+        last_run_fingerprint="run_abc",
+        now=FRIDAY,
+    )
+    assert verdict.freshness is CatalogFreshness.FRESH
+    assert verdict.fingerprint_matched is None
+    assert verdict.fingerprint_corroboration == "published_fingerprint_absent"
+    assert "could not be corroborated" in verdict.reason
+
+
+def test_the_stale_tolerance_is_unchanged_by_the_mismatch_check():
+    """Guard against the fail-closed branch being placed where it swallows
+    the ordinary run-age path."""
+    assert STALENESS_TOLERANCE_MULTIPLE == 3.0
+    inside = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=80),
+        published_status={"content_fingerprint": "A"},
+        last_run_fingerprint="A",
+        now=FRIDAY,
+    )
+    outside = assess_freshness(
+        last_successful_run_at=FRIDAY - timedelta(minutes=100),
+        published_status={"content_fingerprint": "A"},
+        last_run_fingerprint="A",
+        now=FRIDAY,
+    )
+    assert inside.freshness is CatalogFreshness.FRESH
+    assert outside.freshness is CatalogFreshness.STALE
+
+
+# =========================================================================
 # THE PREFLIGHT CLI
 # =========================================================================
 
@@ -387,3 +503,109 @@ def test_preflight_json_mode_is_machine_readable(tmp_path, capsys):
     assert payload["capture_complete"] is False
     assert payload["usable_games"] == 1
     assert payload["unavailable_game_keys"] == ["26SEP19BAD"]
+
+
+def test_preflight_can_never_exit_zero_on_a_fingerprint_mismatch(tmp_path, capsys):
+    """*** THE REGRESSION TEST FOR THE FAIL-CLOSED RULE ***
+    A consuming session reads only the exit code before it decides
+    whether to handicap. Exit 0 on a mismatch is the failure this test
+    exists to make impossible: the run was recent, the game is complete,
+    every other signal is green, and the ONE thing that disagrees is the
+    corroboration. That must not be a green light.
+
+    Exit 4 is its own code so a caller can tell "the collector may have
+    died" (2) from "the run and the artifact disagree" (4). Both nonzero;
+    neither ever 0."""
+    live = _write_live(tmp_path, [_entry(complete=True)])  # publishes fingerprint "fp1"
+    code = _preflight().main(
+        [
+            "--live-dir", str(live),
+            "--last-successful-run-at", datetime.now(UTC).isoformat(),
+            "--last-run-fingerprint", "fp_from_a_different_run",
+            "--game", "26SEP19UGAARK",
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code != 0, "a fingerprint mismatch exited 0 -- the consumer would handicap on it"
+    assert code == 4
+    assert "CATALOG INCONSISTENT" in out
+    assert "MISMATCH" in out
+
+
+def test_preflight_mismatch_beats_every_other_green_signal(tmp_path, capsys):
+    """Same as above with NO game requested, so nothing but freshness can
+    fail: the mismatch alone has to carry the refusal."""
+    live = _write_live(tmp_path, [_entry(complete=True)])
+    code = _preflight().main(
+        [
+            "--live-dir", str(live),
+            "--last-successful-run-at", datetime.now(UTC).isoformat(),
+            "--last-run-fingerprint", "definitely_not_fp1",
+        ]
+    )
+    assert code == 4
+    assert "CATALOG INCONSISTENT" in capsys.readouterr().out
+
+
+def test_preflight_json_reports_the_corroboration_state_explicitly(tmp_path, capsys):
+    """A machine consumer must be able to tell agreement from absence of
+    evidence without string-matching a prose reason."""
+    live = _write_live(tmp_path, [_entry(complete=True)])
+    now = datetime.now(UTC).isoformat()
+
+    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", now,
+                       "--last-run-fingerprint", "fp1", "--json"])
+    matched = json.loads(capsys.readouterr().out)
+    assert matched["fresh"] is True
+    assert matched["fingerprint_corroboration"] == "matched"
+
+    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", now,
+                       "--last-run-fingerprint", "nope", "--json"])
+    mismatch = json.loads(capsys.readouterr().out)
+    assert mismatch["fresh"] is False
+    assert mismatch["fingerprint_corroboration"] == "mismatch"
+    assert mismatch["freshness"] == "CATALOG INCONSISTENT"
+
+    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", now, "--json"])
+    absent = json.loads(capsys.readouterr().out)
+    assert absent["fresh"] is True
+    assert absent["fingerprint_corroboration"] == "not_supplied"
+
+
+# =========================================================================
+# THE DOCUMENTED PROCEDURE MUST MATCH THE ENFORCED ONE
+#
+# The contract doc is what a ChatGPT session actually follows, so an error
+# in it is a live defect, not a typo. Its GitHub API example is the single
+# place a consumer learns HOW to obtain the liveness signal.
+# =========================================================================
+
+CONTRACT_DOC = Path(__file__).resolve().parents[1] / "docs" / "RUN_CFB_CONTRACT.md"
+
+
+def test_the_documented_run_lookup_filters_to_main():
+    """A feature-branch run must never certify the main catalog. Without
+    `branch=main` the API returns the latest successful run on ANY branch
+    -- including a feature branch of your own -- which says nothing about
+    whether the production schedule on main is alive."""
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    example = doc[doc.index("actions/workflows/kalshi-market-catalog.yml/runs"):][:400]
+    assert "branch=main" in example, "the run-lookup example does not filter to main"
+    assert "status=success" in example
+    assert "branch=main" in doc and "must never certify" in doc
+
+
+def test_the_doc_states_every_preflight_exit_code_the_script_can_return():
+    """A consumer that gates on the exit code needs all of them named,
+    including the one added for a fingerprint mismatch."""
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    assert "**4**" in doc and "CATALOG INCONSISTENT" in doc
+    assert "**2**" in doc and "**3**" in doc
+
+
+def test_the_doc_does_not_describe_fee_keys_that_no_longer_exist():
+    """`mechanics` stopped computing fees; a doc naming its old fee keys
+    would send a consumer looking for a cost estimate that is not there."""
+    doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    assert "estimated_fee_per_contract_at_mid" not in doc
+    assert "model_trade_fee_at_yes_ask" in doc
