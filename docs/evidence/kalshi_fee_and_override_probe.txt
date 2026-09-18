@@ -34,11 +34,11 @@ Fee Rounding - API Documentation Documentation Index Fetch the complete document
  The balance changes by -$0.06 ; the trade fee plus rounding fee is exactly $0.005 . Accumulator across fills If three fills each add $0.004 of rounding overpayment, the accumulator carries it forward. Assuming the third fill has enough total fee to cover a $0.01 rebate: Fill Added Before Rebate Rebate Carried Forward 1 $0.004 $0.004 — $0.004 2 $0.004 $0.008 — $0.008 3 $0.004 $0.012 $0.010 $0.002 This table uses a non-direct member’s $0.01 precision. Direct-member rebates follow the same mechanics in $0.0001 increments. In either case, the rebate is capped so that the fill’s net fee cannot become negative. Fixed-Point Representation Historical Data Powered by This documentation is built and hosted on Mintlify, a developer documentation platform
 
 ### GET https://kalshi.com/docs/kalshi-fee-schedule.pdf
-  HTTP 429  32182 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32198 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ### GET https://kalshi.com/regulatory/fee-schedule
-  HTTP 429  32189 bytes  content-type=text/html; charset=utf-8
+  HTTP 429  32183 bytes  content-type=text/html; charset=utf-8
   (blocked or unavailable -- reported, not guessed)
 
 ==============================================================================
@@ -116,13 +116,53 @@ open CFB events swept: 1937
 {
   "fee_multiplier": 1,
   "fee_type": "quadratic",
-  "ticker": "KXNCAAFACCAWARD",
-  "title": "College Football ACC Award Winner"
+  "ticker": "KXNCAAFSEED",
+  "title": "College Football Playoff Seed"
 }
 
 --- do markets carry their own fee metadata? ---
-  fee-related market keys on KXCFBUNRANKEDUPSET-26W3-5: NONE
+  fee-related market keys on KXCFBUNRANKEDUPSET-26W3-2: NONE
 
 ==============================================================================
-PROBE COMPLETE
+C. THE PUBLISHED FEE BLOCK, MEASURED ON THE LIVE SURFACE
 ==============================================================================
+built the real catalog: 241 games in 118s
+contracts carrying a fee block: 15326
+
+--- is the fee computable? ---
+  support distribution : {'supported': 15326}
+  effective fee source : {'series': 15326}
+  effective model      : {'quadratic': 10672, 'quadratic_with_maker_fees': 4654}
+  effective multiplier : {'1.0': 15326}
+  maker_fee_applies    : {'False': 10672, 'True': 4654}
+  computable at the ask: 15326/15326 contracts that HAVE an ask
+  unavailable_reasons  : NONE
+
+  contracts with an ask but NO fee: 0
+
+--- is the published fee NEVER dressed up as a net fee? ---
+  is_net_fee values    : {'False': 15326}
+  excludes (distinct)  : [('rounding_fee', 'rebate', 'fee_accumulator', 'user_balance_precision')]
+
+--- worked examples from named LIVE contracts ---
+
+  KXNCAAF1H-26SEP17SYRPITT-PITT  (26SEP17SYRPITT)
+    'Pittsburgh wins the 1st half'
+    yes_ask=1.0  yes_mid=0.5  model=quadratic  mult=1.0  source=series
+    published fee at ASK : $0.000000   <- the headline
+    recomputed by hand   : $0.000000
+    published fee at MID : $0.017500   <- market mechanic, NOT an executable-order fee
+
+==============================================================================
+C. FAILED: ZeroDivisionError: float division by zero
+==============================================================================
+Traceback (most recent call last):
+  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 402, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 393, in main
+    audit_published_fee_blocks()
+  File "/home/runner/work/cfb-edge-finder/cfb-edge-finder/scripts/probe_kalshi_fees_and_overrides.py", line 379, in audit_published_fee_blocks
+    f"  ({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the trade fee)")
+          ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ZeroDivisionError: float division by zero
