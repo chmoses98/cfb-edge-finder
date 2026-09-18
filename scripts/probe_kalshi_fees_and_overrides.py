@@ -357,32 +357,77 @@ def audit_published_fee_blocks() -> None:
     # A named worked example off the live surface, recomputed by hand from
     # the exchange's own formula so the published number is checkable
     # rather than merely present.
+    #
+    # Degenerate quotes are skipped for the illustration: at an ask of
+    # $1.00 (or $0.00) the quadratic schedule gives P(1-P) = 0 and the
+    # trade fee is exactly $0.00, which is correct but shows nothing. They
+    # are counted separately below, because they are the sharpest possible
+    # case for why the mid figure must not masquerade as the trade fee.
     print("\n--- worked examples from named LIVE contracts ---")
     shown = 0
-    for game in games:
-        for market in game.get("markets") or []:
-            block = market["fee"]
-            ask = block["basis_yes_ask"]
-            if ask is None or not ask or block["model_trade_fee_at_yes_ask"] is None:
-                continue
-            mult = block["multiplier"]
-            by_hand = math.ceil(mult * 0.07 * 1 * ask * (1 - ask) / 1e-6 - 1e-9) * 1e-6
-            print(f"\n  {market['market_ticker']}  ({game['game_key']})")
-            print(f"    {market['title'][:70]!r}")
-            print(f"    yes_ask={ask}  yes_mid={block['basis_yes_mid']}  "
-                  f"model={block['model']}  mult={mult}  source={block['source']}")
-            print(f"    published fee at ASK : ${block['model_trade_fee_at_yes_ask']:.6f}   <- the headline")
-            print(f"    recomputed by hand   : ${by_hand:.6f}")
+    candidates = [
+        (g, m) for g in games for m in (g.get("markets") or [])
+        if m["fee"]["model_trade_fee_at_yes_ask"] is not None
+        and m["fee"]["basis_yes_ask"] is not None
+        and 0.0 < m["fee"]["basis_yes_ask"] < 1.0
+    ]
+    # One of each live schedule, and one longshot, where the old whole-cent
+    # rounding did the most damage.
+    wanted = [
+        ("quadratic", lambda b: 0.45 <= b["basis_yes_ask"] <= 0.55),
+        ("quadratic_with_maker_fees", lambda b: 0.45 <= b["basis_yes_ask"] <= 0.55),
+        (None, lambda b: b["basis_yes_ask"] <= 0.05),
+    ]
+    for want_model, price_ok in wanted:
+        pick = next(
+            ((g, m) for g, m in candidates
+             if (want_model is None or m["fee"]["model"] == want_model) and price_ok(m["fee"])),
+            None,
+        )
+        if pick is None:
+            print(f"\n  (no live contract matched model={want_model!r} in the wanted price band)")
+            continue
+        game, market = pick
+        block = market["fee"]
+        ask, mult = block["basis_yes_ask"], block["multiplier"]
+        by_hand = math.ceil(mult * 0.07 * 1 * ask * (1 - ask) / 1e-6 - 1e-9) * 1e-6
+        print(f"\n  {market['market_ticker']}  ({game['game_key']})")
+        print(f"    {market['title'][:70]!r}")
+        print(f"    yes_ask={ask}  yes_mid={block['basis_yes_mid']}  "
+              f"model={block['model']}  mult={mult}  source={block['source']}  "
+              f"maker_fee_applies={block['maker_fee_applies']}")
+        print(f"    published fee at ASK : ${block['model_trade_fee_at_yes_ask']:.6f}   <- the headline")
+        print(f"    recomputed by hand   : ${by_hand:.6f}")
+        if block["model_trade_fee_at_yes_mid"] is not None:
             print(f"    published fee at MID : ${block['model_trade_fee_at_yes_mid']:.6f}   "
                   f"<- market mechanic, NOT an executable-order fee")
-            print(f"    old whole-cent helper would have said: $0.01"
-                  f"  ({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the trade fee)")
-            assert abs(by_hand - block["model_trade_fee_at_yes_ask"]) < 1e-9
-            shown += 1
-            if shown >= 3:
-                return
-        if shown >= 3:
-            return
+        print(f"    old whole-cent helper : $0.010000   "
+              f"({0.01 / block['model_trade_fee_at_yes_ask']:.1f}x the real trade fee)")
+        assert abs(by_hand - block["model_trade_fee_at_yes_ask"]) < 1e-9
+        shown += 1
+    print(f"\n  worked examples shown: {shown}")
+
+    # The degenerate case, stated rather than hidden.
+    degenerate = [
+        m["fee"] for g in games for m in (g.get("markets") or [])
+        if m["fee"]["basis_yes_ask"] in (0.0, 1.0)
+    ]
+    mid_nonzero = [
+        b for b in degenerate
+        if b["model_trade_fee_at_yes_mid"] not in (None, 0.0)
+        and b["model_trade_fee_at_yes_ask"] == 0.0
+    ]
+    print(f"\n--- contracts quoted at $0.00 or $1.00: {len(degenerate)} ---")
+    print("  At those asks the quadratic schedule's P(1-P) term is 0, so the")
+    print("  trade fee is exactly $0.00 -- correct, and a demonstration of why")
+    print("  the mid figure cannot be the headline:")
+    print(f"  contracts whose fee at the ASK is $0.00 while the MID figure is not: {len(mid_nonzero)}")
+    if mid_nonzero:
+        b = mid_nonzero[0]
+        print(f"    e.g. ask={b['basis_yes_ask']} -> ${b['model_trade_fee_at_yes_ask']:.6f}, "
+              f"mid={b['basis_yes_mid']} -> ${b['model_trade_fee_at_yes_mid']:.6f}")
+        print("    A consumer reading the mid figure as 'the fee' would book a cost")
+        print("    that the executable order does not incur.")
 
 
 def main() -> int:
