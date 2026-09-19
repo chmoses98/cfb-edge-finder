@@ -39,7 +39,7 @@ from cfb_edge_finder.execution.handicap import (
 )
 from cfb_edge_finder.execution.report import ShardGateError, build_report, render_report
 from cfb_edge_finder.execution.shards import (
-    DEFAULT_MAX_SHARD_BYTES,
+    DEFAULT_MAX_ANALYSIS_BYTES,
     DEFAULT_MAX_SHARD_CONTRACTS,
     build_shards,
     write_shards,
@@ -85,7 +85,11 @@ def _local_today(moment: datetime, tz_name: str) -> str:
 def _shard_path(out_dir: Path, shard: str) -> Path:
     path = out_dir / "shards" / f"{shard}.json"
     if not path.exists():
-        available = sorted(p.stem for p in (out_dir / "shards").glob("*.json") if not p.name.endswith(".brief.json"))
+        available = sorted(
+            p.name[: -len(".json")]
+            for p in (out_dir / "shards").glob("*.json")
+            if not p.name.endswith(".analysis.json")
+        )
         raise SystemExit(f"no shard {shard!r} at {path}. Available: {', '.join(available) or '(none)'}")
     return path
 
@@ -163,10 +167,10 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     slate_bytes = _write(out_dir / "cfb_execution_slate.json", slate, compact=True)
     shards = build_shards(
         slate,
-        max_bytes=args.max_shard_bytes,
+        max_bytes=args.max_analysis_bytes,
         max_contracts=args.max_shard_contracts,
     )
-    manifest = write_shards(slate, shards, out_dir)
+    manifest = write_shards(slate, shards, out_dir, args.timezone)
 
     store = StateStore(out_dir / "state")
     state_index = store.write_index(slate["games"], out_dir / "state_index.json")
@@ -183,14 +187,21 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     print(f"  balanced={reconciliation['balanced']} unaccounted={reconciliation['unaccounted_contracts']}")
     for status, count in reconciliation["exclusions_by_status"].items():
         print(f"    {status:32} {count:6}")
-    print(f"  shards ({manifest['totals']['shards']}), reconciles={manifest['reconciles']}:")
+    print(f"\n  shards ({manifest['totals']['shards']}), reconciles={manifest['reconciles']}")
+    oldest_allowed = _oldest_allowed_quote(captured, config.max_capture_age_minutes)
     for entry in manifest["shards"]:
-        print(
-            f"    {entry['shard']:14} games={entry['game_count']:4} "
-            f"eligible={entry['contracts_eligible']:6} "
-            f"{entry['bytes'] / 1e6:.2f} MB (brief {entry['brief_bytes'] / 1e6:.2f} MB) "
-            f"{str(entry['earliest_kickoff'])[:16]} -> {str(entry['latest_kickoff'])[:16]}"
-        )
+        print(f"\n  {entry['shard'].upper()}")
+        print(f"    games:                    {entry['game_count']}")
+        print(f"    eligible contracts:       {entry['contracts_eligible']}")
+        print(f"    in analysis artifact:     {entry['contracts_in_analysis_artifact']}")
+        print(f"    analysis artifact size:   {entry['analysis_bytes'] / 1e3:.0f} KB  "
+              f"({entry['analysis_file']})")
+        print(f"    freshest quote:           {_age(entry['freshest_quote_age_seconds'])}")
+        print(f"    oldest allowed quote:     {oldest_allowed}")
+        print(f"    mechanical exclusions:    {entry['contracts_excluded']}")
+        print(f"    unaccounted:              {entry['unaccounted_contracts']}")
+        print(f"    kickoffs:                 {str(entry['earliest_kickoff'])[:16]} -> "
+              f"{str(entry['latest_kickoff'])[:16]}")
     print(
         f"  state: {state_index['counts']['complete']} complete / "
         f"{state_index['counts']['pending_handicap']} pending handicap / "
@@ -211,10 +222,36 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 4
-    first = manifest["shards"][0]["shard"] if manifest["shards"] else None
+    first = manifest["shards"][0] if manifest["shards"] else None
     if first:
-        print(f"\nnext: send {out_dir}/shards/{first}.brief.json to the handicapper")
+        print(f"\nUPLOAD THIS TO CHATGPT:  {out_dir}/{first['analysis_file']}")
+        print(f"WITH THIS PROMPT:        {CHATGPT_PROMPT}")
     return 0
+
+
+CHATGPT_PROMPT = (
+    "Run CFB. Bankroll $1,400. Independently handicap every game in this file, evaluate every "
+    "available Kalshi market, and return every bet you believe has positive EV. Do not use repo "
+    "projections."
+)
+
+
+def _age(seconds: Any) -> str:
+    if not isinstance(seconds, (int, float)):
+        return "unknown"
+    if seconds < 3600:
+        return f"{seconds / 60:.0f} min old"
+    return f"{seconds / 3600:.1f} h old"
+
+
+def _oldest_allowed_quote(captured: datetime | None, max_age_minutes: float) -> str:
+    """The capture timestamp is the freshness bound for the whole file --
+    a contract's own updated_time measures something else entirely."""
+    if captured is None:
+        return "unknown (no capture timestamp)"
+    from datetime import timedelta
+
+    return (captured - timedelta(minutes=max_age_minutes)).isoformat()
 
 
 # ---------------------------------------------------------- templates
@@ -550,7 +587,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="do not exclude games that have kicked off (diagnostics only)",
     )
-    prepare.add_argument("--max-shard-bytes", type=int, default=DEFAULT_MAX_SHARD_BYTES)
+    prepare.add_argument(
+        "--max-analysis-bytes",
+        type=int,
+        default=DEFAULT_MAX_ANALYSIS_BYTES,
+        help=(
+            "byte budget for one <shard>.analysis.json. A shard over budget is split into "
+            "subshards BETWEEN games -- a game's contracts are never split, and no contract is "
+            "ever dropped to meet it."
+        ),
+    )
     prepare.add_argument("--max-shard-contracts", type=int, default=DEFAULT_MAX_SHARD_CONTRACTS)
     prepare.set_defaults(func=cmd_prepare_live)
 
@@ -561,7 +607,14 @@ def build_parser() -> argparse.ArgumentParser:
     template.add_argument("--out", default=None)
     template.set_defaults(func=cmd_handicap_template)
 
-    evaluate = sub.add_parser("evaluate", help="price EVERY eligible contract against the handicaps")
+    evaluate = sub.add_parser(
+        "evaluate",
+        help=(
+            "OPTIONAL: price EVERY eligible contract against handicap payloads you already have. "
+            "Not part of the live workflow -- nothing has to be written back to this repository "
+            "for ChatGPT to return bets."
+        ),
+    )
     common(evaluate)
     evaluate.add_argument("--shard", required=True)
     evaluate.add_argument("--handicaps", default=None, help="file of filled handicap payloads")
@@ -583,10 +636,26 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--shard", default=None)
     status.set_defaults(func=cmd_status)
 
-    report = sub.add_parser("report", help="final shortlist; refuses unless the shard gate passes")
+    report = sub.add_parser(
+        "report",
+        help=(
+            "OPTIONAL repo-side verification. The live workflow is prepare-live -> upload the "
+            "analysis artifact -> ChatGPT answers; this path exists to re-check a handicap "
+            "arithmetically and is not required to get bets."
+        ),
+    )
     common(report)
     report.add_argument("--shard", required=True)
-    report.add_argument("--top", type=int, default=None)
+    report.add_argument(
+        "--top",
+        type=int,
+        default=None,
+        help=(
+            "DEBUG DISPLAY ONLY. Truncates what this command prints; it has no place in the live "
+            "workflow, changes nothing in the ledger, and is off by default. The live path returns "
+            "EVERY qualifying bet -- 0, 6 or 100 -- and there is no target number."
+        ),
+    )
     report.add_argument("--min-edge", type=float, default=DEFAULT_MIN_NET_EDGE)
     report.set_defaults(func=cmd_report)
 

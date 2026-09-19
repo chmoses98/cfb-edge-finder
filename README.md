@@ -88,26 +88,43 @@ endpoint behaviour it was built from, and the output schema, and
 python -m cfb_edge_finder.execution prepare-live --refresh
 ```
 
-The catalog says what can be bet. `cfb_edge_finder.execution` answers the
-next question -- *did we actually look at all of it before picking a
-bet?* -- and refuses to produce a shortlist until the answer is provably
-yes:
+```
+repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+```
+
+The catalog says what can be bet. `cfb_edge_finder.execution` gets ALL of
+it in front of a handicapper in one file, and proves it did:
 
 ```
-eligible_contracts == evaluated_contracts + explicitly_unpriceable_contracts
+eligible_contracts == contracts_in_analysis_artifact
 unaccounted_contracts == 0
 ```
 
-It compacts the live universe into per-game execution packets, shards
-them by kickoff window without ever splitting a game, takes a handicap
-supplied from OUTSIDE the repository (no model is involved), prices every
-eligible contract that handicap can price, marks every contract it cannot
-as explicitly UNPRICEABLE, and keeps durable per-game state so an
-interrupted session resumes instead of restarting. A live Saturday is 115
-games and 14,222 eligible contracts across four window shards.
+Nothing is filtered for attractiveness, liquidity, popularity or expected
+edge. The only exclusions are objective mechanical ones -- game started,
+market closed, stale capture, unsupported fee model, broken mapping,
+duplicate, non-executable -- and every one is counted in the artifact the
+reader opens.
 
-No stake is computed, no order can be placed, and no edge is claimed --
-see `docs/LIVE_EXECUTION.md`.
+The repo finds and organises the ENTIRE market; ChatGPT does the
+handicapping and evaluates every market; you get every good bet. One
+command produces one self-contained file per kickoff window carrying
+**every mechanically eligible contract with its prices, fees and
+semantics**, behind each game's factual context. Upload it and ask:
+
+> Run CFB. Bankroll $1,400. Independently handicap every game in this
+> file, evaluate every available Kalshi market, and return every bet you
+> believe has positive EV. Do not use repo projections.
+
+**Nothing is written back.** No handicap file, no commit, no second visit.
+There is no bet cap: 0 bets, 6 bets or 100 bets, whatever survives the
+handicap.
+
+A live Saturday is 115 games and 14,222 eligible contracts across four
+window artifacts of 137-604 KB. No model fair value, projection, rating or
+recommendation appears anywhere in them -- the retired projection model is
+deliberately not trusted for betting decisions. No stake is computed and
+no order can be placed. See `docs/LIVE_EXECUTION.md`.
 
 ---
 

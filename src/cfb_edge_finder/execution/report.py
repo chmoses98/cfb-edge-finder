@@ -1,5 +1,19 @@
 """The final bet report -- and the gate that stands in front of it.
 
+*** THIS IS THE OPTIONAL PATH, NOT THE LIVE ONE ***
+The live workflow is: generate `<window>.analysis.json`, upload it to
+ChatGPT, get every bet back in the conversation. Nothing is written back
+to this repository and this module is not on that path.
+
+What it is for is arithmetic verification after the fact: given a
+handicap somebody already produced, re-price every eligible contract and
+prove the coverage closed. It is kept because that proof is worth having,
+not because a shortlist has to come from here.
+
+There is no bet cap anywhere in it: `top_n` defaults to None, which
+returns every survivor. The CLI's `--top` is a display truncation for
+debugging and never touches the ledger.
+
 *** THE ORDER THAT MATTERS ***
     every game in the shard COMPLETE
         -> rank the positive-EV survivors

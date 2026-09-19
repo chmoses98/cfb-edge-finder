@@ -6,6 +6,7 @@ import json
 
 from cfb_edge_finder.execution.shards import build_shards, split_window, write_shards
 from cfb_edge_finder.execution.slate import build_slate
+from tests.analysis_helpers import analysis_tickers
 from tests.execution_fakes import GAME_KEY, catalog_dir, standard_markets
 from tests.test_execution_disposition import config
 
@@ -128,40 +129,34 @@ def test_the_manifest_carries_what_an_operator_needs_per_shard(tmp_path):
     assert entry["artifact_hash"]
 
 
-def test_the_brief_is_a_projection_of_the_shard_not_a_selection(tmp_path):
-    """The handicap-facing file must contain exactly the same contracts as
-    the evaluator-facing one. A brief that quietly held fewer would put a
+def test_the_analysis_artifact_is_a_projection_of_the_shard_not_a_selection(tmp_path):
+    """The file that goes to ChatGPT must contain exactly the same
+    contracts as the audit file. One that quietly held fewer would put a
     pre-filter back in the workflow by the back door."""
     slate = slate_with_games(tmp_path, {GAME_KEY: "2026-09-19T16:00:00Z"})
     out = tmp_path / "out"
     write_shards(slate, build_shards(slate), out)
 
     full = json.loads((out / "shards" / "early.json").read_text())
-    brief = json.loads((out / "shards" / "early.brief.json").read_text())
+    analysis = json.loads((out / "shards" / "early.analysis.json").read_text())
 
-    full_tickers = {
-        c["ticker"] for game in full["games"] for c in game["contracts"]
-    }
-    brief_tickers = set()
-    for game in brief["games"]:
-        for block in game["families"].values():
-            prefix = block.get("ticker_prefix", "")
-            for row in block["rows"]:
-                brief_tickers.add(prefix + row[0] if prefix else row[0])
-
-    assert brief_tickers == full_tickers
-    assert sum(g["eligible_contracts"] for g in brief["games"]) == len(full_tickers)
+    full_tickers = {c["ticker"] for game in full["games"] for c in game["contracts"]}
+    assert analysis_tickers(analysis) == full_tickers
+    assert analysis["reconciliation"]["contracts_in_analysis_artifact"] == len(full_tickers)
+    assert analysis["reconciliation"]["unaccounted_contracts"] == 0
 
 
-def test_the_brief_carries_no_prices(tmp_path):
-    """Anchoring the handicap to the market it is meant to be independent
-    of is the failure this guards."""
+def test_the_manifest_refuses_to_reconcile_if_the_artifact_is_short(tmp_path):
+    """The manifest's `reconciles` flag covers the deliverable, not just
+    the shard bookkeeping."""
     slate = slate_with_games(tmp_path, {GAME_KEY: "2026-09-19T16:00:00Z"})
-    out = tmp_path / "out"
-    write_shards(slate, build_shards(slate), out)
-    brief = (out / "shards" / "early.brief.json").read_text()
-    for forbidden in ("yes_ask", "no_ask", "yes_entry", "breakeven", "implied_probability"):
-        assert forbidden not in brief
+    manifest = write_shards(slate, build_shards(slate), tmp_path / "out")
+    assert manifest["reconciles"] is True
+    assert (
+        manifest["totals"]["contracts_in_analysis_artifacts"]
+        == manifest["totals"]["contracts_eligible"]
+    )
+    assert manifest["totals"]["unaccounted_contracts"] == 0
 
 
 def test_stale_shard_files_are_removed_when_the_slate_shrinks(tmp_path):

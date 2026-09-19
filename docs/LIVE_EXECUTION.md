@@ -1,37 +1,48 @@
 # The live execution workflow
 
-**One question, and a refusal.**
+```
+repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+```
 
-> Before this shortlist existed, was every mechanically eligible Kalshi
-> contract on every handicapped game explicitly evaluated against that
-> game's handicap?
-
-If the answer is not provably yes, no shortlist is produced.
+**The repo finds and organises the entire market. ChatGPT does the
+handicapping and evaluates every market. You get every good bet.**
 
 ---
 
 ## The invariant
 
-For every handicapped game:
+Every mechanically eligible Kalshi contract for every game in the window
+is in the file the handicapper opens:
 
 ```
-eligible_contracts == evaluated_contracts + explicitly_unpriceable_contracts
+eligible_contracts == contracts_in_analysis_artifact
 unaccounted_contracts == 0
 ```
 
-A game that cannot satisfy that is `INCOMPLETE`, and an incomplete game
-may not be represented as fully scanned anywhere. The shard-level gate is
-the same rule applied to every game in the shard at once: `report`
-refuses, exit code 3, and names the games that are not done.
+The builder counts the rows it actually wrote and **refuses to publish**
+an artifact that falls short, so a compaction bug is a failed build rather
+than a quiet omission.
 
-Upstream of the handicap there is a second identity:
+Upstream of that there is a second identity:
 
 ```
 contracts_discovered == contracts_eligible + every explicit mechanical exclusion
 ```
 
 `prepare-live` exits 2 rather than publish a slate where that does not
-close.
+close, and every exclusion is named, counted, and carried into the
+artifact's own `reconciliation` block.
+
+The optional verification path adds a third, for a handicap that has been
+fed back into the repo by hand:
+
+```
+eligible_contracts == evaluated_contracts + explicitly_unpriceable_contracts
+```
+
+A game that cannot satisfy it is `INCOMPLETE` and names its exact missing
+tickers; `report` refuses (exit 3) on any INCOMPLETE game. That path is
+not required to get bets.
 
 ---
 
@@ -57,29 +68,67 @@ close.
 
 ---
 
-## The five commands
+## The live workflow
 
-```bash
-# 1. discover, compact, shard, reconcile  (add --refresh to re-run Kalshi discovery first)
-python -m cfb_edge_finder.execution prepare-live --refresh
-
-# 2. the blank payloads for one kickoff window
-python -m cfb_edge_finder.execution handicap-template --shard early
-
-# 3. price EVERY eligible contract against the filled payloads
-python -m cfb_edge_finder.execution evaluate --shard early --handicaps handicaps_early.json
-
-# 4. where the slate stands, and where to resume
-python -m cfb_edge_finder.execution status --shard early
-
-# 5. the shortlist -- refuses until every game in the shard is COMPLETE
-python -m cfb_edge_finder.execution report --shard early --top 6
+```
+repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
 ```
 
-Or one GitHub Action: **CFB Execution Slate** (`workflow_dispatch`). It
-does step 1 on a runner with network access to Kalshi and uploads two
-artifacts — `cfb-execution-slate` (everything) and
-`cfb-handicap-briefs` (just the briefs, a few hundred KB).
+That is the whole round trip. **ChatGPT writes nothing back** — no
+handicap file, no commit, no repo state, no second visit. You download one
+file, upload it, and get the answer in the conversation.
+
+1. **Generate the artifacts** — one command, or dispatch the
+   **CFB Execution Slate** Action:
+
+   ```bash
+   python -m cfb_edge_finder.execution prepare-live --refresh
+   ```
+
+2. **Download the analysis artifact** for the kickoff window you are
+   working:
+
+   ```
+   data/execution/latest/shards/early.analysis.json
+   ```
+
+   (Or, from the Action, the `cfb-analysis-artifacts` upload.)
+
+3. **Upload it to ChatGPT with this prompt:**
+
+   > Run CFB. Bankroll $1,400. Independently handicap every game in this
+   > file, evaluate every available Kalshi market, and return every bet
+   > you believe has positive EV. Do not use repo projections.
+
+4. **ChatGPT returns every qualifying bet directly.** 0 bets, 6 bets, 100
+   bets — whatever survives its own handicap. There is no cap and no
+   target number anywhere in this workflow.
+
+5. Move to the next window: `afternoon`, `evening`, `late`.
+
+### The division of labour
+
+| | does |
+|---|---|
+| **the repo** | finds and organises the ENTIRE market: discovery, mechanical disposition, compaction, sharding, reconciliation |
+| **ChatGPT** | handicaps every game, forms its own fair probabilities, inspects every contract, returns every good bet |
+| **you** | check the manifest, upload one file, size the bets |
+
+The repo has no view about any game and computes no fair probability. The
+projection model was retired from the live path in September 2026 and is
+deliberately not trusted for betting decisions; nothing in the artifact
+defers to it.
+
+### The optional verification path
+
+`handicap-template`, `evaluate`, `status`, `report` and the durable state
+store all still exist, and they still enforce the coverage invariant
+below. They are **not required to get bets** — they are there to re-check
+a handicap arithmetically after the fact. Use them if you want the proof;
+skip them entirely and the live workflow above is unaffected.
+
+`report --top N` is a display truncation for debugging. It has no place in
+the live workflow, never touches the ledger, and is off by default.
 
 ### Exit codes
 
@@ -94,34 +143,99 @@ artifacts — `cfb-execution-slate` (everything) and
 
 ---
 
-## The artifacts
+## The analysis artifact
 
+`<window>.analysis.json`, schema `cfb_execution_analysis/1.0.0`. One file
+per kickoff window, self-contained.
+
+```jsonc
+{
+  "how_to_use": [...],            // Stage A then Stage B, and "no cap"
+  "do_not": [...],
+  "model_projections": "absent",
+  "reconciliation": {             // the artifact audits itself
+    "games_discovered": 115, "games_included": 31,
+    "contracts_discovered": 3710, "mechanical_exclusions": 0,
+    "eligible_contracts": 3710,
+    "contracts_in_analysis_artifact": 3710,
+    "unaccounted_contracts": 0
+  },
+  "freshness": {...},             // capture age, freshest/oldest quote age
+  "fee_model": {...},             // stated ONCE, not on 3,710 contracts
+  "price_conventions": {...},     // stated ONCE
+  "factual_data_not_in_artifact": [...],
+  "games": [
+    { "game_key": "...", "matchup": "LSU at Ole Miss",
+      "game_context": { ... },    // STAGE A reads this
+      "markets": {                // STAGE B reads this
+        "game_spread": {
+          "period": "full_game", "kind": "spread", "contracts": 29,
+          "yes_means": "<team> wins the <period> by MORE than <line> points",
+          "ticker_prefix": "KXNCAAFSPREAD-26SEP19LSUMISS-",
+          "columns": ["t","team","line","yes_bid","yes_ask","no_bid","no_ask",
+                      "yes_entry","yes_fee","yes_breakeven",
+                      "no_entry","no_fee","no_breakeven"],
+          "quote_age_s": 516240,
+          "rows": [["LSU10","away",9.5,0.31,0.32,0.68,0.69,
+                    0.32,0.015232,0.3352,0.69,0.014763,0.7048], ...]
+        }
+      }
+    }
+  ]
+}
 ```
-data/execution/latest/
-  cfb_execution_slate.json        every game, every eligible contract, full economics
-  shard_manifest.json             per-shard counts, byte sizes, hashes, reconciliation
-  shards/<window>.json            the same contracts, one kickoff window       <- the evaluator reads this
-  shards/<window>.brief.json      the same contracts, ~20x smaller, no prices  <- the handicapper reads this
-  templates/<window>.handicap_template.json
-  state/<game_key>.json           durable per-game progress
-  state_index.json
-  ledgers/<window>.json           EVERY eligible contract's disposition, winners and losers
-  ledgers/games/<game_key>.json   one game's rows, used to resume without re-pricing
-  reports/<window>.json|.txt      the shortlist, once the gate passes
-```
 
-### Why two files per shard
+**`game_context` sits before `markets` on every game**, and the file's
+keys are not alphabetised, so a reader meets the facts before the prices.
+That is the two-stage flow — handicap first, then look at the market — and
+it needs no round trip to enforce.
 
-The full shard carries every price, fee, breakeven and quote timestamp —
-several MB, and exactly what deterministic evaluation needs. The brief
-carries the same contracts as a column table, with **no prices at all**,
-and is what a handicapping session consumes.
+### Why a column table
 
-Dropping prices from the brief is not only compaction. A handicap is
-supposed to be independent of the market it will be compared against, and
-a price column next to every rung is an anchor. The tests assert the two
-files contain identical ticker sets, so the brief can never quietly
-become a filtered subset.
+A Saturday window is ~5,000 contracts. Repeating fourteen key names on
+each of them triples the file for no information. Columns are named once,
+rows are values, **every eligible contract still has its own row**, and
+the builder counts the rows it wrote and refuses to publish if they do not
+equal the eligible universe.
+
+Compaction only ever removes repetition, never a contract:
+
+| Hoisted | Because |
+|---|---|
+| fee model and its caveats | identical on all 14,222 contracts |
+| price conventions | identical |
+| "NO is the exact negation", "full ticker = prefix + t" | identical |
+| `factual_data_not_in_artifact` | identical on every game |
+| `quote_age_s` | stated once per family when all its rows share it |
+| `ticker_prefix` | a spread ladder's 29 tickers differ only after it |
+
+`yes_means` is deliberately **not** hoisted. It is the one line that
+decides whether a row is read correctly, and a reader four thousand rows
+deep should not have to hold a glossary in mind.
+
+### What the artifact does NOT carry
+
+No fair value, no win probability, no projected score or margin, no
+rating, no ranking, no edge, no recommendation, no shortlist — asserted
+mechanically in `tests/test_execution_analysis.py`, both as a field scan
+over the artifact and as an import scan proving the modules that build it
+cannot reach the model.
+
+It also names the facts it lacks, at the top level, rather than being
+quietly thin: team records, recent form, offensive/defensive statistics,
+opponent-adjusted ratings, injuries, depth charts, weather, rest and
+travel, coaching context. The live path is credential-free and Kalshi-only
+by construction, so none of that is available to put there — and saying so
+is what stops a reader assuming it was already accounted for.
+
+### File size
+
+Today's slate: 137–604 KB per window, one file per window. Past
+`--max-analysis-bytes` (default 900,000) a window subshards into
+`early_1.analysis.json`, `early_2.analysis.json`, … **splitting only
+between games — never a game's contracts.** At `--max-analysis-bytes
+250000` today's slate becomes nine files of 45–254 KB, still 14,222
+contracts and 115 games with no game split.
 
 ---
 
@@ -275,10 +389,11 @@ tickers.
 
 ---
 
-## The report
+## The report (optional path)
 
-The shortlist is a **view of the ledger**, never a separate dataset. It
-separates, explicitly:
+Not part of the live workflow — the live workflow ends when ChatGPT
+answers. This is what `report` produces if you run the verification path,
+and it is a **view of the ledger**, never a separate dataset:
 
 ```
 Eligible contracts:      3710
@@ -288,7 +403,7 @@ Unaccounted:                 0
 
 Positive-EV contracts:      41
 Passed correlation review:  35
-Final bets selected:         6
+Final bets selected:        35     <- every survivor; no cap
 ```
 
 The correlation review is deterministic: two contracts that are the same
@@ -302,6 +417,10 @@ fair probability, raw and fee-adjusted edge, the handicapper's own
 confidence and thesis verbatim, a deterministic statement of why that
 market expresses the thesis, the strongest opposing case as supplied, and
 an empty `stake_placeholder`.
+
+**There is no bet cap.** `final_bets_selected` is every survivor of the
+correlation review unless you pass `--top N`, which exists for reading a
+long list on a terminal and changes nothing in the ledger.
 
 ---
 
@@ -318,4 +437,12 @@ an empty `stake_placeholder`.
 - **Home/away on a neutral or `vs`-titled game is a convention.** Kalshi
   lists the away side first; the packet labels that
   `home_away_confidence: convention` so a reader can overrule it.
-- **`--min-edge` has no empirical backing.** See above.
+- **`--min-edge` has no empirical backing.** See above. It applies only
+  to the optional verification path; the live workflow has no threshold of
+  its own, because the judgement is ChatGPT's.
+- **The artifact carries no team-level facts.** Records, form, statistics,
+  injuries, depth charts and weather are not in the repo's live path
+  (credential-free, Kalshi-only), so ChatGPT must supply them from its own
+  knowledge. The artifact names the gap explicitly rather than implying
+  coverage it does not have. This is the single biggest limit on how
+  thorough the handicap can be.

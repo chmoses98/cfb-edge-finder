@@ -82,7 +82,10 @@ jobs:
           print(f"shards reconcile: {manifest['reconciles']}")
           for entry in manifest["shards"]:
               print(f"  {entry['shard']:14} games={entry['game_count']:4} "
-                    f"eligible={entry['contracts_eligible']:6} brief={entry['brief_bytes']} bytes")
+                    f"eligible={entry['contracts_eligible']:6} "
+                    f"in_artifact={entry['contracts_in_analysis_artifact']:6} "
+                    f"unaccounted={entry['unaccounted_contracts']} "
+                    f"analysis={entry['analysis_bytes'] // 1000} KB")
           PY
       - name: Upload the execution slate
         uses: actions/upload-artifact@v4
@@ -90,13 +93,14 @@ jobs:
           name: cfb-execution-slate
           path: data/execution/latest
           retention-days: 7
-      - name: Upload the handicap briefs on their own
-        # The briefs are what a handicapping session actually consumes,
-        # and they are ~20x smaller than the full shards. Uploading them
-        # separately means the operator downloads a few hundred KB rather
-        # than 16 MB to get started.
+      - name: Upload the ChatGPT analysis artifacts on their own
+        # These are the deliverable: one file per kickoff window, each
+        # carrying every eligible contract for its games with prices and
+        # fees. Uploaded separately so the operator downloads a few
+        # hundred KB and uploads it straight to ChatGPT, rather than
+        # pulling 20 MB of audit trail to get started.
         uses: actions/upload-artifact@v4
         with:
-          name: cfb-handicap-briefs
-          path: data/execution/latest/shards/*.brief.json
+          name: cfb-analysis-artifacts
+          path: data/execution/latest/shards/*.analysis.json
           retention-days: 7
