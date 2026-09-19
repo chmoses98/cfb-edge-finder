@@ -87,6 +87,7 @@ artifacts — `cfb-execution-slate` (everything) and
 |---|---|---|
 | 0 | any | done |
 | 2 | `prepare-live` | reconciliation did not close; the slate is not usable |
+| 4 | `prepare-live` | zero eligible contracts (usually a catalog older than the freshness bar). The slate and every exclusion are still written. |
 | 2 | `evaluate` | a payload was rejected (team mismatch, stale packet hash, unknown game) |
 | 3 | `evaluate` | the shard still has games with no handicap |
 | 3 | `report` | the shard gate is shut: at least one game is INCOMPLETE |

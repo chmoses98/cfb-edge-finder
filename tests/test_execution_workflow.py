@@ -394,12 +394,14 @@ def test_evaluate_reports_pending_games_and_keeps_the_gate_shut(tmp_path):
 
 
 def test_prepare_live_fails_closed_on_a_stale_capture(tmp_path, capsys):
+    """Published with its diagnostics, and non-zero: a slate nobody can
+    bet is not a success, and a scripted caller must not read it as one."""
     catalog = catalog_dir(tmp_path, captured_at=CAPTURED_AT - timedelta(hours=8))
     out = tmp_path / "exec"
     assert run([
         "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
         "--as-of", NOW.isoformat(), "--date", "all",
-    ]) == 0
+    ]) == 4
     slate = json.loads((out / "cfb_execution_slate.json").read_text())
     assert slate["reconciliation"]["contracts_eligible"] == 0
     assert "stale_quote" in slate["reconciliation"]["exclusions_by_status"]

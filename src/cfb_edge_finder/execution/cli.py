@@ -200,11 +200,17 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         print("FATAL: reconciliation failed -- refusing to report this slate as usable", file=sys.stderr)
         return 2
     if reconciliation["contracts_eligible"] == 0:
+        # Published with its diagnostics -- every exclusion is in the file
+        # -- but exit non-zero, because a slate nobody can bet is not a
+        # success and a scripted caller must not treat it as one. The
+        # commonest cause by far is a catalog older than the freshness
+        # bar, which is exactly the fail-closed case working.
         print(
-            "WARNING: zero eligible contracts. Check --max-capture-age-minutes and whether the "
-            "catalog is fresh.",
+            "WARNING: zero eligible contracts. The slate and its exclusions were still written. "
+            "Check --max-capture-age-minutes and whether the catalog is fresh (--refresh).",
             file=sys.stderr,
         )
+        return 4
     first = manifest["shards"][0]["shard"] if manifest["shards"] else None
     if first:
         print(f"\nnext: send {out_dir}/shards/{first}.brief.json to the handicapper")
