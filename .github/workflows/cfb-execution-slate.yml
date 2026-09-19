@@ -1,0 +1,106 @@
+name: CFB Execution Slate
+
+# *** WHAT THIS IS ***
+# The one action to run before a slate. It refreshes the live Kalshi CFB
+# catalog, compacts it into per-game execution packets, shards those by
+# kickoff window, reconciles every count, and uploads the result as a
+# build artifact.
+#
+# *** IT WRITES NOTHING TO THE REPOSITORY ***
+# `permissions: contents: read`, and the output leaves as an uploaded
+# artifact rather than a commit. That is deliberate: the execution slate
+# is an operational working file regenerated many times on a Saturday,
+# and committing each regeneration would churn the repo for no archival
+# value -- the catalog it is derived from is already committed by the
+# Kalshi CFB Market Catalog workflow. Writing nothing also keeps this
+# workflow out of the durable-store writer lock entirely, so it can never
+# queue behind or cancel a collector run.
+#
+# *** IT CONSUMES NO SECRETS ***
+# Kalshi's market-data endpoints are public reads and game identity comes
+# from Kalshi's own football_game milestones. No order or portfolio
+# endpoint is reachable from any code this workflow runs.
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Local slate date (YYYY-MM-DD), or 'all' for the whole catalog horizon. Blank = today."
+        required: false
+        default: ""
+      refresh:
+        description: "Re-run Kalshi discovery first (recommended: the slate is only as fresh as the catalog)"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+      max_capture_age_minutes:
+        description: "Older than this and EVERY contract is excluded as stale_quote"
+        required: false
+        default: "120"
+      timezone:
+        description: "Timezone the kickoff windows are defined in"
+        required: false
+        default: "America/New_York"
+
+permissions:
+  contents: read
+
+jobs:
+  slate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Build the execution slate, shards and manifest
+        run: |
+          python3 -m cfb_edge_finder.execution prepare-live \
+            --out-dir data/execution/latest \
+            --timezone "${{ github.event.inputs.timezone || 'America/New_York' }}" \
+            --max-capture-age-minutes "${{ github.event.inputs.max_capture_age_minutes || '120' }}" \
+            ${{ github.event.inputs.date && format('--date {0}', github.event.inputs.date) || '' }} \
+            ${{ github.event.inputs.refresh != 'false' && '--refresh' || '' }}
+      - name: Reconciliation summary
+        # The job has already failed if the identity did not close --
+        # prepare-live exits 2 on an unbalanced slate. This step exists so
+        # the numbers are readable from the run page without downloading
+        # the artifact.
+        run: |
+          python3 - <<'PY'
+          import json
+          slate = json.load(open("data/execution/latest/cfb_execution_slate.json"))
+          manifest = json.load(open("data/execution/latest/shard_manifest.json"))
+          r = slate["reconciliation"]
+          print(f"discovered {r['contracts_discovered']} = eligible {r['contracts_eligible']} "
+                f"+ excluded {r['contracts_excluded']}  (unaccounted {r['unaccounted_contracts']})")
+          for status, count in r["exclusions_by_status"].items():
+              print(f"  {status:32} {count}")
+          print(f"shards reconcile: {manifest['reconciles']}")
+          for entry in manifest["shards"]:
+              print(f"  {entry['shard']:14} games={entry['game_count']:4} "
+                    f"eligible={entry['contracts_eligible']:6} "
+                    f"in_artifact={entry['contracts_in_analysis_artifact']:6} "
+                    f"unaccounted={entry['unaccounted_contracts']} "
+                    f"analysis={entry['analysis_bytes'] // 1000} KB")
+          PY
+      - name: Upload the execution slate
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-execution-slate
+          path: data/execution/latest
+          retention-days: 7
+      - name: Upload the ChatGPT analysis artifacts on their own
+        # These are the deliverable: one file per kickoff window, each
+        # carrying every eligible contract for its games with prices and
+        # fees. Uploaded separately so the operator downloads a few
+        # hundred KB and uploads it straight to ChatGPT, rather than
+        # pulling 20 MB of audit trail to get started.
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-analysis-artifacts
+          path: data/execution/latest/shards/*.analysis.json
+          retention-days: 7

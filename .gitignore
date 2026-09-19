@@ -29,3 +29,13 @@ data/ingestion_reports/
 # to the wrong branch -- scripts/research_*.py always check out
 # research-data via research/git_durable_store.py before writing for real.
 data/research/
+
+# The live execution slate (src/cfb_edge_finder/execution) is operational
+# working state, not an archive: it is regenerated every time prices move
+# on a Saturday, it runs to ~16 MB, and it is fully derivable from the
+# committed catalog in data/live plus the handicaps the operator supplies.
+# The durable state files under data/execution/latest/state/ ARE the
+# resume record -- they live here on the machine running the workflow, and
+# they are deliberately local rather than committed so that two concurrent
+# sessions can never fight over them through git.
+data/execution/

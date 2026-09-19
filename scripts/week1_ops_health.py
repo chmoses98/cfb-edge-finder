@@ -157,6 +157,9 @@ GUARDED_PACKAGES = (
     # it is what a human reads to decide what to bet, which makes it the
     # most attractive place to bolt a suggested stake onto a price.
     "catalog",
+    # The live execution orchestration reports a fee-adjusted edge, which
+    # makes it the obvious place to bolt on a suggested stake.
+    "execution",
     "decision",
     "recommendation",
     "research",
