@@ -82,6 +82,33 @@ See `docs/KALSHI_MARKET_CATALOG.md` for the discovery flow, the live
 endpoint behaviour it was built from, and the output schema, and
 `docs/RUN_CFB_CONTRACT.md` for the consumer procedure.
 
+### Exhaustive execution
+
+```bash
+python -m cfb_edge_finder.execution prepare-live --refresh
+```
+
+The catalog says what can be bet. `cfb_edge_finder.execution` answers the
+next question -- *did we actually look at all of it before picking a
+bet?* -- and refuses to produce a shortlist until the answer is provably
+yes:
+
+```
+eligible_contracts == evaluated_contracts + explicitly_unpriceable_contracts
+unaccounted_contracts == 0
+```
+
+It compacts the live universe into per-game execution packets, shards
+them by kickoff window without ever splitting a game, takes a handicap
+supplied from OUTSIDE the repository (no model is involved), prices every
+eligible contract that handicap can price, marks every contract it cannot
+as explicitly UNPRICEABLE, and keeps durable per-game state so an
+interrupted session resumes instead of restarting. A live Saturday is 115
+games and 14,222 eligible contracts across four window shards.
+
+No stake is computed, no order can be placed, and no edge is claimed --
+see `docs/LIVE_EXECUTION.md`.
+
 ---
 
 This is a separate, from-scratch repository. It reuses architectural
@@ -176,6 +203,10 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/RUN_CFB_CONTRACT.md` -- **the consumer contract**: the RUN CFB
   procedure, the per-game completeness gate, and how freshness is
   determined without guessing.
+- `docs/LIVE_EXECUTION.md` -- **exhaustive execution**: the coverage
+  invariant, the mechanical disposition vocabulary, kickoff-window
+  sharding, the handicap payload schema, the per-game completion gate,
+  durable resume, and the five commands.
 - `docs/MODEL_RETIREMENT_2026.md` -- **the pivot**: what was retired from
   the live path, what was hibernated and why, what is preserved, how to
   revive it, and the Actions/storage before-and-after.

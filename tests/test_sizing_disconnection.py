@@ -34,6 +34,13 @@ GUARDED_PACKAGES = (
     # the catalog reports what the market offers and nothing about what to
     # do about it.
     "catalog",
+    # The live execution orchestration: it reads the catalog, applies a
+    # handicap supplied from outside, and reconciles coverage. It reports
+    # a fee-adjusted edge, which makes it the obvious place to "just add a
+    # suggested stake" -- so it is guarded like every other package that
+    # could end up on the live path. `stake_placeholder` in its report is
+    # a blank the operator fills in, and nothing here may compute one.
+    "execution",
     "decision",
     "recommendation",
     "research",
