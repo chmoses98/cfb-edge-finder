@@ -424,6 +424,8 @@ def analysis_document(
     discovered: int | None = None,
     excluded: int | None = None,
     exclusions_by_status: dict[str, int] | None = None,
+    window_part: int = 1,
+    window_parts: int = 1,
 ) -> dict[str, Any]:
     """One kickoff window, complete, ready to upload.
 
@@ -466,6 +468,13 @@ def analysis_document(
         "artifact": "cfb_chatgpt_analysis_slate",
         "shard": shard_name,
         "kickoff_window": window,
+        "window_part": window_part,
+        "window_parts": window_parts,
+        "part_note": (
+            f"part {window_part} of {window_parts} for the {window} window. Each part is a "
+            f"self-contained set of whole games -- no game's contracts are split across parts -- "
+            f"so it can be handicapped on its own."
+        ),
         "slate_date": slate.get("slate_date"),
         "as_of": slate.get("as_of"),
         "how_to_use": list(HOW_TO_USE),

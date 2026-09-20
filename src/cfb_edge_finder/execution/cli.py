@@ -88,7 +88,7 @@ def _shard_path(out_dir: Path, shard: str) -> Path:
         available = sorted(
             p.name[: -len(".json")]
             for p in (out_dir / "shards").glob("*.json")
-            if not p.name.endswith(".analysis.json")
+            if ".analysis." not in p.name
         )
         raise SystemExit(f"no shard {shard!r} at {path}. Available: {', '.join(available) or '(none)'}")
     return path
@@ -190,12 +190,12 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     print(f"\n  shards ({manifest['totals']['shards']}), reconciles={manifest['reconciles']}")
     oldest_allowed = _oldest_allowed_quote(captured, config.max_capture_age_minutes)
     for entry in manifest["shards"]:
-        print(f"\n  {entry['shard'].upper()}")
+        print(f"\n  {entry['shard'].upper()}  (part {entry['window_part']} of {entry['window_parts']})")
         print(f"    games:                    {entry['game_count']}")
         print(f"    eligible contracts:       {entry['contracts_eligible']}")
         print(f"    in analysis artifact:     {entry['contracts_in_analysis_artifact']}")
-        print(f"    analysis artifact size:   {entry['analysis_bytes'] / 1e3:.0f} KB  "
-              f"({entry['analysis_file']})")
+        print(f"    analysis artifact:        {entry['analysis_bytes'] / 1e3:.0f} KB  "
+              f"{entry['analysis_file']}")
         print(f"    freshest quote:           {_age(entry['freshest_quote_age_seconds'])}")
         print(f"    oldest allowed quote:     {oldest_allowed}")
         print(f"    mechanical exclusions:    {entry['contracts_excluded']}")
@@ -222,11 +222,35 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 4
-    first = manifest["shards"][0] if manifest["shards"] else None
-    if first:
-        print(f"\nUPLOAD THIS TO CHATGPT:  {out_dir}/{first['analysis_file']}")
-        print(f"WITH THIS PROMPT:        {CHATGPT_PROMPT}")
+    _print_upload_plan(out_dir, manifest)
     return 0
+
+
+def _print_upload_plan(out_dir: Path, manifest: dict[str, Any]) -> None:
+    """The whole operator workflow, printed in the order it is performed.
+
+    Every analysis file, in upload order, then the one prompt that goes
+    with each of them. Printing the complete list rather than just the
+    first removes the only step of this workflow that needed someone to
+    remember something."""
+    entries = manifest.get("shards") or []
+    if not entries:
+        return
+    print("\n" + "=" * 78)
+    print(f"UPLOAD THESE {len(entries)} FILES TO CHATGPT, IN THIS ORDER")
+    print("=" * 78)
+    for index, entry in enumerate(entries, start=1):
+        print(
+            f"  {index:2}. {out_dir}/{entry['analysis_file']}"
+            f"   ({entry['game_count']} games, {entry['contracts_eligible']} contracts, "
+            f"{entry['analysis_bytes'] / 1e3:.0f} KB)"
+        )
+    print("\nWITH THIS PROMPT, EACH TIME:\n")
+    print(f"  {CHATGPT_PROMPT}")
+    print(
+        "\nEach file is self-contained: whole games only, every eligible contract for them, "
+        "\nprices included. Upload one, get its bets, then move to the next."
+    )
 
 
 CHATGPT_PROMPT = (

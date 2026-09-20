@@ -81,11 +81,15 @@ jobs:
               print(f"  {status:32} {count}")
           print(f"shards reconcile: {manifest['reconciles']}")
           for entry in manifest["shards"]:
-              print(f"  {entry['shard']:14} games={entry['game_count']:4} "
+              print(f"  {entry['analysis_file']:44} games={entry['game_count']:4} "
                     f"eligible={entry['contracts_eligible']:6} "
                     f"in_artifact={entry['contracts_in_analysis_artifact']:6} "
                     f"unaccounted={entry['unaccounted_contracts']} "
-                    f"analysis={entry['analysis_bytes'] // 1000} KB")
+                    f"{entry['analysis_bytes'] // 1000} KB")
+          print()
+          print("upload order:")
+          for path in manifest["upload_order"]:
+              print(f"  {path}")
           PY
       - name: Upload the execution slate
         uses: actions/upload-artifact@v4
@@ -102,5 +106,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cfb-analysis-artifacts
-          path: data/execution/latest/shards/*.analysis.json
+          path: data/execution/latest/shards/*.analysis.*.json
           retention-days: 7

@@ -42,15 +42,20 @@ from cfb_edge_finder.execution.analysis import analysis_document, game_block
 from cfb_edge_finder.execution.slate import canonical_hash
 from cfb_edge_finder.execution.windows import DEFAULT_TIMEZONE, WINDOW_ORDER
 
-DEFAULT_MAX_ANALYSIS_BYTES = 900_000
-"""Byte budget for one `<shard>.analysis.json`.
+DEFAULT_MAX_ANALYSIS_BYTES = 250_000
+"""Byte budget for one analysis artifact.
 
-Sized so a normal Saturday produces exactly one file per kickoff window --
-four uploads for the day -- while a bigger slate subshards automatically
-rather than handing someone a file they cannot use. It is a budget on the
-ENCODING only: it can never remove a contract, because a game is the
-indivisible unit and a single game that overflows it gets a shard of its
-own."""
+*** SIZED FOR REASONING DEPTH, NOT FOR THE LARGEST FILE THAT FITS ***
+A whole kickoff window is ~40 games and ~5,000 contracts in ~600 KB. That
+is complete, and it is too much to handicap 40 games INDEPENDENTLY and
+well in one pass -- the constraint that bites is attention, not the
+context window. At ~250 KB a part is roughly 10-20 games, which a reader
+can actually work through game by game.
+
+It is a budget on the ENCODING only. It can never remove a contract: a
+game is the indivisible unit, and a single game bigger than the budget
+gets a part of its own rather than being split or trimmed. More parts is
+the only thing a smaller budget ever buys."""
 
 DEFAULT_MAX_SHARD_CONTRACTS = 5_000
 
@@ -84,6 +89,19 @@ class Shard:
     name: str
     window: str
     packets: list[dict[str, Any]]
+    window_part: int = 1
+    """1-based position of this part within its kickoff window."""
+    window_parts: int = 1
+    """How many parts that window was split into."""
+
+    @property
+    def analysis_filename(self) -> str:
+        """`early.analysis.01.json`.
+
+        ALWAYS numbered, even for a window that produced a single part.
+        A uniform name means the upload order is readable straight off the
+        filesystem and there is no special case to get wrong at 7am."""
+        return f"{self.window}.analysis.{self.window_part:02d}.json"
 
     @property
     def game_keys(self) -> list[str]:
@@ -122,9 +140,14 @@ def split_window(
     max_bytes: int,
     max_contracts: int,
 ) -> list[Shard]:
-    """Greedy, kickoff-ordered packing. Order is preserved so a subshard
-    is always a contiguous run of kickoffs -- `early_1` is never a random
-    scatter of the early window."""
+    """Greedy, kickoff-ordered packing. Order is preserved so a part is
+    always a contiguous run of kickoffs -- `early` part 02 is never a
+    random scatter of the early window.
+
+    A packet is added to the current group BEFORE the next overflow check,
+    so a single game larger than the whole budget lands in a part of its
+    own intact. The budget never wins against the game-is-indivisible
+    rule."""
     if not packets:
         return []
     ordered = sorted(packets, key=lambda p: (str(p.get("kickoff") or "9999"), str(p["game_key"])))
@@ -147,10 +170,14 @@ def split_window(
     if current:
         groups.append(current)
 
-    if len(groups) == 1:
-        return [Shard(name=window, window=window, packets=groups[0])]
     return [
-        Shard(name=f"{window}_{i + 1}", window=window, packets=group)
+        Shard(
+            name=window if len(groups) == 1 else f"{window}_{i + 1}",
+            window=window,
+            packets=group,
+            window_part=i + 1,
+            window_parts=len(groups),
+        )
         for i, group in enumerate(groups)
     ]
 
@@ -207,6 +234,8 @@ def shard_analysis_document(
         discovered=shard.discovered,
         excluded=shard.excluded,
         exclusions_by_status=shard.exclusions_by_status,
+        window_part=shard.window_part,
+        window_parts=shard.window_parts,
     )
 
 
@@ -232,7 +261,7 @@ def write_shards(
 
         analysis = shard_analysis_document(slate, shard, tz_name)
         analysis_encoded = _encode(analysis, sort_keys=False)
-        analysis_path = shard_dir / f"{shard.name}.analysis.json"
+        analysis_path = shard_dir / shard.analysis_filename
         analysis_path.write_text(analysis_encoded, encoding="utf-8")
         written.add(analysis_path.name)
 
@@ -242,7 +271,9 @@ def write_shards(
                 "shard": shard.name,
                 "kickoff_window": shard.window,
                 "file": f"shards/{shard.name}.json",
-                "analysis_file": f"shards/{shard.name}.analysis.json",
+                "analysis_file": f"shards/{shard.analysis_filename}",
+                "window_part": shard.window_part,
+                "window_parts": shard.window_parts,
                 "games": shard.game_keys,
                 "game_count": len(shard.packets),
                 "contracts_discovered": shard.discovered,
@@ -281,6 +312,7 @@ def write_shards(
     manifest = {
         "schema_version": slate["schema_version"],
         "artifact": "shard_manifest",
+        "upload_order": [e["analysis_file"] for e in entries],
         "generated_at": slate.get("generated_at"),
         "slate_date": slate.get("slate_date"),
         "as_of": slate.get("as_of"),

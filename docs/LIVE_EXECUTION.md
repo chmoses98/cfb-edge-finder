@@ -1,7 +1,7 @@
 # The live execution workflow
 
 ```
-repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+repo  ->  <window>.analysis.NN.json  ->  ChatGPT  ->  every good bet
 ```
 
 **The repo finds and organises the entire market. ChatGPT does the
@@ -71,40 +71,79 @@ not required to get bets.
 ## The live workflow
 
 ```
-repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+repo  ->  <window>.analysis.NN.json  ->  ChatGPT  ->  every good bet
 ```
 
 That is the whole round trip. **ChatGPT writes nothing back** — no
-handicap file, no commit, no repo state, no second visit. You download one
-file, upload it, and get the answer in the conversation.
+handicap file, no commit, no repo state, no second visit.
 
-1. **Generate the artifacts** — one command, or dispatch the
-   **CFB Execution Slate** Action:
+```bash
+python -m cfb_edge_finder.execution prepare-live --refresh
+```
 
-   ```bash
-   python -m cfb_edge_finder.execution prepare-live --refresh
-   ```
+It ends by printing every analysis file in upload order, with the prompt:
 
-2. **Download the analysis artifact** for the kickoff window you are
-   working:
+```
+==============================================================================
+UPLOAD THESE 9 FILES TO CHATGPT, IN THIS ORDER
+==============================================================================
+   1. data/execution/latest/shards/early.analysis.01.json      (11 games, 1855 contracts, 224 KB)
+   2. data/execution/latest/shards/early.analysis.02.json      (20 games, 1855 contracts, 231 KB)
+   3. data/execution/latest/shards/afternoon.analysis.01.json  (14 games, 2027 contracts, 246 KB)
+   ...
+   9. data/execution/latest/shards/late.analysis.01.json       ( 8 games, 1127 contracts, 135 KB)
 
-   ```
-   data/execution/latest/shards/early.analysis.json
-   ```
+WITH THIS PROMPT, EACH TIME:
 
-   (Or, from the Action, the `cfb-analysis-artifacts` upload.)
+  Run CFB. Bankroll $1,400. Independently handicap every game in this file,
+  evaluate every available Kalshi market, and return every bet you believe
+  has positive EV. Do not use repo projections.
+```
 
-3. **Upload it to ChatGPT with this prompt:**
+Upload them in that order, one at a time, and take the bets each one
+returns. That is the entire operator workflow — there is nothing to
+remember and nothing to look up.
 
-   > Run CFB. Bankroll $1,400. Independently handicap every game in this
-   > file, evaluate every available Kalshi market, and return every bet
-   > you believe has positive EV. Do not use repo projections.
+ChatGPT returns **every qualifying bet**: 0, 6 or 100, whatever survives
+its own handicap. There is no cap and no target number anywhere in this
+workflow.
 
-4. **ChatGPT returns every qualifying bet directly.** 0 bets, 6 bets, 100
-   bets — whatever survives its own handicap. There is no cap and no
-   target number anywhere in this workflow.
+### Why the parts are ~250 KB and not one file per window
 
-5. Move to the next window: `afternoon`, `evening`, `late`.
+A whole kickoff window is ~40 games and ~5,000 contracts in ~600 KB. That
+is complete, and it is too much to handicap 40 games *independently and
+well* in one pass — the constraint that bites is attention, not the
+context window. `--max-analysis-bytes` defaults to 250,000, which makes a
+part roughly 10–20 games.
+
+The budget is on the ENCODING only. It can never remove a contract:
+
+- a game is the indivisible unit, and **no game's contracts are ever split
+  across parts**;
+- a single game larger than the budget gets a part of its own, intact,
+  rather than being trimmed;
+- more parts is the only thing a smaller budget ever buys.
+
+`tests/test_execution_packaging.py` proves that directly: the same slate
+packed nine ways and packed one way contains the identical set of games
+and the identical set of contracts.
+
+### Part naming
+
+`<window>.analysis.<NN>.json` — always numbered, even when a window
+produced a single part, so the upload order reads straight off the
+filesystem with no special case:
+
+```
+early.analysis.01.json      afternoon.analysis.01.json    evening.analysis.01.json
+early.analysis.02.json      afternoon.analysis.02.json    evening.analysis.02.json
+                            afternoon.analysis.03.json    evening.analysis.03.json
+                                                          late.analysis.01.json
+```
+
+Parts are contiguous runs of kickoffs, and every part states its own
+`window_part` / `window_parts`. Each is self-contained: whole games,
+every eligible contract for them, prices included.
 
 ### The division of labour
 
@@ -145,8 +184,9 @@ the live workflow, never touches the ledger, and is off by default.
 
 ## The analysis artifact
 
-`<window>.analysis.json`, schema `cfb_execution_analysis/1.0.0`. One file
-per kickoff window, self-contained.
+`<window>.analysis.NN.json`, schema `cfb_execution_analysis/1.0.0`. Each
+part is self-contained: whole games only, every eligible contract for
+them, prices included.
 
 ```jsonc
 {
@@ -230,12 +270,11 @@ is what stops a reader assuming it was already accounted for.
 
 ### File size
 
-Today's slate: 137–604 KB per window, one file per window. Past
-`--max-analysis-bytes` (default 900,000) a window subshards into
-`early_1.analysis.json`, `early_2.analysis.json`, … **splitting only
-between games — never a game's contracts.** At `--max-analysis-bytes
-250000` today's slate becomes nine files of 45–254 KB, still 14,222
-contracts and 115 games with no game split.
+Today's slate at the default 250,000-byte budget: **nine parts of 40–253
+KB**, 6–23 games each, 14,222 contracts and 115 games in total with no
+game split. Raise `--max-analysis-bytes` to get fewer, larger files (at
+900,000 the same slate is four, one per window, 134–591 KB); lower it to
+get more, smaller ones. Either way the universe is identical.
 
 ---
 

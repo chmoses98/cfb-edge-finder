@@ -289,7 +289,7 @@ def test_game_context_precedes_markets_in_key_order(tmp_path):
     the facts, then look at the prices."""
     slate, shard = slate_and_shard(tmp_path)
     write_shards(slate, [shard], tmp_path / "out")
-    raw = (tmp_path / "out" / "shards" / f"{shard.name}.analysis.json").read_text()
+    raw = (tmp_path / "out" / "shards" / shard.analysis_filename).read_text()
     for game in json.loads(raw)["games"]:
         keys = list(game.keys())
         assert keys.index("game_context") < keys.index("markets")
@@ -402,7 +402,7 @@ def _flat(path: Path) -> str:
 
 def test_the_documented_live_workflow_needs_no_write_back():
     text = _flat(DOCS)
-    assert "repo -> <window>.analysis.json -> ChatGPT -> every good bet" in text
+    assert "repo -> <window>.analysis.NN.json -> ChatGPT -> every good bet" in text
     assert "**ChatGPT writes nothing back**" in text
     assert "not required to get bets" in text
 
@@ -437,6 +437,6 @@ def test_the_documented_upload_prompt_matches_the_one_the_cli_prints():
 
 def test_the_action_uploads_the_analysis_artifacts():
     text = WORKFLOW.read_text(encoding="utf-8")
-    assert "*.analysis.json" in text
+    assert "*.analysis.*.json" in text
     assert "brief" not in text.lower()
     assert "contracts_in_analysis_artifact" in text

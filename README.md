@@ -89,7 +89,7 @@ python -m cfb_edge_finder.execution prepare-live --refresh
 ```
 
 ```
-repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+repo  ->  <window>.analysis.NN.json  ->  ChatGPT  ->  every good bet
 ```
 
 The catalog says what can be bet. `cfb_edge_finder.execution` gets ALL of
@@ -107,24 +107,27 @@ duplicate, non-executable -- and every one is counted in the artifact the
 reader opens.
 
 The repo finds and organises the ENTIRE market; ChatGPT does the
-handicapping and evaluates every market; you get every good bet. One
-command produces one self-contained file per kickoff window carrying
-**every mechanically eligible contract with its prices, fees and
-semantics**, behind each game's factual context. Upload it and ask:
+handicapping and evaluates every market; you get every good bet. The one
+command above prints every analysis file in upload order. Upload them one
+at a time, each with:
 
 > Run CFB. Bankroll $1,400. Independently handicap every game in this
 > file, evaluate every available Kalshi market, and return every bet you
 > believe has positive EV. Do not use repo projections.
 
-**Nothing is written back.** No handicap file, no commit, no second visit.
-There is no bet cap: 0 bets, 6 bets or 100 bets, whatever survives the
-handicap.
+Each part is self-contained -- whole games only, every eligible contract
+for them with **prices, fees and semantics**, behind each game's factual
+context. **Nothing is written back:** no handicap file, no commit, no
+second visit. There is no bet cap: 0 bets, 6 bets or 100 bets, whatever
+survives the handicap.
 
-A live Saturday is 115 games and 14,222 eligible contracts across four
-window artifacts of 137-604 KB. No model fair value, projection, rating or
-recommendation appears anywhere in them -- the retired projection model is
-deliberately not trusted for betting decisions. No stake is computed and
-no order can be placed. See `docs/LIVE_EXECUTION.md`.
+A live Saturday is 115 games and 14,222 eligible contracts across nine
+parts of 40-253 KB, sized for handicapping 10-20 games at a time rather
+than 40. A game's contracts are never split across parts. No model fair
+value, projection, rating or recommendation appears anywhere in them --
+the retired projection model is deliberately not trusted for betting
+decisions. No stake is computed and no order can be placed. See
+`docs/LIVE_EXECUTION.md`.
 
 ---
 

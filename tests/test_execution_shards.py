@@ -138,7 +138,7 @@ def test_the_analysis_artifact_is_a_projection_of_the_shard_not_a_selection(tmp_
     write_shards(slate, build_shards(slate), out)
 
     full = json.loads((out / "shards" / "early.json").read_text())
-    analysis = json.loads((out / "shards" / "early.analysis.json").read_text())
+    analysis = json.loads((out / "shards" / "early.analysis.01.json").read_text())
 
     full_tickers = {c["ticker"] for game in full["games"] for c in game["contracts"]}
     assert analysis_tickers(analysis) == full_tickers
