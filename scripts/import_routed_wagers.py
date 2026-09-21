@@ -118,6 +118,12 @@ def main(argv=None) -> int:
                 "refused": result["refused"],
                 "refusals": [{"row": i, "reason": r} for i, r in result["refusals"]],
                 "keysWritten": result["keys_written"],
+                # PER-ROW, alongside the counts. The router's merge gate reads
+                # these to prove that the same fill delivered twice lands on
+                # the same canonical row -- a property this ledger has had
+                # since it was written and previously had no way to show.
+                # Counts alone cannot demonstrate it.
+                "rows": result["rows"],
             }, handle, indent=2, sort_keys=True)
             handle.write("\n")
 
