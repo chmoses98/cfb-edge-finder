@@ -19,8 +19,29 @@ name: CFB Execution Slate
 # *** IT CONSUMES NO SECRETS ***
 # Kalshi's market-data endpoints are public reads and game identity comes
 # from Kalshi's own football_game milestones. No order or portfolio
-# endpoint is reachable from any code this workflow runs.
+# endpoint is reachable from any code this workflow runs. The factual
+# context collector is keyless too -- ESPN's public scoreboard and core
+# endpoints, and Open-Meteo. CFBD is optional and is NOT consulted here.
+#
+# *** WHY IT IS ALSO SCHEDULED, AND WHY THE CADENCE IS SMALL ***
+# Three runs on a Saturday and one the evening before, and nothing on the
+# days nobody bets. It is a READ-ONLY, secret-free, ~6-minute job that
+# writes no branch, so the cost of a scheduled run is Actions minutes and
+# nothing else -- and what it buys is that a broken slate is discovered
+# on a Saturday MORNING rather than forty minutes before a kickoff, with
+# the factual context already collected.
+#
+# It is deliberately NOT every thirty minutes. The catalog workflow
+# already refreshes prices at that cadence; a slate is only worth
+# rebuilding when a human is about to read one, and a dispatch is always
+# available for exactly that.
 on:
+  schedule:
+    # 11:00 and 15:00 UTC Saturday: before the noon and the 3.30 Eastern
+    # windows. 22:00 UTC Saturday for the evening slate. 23:00 UTC Friday
+    # for a Saturday-morning reader.
+    - cron: "0 11,15,22 * * 6"
+    - cron: "0 23 * * 5"
   workflow_dispatch:
     inputs:
       date:
@@ -45,6 +66,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # A slate build is idempotent and writes nothing, so two of them racing
+  # costs only minutes -- but a scheduled run overlapping a dispatched one
+  # would produce two artifacts of the same name and the operator would
+  # have no way to tell which they downloaded. The newer one wins, because
+  # a slate is only as good as its quotes.
+  group: cfb-execution-slate
+  cancel-in-progress: true
+
 jobs:
   slate:
     runs-on: ubuntu-latest
@@ -56,10 +86,29 @@ jobs:
           python-version: "3.11"
       - name: Install package
         run: pip install -e .
+      - name: Collect the factual context
+        # FAIL SOFT, ALWAYS. A source that 403s costs the domains it feeds,
+        # for the games it would have fed, and nothing else: the collector
+        # records those as `missing` WITH THE REASON and exits 0. The slate
+        # then builds with a lower confidence ceiling and smaller handicap
+        # batches, which is the honest outcome -- an unenriched game really
+        # is more work to handicap.
+        #
+        # `continue-on-error` as well as the collector's own exit code,
+        # because a crash here must not cost the slate either. A slate with
+        # no context is the workflow as it behaved before enrichment
+        # existed, and that was usable.
+        continue-on-error: true
+        run: |
+          python3 scripts/collect_live_context.py \
+            --catalog-dir data/live \
+            --out-dir data/live/context \
+            --horizon-days 2
       - name: Build the execution slate, shards and manifest
         run: |
           python3 -m cfb_edge_finder.execution prepare-live \
             --out-dir data/execution/latest \
+            --context-dir data/live/context \
             --timezone "${{ github.event.inputs.timezone || 'America/New_York' }}" \
             --max-capture-age-minutes "${{ github.event.inputs.max_capture_age_minutes || '120' }}" \
             ${{ github.event.inputs.date && format('--date {0}', github.event.inputs.date) || '' }} \
@@ -86,6 +135,24 @@ jobs:
                     f"in_artifact={entry['contracts_in_analysis_artifact']:6} "
                     f"unaccounted={entry['unaccounted_contracts']} "
                     f"analysis={entry['analysis_bytes'] // 1000} KB")
+
+          coverage = slate.get("factual_context_coverage") or {}
+          enriched = coverage.get("games", 0) - coverage.get("games_with_no_context", 0)
+          print(f"\nfactual context: {enriched} / {coverage.get('games', 0)} games enriched")
+          for ceiling, count in (coverage.get("confidence_ceilings") or {}).items():
+              print(f"  confidence ceiling {ceiling:14} {count}")
+
+          batches = json.load(open("data/execution/latest/batch_manifest.json"))
+          print(f"\nhandicap batches: {batches['totals']['batches']} "
+                f"covering {batches['totals']['games']} games "
+                f"(reconciles {batches['reconciles']})")
+          print(f"  context bytes total: {batches['totals']['context_bytes'] // 1000} KB")
+          for entry in batches["batches"][:8]:
+              print(f"  {entry['batch']:16} games={entry['games']:2} "
+                    f"cost={entry['reasoning_cost']:5.2f} "
+                    f"contracts_priced_later={entry['eligible_contracts']:5}")
+          if len(batches["batches"]) > 8:
+              print(f"  ... and {len(batches['batches']) - 8} more")
           PY
       - name: Upload the execution slate
         uses: actions/upload-artifact@v4
@@ -93,12 +160,24 @@ jobs:
           name: cfb-execution-slate
           path: data/execution/latest
           retention-days: 7
-      - name: Upload the ChatGPT analysis artifacts on their own
-        # These are the deliverable: one file per kickoff window, each
-        # carrying every eligible contract for its games with prices and
-        # fees. Uploaded separately so the operator downloads a few
-        # hundred KB and uploads it straight to ChatGPT, rather than
-        # pulling 20 MB of audit trail to get started.
+      - name: Upload the handicap batches
+        # THE PRIMARY DELIVERABLE. Five to eight games of factual context
+        # per file and ZERO contract rows -- the reader handicaps the
+        # games, the repository prices every ladder from the result. Tens
+        # of KB per batch against hundreds for a window's full market.
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-handicap-batches
+          path: |
+            data/execution/latest/batches/*.context.json
+            data/execution/latest/batch_manifest.json
+          retention-days: 7
+      - name: Upload the full-market analysis artifacts
+        # The one-pass workflow's deliverable, still produced: one file per
+        # kickoff window carrying every eligible contract with prices and
+        # fees. Kept because it is the only artifact that proves the
+        # eligible universe is intact, and because a reader who wants to
+        # inspect a specific ladder needs somewhere to look.
         uses: actions/upload-artifact@v4
         with:
           name: cfb-analysis-artifacts

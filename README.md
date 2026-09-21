@@ -85,46 +85,53 @@ endpoint behaviour it was built from, and the output schema, and
 ### Exhaustive execution
 
 ```bash
-python -m cfb_edge_finder.execution prepare-live --refresh
+python -m cfb_edge_finder.execution prepare-live --refresh   # slate, context, batches
+python -m cfb_edge_finder.execution batches                  # what is left to do
+python -m cfb_edge_finder.execution evaluate   --batch early_b1 --handicaps handicaps.json
+python -m cfb_edge_finder.execution candidates --batch early_b1
 ```
 
 ```
-repo  ->  <window>.analysis.json  ->  ChatGPT  ->  every good bet
+repo  ->  compact factual game batches  ->  handicap 5-8 games
+      ->  the repo prices EVERY eligible contract deterministically
+      ->  sensitivity, dominance and correlation reduction
+      ->  a small candidate artifact
 ```
 
 The catalog says what can be bet. `cfb_edge_finder.execution` gets ALL of
-it in front of a handicapper in one file, and proves it did:
+it priced, and proves it did:
 
 ```
-eligible_contracts == contracts_in_analysis_artifact
+contracts_discovered == contracts_eligible + every mechanical exclusion
+eligible_contracts   == evaluated_contracts + explicitly_unpriceable_contracts
 unaccounted_contracts == 0
 ```
 
 Nothing is filtered for attractiveness, liquidity, popularity or expected
 edge. The only exclusions are objective mechanical ones -- game started,
 market closed, stale capture, unsupported fee model, broken mapping,
-duplicate, non-executable -- and every one is counted in the artifact the
-reader opens.
+duplicate, non-executable -- and every one is counted.
 
-The repo finds and organises the ENTIRE market; ChatGPT does the
-handicapping and evaluates every market; you get every good bet. One
-command produces one self-contained file per kickoff window carrying
-**every mechanically eligible contract with its prices, fees and
-semantics**, behind each game's factual context. Upload it and ask:
+**The reader handicaps games, not contracts.** A batch file carries five
+to eight games of factual context -- records, form, scoring, rest,
+injuries, weather, each with its source and observation time -- and
+**zero contract rows**. One score distribution per period, with a stated
+uncertainty region, prices every rung of every ladder in that period. A
+game with 29 alternate spreads, 19 totals and 28 team totals needs one
+distribution, not 76 hand-entered probabilities.
 
-> Run CFB. Bankroll $1,400. Independently handicap every game in this
-> file, evaluate every available Kalshi market, and return every bet you
-> believe has positive EV. Do not use repo projections.
+The region is what makes a recommendation robust. Measured on the retained
+2026-09-19 slate, the same handicap with a stated region yields 5,192
+`robust_positive_ev` contracts; with no region it yields **0**, because
+nothing in a point estimate says how wrong it might be.
 
-**Nothing is written back.** No handicap file, no commit, no second visit.
-There is no bet cap: 0 bets, 6 bets or 100 bets, whatever survives the
-handicap.
-
-A live Saturday is 115 games and 14,222 eligible contracts across four
-window artifacts of 137-604 KB. No model fair value, projection, rating or
-recommendation appears anywhere in them -- the retired projection model is
-deliberately not trusted for betting decisions. No stake is computed and
-no order can be placed. See `docs/LIVE_EXECUTION.md`.
+**Nothing is written back to the repo by the reader**, and there is no
+bet cap: 0 candidates, 6 or 400, whatever survives evaluation and
+reduction. No stake is computed and no order can be placed; the projection model is retired from
+the live path and no model fair value appears anywhere in a packet. What
+the owner then places on Kalshi is recorded automatically by the router
+into `accounting-data`, and read back by `scripts/cfb_postmortem.py`. See
+`docs/LIVE_EXECUTION.md` and `docs/POSTMORTEM.md`.
 
 ---
 
@@ -221,9 +228,15 @@ prints a notice -- no live 2026 data is fetched or implied.
   procedure, the per-game completeness gate, and how freshness is
   determined without guessing.
 - `docs/LIVE_EXECUTION.md` -- **exhaustive execution**: the coverage
-  invariant, the mechanical disposition vocabulary, kickoff-window
-  sharding, the handicap payload schema, the per-game completion gate,
-  durable resume, and the five commands.
+  invariant, the mechanical disposition vocabulary, handicap batching and
+  its cost model, the factual context layer, the 2.0.0 handicap payload
+  and its uncertainty region, the robustness taxonomy, candidate
+  reduction, the per-game completion gate, durable resume, and the four
+  commands.
+- `docs/POSTMORTEM.md` -- **what the money did**: how realised profit and
+  loss is read from the ledger alone, what linking a fill to a
+  recommendation can and cannot say, and why a tier reading needs a
+  sample.
 - `docs/MODEL_RETIREMENT_2026.md` -- **the pivot**: what was retired from
   the live path, what was hibernated and why, what is preserved, how to
   revive it, and the Actions/storage before-and-after.
