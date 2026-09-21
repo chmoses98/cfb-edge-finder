@@ -15,6 +15,25 @@ here has a view about a football game.**
 
 ## Operator instructions
 
+### Saturday morning, the short way
+
+The slate workflow already ran (Friday 23:00 UTC, then 11:00 / 15:00 / 22:00
+UTC Saturday). So:
+
+1. Open the newest **CFB Execution Slate** run and download the
+   **`cfb-handicap-batches`** artifact. That is 5–8 games of factual context
+   per file and zero contract rows.
+2. Upload one batch file to ChatGPT with the prompt below.
+3. Save the reply as `handicaps.json` and run the two commands in step 4.
+4. Place whatever you want on Kalshi, by hand.
+
+Everything after that is automatic: the router records the wager into
+`accounting-data`, settles it when Kalshi settles, and
+`scripts/cfb_postmortem.py` reads the result back. **Nothing in this
+repository can place an order**, and nothing is typed into it by hand.
+
+### The same thing from a terminal
+
 Four commands. Repeat the last two per batch.
 
 ```bash
