@@ -426,6 +426,40 @@ can tell a handicap error from news that arrived after the opinion.
 
 ---
 
+## What "0 games enriched" means
+
+Coverage alone cannot tell you why a slate is unenriched, and the two reasons
+call for opposite responses. So the collector writes
+`data/live/context/collection_run.json` and the workflow prints it:
+
+| verdict | what happened | what to do |
+|---|---|---|
+| `complete` | every game matched a source event | nothing |
+| `partial` | some games matched | usually nothing; the unmatched games are gated |
+| `no_games_in_horizon` | the horizon did not reach any kickoff | widen it — the record names the next kickoff |
+| `no_events_matched` | sources answered, nothing matched | a team-matching problem, not a network one |
+| `sources_unreachable` | sources did not answer | go and look at the provider |
+| `stopped_early` | the budget or the breaker fired | see below |
+
+**The horizon tracks the slate.** `--date all` builds a slate spanning the
+catalog's whole kickoff range, so the workflow asks the collector for `all`
+too. A fixed two-day window paired with a thirteen-day slate enriches almost
+none of it, which is exactly what the first live run did: 0 of 234 games.
+
+**The run is bounded.** Fail-soft per REQUEST is not fail-soft per RUN. A dead
+provider costs about 79 seconds per URL and a whole-catalog slate asks for
+roughly 900 of them, so an outage would run for hours and be killed by the
+job's own timeout — losing the slate as well as the context, which is the one
+outcome the fail-soft design exists to prevent. Two guards, for the two shapes
+of failure: `--budget-seconds` (default 600) catches a provider that HANGS,
+and `--breaker-after` (default 25 consecutive failures) catches one that
+refuses FAST, since a 403 breaks out of the retry loop immediately. Measured
+against a total outage: 129 seconds, all 234 games still written with their
+domains missing and the reason recorded on each one. A third guard,
+`timeout-minutes` on the workflow step, bounds it even if both of those are
+wrong.
+
+
 ## Known limits
 
 - **Combos are not enumerable.** Kalshi's CFB parlays are dynamically
@@ -443,7 +477,11 @@ can tell a handicap error from news that arrived after the opinion.
   range. They are a measure of handicapping work and nothing else.
 - **`exact_corner_extremum` is exact for the monotone families only.** A
   margin band's bound is a grid minimum and says so.
-- **The context collector could not be exercised against live endpoints**
-  from the environment this was built in (egress blocked). Its parsers are
-  tested against recorded payload shapes; the first scheduled slate run is
-  its live proof, and it fails soft by construction.
+- **The context collector's live network path has been exercised once**
+  (Actions run 35573333193), and it collected nothing. Nothing was broken:
+  the workflow asked for a two-day horizon on a Monday and the next kickoff
+  was the Thursday. That run is what produced the horizon and run-record
+  fixes below. What is still unproven is a run where ESPN and Open-Meteo
+  actually ANSWER -- the environment this was built in cannot reach them, so
+  the parsers are tested against recorded payload shapes and the first
+  Friday or Saturday run is the real proof.

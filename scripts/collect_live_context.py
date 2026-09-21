@@ -101,12 +101,64 @@ EXIT_OK = 0
 EXIT_BAD_INPUT = 2
 
 
+class Budget:
+    """A wall clock and a circuit breaker, shared by every request in a run.
+
+    Fail-soft per REQUEST is not fail-soft per RUN, and the difference only
+    shows up at scale. A dead provider costs `timeout * (retries + 1)` plus
+    backoff -- about 79 seconds -- and a `--date all` slate asks for roughly
+    900 requests. A full outage would therefore run for hours and be killed by
+    the job's own timeout, taking the slate with it: no context AND no slate,
+    which is strictly worse than the unenriched slate the fail-soft design
+    exists to guarantee.
+
+    So the run stops SPENDING once it is out of time or once the evidence is
+    in that nothing is answering. What it has already collected is written,
+    the rest is recorded as missing with the reason, and the exit code stays 0.
+    """
+
+    def __init__(self, seconds: float, breaker_after: int) -> None:
+        self.seconds = seconds
+        self.breaker_after = breaker_after
+        self.started = time.monotonic()
+        self.consecutive_failures = 0
+        self.tripped_reason: str | None = None
+
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    def spent(self) -> bool:
+        """True once no further request should be attempted."""
+        if self.tripped_reason:
+            return True
+        if self.seconds and self.elapsed() >= self.seconds:
+            self.tripped_reason = f"the {self.seconds:.0f}s collection budget was spent"
+            return True
+        if self.breaker_after and self.consecutive_failures >= self.breaker_after:
+            self.tripped_reason = (
+                f"{self.consecutive_failures} consecutive request failures -- "
+                f"the sources are not answering"
+            )
+            return True
+        return False
+
+    def record(self, ok: bool) -> None:
+        self.consecutive_failures = 0 if ok else self.consecutive_failures + 1
+
+
+# Set by main(); None means "no limit", which is what the unit tests and an
+# operator debugging one game both want.
+_BUDGET: Budget | None = None
+
+
 def _get(url: str, params: dict | None = None, *, retries: int = 2, timeout: float = 25.0):
     """One GET. Never raises: a failure is a (None, reason) the caller records.
 
     Fail-soft is the whole contract of this script, so the transport layer is
     where it starts. An exception escaping here would abort a run that has
     ninety other games to write."""
+    if _BUDGET is not None and _BUDGET.spent():
+        return None, _BUDGET.tripped_reason
     last = "no attempt"
     for attempt in range(retries + 1):
         try:
@@ -118,16 +170,25 @@ def _get(url: str, params: dict | None = None, *, retries: int = 2, timeout: flo
         else:
             if response.status_code == 200:
                 try:
-                    return response.json(), None
+                    payload = response.json()
                 except ValueError:
+                    if _BUDGET is not None:
+                        _BUDGET.record(False)
                     return None, "unparsable JSON"
+                if _BUDGET is not None:
+                    _BUDGET.record(True)
+                return payload, None
             last = f"HTTP {response.status_code}"
             if response.status_code in (401, 403, 404):
                 # A policy answer, not a transient one. Retrying spends the
                 # run's budget to be told the same thing.
                 break
         if attempt < retries:
+            if _BUDGET is not None and _BUDGET.spent():
+                break
             time.sleep(1.5 * (attempt + 1))
+    if _BUDGET is not None:
+        _BUDGET.record(False)
     return None, last
 
 
@@ -307,6 +368,121 @@ def _espn_team_id(event: dict | None, slot: str) -> str | None:
     return None
 
 
+RUN_SUMMARY_NAME = "collection_run.json"
+
+
+def _kickoff_of(entry: dict[str, Any]) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(entry.get("kickoff")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_horizon(
+    raw: str, as_of: datetime, kickoffs: list[datetime]
+) -> tuple[datetime, str]:
+    """How far forward to enrich, and a label saying so.
+
+    `all` exists because the horizon has to be able to track the SLATE. A slate
+    built with `--date all` spans the catalog's whole kickoff range, and pairing
+    it with a fixed two-day context window enriches almost none of it -- which
+    is exactly what happened on the first live run of this script: 0 of 234
+    games, on a Monday, with the next kickoff three days out.
+    """
+    if str(raw).strip().lower() == "all":
+        if not kickoffs:
+            return as_of, "whole-catalog (empty catalog)"
+        latest = max(kickoffs)
+        return latest, f"whole-catalog (to {latest.date().isoformat()})"
+    days = float(raw)
+    return as_of + timedelta(days=days), f"{days:g}-day"
+
+
+def _horizon_offset_days(as_of: datetime, horizon: datetime) -> int:
+    """Whole days from now to the horizon, never negative.
+
+    The scoreboard sweep walks one request per DATE, so it needs a day count
+    rather than a timestamp. A past horizon would produce an empty range and a
+    silently unenriched slate, so it floors at zero.
+    """
+    return max(0, int((horizon - as_of).total_seconds() // 86400) + 1)
+
+
+def _write_run_summary(
+    out_dir: Path,
+    *,
+    as_of: datetime,
+    horizon: datetime,
+    horizon_label: str,
+    games_in_catalog: int,
+    games_in_horizon: int,
+    games_written: int,
+    events_matched: int,
+    scoreboard_dates: int,
+    scoreboard_failures: dict[str, str],
+    nearest_kickoff: datetime | None,
+    stopped_early: str | None = None,
+    elapsed_seconds: float | None = None,
+) -> None:
+    """Record what this run was ASKED for and what it reached.
+
+    Coverage alone cannot tell an operator why a slate is unenriched. Zero
+    games in the horizon and zero games reachable because every provider 403'd
+    produce the identical `0 / 234 enriched`, and they call for opposite
+    responses. This file is what separates them, and the slate workflow prints
+    it.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / RUN_SUMMARY_NAME).write_text(
+        json.dumps(
+            {
+                "as_of": as_of.isoformat(),
+                "horizon": horizon.isoformat(),
+                "horizon_label": horizon_label,
+                "games_in_catalog": games_in_catalog,
+                "games_in_horizon": games_in_horizon,
+                "games_written": games_written,
+                "espn_events_matched": events_matched,
+                "scoreboard_dates_requested": scoreboard_dates,
+                "scoreboard_dates_failed": len(scoreboard_failures),
+                "scoreboard_failure_reasons": sorted(set(scoreboard_failures.values()))[:5],
+                "nearest_kickoff": nearest_kickoff.isoformat() if nearest_kickoff else None,
+                "stopped_early": stopped_early,
+                "elapsed_seconds": round(elapsed_seconds, 1) if elapsed_seconds else None,
+                "verdict": (
+                    "stopped_early"
+                    if stopped_early
+                    else _verdict(
+                        games_in_horizon, games_written, events_matched, scoreboard_failures
+                    )
+                ),
+            },
+            indent=1,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _verdict(
+    games_in_horizon: int,
+    games_written: int,
+    events_matched: int,
+    scoreboard_failures: dict[str, str],
+) -> str:
+    """One word for what happened, so the workflow does not have to guess."""
+    if games_in_horizon == 0:
+        return "no_games_in_horizon"
+    if scoreboard_failures and events_matched == 0:
+        return "sources_unreachable"
+    if events_matched == 0:
+        return "no_events_matched"
+    if events_matched < games_written:
+        return "partial"
+    return "complete"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog-dir", default="data/live")
@@ -315,9 +491,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lookback-days", type=int, default=DEFAULT_LOOKBACK_DAYS)
     parser.add_argument(
         "--horizon-days",
+        default="3",
+        help=(
+            "only enrich games kicking off inside this many days; the rest are left alone. "
+            "`all` means the catalog's own latest kickoff, which is what a slate built with "
+            "`--date all` actually spans"
+        ),
+    )
+    parser.add_argument(
+        "--budget-seconds",
         type=float,
-        default=3.0,
-        help="only enrich games kicking off inside this many days; the rest are left alone",
+        default=600.0,
+        help=(
+            "stop making requests after this long and write what was collected. 0 disables it. "
+            "This bounds the run against a provider outage, which would otherwise outlast the "
+            "workflow's own timeout and cost the slate as well as the context"
+        ),
+    )
+    parser.add_argument(
+        "--breaker-after",
+        type=int,
+        default=25,
+        help=(
+            "stop making requests after this many CONSECUTIVE failures. 0 disables it. "
+            "Once nothing is answering, further attempts buy no information"
+        ),
     )
     parser.add_argument(
         "--skip-injuries",
@@ -352,18 +550,63 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_BAD_INPUT
     index = json.loads(index_path.read_text(encoding="utf-8"))
 
-    horizon = as_of + timedelta(days=args.horizon_days)
+    global _BUDGET
+    _BUDGET = Budget(args.budget_seconds, args.breaker_after)
+
+    entries = list(index.get("games") or [])
+    kickoffs = [k for k in (_kickoff_of(entry) for entry in entries) if k is not None]
+    horizon, horizon_label = _resolve_horizon(args.horizon_days, as_of, kickoffs)
+
+    floor = as_of - timedelta(hours=6)
     wanted: list[dict[str, Any]] = []
-    for entry in index.get("games") or []:
-        try:
-            kickoff = datetime.fromisoformat(str(entry.get("kickoff")).replace("Z", "+00:00"))
-        except (TypeError, ValueError):
-            continue
-        if as_of - timedelta(hours=6) <= kickoff <= horizon:
+    for entry in entries:
+        kickoff = _kickoff_of(entry)
+        if kickoff is not None and floor <= kickoff <= horizon:
             wanted.append(entry)
 
-    print(f"games in the {args.horizon_days}-day horizon: {len(wanted)}")
+    # The nearest kickoff STILL AHEAD of the floor. The catalog's minimum is
+    # usually in the past -- a catalog retains last week -- and "widen the
+    # horizon to reach it" about a game that already kicked off is advice that
+    # cannot be followed.
+    ahead = [kickoff for kickoff in kickoffs if kickoff >= floor]
+    nearest = min(ahead) if ahead else None
+
+    print(f"games in the {horizon_label} horizon: {len(wanted)} of {len(entries)} in the catalog")
     if not wanted:
+        # WHY there is nothing to do, not just that there is nothing to do.
+        # "0 enriched" downstream would otherwise be indistinguishable from a
+        # provider outage, and those call for opposite responses: widen the
+        # horizon, or go and look at the source.
+        if nearest is not None:
+            print(
+                f"  nothing kicks off before {horizon.isoformat()}; the catalog's next "
+                f"game is {nearest.isoformat()} "
+                f"({(nearest - as_of).total_seconds() / 86400:.1f} days out). "
+                f"Widen --horizon-days to reach it.",
+                file=sys.stderr,
+            )
+        elif kickoffs:
+            print(
+                f"  every one of the catalog's {len(kickoffs)} kickoffs is already in the "
+                f"past (latest {max(kickoffs).isoformat()}). The catalog is stale, and no "
+                f"horizon will help.",
+                file=sys.stderr,
+            )
+        else:
+            print("  the catalog names no kickoff at all", file=sys.stderr)
+        _write_run_summary(
+            Path(args.out_dir),
+            as_of=as_of,
+            horizon=horizon,
+            horizon_label=horizon_label,
+            games_in_catalog=len(entries),
+            games_in_horizon=0,
+            games_written=0,
+            events_matched=0,
+            scoreboard_dates=0,
+            scoreboard_failures={},
+            nearest_kickoff=nearest,
+        )
         return EXIT_OK
 
     # ONE SCOREBOARD REQUEST PER DATE covers the whole slate, forwards and
@@ -372,7 +615,7 @@ def main(argv: list[str] | None = None) -> int:
     dates = sorted(
         {
             (as_of + timedelta(days=offset)).strftime("%Y%m%d")
-            for offset in range(-args.lookback_days, int(args.horizon_days) + 2)
+            for offset in range(-args.lookback_days, _horizon_offset_days(as_of, horizon) + 2)
         }
     )
     scoreboards: dict[str, list[dict]] = {}
@@ -471,6 +714,28 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"context written: {written} game(s) -> {out_dir}")
     print(f"  ESPN events matched: {matched} / {written}")
+    if _BUDGET is not None and _BUDGET.tripped_reason:
+        print(f"  STOPPED EARLY: {_BUDGET.tripped_reason}", file=sys.stderr)
+        print(
+            "  the games after that point are written with their domains missing, "
+            "and the reason recorded on each one",
+            file=sys.stderr,
+        )
+    _write_run_summary(
+        out_dir,
+        as_of=as_of,
+        horizon=horizon,
+        horizon_label=horizon_label,
+        games_in_catalog=len(entries),
+        games_in_horizon=len(wanted),
+        games_written=written,
+        events_matched=matched,
+        scoreboard_dates=len(dates),
+        scoreboard_failures=failures,
+        nearest_kickoff=nearest,
+        stopped_early=_BUDGET.tripped_reason if _BUDGET else None,
+        elapsed_seconds=_BUDGET.elapsed() if _BUDGET else None,
+    )
     # ALWAYS 0 FOR A PROVIDER PROBLEM. A collector that failed the job on a
     # 403 would take the whole slate's enrichment down with one bad endpoint,
     # and the missing domains are already recorded, counted and gated.

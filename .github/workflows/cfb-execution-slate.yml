@@ -99,11 +99,39 @@ jobs:
         # no context is the workflow as it behaved before enrichment
         # existed, and that was usable.
         continue-on-error: true
+        # A THIRD GUARD, because the first two live in the script and this one
+        # does not. The collector bounds itself with --budget-seconds and a
+        # consecutive-failure breaker; this bounds it even if that logic is
+        # wrong. Without it a hung collector eats the JOB's 30 minutes and the
+        # slate is never built -- no context AND no slate, which is the one
+        # outcome the fail-soft design exists to prevent.
+        timeout-minutes: 12
         run: |
+          # THE HORIZON TRACKS THE SLATE. A slate built with `--date all`
+          # spans the catalog's whole kickoff range; pairing that with a
+          # fixed two-day context window enriches almost none of it. That is
+          # not hypothetical -- run 35573333193 collected 0 of 234 games
+          # exactly this way, on a Monday, with the next kickoff three days
+          # out and nothing in the output saying so.
+          #
+          # A blank date means "today", so two days covers today and
+          # tomorrow's late kickoffs. `all` means the catalog. An explicit
+          # date is reached by measuring to it, plus a day for a kickoff that
+          # crosses UTC midnight.
+          DATE_INPUT="${{ github.event.inputs.date }}"
+          if [ "$DATE_INPUT" = "all" ]; then
+            HORIZON=all
+          elif [ -n "$DATE_INPUT" ]; then
+            HORIZON=$(( ( $(date -u -d "$DATE_INPUT" +%s) - $(date -u +%s) ) / 86400 + 2 ))
+            [ "$HORIZON" -lt 2 ] && HORIZON=2
+          else
+            HORIZON=2
+          fi
+          echo "context horizon: $HORIZON (slate date: ${DATE_INPUT:-today})"
           python3 scripts/collect_live_context.py \
             --catalog-dir data/live \
             --out-dir data/live/context \
-            --horizon-days 2
+            --horizon-days "$HORIZON"
       - name: Build the execution slate, shards and manifest
         run: |
           python3 -m cfb_edge_finder.execution prepare-live \
@@ -141,6 +169,27 @@ jobs:
           print(f"\nfactual context: {enriched} / {coverage.get('games', 0)} games enriched")
           for ceiling, count in (coverage.get("confidence_ceilings") or {}).items():
               print(f"  confidence ceiling {ceiling:14} {count}")
+
+          # WHY that number, not just the number. An unenriched slate because
+          # nothing kicks off yet and an unenriched slate because every
+          # provider refused are the same integer and opposite problems.
+          try:
+              run = json.load(open("data/live/context/collection_run.json"))
+          except (OSError, ValueError):
+              print("  (the collector left no run record -- it did not get as far as writing one)")
+          else:
+              print(f"  collector verdict:   {run['verdict']}")
+              print(f"  horizon asked for:   {run['horizon_label']}")
+              print(f"  games in horizon:    {run['games_in_horizon']} "
+                    f"of {run['games_in_catalog']} in the catalog")
+              print(f"  ESPN events matched: {run['espn_events_matched']} / {run['games_written']}")
+              if run["scoreboard_dates_failed"]:
+                  print(f"  scoreboard dates failed: {run['scoreboard_dates_failed']} "
+                        f"of {run['scoreboard_dates_requested']}")
+                  for reason in run["scoreboard_failure_reasons"]:
+                      print(f"    {reason}")
+              if run["verdict"] == "no_games_in_horizon" and run["nearest_kickoff"]:
+                  print(f"  next kickoff in the catalog: {run['nearest_kickoff']}")
 
           batches = json.load(open("data/execution/latest/batch_manifest.json"))
           print(f"\nhandicap batches: {batches['totals']['batches']} "
