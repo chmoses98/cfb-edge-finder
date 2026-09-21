@@ -30,6 +30,8 @@ contract that lost.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -70,6 +72,79 @@ class Candidate:
     @property
     def net_edge(self) -> float:
         return float(self.row.get("net_edge") or 0.0)
+
+
+def handicap_fingerprint(handicap: HandicapPayload | None) -> str | None:
+    """A stable digest of the OPINION, so a later study can group by it.
+
+    Over the numbers a handicap actually asserts -- the per-period
+    distributions, their uncertainty regions, the explicit probabilities and
+    their ranges -- and nothing else. Not the prose, which can be reworded
+    without changing a single price, and not the confidence, which is recorded
+    beside it in its own field.
+
+    Two recommendations sharing this digest came from the same stated view of
+    the game. That is what makes "was this handicapper calibrated?" a question
+    with an answer rather than a feeling.
+    """
+    if handicap is None:
+        return None
+    material: list[Any] = []
+    for period in sorted(handicap.period_distributions):
+        dist = handicap.period_distributions[period]
+        unc = getattr(dist, "uncertainty", None)
+        material.append(
+            (
+                period,
+                round(dist.home_mean, 6),
+                round(dist.away_mean, 6),
+                round(dist.home_sd, 6),
+                round(dist.away_sd, 6),
+                round(dist.correlation, 6),
+                None
+                if unc is None
+                else (
+                    round(unc.margin_points, 6),
+                    round(unc.total_points, 6),
+                    round(unc.sd_scale_low, 6),
+                    round(unc.sd_scale_high, 6),
+                    bool(unc.stated),
+                ),
+            )
+        )
+    material.append(
+        sorted((k, round(float(v), 6)) for k, v in (handicap.explicit_probabilities or {}).items())
+    )
+    material.append(
+        sorted(
+            (k, [round(float(x), 6) for x in v])
+            for k, v in (handicap.explicit_probability_ranges or {}).items()
+        )
+    )
+    blob = json.dumps(material, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def recommendation_id(
+    *, batch: str | None, shard: str, game_key: str, ticker: str, side: str,
+    packet_hash: str | None, handicap_hash: str | None,
+) -> str:
+    """A stable join key for ONE recommendation.
+
+    Deterministic: regenerating the same batch from the same packet and the
+    same handicap yields the same id, so a re-run is recognisable as the same
+    recommendation rather than a new one. It changes when the quote universe
+    changes (packet_hash) or when the opinion changes (handicap_hash), because
+    those genuinely are different recommendations about the same contract.
+
+    It says nothing about whether the bet was taken. Execution lives in the
+    accounting ledger and is linked afterwards, never merged in.
+    """
+    blob = "|".join(
+        str(part) for part in
+        (batch or shard, game_key, ticker, side, packet_hash or "", handicap_hash or "")
+    ).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()[:20]
 
 
 def min_net_edge_provenance(min_net_edge: float) -> dict[str, object]:
@@ -130,12 +205,14 @@ def _why_this_market(row: dict[str, Any]) -> str:
 
 def candidate_record(
     candidate: Candidate | Expression,
-    handicaps: dict[str, HandicapPayload],  # noqa: ARG001 - see game_block
+    handicaps: dict[str, HandicapPayload],
     packets: dict[str, dict[str, Any]],
     *,
     reduction: Reduction | None = None,
     disagreements: dict[str, dict[str, Any]] | None = None,
     max_alternatives: int | None = None,
+    batch: str | None = None,
+    shard: str | None = None,
 ) -> dict[str, Any]:
     row = candidate.row
     game_key = str(row.get("game_key"))
@@ -156,6 +233,20 @@ def candidate_record(
         else alternatives
     )
     return {
+        # The join key a later calibration study groups on. Deterministic, so
+        # regenerating an unchanged batch is recognisable as the SAME
+        # recommendation; sensitive to the quote universe and to the opinion,
+        # because a different price or a different handicap is a different
+        # recommendation about the same contract.
+        "recommendation_id": recommendation_id(
+            batch=batch,
+            shard=shard or "",
+            game_key=game_key,
+            ticker=ticker,
+            side=side.upper(),
+            packet_hash=packet.get("packet_hash"),
+            handicap_hash=handicap_fingerprint(handicaps.get(game_key)),
+        ),
         "game": packet.get("title") or game_key,
         "game_key": game_key,
         "kickoff": packet.get("kickoff"),
@@ -337,6 +428,20 @@ def game_block(
             "coverage": context.get("coverage") or {},
         },
         "market_disagreement": disagreements.get(game_key),
+        # PROVENANCE, for a calibration study nobody can run yet.
+        #
+        # Whether a fair probability was well calibrated can only be answered
+        # later, against outcomes, and only if the inputs it came from can be
+        # reconstructed exactly. A recommendation that cannot be tied back to
+        # the packet and the facts it was formed from is an anecdote.
+        "provenance": {
+            "packet_hash": packet.get("packet_hash"),
+            "market_universe_hash": packet.get("market_universe_hash"),
+            "context_hash": context.get("context_hash"),
+            "material_context_hash": context.get("material_context_hash"),
+            "handicap_hash": handicap_fingerprint(handicap),
+            "context_collected_at": context.get("collected_at"),
+        },
     }
 
 
@@ -483,6 +588,8 @@ def build_candidate_artifact(
                 reduction=reduction,
                 disagreements=disagreements,
                 max_alternatives=max_inline_alternatives,
+                batch=batch,
+                shard=shard,
             )
             for expression in shown
         ],
@@ -595,7 +702,8 @@ def build_report(
         "market_disagreement_by_game": [disagreements[key] for key in sorted(disagreements)],
         "final_bets": [
             candidate_record(
-                c, handicaps, packets, reduction=reduction, disagreements=disagreements
+                c, handicaps, packets, reduction=reduction,
+                disagreements=disagreements, shard=shard,
             )
             for c in final
         ],
