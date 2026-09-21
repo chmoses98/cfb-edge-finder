@@ -26,6 +26,13 @@ from pathlib import Path
 from typing import Any
 
 from cfb_edge_finder.execution import EXECUTION_SCHEMA_VERSION
+from cfb_edge_finder.execution.context import (
+    GameContext,
+    context_fingerprint,
+    data_quality_for,
+    material_fingerprint,
+    refresh_quality,
+)
 from cfb_edge_finder.execution.disposition import (
     Disposition,
     DispositionConfig,
@@ -172,6 +179,7 @@ def build_packet(
     config: DispositionConfig,
     seen_tickers: set[str],
     tz_name: str,
+    context: GameContext | None = None,
 ) -> dict[str, Any]:
     game_key = str(index_entry.get("game_key"))
     title = index_entry.get("title")
@@ -245,6 +253,44 @@ def build_packet(
         for family, bucket in sorted(families.items())
     }
 
+    # THE FACTUAL LAYER, ASSEMBLED HERE AND OPINIONATED NOWHERE.
+    #
+    # An absent context store is not a failure and not a silence: every domain
+    # comes back `missing` with a reason, the confidence ceiling falls to
+    # `insufficient`, and the handicap template says so. A slate built with no
+    # enrichment therefore behaves exactly as the pre-enrichment workflow did,
+    # and SAYS that it is doing so.
+    resolved = context or GameContext.empty(
+        game_key,
+        reason="no collected factual context for this game; run collect-context",
+        as_of=config.as_of,
+    )
+    resolved = refresh_quality(resolved, as_of=config.as_of)
+    quality = data_quality_for(resolved)
+    factual_context: dict[str, Any] = {
+        "kickoff_utc": kickoff_raw,
+        "context_hash": context_fingerprint(resolved),
+        "material_context_hash": material_fingerprint(resolved),
+        "collected_at": resolved.collected_at,
+        "coverage": resolved.quality_map(),
+        "missing_domains": list(resolved.missing_domains),
+        "data_quality": quality.as_dict(),
+        "domains": {
+            domain: one.as_dict() for domain, one in sorted(resolved.fields.items())
+        },
+        "events": _event_context(detail),
+        "catalog_completeness": {
+            "markets_discovered": completeness.get("markets_discovered"),
+            "api_failures": completeness.get("api_failures"),
+            "failed_event_tickers": completeness.get("failed_event_tickers"),
+        },
+        "note": (
+            "Facts and arithmetic on facts. This packet deliberately carries NO model projection, "
+            "no power rating, no expected score and no fair value. The handicap is the reader's to "
+            "produce; quoted prices are the market's opinion, not a reference answer."
+        ),
+    }
+
     packet: dict[str, Any] = {
         "game_key": game_key,
         "game_id": game_key,
@@ -268,20 +314,7 @@ def build_packet(
             "main_game_event_ticker": identity.get("main_game_event_ticker"),
             "native_game_markets_complete": completeness.get("native_game_markets_complete"),
         },
-        "factual_context": {
-            "kickoff_utc": kickoff_raw,
-            "events": _event_context(detail),
-            "catalog_completeness": {
-                "markets_discovered": completeness.get("markets_discovered"),
-                "api_failures": completeness.get("api_failures"),
-                "failed_event_tickers": completeness.get("failed_event_tickers"),
-            },
-            "note": (
-                "Facts only. This packet deliberately carries NO model projection, no power "
-                "rating, no expected score and no fair value. The handicap is the reader's to "
-                "produce; quoted prices are the market's opinion, not a reference answer."
-            ),
-        },
+        "factual_context": factual_context,
         "counts": {
             "discovered": len(markets),
             "eligible": len(contracts),
@@ -328,6 +361,35 @@ def load_catalog(catalog_dir: Path) -> tuple[dict[str, Any], dict[str, dict[str,
     return index, details
 
 
+def load_context_store(context_dir: Path | None) -> dict[str, GameContext]:
+    """Every collected game context, keyed by game_key.
+
+    A directory that does not exist is an EMPTY STORE, not an error. Context
+    enrichment is an improvement to the workflow and not a precondition for
+    it: a slate must still build when the collector has never run, has failed,
+    or has been deliberately skipped -- it simply builds with every domain
+    marked missing and every confidence ceiling at `insufficient`.
+    """
+    if context_dir is None:
+        return {}
+    root = Path(context_dir)
+    if not root.exists():
+        return {}
+    store: dict[str, GameContext] = {}
+    for path in sorted(root.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            # A context file we cannot read is a MISSING context, never a
+            # crashed slate. The game still gets published, with every domain
+            # absent and the ceiling that implies.
+            continue
+        if not isinstance(payload, dict) or not payload.get("game_key"):
+            continue
+        store[str(payload["game_key"])] = GameContext.from_dict(payload)
+    return store
+
+
 def build_slate(
     catalog_dir: Path,
     config: DispositionConfig,
@@ -335,9 +397,11 @@ def build_slate(
     tz_name: str = "America/New_York",
     slate_date: str | None = None,
     include_started_games: bool = False,
+    context_dir: Path | None = None,
 ) -> SlateBuild:
     index, details = load_catalog(catalog_dir)
     capture = index.get("capture") or {}
+    contexts = load_context_store(context_dir)
 
     seen_tickers: set[str] = set()
     packets: list[dict[str, Any]] = []
@@ -371,7 +435,9 @@ def build_slate(
             if window_date != slate_date:
                 continue
 
-        packet = build_packet(entry, detail, config, seen_tickers, tz_name)
+        packet = build_packet(
+            entry, detail, config, seen_tickers, tz_name, contexts.get(game_key)
+        )
         contracts_discovered += packet["counts"]["discovered"]
         contracts_eligible += packet["counts"]["eligible"]
         for status, count in packet["exclusions"].items():
@@ -436,11 +502,35 @@ def build_slate(
                 "physical game and is not part of the per-game execution universe"
             ),
         },
+        "factual_context_coverage": _context_coverage(packets),
         "market_families_discovered": dict(sorted(family_totals.items())),
         "games_without_eligible_contracts": games_skipped,
         "games": packets,
     }
     return SlateBuild(slate=slate, packets=packets)
+
+
+def _context_coverage(packets: list[dict[str, Any]]) -> dict[str, Any]:
+    """How much factual context the published slate actually has.
+
+    A headline number an operator can act on: `games_with_no_context` is the
+    research burden this run is handing to the handicapper, and it is the term
+    the batching cost model charges for."""
+    ceilings: dict[str, int] = {}
+    by_domain: dict[str, dict[str, int]] = {}
+    for packet in packets:
+        context = packet.get("factual_context") or {}
+        ceiling = str(((context.get("data_quality") or {}).get("confidence_ceiling")) or "insufficient")
+        ceilings[ceiling] = ceilings.get(ceiling, 0) + 1
+        for domain, quality in (context.get("coverage") or {}).items():
+            bucket = by_domain.setdefault(str(domain), {})
+            bucket[str(quality)] = bucket.get(str(quality), 0) + 1
+    return {
+        "games": len(packets),
+        "confidence_ceilings": dict(sorted(ceilings.items())),
+        "by_domain": {d: dict(sorted(v.items())) for d, v in sorted(by_domain.items())},
+        "games_with_no_context": ceilings.get("insufficient", 0),
+    }
 
 
 def _local_date(moment: datetime | None, tz_name: str) -> str | None:

@@ -31,7 +31,22 @@ is exactly that -- a placeholder the operator fills in themselves.
 from __future__ import annotations
 
 EXECUTION_SCHEMA_VERSION = "cfb_execution_slate/1.0.0"
-HANDICAP_SCHEMA_VERSION = "cfb_handicap_payload/1.0.0"
+HANDICAP_SCHEMA_VERSION = "cfb_handicap_payload/2.0.0"
+HANDICAP_SCHEMA_VERSION_LEGACY = "cfb_handicap_payload/1.0.0"
+"""1.0.0 carried a point estimate per period and nothing else.
+
+It is still ACCEPTED, because refusing it would strand a handicap somebody
+already wrote -- but it cannot buy a robustness claim. A 1.0.0 payload has no
+uncertainty region, `uncertainty.stated` is False on every period, and the
+evaluator's rule that an absent region may never be labelled robust does the
+rest. The difference is visible rather than silent: every contract priced from
+one carries `robustness: sensitive_positive_ev` at best and a reason naming the
+schema."""
+
+CONTEXT_SCHEMA_VERSION = "cfb_game_context/1.0.0"
+HANDICAP_BATCH_SCHEMA_VERSION = "cfb_handicap_batch/1.0.0"
+CANDIDATE_SCHEMA_VERSION = "cfb_candidate_artifact/1.0.0"
+ATTRIBUTION_SCHEMA_VERSION = "cfb_execution_attribution/1.0.0"
 STATE_SCHEMA_VERSION = "cfb_execution_state/1.0.0"
 LEDGER_SCHEMA_VERSION = "cfb_evaluation_ledger/1.0.0"
 REPORT_SCHEMA_VERSION = "cfb_bet_report/1.0.0"

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import inspect
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -116,11 +116,10 @@ GAME = "26SEP19UGAARK"
 EVENT = f"KXNCAAFGAME-{GAME}"
 
 
-@pytest.fixture
-def stubbed_client(monkeypatch) -> tuple[KalshiClient, StubTransport]:
-    transport = StubTransport(
+def _stub(start_date: str) -> StubTransport:
+    return StubTransport(
         {
-            "/milestones": {"milestones": [make_milestone(GAME, (EVENT,))]},
+            "/milestones": {"milestones": [make_milestone(GAME, (EVENT,), start_date=start_date)]},
             "/series": {"series": [make_series("KXNCAAFGAME", "College Football Game")]},
             "/events": {"events": []},
             "/events/*": {"event": make_event(EVENT)},
@@ -128,6 +127,36 @@ def stubbed_client(monkeypatch) -> tuple[KalshiClient, StubTransport]:
             "/multivariate_event_collections": {"multivariate_contracts": []},
         }
     )
+
+
+@pytest.fixture
+def stubbed_client(monkeypatch) -> tuple[KalshiClient, StubTransport]:
+    """The fixture for tests that pass their own `as_of`.
+
+    Its kickoff is the fixed 2026-09-19 of `tests/catalog_fakes`, which is
+    correct here because every test using it states the clock it is reasoning
+    about."""
+    transport = _stub("2026-09-19T19:00:00Z")
+    monkeypatch.setattr("cfb_edge_finder.data.kalshi_client.requests.get", transport)
+    return KalshiClient(), transport
+
+
+@pytest.fixture
+def stubbed_client_live_clock(monkeypatch) -> tuple[KalshiClient, StubTransport]:
+    """The same stub with a kickoff the REAL clock still calls upcoming.
+
+    *** THIS FIXTURE EXISTS BECAUSE THE OTHER ONE WAS A TIME BOMB ***
+    `build_kalshi_cfb_catalog.py` reads `datetime.now(UTC)` and has no
+    `--as-of` to override it, so the two tests that run `main()` end-to-end
+    were pinned to a kickoff that stopped being in the future. On 2026-09-21
+    the 2026-09-19 milestone fell behind the discovery horizon, discovery
+    published zero games, the entrypoint's empty-catalog guard fired exactly
+    as designed, and both tests went red on a calendar rather than on a
+    change. Deriving the kickoff from the run's own clock fixes it for good;
+    pinning a NEW date would only move the bomb.
+    """
+    kickoff = (datetime.now(UTC) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    transport = _stub(kickoff)
     monkeypatch.setattr("cfb_edge_finder.data.kalshi_client.requests.get", transport)
     return KalshiClient(), transport
 
@@ -178,11 +207,11 @@ def test_the_production_entrypoint_imports_and_parses_its_arguments():
     assert module._parse_args(["--horizon-days", "-1"]).horizon_days == -1.0
 
 
-def test_the_entrypoint_publishes_the_index_and_per_game_files(stubbed_client, tmp_path):
+def test_the_entrypoint_publishes_the_index_and_per_game_files(stubbed_client_live_clock, tmp_path):
     """A full production run, faked only at the socket."""
     import importlib.util
 
-    _client, _transport = stubbed_client
+    _client, _transport = stubbed_client_live_clock
     path = Path(__file__).resolve().parents[1] / "scripts" / "build_kalshi_cfb_catalog.py"
     spec = importlib.util.spec_from_file_location("build_kalshi_cfb_catalog_run", path)
     module = importlib.util.module_from_spec(spec)
@@ -211,10 +240,10 @@ def test_the_entrypoint_publishes_the_index_and_per_game_files(stubbed_client, t
         assert key in status, f"the catalog workflow reads status[{key!r}]"
 
 
-def test_the_flat_index_is_written_when_asked(stubbed_client, tmp_path):
+def test_the_flat_index_is_written_when_asked(stubbed_client_live_clock, tmp_path):
     import importlib.util
 
-    _client, _transport = stubbed_client
+    _client, _transport = stubbed_client_live_clock
     path = Path(__file__).resolve().parents[1] / "scripts" / "build_kalshi_cfb_catalog.py"
     spec = importlib.util.spec_from_file_location("build_kalshi_cfb_catalog_flat", path)
     module = importlib.util.module_from_spec(spec)

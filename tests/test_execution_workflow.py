@@ -261,7 +261,11 @@ def test_the_correlation_review_keeps_the_best_expression_of_one_view():
     survivors, dropped = correlation_review(rows)
     assert {c.row["ticker"] for c in survivors} == {"B", "C"}
     assert [d["ticker"] for d in dropped] == ["A"]
-    assert "same view" in dropped[0]["reason"]
+    # The reason is now a deterministic REDUCTION REASON rather than a
+    # sentence, and the pair it names is what makes the ledger auditable.
+    assert dropped[0]["reason"] == "dominated_duplicate"
+    assert dropped[0]["lost_to"] == "B"
+    assert "same view" in dropped[0]["explanation"]
 
 
 # ---------------------------------------------------------------- CLI
