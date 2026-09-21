@@ -78,16 +78,65 @@ def test_full_week_scale_no_duplicates_no_drops_no_invalid_transitions():
     assert elapsed < 15.0, f"full-week scale run took {elapsed:.2f}s, expected well under 15s"
 
 
-def test_coverage_ledger_operations_scale_roughly_linearly_not_quadratically():
-    _, _, small_elapsed = _run_full_week(n_games=10, n_markets_per_game=100)  # 1,000 tickers
-    _, _, large_elapsed = _run_full_week(n_games=40, n_markets_per_game=100)  # 4,000 tickers (4x)
+TIMING_REPEATS = 3
 
-    # A quadratic implementation would take ~16x as long for 4x the input;
-    # linear/near-linear should take roughly 4x, plus interpreter/timing
-    # noise. 10x is a generous ceiling that still clearly fails on O(n^2).
+# 1,000 tickers against 12,000 -- the weekly universe this module is about.
+# The separation is the point: see the docstring on the test below.
+SMALL_GAMES = 10
+LARGE_GAMES = 120
+MARKETS = 100
+INPUT_RATIO = LARGE_GAMES / SMALL_GAMES
+
+# Linear work grows with the input; the ceiling therefore has to grow with it
+# too, or the test just measures how big the inputs are. 2.5x headroom over
+# perfectly linear absorbs per-item costs that are not constant (dict growth,
+# allocation) without admitting a quadratic ledger.
+LINEARITY_TOLERANCE = 2.5
+
+
+def _fastest_full_week(n_games: int, n_markets_per_game: int) -> float:
+    """The FASTEST of several runs, which is the honest estimate of cost.
+
+    Scheduler preemption, a noisy neighbour on a shared runner and a GC pause
+    can only ever ADD time to a sample; nothing makes a run finish faster than
+    the work takes. So the minimum converges on the real cost while the mean
+    and a single sample both track whatever else the machine was doing.
+
+    Measured: a single sample gave ratios of 2.4x-5.7x across twelve local
+    trials of one commit, and 14.0x once in CI, on a ledger that never
+    changed. Best-of-three gave 3.6x-4.5x over the same work.
+    """
+    return min(
+        _run_full_week(n_games, n_markets_per_game)[2] for _ in range(TIMING_REPEATS)
+    )
+
+
+def test_coverage_ledger_operations_scale_roughly_linearly_not_quadratically():
+    """An accidental O(n^2) scan in CoverageLedger must fail this test.
+
+    It did not, before. The comparison was 1,000 tickers against 4,000 with a
+    flat 10x ceiling, and at that separation the quadratic term is swallowed
+    by the linear base: adding a genuine `if t in seen` scan over a list --
+    the exact regression the module docstring names -- measured 6.5x and
+    sailed under the ceiling. A test that cannot fail on the defect it names
+    is worse than no test, because it is read as evidence.
+
+    Twelve times the input rather than four is what separates the two curves.
+    Measured on this ledger: linear 15.6x, the same ledger with an O(n^2) scan
+    37.4x, ceiling 30x. Both sides of that are checked -- the ceiling is loose
+    enough that honest linear work passes, and tight enough that quadratic
+    work cannot.
+    """
+    small_elapsed = _fastest_full_week(SMALL_GAMES, MARKETS)
+    large_elapsed = _fastest_full_week(LARGE_GAMES, MARKETS)
+
+    ceiling = INPUT_RATIO * LINEARITY_TOLERANCE
     # Guard against a near-zero small_elapsed making the ratio meaningless.
     if small_elapsed > 0.0005:
-        assert large_elapsed < small_elapsed * 10, (
-            f"runtime did not scale roughly linearly: {small_elapsed:.4f}s @ 1k tickers vs "
-            f"{large_elapsed:.4f}s @ 4k tickers (ratio {large_elapsed / small_elapsed:.1f}x)"
+        ratio = large_elapsed / small_elapsed
+        assert ratio < ceiling, (
+            f"runtime did not scale roughly linearly: {small_elapsed:.4f}s @ "
+            f"{SMALL_GAMES * MARKETS} tickers vs {large_elapsed:.4f}s @ "
+            f"{LARGE_GAMES * MARKETS} tickers (ratio {ratio:.1f}x for a "
+            f"{INPUT_RATIO:.0f}x input, ceiling {ceiling:.1f}x, best of {TIMING_REPEATS})"
         )
