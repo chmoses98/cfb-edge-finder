@@ -265,6 +265,11 @@ Twelve domains: `identity`, `records`, `rest_and_travel`, `recent_results`,
 `scoring`, `efficiency`, `situational`, `turnovers_and_pace`,
 `availability`, `environment`, `coaching`, `market_reference`.
 
+The scoreboard sweep covers **both** ESPN groups — 80 (FBS) and 81 (FCS) —
+because both are listed on Kalshi. Sweeping FBS alone left 110 of 234 games
+unmatched on the first working run, every one of them correctly gated at an
+`insufficient` ceiling for want of one more request per date.
+
 **It forms no opinion.** Every value is something a source published or
 arithmetic on published values — a division, a subtraction, a win-loss
 record. There is no rating, no projected score and no fitted coefficient,

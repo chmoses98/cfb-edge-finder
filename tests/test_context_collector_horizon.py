@@ -319,3 +319,95 @@ def test_stopping_early_is_its_own_verdict_and_says_why(tmp_path):
     # and it does NOT masquerade as a complete run just because what it did
     # reach matched cleanly
     assert written["games_written"] < written["games_in_horizon"]
+
+
+# ------------------------------------------------------ sweeping both divisions
+#
+# `groups=80` is FBS. Kalshi lists FCS too, and the first working run matched
+# 124 of 234 games because of it -- the other 110 were games the sweep never
+# asked about.
+
+
+class _Recorder:
+    """A stand-in for `_get` that records what was asked and replays answers."""
+
+    def __init__(self, answers):
+        self.answers = answers
+        self.asked = []
+
+    def __call__(self, url, params=None, **kwargs):
+        self.asked.append((url, dict(params or {})))
+        return self.answers.get(params.get("groups") if params else None, (None, "no stub"))
+
+
+def _envelope(*ids):
+    return {"events": [{"id": str(i), "name": f"event {i}"} for i in ids]}
+
+
+def test_both_divisions_are_requested(monkeypatch):
+    recorder = _Recorder({80: (_envelope(1), None), 81: (_envelope(2), None)})
+    monkeypatch.setattr(collector, "_get", recorder)
+
+    events, error = collector.fetch_scoreboard("20260926")
+
+    assert error is None
+    assert {e["id"] for e in events} == {"1", "2"}
+    assert sorted(params["groups"] for _url, params in recorder.asked) == [80, 81]
+
+
+def test_an_event_listed_under_both_groups_appears_once(monkeypatch):
+    """A team that moved divisions mid-season could be listed twice, and a
+    duplicated event would double-count in a team's game history."""
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1, 2), None), 81: (_envelope(2, 3), None)})
+    )
+    events, error = collector.fetch_scoreboard("20260926")
+    assert error is None
+    assert sorted(e["id"] for e in events) == ["1", "2", "3"]
+
+
+def test_one_empty_group_is_not_a_failure(monkeypatch):
+    """Out of season, or on a date one division does not play, empty is the
+    correct answer -- not an outage."""
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1), None), 81: ({"events": []}, None)})
+    )
+    events, error = collector.fetch_scoreboard("20260926")
+    assert error is None
+    assert [e["id"] for e in events] == ["1"]
+
+
+def test_one_failing_group_still_yields_the_other(monkeypatch):
+    """Losing FCS must not cost FBS. Partial context beats none."""
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1), None), 81: (None, "HTTP 500")})
+    )
+    events, error = collector.fetch_scoreboard("20260926")
+    assert error is None
+    assert [e["id"] for e in events] == ["1"]
+
+
+def test_the_date_fails_only_when_no_group_answers(monkeypatch):
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (None, "HTTP 403"), 81: (None, "HTTP 403")})
+    )
+    events, error = collector.fetch_scoreboard("20260926")
+    assert events == []
+    assert error == "HTTP 403"
+
+
+def test_an_event_without_an_id_is_kept_rather_than_dropped(monkeypatch):
+    """An id is not guaranteed, and a game with no id is still a game whose
+    score the history builder can read."""
+    monkeypatch.setattr(
+        collector,
+        "_get",
+        _Recorder({80: ({"events": [{"name": "no id here"}]}, None), 81: ({"events": []}, None)}),
+    )
+    events, error = collector.fetch_scoreboard("20260926")
+    assert error is None
+    assert len(events) == 1
+
+
+def test_the_group_list_names_both_divisions():
+    assert collector.SCOREBOARD_GROUPS == (80, 81)

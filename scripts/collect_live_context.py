@@ -79,6 +79,11 @@ from cfb_edge_finder.teams.registry import (  # noqa: E402
 )
 
 USER_AGENT = "cfb-edge-finder factual-context collector (read-only)"
+# 80 is FBS (Division I-A), 81 is FCS (I-AA). Both are listed on Kalshi, so
+# both are swept: a division the collector never asks about is a division the
+# handicapper gets no facts for.
+SCOREBOARD_GROUPS = (80, 81)
+
 ESPN_SCOREBOARD_HOSTS = (
     (
         "site.web.api.espn.com",
@@ -203,16 +208,47 @@ def _events_from(host: str, payload: Any) -> list[dict] | None:
     return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else None
 
 
-def fetch_scoreboard(date_param: str) -> tuple[list[dict], str | None]:
-    for host, url in ESPN_SCOREBOARD_HOSTS:
-        payload, error = _get(url, {"groups": 80, "dates": date_param, "limit": 400})
-        if payload is None:
-            continue
-        events = _events_from(host, payload)
-        if events is not None:
-            return events, None
-        error = "payload did not carry the expected scoreboard envelope"
-    return [], error or "no host answered"
+def fetch_scoreboard(date_param: str, groups: tuple[int, ...] = SCOREBOARD_GROUPS):
+    """Every event on a date, across divisions, deduplicated by event id.
+
+    `groups=80` alone is FBS, and that is not the market. Kalshi lists FCS
+    games -- Dayton at Eastern Kentucky, Fordham at William & Mary, Alcorn St.
+    at North Alabama are all in one live catalog -- and the owner can bet them.
+    Sweeping FBS only left 110 of 234 games unmatched on the first working run
+    and gave every one of them an `insufficient` confidence ceiling, which is
+    honest but is a fact this repository could have had for one more request
+    per date.
+
+    A group that answers with nothing is not a failure: out of season, or on a
+    date one division does not play, an empty list is the correct answer. The
+    date fails only if NO group on NO host answered.
+    """
+    merged: dict[str, dict] = {}
+    answered = False
+    error: str | None = None
+    for group in groups:
+        for host, url in ESPN_SCOREBOARD_HOSTS:
+            payload, host_error = _get(
+                url, {"groups": group, "dates": date_param, "limit": 400}
+            )
+            if payload is None:
+                error = host_error or error
+                continue
+            events = _events_from(host, payload)
+            if events is None:
+                error = "payload did not carry the expected scoreboard envelope"
+                continue
+            answered = True
+            for index, event in enumerate(events):
+                # Falling back to a composite key rather than dropping an
+                # event: an id is not guaranteed, and a game with no id is
+                # still a game whose score we can read.
+                key = str(event.get("id") or f"{group}:{date_param}:{index}")
+                merged.setdefault(key, event)
+            break
+    if not answered:
+        return [], error or "no host answered"
+    return list(merged.values()), None
 
 
 def _norm(value: Any) -> str:
