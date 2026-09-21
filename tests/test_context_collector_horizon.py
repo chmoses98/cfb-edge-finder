@@ -411,3 +411,95 @@ def test_an_event_without_an_id_is_kept_rather_than_dropped(monkeypatch):
 
 def test_the_group_list_names_both_divisions():
     assert collector.SCOREBOARD_GROUPS == (80, 81)
+
+
+# ------------------------------------------------- why a game matched nothing
+#
+# 27 of 234 games matched no ESPN event on the first full run. `_match_event`
+# answers yes or no, which is all the pricing needs and nothing a person can
+# act on: a name spelled differently from ESPN's is an alias fix, a game ESPN
+# never published is a provider gap, and no amount of alias work closes the
+# second. Counting them together hides both.
+
+
+def _packet(home, away, kickoff="2026-09-26T20:00:00Z", key="G1"):
+    return {
+        "game_key": key,
+        "kickoff": kickoff,
+        "game_metadata": {"teams": {"home": home, "away": away}},
+    }
+
+
+def _espn(home, away, date="2026-09-26T20:00:00Z"):
+    return {
+        "id": "e1",
+        "date": date,
+        "competitions": [
+            {
+                "competitors": [
+                    {"homeAway": "home", "team": {"displayName": home, "shortDisplayName": home}},
+                    {"homeAway": "away", "team": {"displayName": away, "shortDisplayName": away}},
+                ]
+            }
+        ],
+    }
+
+
+def test_a_title_with_no_teams_is_named_as_such():
+    reason, _ = collector.classify_match_failure(_packet(None, None), [_espn("A", "B")])
+    assert reason == collector.UNMATCHED_NO_TEAMS
+
+
+def test_no_espn_event_at_all_is_a_provider_gap_not_a_naming_problem():
+    reason, detail = collector.classify_match_failure(
+        _packet("Towson", "Morgan St."), [_espn("Alabama", "Auburn")]
+    )
+    assert reason == collector.UNMATCHED_NO_EVENT_IN_WINDOW
+    assert "Morgan St. at Towson" in detail
+
+
+def test_one_side_matching_points_at_an_alias_for_the_other():
+    """The actionable case: ESPN knows the game, we spell one team its way."""
+    reason, detail = collector.classify_match_failure(
+        _packet("Towson", "Morgan St."), [_espn("Towson", "Morgan State")]
+    )
+    assert reason == collector.UNMATCHED_ONE_TEAM
+    assert "matched home only" in detail
+
+
+def test_neither_side_matching_is_distinguished_from_one_side():
+    reason, _ = collector.classify_match_failure(
+        _packet("Ole Miss", "LSU"),
+        [{"id": "e", "date": "2026-09-26T20:00:00Z",
+          "competitions": [{"competitors": [
+              {"homeAway": "home", "team": {"displayName": "Ole Miss"}},
+              {"homeAway": "away", "team": {"displayName": "Mississippi"}}]}]}],
+    )
+    # home matched, away did not -> one-team, not neither
+    assert reason == collector.UNMATCHED_ONE_TEAM
+
+
+def test_a_right_game_on_the_wrong_date_is_its_own_reason():
+    """A postponed or rescheduled game is neither an alias bug nor a gap."""
+    reason, detail = collector.classify_match_failure(
+        _packet("Towson", "Morgan St.", kickoff="2026-09-26T20:00:00Z"),
+        [_espn("Towson", "Morgan St.", date="2026-10-10T20:00:00Z")],
+    )
+    assert reason == collector.UNMATCHED_OUTSIDE_WINDOW
+    assert "2026-10-10" in detail and "2026-09-26" in detail
+
+
+def test_the_utc_boundary_is_not_reported_as_a_date_mismatch():
+    """A late kickoff crosses UTC midnight; 36 hours is deliberate slack."""
+    reason, _ = collector.classify_match_failure(
+        _packet("Hawaii", "Fresno St.", kickoff="2026-09-27T05:00:00Z"),
+        [_espn("Hawaii", "Fresno St.", date="2026-09-26T05:00:00Z")],
+    )
+    assert reason != collector.UNMATCHED_OUTSIDE_WINDOW
+
+
+def test_the_classifier_never_contradicts_the_matcher(monkeypatch):
+    """If _match_event found it, the classifier must not be asked -- and if it
+    is, it must not claim the game was unmatchable."""
+    packet, events = _packet("Towson", "Morgan St."), [_espn("Towson", "Morgan St.")]
+    assert collector._match_event(packet, events) is not None

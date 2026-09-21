@@ -190,6 +190,15 @@ jobs:
                       print(f"    {reason}")
               if run["verdict"] == "no_games_in_horizon" and run["nearest_kickoff"]:
                   print(f"  next kickoff in the catalog: {run['nearest_kickoff']}")
+              # An unmatched game is either OUR naming problem or the
+              # provider's coverage gap, and those have opposite fixes.
+              by_reason = run.get("unmatched_by_reason") or {}
+              if by_reason:
+                  print(f"  unmatched games by reason:")
+                  for reason, count in sorted(by_reason.items(), key=lambda kv: -kv[1]):
+                      print(f"    {count:4}  {reason}")
+                      for example in (run.get("unmatched_examples") or {}).get(reason, [])[:3]:
+                          print(f"            e.g. {example}")
 
           batches = json.load(open("data/execution/latest/batch_manifest.json"))
           print(f"\nhandicap batches: {batches['totals']['batches']} "

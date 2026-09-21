@@ -315,6 +315,92 @@ def _match_event(packet: dict[str, Any], events: list[dict]) -> dict | None:
     return best
 
 
+# Why one Kalshi game found no ESPN event. Ordered from "our fault" to
+# "the provider does not have it", because the fix differs completely.
+UNMATCHED_NO_TEAMS = "no_teams_parsed_from_kalshi_title"
+UNMATCHED_NO_EVENT_IN_WINDOW = "espn_has_no_event_in_the_date_window"
+UNMATCHED_ONE_TEAM = "one_team_matched_the_other_did_not"
+UNMATCHED_NEITHER_TEAM = "neither_team_name_matched"
+UNMATCHED_OUTSIDE_WINDOW = "both_teams_matched_but_outside_the_date_window"
+
+
+def classify_match_failure(
+    packet: dict[str, Any], events: list[dict]
+) -> tuple[str, str]:
+    """WHY a game matched nothing, and the nearest evidence for it.
+
+    `_match_event` answers yes or no, which is all pricing needs and nothing a
+    person can act on. A name this repository spells differently from ESPN is
+    an alias fix; a game ESPN never published is a provider gap and no amount
+    of alias work will close it. Counting them together hides both.
+
+    Returns (reason, detail). The detail names the closest ESPN event, so an
+    alias mismatch is visible without re-running anything.
+    """
+    teams = _kalshi_team_keys(((packet.get("game_metadata") or {}).get("teams")) or {})
+    if not teams["home"] or not teams["away"]:
+        return UNMATCHED_NO_TEAMS, str(packet.get("title") or packet.get("game_key") or "")
+
+    kickoff_day = str(packet.get("kickoff") or "")[:10]
+    in_window, out_of_window = [], []
+    for event in events:
+        names = set()
+        for competitor in competitors_of(event):
+            names |= {_norm(n) for n in team_names(competitor)}
+        hit_home = bool(teams["home"] & names)
+        hit_away = bool(teams["away"] & names)
+        if not (hit_home or hit_away):
+            continue
+        same_day = str(event.get("date") or "")[:10] == kickoff_day
+        near = same_day
+        if not near:
+            try:
+                espn_day = datetime.fromisoformat(str(event["date"]).replace("Z", "+00:00"))
+                packet_day = datetime.fromisoformat(
+                    str(packet["kickoff"]).replace("Z", "+00:00")
+                )
+                near = abs((espn_day - packet_day).total_seconds()) <= 36 * 3600
+            except (KeyError, ValueError, TypeError):
+                near = False
+        (in_window if near else out_of_window).append((hit_home, hit_away, event))
+
+    both_out = [e for h, a, e in out_of_window if h and a]
+    if both_out:
+        return (
+            UNMATCHED_OUTSIDE_WINDOW,
+            f"{_event_label(both_out[0])} on {str(both_out[0].get('date'))[:10]} "
+            f"vs kickoff {kickoff_day}",
+        )
+    if not in_window:
+        return UNMATCHED_NO_EVENT_IN_WINDOW, f"{_packet_label(packet)} on {kickoff_day}"
+    partial = [(h, a, e) for h, a, e in in_window if h != a]
+    if partial:
+        hit_home, _hit_away, event = partial[0]
+        side = "home" if hit_home else "away"
+        return (
+            UNMATCHED_ONE_TEAM,
+            f"{_packet_label(packet)} -- matched {side} only against "
+            f"ESPN {_event_label(event)}",
+        )
+    return (
+        UNMATCHED_NEITHER_TEAM,
+        f"{_packet_label(packet)} -- nearest ESPN {_event_label(in_window[0][2])}",
+    )
+
+
+def _packet_label(packet: dict[str, Any]) -> str:
+    teams = ((packet.get("game_metadata") or {}).get("teams")) or {}
+    return f"{teams.get('away') or '?'} at {teams.get('home') or '?'}"
+
+
+def _event_label(event: dict) -> str:
+    names = []
+    for competitor in competitors_of(event):
+        found = team_names(competitor)
+        names.append(next(iter(found), "?") if found else "?")
+    return " / ".join(names) if names else str(event.get("name") or "?")
+
+
 def collect_game(
     packet: dict[str, Any],
     *,
@@ -459,6 +545,8 @@ def _write_run_summary(
     nearest_kickoff: datetime | None,
     stopped_early: str | None = None,
     elapsed_seconds: float | None = None,
+    unmatched_reasons: dict[str, int] | None = None,
+    unmatched_examples: dict[str, list[str]] | None = None,
 ) -> None:
     """Record what this run was ASKED for and what it reached.
 
@@ -483,6 +571,11 @@ def _write_run_summary(
                 "scoreboard_dates_failed": len(scoreboard_failures),
                 "scoreboard_failure_reasons": sorted(set(scoreboard_failures.values()))[:5],
                 "nearest_kickoff": nearest_kickoff.isoformat() if nearest_kickoff else None,
+                "unmatched_by_reason": dict(sorted((unmatched_reasons or {}).items())),
+                "unmatched_examples": {
+                    reason: sorted(examples)[:5]
+                    for reason, examples in sorted((unmatched_examples or {}).items())
+                },
                 "stopped_early": stopped_early,
                 "elapsed_seconds": round(elapsed_seconds, 1) if elapsed_seconds else None,
                 "verdict": (
@@ -692,6 +785,8 @@ def main(argv: list[str] | None = None) -> int:
 
     written = 0
     matched = 0
+    unmatched_reasons: dict[str, int] = {}
+    unmatched_examples: dict[str, list[str]] = {}
     for entry in wanted:
         packet = {
             "game_key": entry.get("game_key"),
@@ -701,6 +796,10 @@ def main(argv: list[str] | None = None) -> int:
         event = _match_event(packet, all_events)
         if event is not None:
             matched += 1
+        else:
+            reason, detail = classify_match_failure(packet, all_events)
+            unmatched_reasons[reason] = unmatched_reasons.get(reason, 0) + 1
+            unmatched_examples.setdefault(reason, []).append(detail)
 
         history: dict[str, list[dict]] = {"home": [], "away": []}
         injuries: dict[str, dict | None] = {"home": None, "away": None}
@@ -750,6 +849,12 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"context written: {written} game(s) -> {out_dir}")
     print(f"  ESPN events matched: {matched} / {written}")
+    if unmatched_reasons:
+        print(f"  unmatched: {written - matched}, by reason:")
+        for reason, count in sorted(unmatched_reasons.items(), key=lambda kv: -kv[1]):
+            print(f"    {count:4}  {reason}")
+            for example in unmatched_examples.get(reason, [])[:3]:
+                print(f"            e.g. {example}")
     if _BUDGET is not None and _BUDGET.tripped_reason:
         print(f"  STOPPED EARLY: {_BUDGET.tripped_reason}", file=sys.stderr)
         print(
@@ -771,6 +876,8 @@ def main(argv: list[str] | None = None) -> int:
         nearest_kickoff=nearest,
         stopped_early=_BUDGET.tripped_reason if _BUDGET else None,
         elapsed_seconds=_BUDGET.elapsed() if _BUDGET else None,
+        unmatched_reasons=unmatched_reasons,
+        unmatched_examples=unmatched_examples,
     )
     # ALWAYS 0 FOR A PROVIDER PROBLEM. A collector that failed the job on a
     # 403 would take the whole slate's enrichment down with one bad endpoint,
