@@ -38,6 +38,7 @@ from cfb_edge_finder.execution.batching import (
     batch_document,
     build_batches,
 )
+from cfb_edge_finder.execution.candidates import reduce_candidates
 from cfb_edge_finder.execution.disposition import (
     DEFAULT_MAX_CAPTURE_AGE_MINUTES,
     DispositionConfig,
@@ -58,6 +59,7 @@ from cfb_edge_finder.execution.handicap import (
 from cfb_edge_finder.execution.report import (
     ShardGateError,
     build_candidate_artifact,
+    build_reduction_ledger,
     build_report,
     render_report,
 )
@@ -336,7 +338,7 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         print(f"    unaccounted:              {entry['unaccounted_contracts']}")
         print(f"    kickoffs:                 {str(entry['earliest_kickoff'])[:16]} -> "
               f"{str(entry['latest_kickoff'])[:16]}")
-    coverage = slate["reconciliation"].get("factual_context_coverage") or {}
+    coverage = slate.get("factual_context_coverage") or {}
     print(
         f"\n  factual context: {coverage.get('games', 0) - coverage.get('games_with_no_context', 0)}"
         f" / {coverage.get('games', 0)} games enriched"
@@ -771,6 +773,24 @@ def cmd_candidates(args: argparse.Namespace) -> int:
 
     path = out_dir / "candidates" / f"{label}.candidates.json"
     size = _write(path, artifact)
+    # THE AUDIT IS WRITTEN IN THE SAME BREATH AS THE SHORTLIST, ALWAYS.
+    # A reduction the operator can act on and cannot inspect is the thing this
+    # whole file exists to avoid, so the ledger is not an option and not a
+    # flag: it lands beside the artifact on every run, and the artifact names
+    # it.
+    rows_again = [
+        row
+        for evaluation in evaluations
+        for row in evaluation.rows
+        if row.get("status") in CANDIDATE_STATUSES
+    ]
+    ledger_size = _write(
+        out_dir / "candidates" / artifact["reduction_ledger_file"],
+        build_reduction_ledger(
+            _shard_doc.get("shard"), label, reduce_candidates(rows_again)
+        ),
+        compact=True,
+    )
     reconciliation = artifact["reconciliation"]
     reduction = artifact["reduction"]
     print(f"{label}: {reconciliation['games']} games, "
@@ -792,6 +812,10 @@ def cmd_candidates(args: argparse.Namespace) -> int:
         for row in extreme:
             print(f"    {row['game_key']:20} {row['reason']}")
     print(f"\n  {path} ({size / 1e3:.1f} KB)")
+    print(
+        f"  {out_dir}/candidates/{artifact['reduction_ledger_file']} "
+        f"({ledger_size / 1e3:.1f} KB, every removal and its reason)"
+    )
     return 0
 
 

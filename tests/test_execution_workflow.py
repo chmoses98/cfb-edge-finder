@@ -231,6 +231,7 @@ def test_every_final_bet_carries_the_fields_an_operator_needs(tmp_path):
     for bet in report["final_bets"]:
         for key in (
             "game",
+            "game_key",
             "market",
             "side",
             "kalshi_executable_price",
@@ -239,14 +240,16 @@ def test_every_final_bet_carries_the_fields_an_operator_needs(tmp_path):
             "raw_edge",
             "fee_adjusted_edge",
             "stake_placeholder",
-            "game_thesis",
             "why_this_market_expresses_the_thesis",
-            "strongest_opposing_case",
         ):
             assert key in bet, key
         assert bet["stake_placeholder"] is None
-        assert bet["game_thesis"] == "the thesis"
-        assert bet["strongest_opposing_case"] == "the other side"
+        # The thesis and the opposing case are identical on every bet from one
+        # game, so they are stated once in `games_context` and joined on
+        # game_key -- compaction, not omission.
+        game = report["games_context"][bet["game_key"]]
+        assert game["thesis"] == "the thesis"
+        assert game["strongest_opposing_case"] == "the other side"
 
 
 def test_the_correlation_review_keeps_the_best_expression_of_one_view():

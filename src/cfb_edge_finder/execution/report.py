@@ -107,21 +107,31 @@ def _why_this_market(row: dict[str, Any]) -> str:
 
 def candidate_record(
     candidate: Candidate | Expression,
-    handicaps: dict[str, HandicapPayload],
+    handicaps: dict[str, HandicapPayload],  # noqa: ARG001 - see game_block
     packets: dict[str, dict[str, Any]],
     *,
     reduction: Reduction | None = None,
     disagreements: dict[str, dict[str, Any]] | None = None,
+    max_alternatives: int | None = None,
 ) -> dict[str, Any]:
     row = candidate.row
     game_key = str(row.get("game_key"))
-    handicap = handicaps.get(game_key)
     packet = packets.get(game_key) or {}
     side = str(row.get("best_side"))
     sensitivity = row.get("sensitivity") or {}
-    context = packet.get("factual_context") or {}
     ticker = str(row.get("ticker"))
     alternatives = (reduction.alternatives.get(ticker, []) if reduction else [])
+    # The NEAREST alternatives by fee-adjusted edge, not the first few by
+    # ticker: a reader deciding whether to take a different rung wants the
+    # rungs that nearly won, and the rest are in the reduction ledger with
+    # every one of their reasons.
+    shown = (
+        sorted(alternatives, key=lambda a: -float(a.get("fee_adjusted_edge") or 0.0))[
+            :max_alternatives
+        ]
+        if max_alternatives is not None
+        else alternatives
+    )
     return {
         "game": packet.get("title") or game_key,
         "game_key": game_key,
@@ -154,30 +164,19 @@ def candidate_record(
         "sensitivity_bound": sensitivity.get("sensitivity_bound"),
         "scenarios_tested": sensitivity.get("scenarios_tested"),
         "bet_up_to_price": row.get("bet_up_to_price"),
-        "bet_up_to_note": (
-            "the highest price at which this side still clears the operator's required edge, "
-            "computed at the quoted fee. Kalshi's trade fee rises with price, so the true ceiling "
-            "is slightly below this figure."
-        ),
         # ---- where the numbers came from --------------------------------
-        "handicap_confidence": handicap.confidence if handicap else "unstated",
-        "handicap_confidence_effective": handicap.effective_confidence if handicap else "unstated",
-        "handicap_confidence_capped_by_data": (
-            handicap.confidence_was_capped if handicap else False
-        ),
-        "confidence_grade_note": (
-            "this repository has no validated confidence-grade convention, so the handicapper's own "
-            "stated confidence is reported verbatim rather than translated into a grade"
-        ),
-        "factual_data_quality": {
-            "confidence_ceiling": (context.get("data_quality") or {}).get("confidence_ceiling"),
-            "missing_domains": context.get("missing_domains") or [],
-            "coverage": context.get("coverage") or {},
-        },
-        "market_disagreement": (disagreements or {}).get(game_key),
+        # The per-GAME facts -- thesis, opposing case, confidence, factual data
+        # quality, the full market-disagreement reading -- are hoisted into the
+        # artifact's `games` block and joined on `game_key`. They are identical
+        # on every candidate from one game, and repeating a twelve-domain
+        # coverage map on twenty-four rows is a third of the file for no
+        # information. What stays inline is the DISAGREEMENT LEVEL, because it
+        # is one word and it is the one a reader acts on without scrolling.
+        "market_disagreement_level": ((disagreements or {}).get(game_key) or {}).get("level"),
         # ---- exposure and reduction -------------------------------------
         "correlation_group": f"{candidate.driver} / {candidate.direction}",
-        "related_alternatives": alternatives,
+        "related_alternatives": shown,
+        "related_alternatives_total": len(alternatives),
         "why_this_expression_survived": (
             f"it is the best expression of the {candidate.driver} / {candidate.direction} view in "
             f"this game: it beat {len(alternatives)} other contract(s) on fee-adjusted edge, entry "
@@ -186,14 +185,7 @@ def candidate_record(
             else "it is the only surviving expression of this view in this game"
         ),
         "stake_placeholder": None,
-        "stake_note": "the operator sets this; nothing in this repository sizes a bet",
-        "game_thesis": (handicap.thesis or handicap.assumptions or "not supplied by the handicap")
-        if handicap
-        else "not supplied by the handicap",
         "why_this_market_expresses_the_thesis": _why_this_market(row),
-        "strongest_opposing_case": (
-            handicap.opposing_case if handicap and handicap.opposing_case else "not supplied by the handicap"
-        ),
     }
 
 
@@ -237,6 +229,126 @@ def _awaiting_judgement(evaluations: list[GameEvaluation]) -> list[dict[str, Any
     return out
 
 
+#: Conventions repeated on every candidate, stated ONCE.
+#:
+#: Same compaction the analysis artifact already applies to the fee model and
+#: the price conventions: a sentence identical on 550 rows is not information,
+#: it is a third of the file. What is NOT hoisted is anything whose value
+#: differs per candidate -- the robustness reason, the worst scenario, the
+#: opposing case -- because those are the lines that decide whether a row is
+#: read correctly.
+CANDIDATE_CONVENTIONS = {
+    "bet_up_to_price": (
+        "the highest price at which this side still clears the operator's required edge, computed "
+        "at the quoted fee. Kalshi's trade fee rises with price, so the true ceiling is slightly "
+        "below the figure shown."
+    ),
+    "stake_placeholder": (
+        "the operator sets this. Nothing in this repository sizes a bet, and the exposure block "
+        "below exists so that sizing can see which candidates are one opinion."
+    ),
+    "handicap_confidence": (
+        "this repository has no validated confidence-grade convention, so the handicapper's own "
+        "stated confidence is reported verbatim rather than translated into a grade. "
+        "`handicap_confidence_effective` is that word after the factual data quality caps it."
+    ),
+    "related_alternatives": (
+        "the nearest rungs of the same view by fee-adjusted edge. The COMPLETE list, with every "
+        "removal's deterministic reason, is in the reduction ledger written beside this file."
+    ),
+    "fee_adjusted_edge_range": (
+        "the edge at the best and worst corner of the handicap's own stated uncertainty region. "
+        "`sensitivity_bound: exact_corner_extremum` means the worst corner IS the worst case; "
+        "`grid_extremum` means it is the worst of the corners tested; `not_tested` means the "
+        "handicap stated no region, and the candidate cannot be robust."
+    ),
+}
+
+#: How many alternative rungs a candidate carries inline.
+#:
+#: Five rather than all of them. A ladder can have twenty-nine rungs and a
+#: reader choosing between them is choosing among the few that nearly won; the
+#: other twenty-four are audit, and audit belongs in the ledger file.
+DEFAULT_MAX_INLINE_ALTERNATIVES = 5
+
+
+def game_block(
+    game_key: str,
+    packets: dict[str, dict[str, Any]],
+    handicaps: dict[str, HandicapPayload],
+    disagreements: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Everything a candidate would otherwise repeat, stated once per game.
+
+    The same compaction the analysis artifact applies to the fee model: a
+    twelve-domain coverage map and a two-paragraph thesis are identical on
+    every candidate from one game, and repeating them is file size rather than
+    information. Candidates join on `game_key`, and the artifact says so.
+    """
+    packet = packets.get(game_key) or {}
+    handicap = handicaps.get(game_key)
+    context = packet.get("factual_context") or {}
+    return {
+        "game": packet.get("title") or game_key,
+        "kickoff": packet.get("kickoff"),
+        "thesis": (
+            (handicap.thesis or handicap.assumptions or "not supplied by the handicap")
+            if handicap
+            else "not supplied by the handicap"
+        ),
+        "strongest_opposing_case": (
+            handicap.opposing_case
+            if handicap and handicap.opposing_case
+            else "not supplied by the handicap"
+        ),
+        "handicap_confidence": handicap.confidence if handicap else "unstated",
+        "handicap_confidence_effective": handicap.effective_confidence if handicap else "unstated",
+        "handicap_confidence_capped_by_data": (
+            handicap.confidence_was_capped if handicap else False
+        ),
+        "handicap_schema_version": handicap.schema_version_supplied if handicap else None,
+        "uncertainty_stated": (not handicap.is_legacy_point_estimate) if handicap else False,
+        "factual_data_quality": {
+            "confidence_ceiling": (context.get("data_quality") or {}).get("confidence_ceiling"),
+            "missing_domains": context.get("missing_domains") or [],
+            "coverage": context.get("coverage") or {},
+        },
+        "market_disagreement": disagreements.get(game_key),
+    }
+
+
+def build_reduction_ledger(
+    shard: str | None,
+    batch: str | None,
+    reduction: Reduction,
+) -> dict[str, Any]:
+    """The complete audit of what the reduction removed and why.
+
+    A SIBLING FILE, not a section. It is the larger half of the output by some
+    margin -- 139 KB against 40 KB of candidates on the retained slate -- and
+    an artifact built for fast review should not carry its own audit trail
+    inline. Nothing is lost: every removed contract is here, with the survivor
+    it lost to and the deterministic reason, and the candidate artifact points
+    at this file by name.
+    """
+    return {
+        "schema_version": CANDIDATE_SCHEMA_VERSION,
+        "kind": "reduction_ledger",
+        "shard": shard,
+        "batch": batch,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "removed": len(reduction.removed),
+        "removed_by_reason": reduction.counts,
+        "survivors": [e.ticker for e in reduction.survivors],
+        "entries": reduction.removed,
+        "note": (
+            "Every entry lost to the NAMED survivor in `lost_to` for the deterministic reason in "
+            "`reason`. There is no top-N in the reduction: a contract is here because another "
+            "contract expressing the same view was a better buy, never because a list was full."
+        ),
+    }
+
+
 def build_candidate_artifact(
     shard: str | None,
     evaluations: list[GameEvaluation],
@@ -246,6 +358,7 @@ def build_candidate_artifact(
     min_net_edge: float,
     batch: str | None = None,
     top_n: int | None = None,
+    max_inline_alternatives: int | None = DEFAULT_MAX_INLINE_ALTERNATIVES,
 ) -> dict[str, Any]:
     """The small file a final review reads.
 
@@ -294,6 +407,8 @@ def build_candidate_artifact(
         "batch": batch,
         "generated_at": datetime.now(UTC).isoformat(),
         "min_net_edge": min_net_edge,
+        "conventions": CANDIDATE_CONVENTIONS,
+        "reduction_ledger_file": f"{batch or shard}.reduction.json",
         "how_to_read": [
             "Every contract in the batch was priced or explicitly marked unpriceable before this "
             "file existed. The reconciliation below is the proof.",
@@ -304,6 +419,9 @@ def build_candidate_artifact(
             "different tickers are not diversification.",
             "market_disagreement EXTREME is a prompt to re-check home/away orientation, period and "
             "units before betting. It is never a reason to discard a handicap.",
+            "A candidate's per-game facts -- thesis, opposing case, confidence, factual data "
+            "quality, the full disagreement reading -- are in `games[game_key]`, stated once. "
+            "They are identical on every candidate from that game.",
         ],
         "reconciliation": {
             "games": len(evaluations),
@@ -326,14 +444,24 @@ def build_candidate_artifact(
                 "null unless --top was passed."
             ),
         },
+        "games": {
+            evaluation.game_key: game_block(
+                evaluation.game_key, packets, handicaps, disagreements
+            )
+            for evaluation in evaluations
+        },
         "exposure": exposure_groups(list(survivors)),
         "candidates": [
             candidate_record(
-                expression, handicaps, packets, reduction=reduction, disagreements=disagreements
+                expression,
+                handicaps,
+                packets,
+                reduction=reduction,
+                disagreements=disagreements,
+                max_alternatives=max_inline_alternatives,
             )
             for expression in shown
         ],
-        "reduction_ledger": reduction.removed,
         "market_disagreement_by_game": [
             disagreements[key] for key in sorted(disagreements)
         ],
@@ -435,6 +563,10 @@ def build_report(
             "nothing else. No order can be placed from this artifact."
         ),
         "games": [e.summary() for e in evaluations],
+        "games_context": {
+            e.game_key: game_block(e.game_key, packets, handicaps, disagreements)
+            for e in evaluations
+        },
         "market_disagreement_by_game": [disagreements[key] for key in sorted(disagreements)],
         "final_bets": [
             candidate_record(
@@ -473,7 +605,9 @@ def render_report(report: dict[str, Any]) -> str:
         report["provenance"],
         "",
     ]
+    games = report.get("games_context") or {}
     for index, bet in enumerate(report["final_bets"], start=1):
+        game = games.get(bet["game_key"], {})
         lines.extend(
             [
                 f"{index}. {bet['game']} -- {bet['market']}",
@@ -483,10 +617,12 @@ def render_report(report: dict[str, Any]) -> str:
                 f"   raw edge {bet['raw_edge']} | fee {bet['fee']} | fee-adjusted {bet['fee_adjusted_edge']}",
                 f"   robustness: {bet['robustness']} (edge range {bet['fee_adjusted_edge_range']})",
                 f"   bet up to: {bet['bet_up_to_price']}",
-                f"   handicap confidence: {bet['handicap_confidence']} | stake: {bet['stake_placeholder']}",
-                f"   thesis: {bet['game_thesis']}",
+                f"   handicap confidence: {game.get('handicap_confidence', 'unstated')} | "
+                f"stake: {bet['stake_placeholder']}",
+                f"   thesis: {game.get('thesis', 'not supplied by the handicap')}",
                 f"   why this market: {bet['why_this_market_expresses_the_thesis']}",
-                f"   strongest opposing case: {bet['strongest_opposing_case']}",
+                f"   strongest opposing case: "
+                f"{game.get('strongest_opposing_case', 'not supplied by the handicap')}",
                 "",
             ]
         )
