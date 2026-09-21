@@ -459,9 +459,15 @@ def test_no_espn_event_at_all_is_a_provider_gap_not_a_naming_problem():
 
 
 def test_one_side_matching_points_at_an_alias_for_the_other():
-    """The actionable case: ESPN knows the game, we spell one team its way."""
+    """The actionable case: ESPN knows the game, we spell one team its way.
+
+    The example is an ABBREVIATION, deliberately. "Morgan St." against ESPN's
+    "Morgan State" used to land here and no longer does -- `name_variants`
+    rewrites that affix. What remains is the class of mismatch no punctuation
+    rule can close: "App State" is Appalachian State because of a fact about
+    the school, not a fact about the string."""
     reason, detail = collector.classify_match_failure(
-        _packet("Towson", "Morgan St."), [_espn("Towson", "Morgan State")]
+        _packet("NC St.", "Appalachian St."), [_espn("NC State", "App State")]
     )
     assert reason == collector.UNMATCHED_ONE_TEAM
     assert "matched home only" in detail

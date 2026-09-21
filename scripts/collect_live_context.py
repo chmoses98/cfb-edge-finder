@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime, timedelta
@@ -255,6 +256,84 @@ def _norm(value: Any) -> str:
     return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
 
 
+#: Trailing "St."/"St" only. A LEADING "St." is Saint -- St. John's, St.
+#: Francis, St. Thomas -- and rewriting that to "State John's" would invent a
+#: school. The anchor is what makes this rule safe.
+_TRAILING_ST = re.compile(r"\bst\.?\s*$", re.IGNORECASE)
+_TRAILING_STATE = re.compile(r"\bstate\s*$", re.IGNORECASE)
+_TRAILING_UNIVERSITY = re.compile(r"\buniversity\s*$", re.IGNORECASE)
+_LEADING_UNIVERSITY_AT = re.compile(r"^university\s+at\s+", re.IGNORECASE)
+
+
+def name_variants(value: Any, *, allow_stem: bool = False) -> set[str]:
+    """Every normalised spelling of ONE team name that is a spelling, not a guess.
+
+    Measured, not imagined. On the first full live run 24 of 27 unmatched games
+    failed on one side only, and the pattern was punctuation rather than
+    identity:
+
+        Kalshi "Delaware St."        ESPN "Delaware State"
+        Kalshi "Grambling St."       ESPN "Grambling"
+        Kalshi "Southern University" ESPN "Southern"
+        Kalshi "University at Albany" ESPN "UAlbany" / "Albany"
+
+    Every rule here rewrites an AFFIX. None invents an abbreviation, because an
+    abbreviation is a fact about a school ("App State" is Appalachian State)
+    and this function has no way to know one. A name it cannot rewrite stays
+    unmatched and the game stays honestly unenriched -- that is the correct
+    outcome, and far better than a rule loose enough to pair the wrong Miami.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return set()
+    out = {raw}
+    if _TRAILING_ST.search(raw):
+        out.add(_TRAILING_ST.sub("State", raw).strip())
+    if _TRAILING_STATE.search(raw):
+        out.add(_TRAILING_STATE.sub("St.", raw).strip())
+    if allow_stem:
+        # DROPPING the qualifier entirely, which is only ever safe when the
+        # stem is not itself a school. "Grambling St." is ESPN's "Grambling";
+        # "Ohio State" is NOT Ohio, "Michigan State" is NOT Michigan, and a
+        # rule that could not tell those apart would pair a real game with the
+        # wrong one. The caller establishes the safety -- see `_stem_is_safe`.
+        stem = _TRAILING_ST.sub("", raw).strip() or _TRAILING_STATE.sub("", raw).strip()
+        if stem and stem.lower() != raw.lower():
+            out.add(stem)
+    if _TRAILING_UNIVERSITY.search(raw):
+        out.add(_TRAILING_UNIVERSITY.sub("", raw).strip())
+    if _LEADING_UNIVERSITY_AT.match(raw):
+        stem = _LEADING_UNIVERSITY_AT.sub("", raw).strip()
+        out.add(stem)
+        out.add(f"U{stem}")
+    return {n for n in (_norm(v) for v in out) if n}
+
+
+def _stem_is_safe(raw: str) -> bool:
+    """True when dropping a trailing "St."/"State" cannot name another school.
+
+    Asked of the repository's own team registry rather than a hand-kept list.
+    If "Ohio" resolves to a team and "Ohio State" resolves to a DIFFERENT one,
+    the stem is taken; dropping it would let a Kalshi "Ohio St." pair with
+    ESPN's Ohio, which is a real school playing real games. If the stem
+    resolves to nothing, or to the same team, no collision exists and
+    "Grambling St." may legitimately be read as "Grambling".
+    """
+    stem = (_TRAILING_ST.sub("", raw).strip() or _TRAILING_STATE.sub("", raw).strip())
+    if not stem or stem.lower() == raw.lower():
+        return False
+    try:
+        stem_team = get_team(resolve_team_alias(stem))
+    except (UnknownTeamAliasError, AmbiguousTeamAliasError):
+        return True  # the stem names nothing the registry knows: no collision
+    try:
+        full_team = get_team(resolve_team_alias(raw))
+    except (UnknownTeamAliasError, AmbiguousTeamAliasError):
+        # We cannot prove they are the same school, so we must not assume it.
+        return False
+    return stem_team.team_id == full_team.team_id
+
+
 def _kalshi_team_keys(packet_teams: dict[str, Any]) -> dict[str, set[str]]:
     """Every spelling of each Kalshi team, normalised, for ESPN matching.
 
@@ -280,7 +359,11 @@ def _kalshi_team_keys(packet_teams: dict[str, Any]) -> dict[str, set[str]]:
         if team is not None:
             candidates.add(team.display_name)
             candidates.add(team.team_id.replace("-", " "))
-        out[slot] = {_norm(c) for c in candidates if c}
+        allow_stem = _stem_is_safe(str(raw))
+        keys: set[str] = set()
+        for candidate in candidates:
+            keys |= name_variants(candidate, allow_stem=allow_stem)
+        out[slot] = keys
     return out
 
 
@@ -308,7 +391,7 @@ def _match_event(packet: dict[str, Any], events: list[dict]) -> dict | None:
                 continue
         names = set()
         for competitor in competitors_of(event):
-            names |= {_norm(n) for n in team_names(competitor)}
+            names |= set().union(*(name_variants(n) for n in team_names(competitor)) or [set()])
         if teams["home"] & names and teams["away"] & names:
             best = event
             break
@@ -346,7 +429,7 @@ def classify_match_failure(
     for event in events:
         names = set()
         for competitor in competitors_of(event):
-            names |= {_norm(n) for n in team_names(competitor)}
+            names |= set().union(*(name_variants(n) for n in team_names(competitor)) or [set()])
         hit_home = bool(teams["home"] & names)
         hit_away = bool(teams["away"] & names)
         if not (hit_home or hit_away):

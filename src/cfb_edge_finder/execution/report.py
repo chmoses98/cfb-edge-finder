@@ -44,6 +44,7 @@ from cfb_edge_finder.execution.candidates import (
 from cfb_edge_finder.execution.disagreement import measure
 from cfb_edge_finder.execution.evaluator import (
     CANDIDATE_STATUSES,
+    DEFAULT_MIN_NET_EDGE,
     EvaluationStatus,
     GameEvaluation,
     require_complete,
@@ -69,6 +70,28 @@ class Candidate:
     @property
     def net_edge(self) -> float:
         return float(self.row.get("net_edge") or 0.0)
+
+
+def min_net_edge_provenance(min_net_edge: float) -> dict[str, object]:
+    """Where the required edge came from, and what it is NOT.
+
+    `"min_net_edge": 0.02` in a machine-readable artifact reads like a finding.
+    It never was one: this repository has never validated a bar at which a CFB
+    Kalshi edge is real, and any reader -- human or model -- who treats that
+    number as calibrated is being misled by the file rather than by anything
+    anybody wrote. So the number travels with its own provenance.
+    """
+    operator_supplied = abs(min_net_edge - DEFAULT_MIN_NET_EDGE) > 1e-12
+    return {
+        "source": "operator" if operator_supplied else "repository_default",
+        "is_validated_threshold": False,
+        "note": (
+            "An operator preference, not a calibrated bar. This repository has never "
+            "established the edge at which a CFB Kalshi contract is profitable, and "
+            "robustness measures sensitivity to the handicap's stated uncertainty -- "
+            "NOT whether the fair probability itself is calibrated."
+        ),
+    }
 
 
 def correlation_review(rows: list[dict[str, Any]]) -> tuple[list[Candidate], list[dict[str, Any]]]:
@@ -407,6 +430,7 @@ def build_candidate_artifact(
         "batch": batch,
         "generated_at": datetime.now(UTC).isoformat(),
         "min_net_edge": min_net_edge,
+        "min_net_edge_provenance": min_net_edge_provenance(min_net_edge),
         "conventions": CANDIDATE_CONVENTIONS,
         "reduction_ledger_file": f"{batch or shard}.reduction.json",
         "how_to_read": [
@@ -551,6 +575,7 @@ def build_report(
         "shard": shard,
         "generated_at": datetime.now(UTC).isoformat(),
         "min_net_edge": min_net_edge,
+        "min_net_edge_provenance": min_net_edge_provenance(min_net_edge),
         "totals": totals,
         "status_counts": dict(sorted(status_counts.items())),
         "provenance": (

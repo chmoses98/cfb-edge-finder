@@ -465,6 +465,63 @@ domains missing and the reason recorded on each one. A third guard,
 wrong.
 
 
+## Robustness is not calibration
+
+These are different claims and the difference decides what the numbers are
+worth.
+
+**Robustness** asks: if the handicapper's stated uncertainty region is right,
+does this edge survive every corner of it? That is a sensitivity test, and the
+repository can answer it exactly for the monotone families.
+
+**Calibration** asks: when the handicap says 62%, does it happen 62% of the
+time? **Nothing here answers that**, and nothing here has ever tried. A
+perfectly robust contract priced off a badly calibrated fair probability is a
+confident mistake, and the arithmetic cannot tell.
+
+An estimated positive EV is only ever as good as the fair probability it was
+computed from. Establishing whether those probabilities are calibrated needs
+PROSPECTIVE data — recommendation, execution, closing price, settlement —
+accumulated over a real sample. That is why the candidate artifact records what
+it does (see below) and why no threshold is claimed.
+
+### `--min-edge` is neutral by default
+
+`DEFAULT_MIN_NET_EDGE = 0.0`. It used to be `0.02`, which was a round number
+somebody picked. Nothing validated it, and it was written into every candidate
+artifact as `"min_net_edge": 0.02`, where a reader could reasonably take it for
+a finding.
+
+Zero does not mean "bet everything". A contract still has to clear
+`NEGLIGIBLE_EDGE` to be distinguished from noise, and still has to be positive
+at **every** corner of the uncertainty region to be robust. Those were always
+the filters doing the work.
+
+An operator who wants a bar passes `--min-edge`, and the artifact then records
+`min_net_edge_provenance.source: "operator"` — so a bar is visible as a choice
+rather than inherited silently. `LEGACY_UNVALIDATED_MIN_NET_EDGE = 0.02` is
+kept so the old behaviour can be asked for by name. Every artifact carries
+`is_validated_threshold: false`, whatever the number.
+
+### What is captured for a future calibration study
+
+Per candidate, at the moment of recommendation: the ticker, side, period and
+family; the executable quote and its fee; the break-even; the base fair
+probability; the robustness tier and the worst-case edge across the region;
+the sensitivity bound's kind; the data-quality ceiling and gates; the
+handicapper's stated confidence; and `bet_up_to_price`. Per batch: the packet
+hash, the context hash and the material context hash, so the facts the
+handicap was formed from can be reconstructed exactly.
+
+Execution stays separate, in the accounting ledger, and is linked afterwards by
+`accounting/recommendation_link.py` — never merged into the recommendation.
+That separation is what lets a later reader ask whether a bet was recommended,
+taken, taken at a worse price, or never recommended at all.
+
+**Not yet captured: closing price.** Without it, CLV cannot be computed. See
+Known limits.
+
+
 ## Known limits
 
 - **Combos are not enumerable.** Kalshi's CFB parlays are dynamically
@@ -475,8 +532,14 @@ wrong.
 - **Home/away on a neutral or `vs`-titled game is a convention.** Kalshi
   lists the away side first; the packet labels that
   `home_away_confidence: convention`.
-- **`--min-edge` has no empirical backing.** This repository has never
-  validated a bar at which a CFB Kalshi edge is real, and none is claimed.
+- **`--min-edge` has no empirical backing**, and is therefore neutral by
+  default. See "Robustness is not calibration" above.
+- **No closing price is captured**, so CLV cannot be computed for a
+  recommendation. Every other field a calibration study needs is recorded; this
+  one is not, and adding it is a separate piece of work against Kalshi's
+  market-history endpoints.
+- **Calibration is entirely unvalidated.** No sample exists yet, and thresholds
+  must not be fitted on a small one.
 - **The batching weights are calibrated, not validated.** They were set
   against one slate's measured shape to produce batches in the intended
   range. They are a measure of handicapping work and nothing else.

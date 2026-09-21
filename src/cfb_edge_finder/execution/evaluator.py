@@ -113,7 +113,25 @@ CANDIDATE_STATUSES = frozenset(
     }
 )
 
-DEFAULT_MIN_NET_EDGE = 0.02
+#: The operator's required fee-adjusted edge when they do not state one.
+#:
+#: NEUTRAL BY DEFAULT, AND THAT IS THE POINT. This repository has never
+#: validated a bar at which a CFB Kalshi edge is real, so a nonzero default
+#: would be an unvalidated threshold applied silently -- and worse, written
+#: into every candidate artifact as `min_net_edge`, where a reader could
+#: reasonably take it for a finding. It was 0.02 for exactly that reason and
+#: 0.02 was never anything but a guess.
+#:
+#: Zero does not mean "bet everything". A contract still has to clear
+#: NEGLIGIBLE_EDGE to be distinguished from noise, and it still has to be
+#: positive at EVERY corner of the handicap's uncertainty region to be robust.
+#: Those are the filters that were ever doing the work.
+DEFAULT_MIN_NET_EDGE = 0.0
+
+#: What the default used to be. Kept so an operator who wants the old
+#: behaviour can ask for it by name and see, in the artifact, that they chose
+#: it. It is a round number somebody picked; no evidence supports it.
+LEGACY_UNVALIDATED_MIN_NET_EDGE = 0.02
 """The operator's required fee-adjusted edge, in probability units.
 
 *** THIS IS NOT A VALIDATED THRESHOLD ***
