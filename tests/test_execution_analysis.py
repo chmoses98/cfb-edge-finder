@@ -400,6 +400,17 @@ def _flat(path: Path) -> str:
     return " ".join(path.read_text(encoding="utf-8").split())
 
 
+def _unquoted(path: Path) -> str:
+    """As `_flat`, and also without the `> ` a markdown blockquote puts at
+    the start of every wrapped line. A quoted prompt is one sentence to a
+    reader and several `> `-prefixed fragments to a substring search."""
+    lines = [
+        line[2:] if line.startswith("> ") else ("" if line.strip() == ">" else line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    return " ".join(" ".join(lines).split())
+
+
 def test_the_documented_live_workflow_needs_no_write_back():
     text = _flat(DOCS)
     assert "repo -> <window>.analysis.json -> ChatGPT -> every good bet" in text
@@ -418,20 +429,25 @@ def test_the_documented_workflow_imposes_no_bet_cap():
     assert "display truncation for debugging" in docs
 
     # the live-workflow section must not hand anyone a --top command
-    workflow_section = docs[docs.index("## The live workflow") : docs.index("### The optional")]
-    assert "--top" not in workflow_section
+    # the operator-instruction section must not hand anyone a --top command
+    operator = docs[docs.index("## Operator instructions") : docs.index("## What the reader is never")]
+    assert "--top" not in operator
 
 
 def test_the_documented_upload_prompt_matches_the_one_the_cli_prints():
-    from cfb_edge_finder.execution.cli import CHATGPT_PROMPT
+    """The prompt the CLI prints and the prompt the docs tell you to paste
+    must be the same words. They drifted once already, when the workflow
+    stopped being one pass over every contract and the CLI was updated
+    before the documentation was."""
+    from cfb_edge_finder.execution.cli import HANDICAP_PROMPT
 
-    docs = _flat(DOCS)
+    docs = _unquoted(DOCS)
     for fragment in (
-        "Run CFB. Bankroll $1,400.",
-        "return every bet",
-        "Do not use repo projections.",
+        "Run CFB. Handicap every game in this file ONCE, from its factual",
+        "a score distribution per period, an uncertainty block on each one",
+        "Do not price individual contracts.",
     ):
-        assert fragment in CHATGPT_PROMPT, fragment
+        assert fragment in HANDICAP_PROMPT, fragment
         assert fragment in docs, fragment
 
 

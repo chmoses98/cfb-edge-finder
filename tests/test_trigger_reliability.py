@@ -386,14 +386,34 @@ def test_settlement_is_hibernated_but_revivable():
 
 
 def test_the_live_catalog_is_the_only_scheduled_writer_now():
-    """The point of the retirement: exactly one scheduled workflow writes
+    """The point of the retirement: exactly one scheduled workflow WRITES
     the repo, and it is the market catalog -- which consumes no secret and
-    produces no projection."""
-    workflows = (REPO_ROOT / ".github" / "workflows").glob("*.yml")
-    scheduled = sorted(
-        path.name for path in workflows if ACTIVE_CRON.search(path.read_text(encoding="utf-8"))
-    )
-    assert scheduled == ["kalshi-market-catalog.yml"], f"unexpected scheduled workflows: {scheduled}"
+    produces no projection.
+
+    This used to assert that the catalog was the only workflow with a
+    schedule at all, which is a stricter thing than what the sentence above
+    says and a weaker thing than what it means. A read-only scheduled job
+    is not a scheduled writer, and forbidding it would have forbidden the
+    execution slate -- which holds `contents: read`, uploads an artifact
+    and touches no branch. So the permission is what is asserted now, and
+    every scheduled workflow must declare one: an absent `permissions:`
+    block inherits the repository default, which can be write.
+    """
+    scheduled = {}
+    for path in sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        if ACTIVE_CRON.search(text):
+            scheduled[path.name] = text
+
+    for name, text in scheduled.items():
+        assert "permissions:" in text, f"{name} schedules itself without declaring permissions"
+
+    writers = sorted(name for name, text in scheduled.items() if "contents: write" in text)
+    assert writers == ["kalshi-market-catalog.yml"], f"unexpected scheduled writers: {writers}"
+
+    for name, text in scheduled.items():
+        if name not in writers:
+            assert "contents: read" in text, f"{name} is scheduled and does not declare read-only"
 
 
 def test_conductor_is_not_in_the_writers_concurrency_group():

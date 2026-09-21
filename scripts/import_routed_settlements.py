@@ -52,6 +52,8 @@ def main(argv=None) -> int:
                         help="a checkout of the accounting-data branch")
     parser.add_argument("--season", required=True, type=int,
                         help="which season's ledger these settle (never inferred)")
+    parser.add_argument("--receipts-out", default=None,
+                        help="write the run's outcome (counts, ids and reasons; never economics)")
     args = parser.parse_args(argv)
 
     try:
@@ -70,6 +72,22 @@ def main(argv=None) -> int:
     print(f"  refused:         {result['refused']}")
     for index, reason in result["refusals"]:
         print(f"    row {index}: {reason}")
+
+    if args.receipts_out:
+        # Counts, ids and reasons. NEVER a payout, a ticker or a P&L: this
+        # file is read by a workflow whose log is public, and the router's
+        # own reporter prints only what is in here.
+        with open(args.receipts_out, "w", encoding="utf-8") as handle:
+            json.dump({
+                "season": args.season,
+                "written": result["written"],
+                "alreadyPresent": result["already_present"],
+                "refused": result["refused"],
+                "refusals": [{"row": i, "reason": r} for i, r in result["refusals"]],
+                "keysWritten": result["keys_written"],
+                "rows": result["rows"],
+            }, handle, indent=2, sort_keys=True)
+            handle.write("\n")
 
     return EXIT_REFUSED if result["refused"] else EXIT_OK
 

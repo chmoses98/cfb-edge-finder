@@ -90,6 +90,10 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
 
     built: list[dict] = []
     refusals: list[tuple[int, str]] = []
+    # Per-row receipts, for the same reason the wager importer emits them: a
+    # refusal that names only a row index cannot be acted on without the
+    # payload, and the payload may not be printed.
+    receipts: list[dict] = []
 
     for index, row in enumerate(rows):
         try:
@@ -101,11 +105,39 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
                     "repository has no record of would count in every total "
                     "while belonging to nothing"
                 )
-            built.append(record.to_dict())
         except SettlementRefused as exc:
             refusals.append((index, str(exc)))
+            receipts.append(
+                {
+                    "row": index,
+                    "source_bet_key": row.get("source_bet_key") if isinstance(row, dict) else None,
+                    "settlement_id": None,
+                    "duplicate_status": "REFUSED",
+                    "success": False,
+                    "reason": str(exc),
+                }
+            )
+            continue
+        built.append(record.to_dict())
+        receipts.append(
+            {
+                "row": index,
+                "source_bet_key": record.source_bet_key,
+                "settlement_id": record.settlement_id,
+                "duplicate_status": "NEW",
+                "success": True,
+            }
+        )
 
     result = append_settlements(base_dir, season, built) if built else None
+
+    written_keys = set(result.keys_written) if result else set()
+    for receipt in receipts:
+        if receipt["duplicate_status"] == "NEW" and receipt["source_bet_key"] not in written_keys:
+            # A market settles once, so a second observation is a duplicate
+            # rather than a correction -- the store's own rule, reported here
+            # rather than re-decided.
+            receipt["duplicate_status"] = "DUPLICATE_NOOP"
 
     return {
         "written": result.written if result else 0,
@@ -113,4 +145,5 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
         "refused": len(refusals),
         "refusals": refusals,
         "keys_written": list(result.keys_written) if result else [],
+        "rows": receipts,
     }

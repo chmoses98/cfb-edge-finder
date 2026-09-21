@@ -28,6 +28,7 @@ import ast
 import importlib
 import pkgutil
 import re
+import types
 from pathlib import Path
 
 import pytest
@@ -211,11 +212,51 @@ def test_accounting_does_not_import_any_predictive_package():
     )
 
 
+#: Modules that READ a recommendation in order to ATTRIBUTE a realised result
+#: to it, and write nothing anywhere.
+#:
+#: *** WHY THEY ARE EXEMPT FROM THE NAME SCAN, AND WHAT REPLACES IT ***
+#: The scan below is a NAME scan, and a name cannot tell "produces a
+#: recommendation" from "reads one somebody else produced". A postmortem that
+#: cuts realised profit and loss by robustness tier has to say the word
+#: `recommendation` and the word `edge` to do its job, and refusing it those
+#: words would mean the only way to get the cut is to spell it obscurely --
+#: which is worse in every way than an exemption with a stronger test behind
+#: it.
+#:
+#: So these modules are held to a STRICTER invariant instead, asserted in
+#: `test_the_attribution_modules_cannot_reach_the_ledger_write_path`: nothing
+#: that writes the ledger may import them, they may not import a write
+#: function, and they may not define one. A recommendation therefore has no
+#: path into a canonical row at all -- which is the property the name scan was
+#: a proxy for.
+ATTRIBUTION_MODULES = frozenset(
+    {
+        "cfb_edge_finder.accounting.recommendation_link",
+        "cfb_edge_finder.accounting.postmortem",
+    }
+)
+
+#: The functions that actually write a canonical row.
+LEDGER_WRITE_FUNCTIONS = ("append_wagers", "append_settlements")
+
+#: Every accounting module that can write, or that a writer runs.
+LEDGER_WRITING_MODULES = (
+    "cfb_edge_finder.accounting.store",
+    "cfb_edge_finder.accounting.wager",
+    "cfb_edge_finder.accounting.settlement",
+    "cfb_edge_finder.accounting.import_routed_wagers",
+    "cfb_edge_finder.accounting.import_settlements",
+)
+
+
 def test_accounting_exposes_no_sizing_or_recommendation_surface():
     violations = []
     package = cfb_edge_finder.accounting
     modules = [package]
     for _finder, name, _is_pkg in pkgutil.iter_modules(package.__path__, prefix=f"{package.__name__}."):
+        if name in ATTRIBUTION_MODULES:
+            continue
         modules.append(importlib.import_module(name))
     for module in modules:
         for name in dir(module):
@@ -226,10 +267,85 @@ def test_accounting_exposes_no_sizing_or_recommendation_surface():
             # exposing them.
             if name == "FORBIDDEN_PROVENANCE_FIELDS":
                 continue
+            value = getattr(module, name, None)
+            # IMPORTING A SUBMODULE BINDS ITS NAME ON THE PACKAGE.
+            #
+            # Once any test has imported `accounting.recommendation_link`,
+            # Python sets `recommendation_link` as an attribute of
+            # `accounting` -- so this scan saw it in a full run and not when
+            # the file ran alone, which is the worst kind of failure to debug.
+            # An attribution MODULE reached through the package is the same
+            # module the exemption above already covers.
+            if isinstance(value, types.ModuleType) and value.__name__ in ATTRIBUTION_MODULES:
+                continue
+            # ...and so is a name re-exported out of one.
+            if getattr(value, "__module__", None) in ATTRIBUTION_MODULES:
+                continue
             hit = _forbidden_token(name)
             if hit is not None:
                 violations.append(f"{module.__name__}.{name} (matched {hit!r})")
     assert violations == [], f"accounting grew a decision surface: {violations}"
+
+
+def test_the_attribution_modules_cannot_reach_the_ledger_write_path():
+    """*** STRICTER THAN THE NAME SCAN THEY ARE EXEMPT FROM ***
+
+    A recommendation must have NO PATH into a canonical row. Three edges, all
+    of which have to be empty for that to hold:
+
+      1. nothing that writes the ledger may import an attribution module --
+         so a writer cannot consult a recommendation while building a row;
+      2. an attribution module may not import a write function -- so it
+         cannot write one itself;
+      3. an attribution module may not DEFINE one either, which is the shape
+         somebody reaches for when the import looks wrong.
+    """
+    offenders = []
+
+    for module_name in LEDGER_WRITING_MODULES:
+        path = SRC / (module_name.split(".", 1)[1].replace(".", "/") + ".py")
+        assert path.exists(), f"{module_name} is gone; this test no longer guards it"
+        for imported in _imported_modules(path):
+            if imported in ATTRIBUTION_MODULES:
+                offenders.append(
+                    f"{module_name} imports the attribution module {imported}"
+                )
+        source = path.read_text(encoding="utf-8")
+        for attribution in ATTRIBUTION_MODULES:
+            leaf = attribution.rsplit(".", 1)[-1]
+            if f"import {leaf}" in source or f"from .{leaf}" in source:
+                offenders.append(f"{module_name} names {leaf}")
+
+    for module_name in sorted(ATTRIBUTION_MODULES):
+        path = SRC / (module_name.split(".", 1)[1].replace(".", "/") + ".py")
+        assert path.exists(), f"{module_name} is gone; this test no longer guards it"
+        source = path.read_text(encoding="utf-8")
+        for function in LEDGER_WRITE_FUNCTIONS:
+            if function in source:
+                offenders.append(f"{module_name} names the write function {function}")
+        for verb in ("def write_", "def append_", "def save_", "def persist_"):
+            if verb in source:
+                offenders.append(f"{module_name} defines a writer ({verb.strip()})")
+
+    assert offenders == [], (
+        "a recommendation has a path into a canonical wager row; the whole point of the "
+        f"separation is that it does not: {offenders}"
+    )
+
+
+def test_the_attribution_modules_really_do_exist_and_are_scanned():
+    """Positive control. An exemption for a module that has been renamed or
+    deleted is an exemption that silently covers nothing, and the scan above
+    would pass while guarding an empty set."""
+    for module_name in sorted(ATTRIBUTION_MODULES):
+        module = importlib.import_module(module_name)
+        assert module is not None
+        assert any(
+            _forbidden_token(name) for name in dir(module) if not name.startswith("_")
+        ), (
+            f"{module_name} carries no name the scan would have caught, so its exemption "
+            "is doing nothing and should be removed"
+        )
 
 
 def test_the_surface_detector_can_actually_find_a_forbidden_name():

@@ -7,6 +7,7 @@ from statistics import NormalDist
 import pytest
 
 from cfb_edge_finder.execution.evaluator import (
+    CANDIDATE_STATUSES,
     CompletionGateError,
     EvaluationStatus,
     _cutpoint,
@@ -65,7 +66,10 @@ def test_the_evaluator_does_not_stop_when_it_finds_a_good_bet(tmp_path):
         period_distributions={"full_game": PeriodDistribution(55.0, 3.0, 4.0, 4.0, 0.0)}
     )
     evaluation = evaluate_game(game, lopsided)
-    assert evaluation.status_counts.get(EvaluationStatus.POSITIVE_EV.value, 0) > 0
+    candidates = sum(
+        evaluation.status_counts.get(status, 0) for status in CANDIDATE_STATUSES
+    )
+    assert candidates > 0
     assert len(evaluation.rows) == game["counts"]["eligible"]
     assert evaluation.complete
 
@@ -86,7 +90,15 @@ def test_unpriceable_contracts_stay_visible_and_counted(tmp_path):
         if r["status"] == EvaluationStatus.UNPRICEABLE_FROM_HANDICAP.value
     ]
     assert unpriceable, "the fixture deliberately contains ties, first-TD and double-result markets"
-    assert len(unpriceable) == evaluation.unpriceable
+    # `unpriceable` is the sum of BOTH unpriceable buckets. The fixture carries
+    # no factual context, so its team-total families are also closed by the
+    # data-quality gate -- a second, separately named terminal bucket that the
+    # invariant counts and this assertion must not confuse with the first.
+    gated = [
+        r for r in evaluation.rows
+        if r["status"] == EvaluationStatus.UNPRICEABLE_INSUFFICIENT_DATA.value
+    ]
+    assert len(unpriceable) + len(gated) == evaluation.unpriceable
     for row in unpriceable:
         assert row["reason"]
         assert row["ticker"]
@@ -212,9 +224,11 @@ def test_the_required_edge_separates_positive_from_merely_positive(tmp_path):
     game = packet(tmp_path)
     generous = evaluate_game(game, handicap(), min_net_edge=0.0)
     strict = evaluate_game(game, handicap(), min_net_edge=0.95)
-    assert generous.status_counts.get(EvaluationStatus.POSITIVE_EV.value, 0) >= strict.status_counts.get(
-        EvaluationStatus.POSITIVE_EV.value, 0
-    )
+
+    def candidates(evaluation):
+        return sum(evaluation.status_counts.get(status, 0) for status in CANDIDATE_STATUSES)
+
+    assert candidates(generous) >= candidates(strict)
     assert strict.status_counts.get(EvaluationStatus.BELOW_REQUIRED_EDGE.value, 0) > 0
 
 
