@@ -99,6 +99,35 @@ def existing_keys(path: Path) -> set[str]:
     return {k for k in (source_bet_key_of(row) for row in read_rows(path)) if k is not None}
 
 
+#: What must agree between two observations of the same settlement before the
+#: second is treated as a harmless repeat. `settlement_id` is deliberately
+#: absent: it is minted from `source_bet_key` alone, so it cannot differ when
+#: the key matches and comparing it would prove nothing.
+SETTLEMENT_IDENTITY_FIELDS = (
+    "market_ticker",
+    "side",
+    "settlement_status",
+    "settled_at",
+    "result",
+    "gross_return",
+    "net_profit_loss",
+    "venue",
+)
+
+
+def _settlement_conflict(existing: dict, incoming: dict) -> list[str]:
+    """Field NAMES on which two settlements for one wager disagree.
+
+    Names only, never values: this runs inside a public repository's Actions
+    logs, and the whole point of the surrounding design is that a payout never
+    reaches one.
+    """
+    return [
+        name for name in SETTLEMENT_IDENTITY_FIELDS
+        if existing.get(name) != incoming.get(name)
+    ]
+
+
 def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
     """Append every settlement whose wager is not already settled on disk.
 
@@ -117,8 +146,11 @@ def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendR
     path = settlement_ledger_path(base_dir, season)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    on_disk = existing_keys(path)
-    seen: set[str] = set()
+    settled_rows = {
+        key: row for row in read_rows(path)
+        if (key := source_bet_key_of(row)) is not None
+    }
+    seen: dict[str, dict] = {}
     to_write: list[tuple[str, dict]] = []
     skipped = 0
 
@@ -129,10 +161,31 @@ def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendR
                 f"refusing to write an invalid settlement row: {'; '.join(problems)}"
             )
         key = source_bet_key_of(row)
-        if key is None or key in on_disk or key in seen:
+        if key is None:
             skipped += 1
             continue
-        seen.add(key)
+        already = settled_rows.get(key) or seen.get(key)
+        if already is not None:
+            # A SECOND OBSERVATION OF THE SAME SETTLEMENT IS A DUPLICATE.
+            # An IDENTICAL one is the no-op that makes re-running safe, and it
+            # is skipped in silence.
+            #
+            # A DIFFERING one is not a duplicate at all -- it is a restatement
+            # of money that is already recorded, and this store's guarantee is
+            # that a row is never superseded. Dropping it quietly would leave
+            # the ledger holding the first figure while the router believes the
+            # second, with nothing anywhere saying they disagreed. So it is
+            # REFUSED, loudly, for a person to resolve.
+            if _settlement_conflict(already, row):
+                raise ValueError(
+                    "refusing to write a settlement that CONTRADICTS one already "
+                    f"recorded for the same wager (fields: {_settlement_conflict(already, row)}). "
+                    "A market settles once; this store never supersedes a row, so a "
+                    "restated payout is a person's decision, not an append"
+                )
+            skipped += 1
+            continue
+        seen[key] = row
         to_write.append((key, row))
 
     if to_write:
