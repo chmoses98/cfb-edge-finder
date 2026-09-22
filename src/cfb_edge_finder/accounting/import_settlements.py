@@ -17,6 +17,28 @@ RE-RUNNING IS A NO-OP
 ----------------------
 ``store.append_settlements`` keys on ``source_bet_key`` because a market settles
 once, so a second pass over the same settlements writes nothing.
+
+A second pass carrying DIFFERENT money for a wager already settled is not a
+repeat, though, and is refused rather than skipped. See ``_settlement_conflict``.
+
+WHY THERE IS NO ``import_batch_id`` ON A SETTLEMENT ROW
+--------------------------------------------------------
+A wager row carries one: it is that row's provenance, and ``wager.validate``
+requires it. A settlement row does not, and that is a contract rather than an
+oversight.
+
+A settlement is not identified by the delivery that carried it. It is
+identified by THE WAGER IT SETTLES: ``source_bet_key`` is the join, the
+``settlement_id`` is minted from that key alone, and the row may not be written
+at all unless that wager is already in this ledger. A batch id would add a
+field that is not part of that identity, that this store would never key on,
+and that would be a claim about which router run happened to deliver a payout
+the exchange decided.
+
+``build_record`` therefore REFUSES a row carrying one, along with any other
+field this schema does not model. That refusal is load-bearing: it is what
+stops "just add the batch id" being a silent fix somewhere upstream, and
+`tests/test_accounting_settlements.py` pins it.
 """
 
 from __future__ import annotations
@@ -26,7 +48,15 @@ from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 from .settlement import SCHEMA_VERSION, WagerSettlement, validate
-from .store import append_settlements, existing_keys, ledger_path
+from .store import (
+    _settlement_conflict,
+    append_settlements,
+    existing_keys,
+    ledger_path,
+    read_rows,
+    settlement_ledger_path,
+    source_bet_key_of,
+)
 
 #: Prefix on every minted id, so a routed settlement is identifiable as one.
 ID_PREFIX = "stl"
@@ -87,8 +117,17 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
 
     # The wagers this ledger actually holds, read once.
     known_wagers = existing_keys(ledger_path(base_dir, season))
+    # And the settlements it already holds, so a SECOND, DIFFERENT observation
+    # of one is refused per row rather than aborting the batch at the store.
+    # Identical repeats are not looked at here at all -- they are the no-op
+    # that makes re-running safe, and the store reports them as duplicates.
+    settled_rows = {
+        key: row for row in read_rows(settlement_ledger_path(base_dir, season))
+        if (key := source_bet_key_of(row)) is not None
+    }
 
     built: list[dict] = []
+    built_by_key: dict[str, dict] = {}
     refusals: list[tuple[int, str]] = []
     # Per-row receipts, for the same reason the wager importer emits them: a
     # refusal that names only a row index cannot be acted on without the
@@ -105,6 +144,24 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
                     "repository has no record of would count in every total "
                     "while belonging to nothing"
                 )
+            # Already on disk, OR already built earlier in this same payload.
+            # Without the second, two contradicting rows in one batch reach the
+            # store together and abort all 41 with a ValueError instead of
+            # refusing the one row that is wrong.
+            recorded = settled_rows.get(record.source_bet_key) or built_by_key.get(
+                record.source_bet_key
+            )
+            if recorded is not None:
+                # FIELD NAMES, NEVER VALUES. This reason is printed, and this
+                # repository's Actions logs are public.
+                disagreements = _settlement_conflict(recorded, record.to_dict())
+                if disagreements:
+                    raise SettlementRefused(
+                        "a settlement for this wager is already recorded and this one "
+                        f"CONTRADICTS it on: {', '.join(disagreements)}. A market settles "
+                        "once and this ledger never supersedes a row, so a restated "
+                        "payout is a person's decision rather than an append"
+                    )
         except SettlementRefused as exc:
             refusals.append((index, str(exc)))
             receipts.append(
@@ -119,6 +176,7 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
             )
             continue
         built.append(record.to_dict())
+        built_by_key[record.source_bet_key] = record.to_dict()
         receipts.append(
             {
                 "row": index,
