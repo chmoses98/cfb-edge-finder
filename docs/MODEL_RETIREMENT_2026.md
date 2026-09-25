@@ -175,16 +175,44 @@ labelling.
 
 ## How to revive any of it
 
+Commenting out cron turned out NOT to be enough on its own: the
+independent cron-job.org job in `docs/EXTERNAL_SCHEDULER.md` kept
+dispatching `research-capture.yml` every 5 minutes after the pivot, and
+every run failed (CFBD quota exhausted, football state stale) until
+2026-09-25. Hibernation is therefore now recorded in one place,
+`src/cfb_edge_finder/research/hibernation.py`, and enforced twice:
+
+- **statically** — `tests/test_hibernated_workflow_triggers.py` fails if a
+  hibernated workflow gains any automatic trigger (schedule, push,
+  workflow_run, repository_dispatch, workflow_call, …) or if any other
+  workflow or script can dispatch or chain it;
+- **at run time** — the collector and conductor start with a
+  `hibernation-gate` job that refuses unattended runs (an
+  `EXTERNAL_SCHEDULE` dispatch, a conductor/bot dispatch, a live conductor
+  run) while the registry says `HIBERNATED`. A human's manual run of the
+  collector, or a conductor `dry_run`, always proceeds.
+
+Reviving is an explicit operator decision: follow the checklist at the top
+of `docs/EXTERNAL_SCHEDULER.md` (CFBD quota/credentials and football-state
+freshness first), then set the workflow `ACTIVE` in the registry and
+uncomment its schedule in the same reviewed change.
+
 ```bash
-# Re-enable a hibernated schedule: uncomment the `schedule:` block.
+# Re-enable a hibernated schedule: flip the registry AND uncomment the block.
+$EDITOR src/cfb_edge_finder/research/hibernation.py
 $EDITOR .github/workflows/research-capture.yml
 
 # Or just run one now, without changing anything:
 #   Actions -> "Research Capture (scheduled scanner)" -> Run workflow
 ```
 
-Two guards will notice if a schedule comes back, by design rather than by
+Three guards will notice if a schedule comes back, by design rather than by
 accident:
+
+- `tests/test_hibernated_workflow_triggers.py` fails for ANY automatic
+  trigger or dispatch path to a workflow the registry lists as
+  `HIBERNATED` — including the conductor, which the test below misses
+  because it holds `contents: read`.
 
 - `tests/test_trigger_reliability.py::test_the_live_catalog_is_the_only_scheduled_writer_now`
   fails, naming the workflow. That is the intended prompt to confirm the

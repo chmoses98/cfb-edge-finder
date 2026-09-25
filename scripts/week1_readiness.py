@@ -57,6 +57,7 @@ from cfb_edge_finder.research.heartbeat import (  # noqa: E402
     last_successful_run,
     load_heartbeats,
 )
+from cfb_edge_finder.research.hibernation import is_hibernated  # noqa: E402
 from cfb_edge_finder.research.timing import ALL_PREGAME_LABELS  # noqa: E402
 from cfb_edge_finder.research.trigger import (  # noqa: E402
     CLOSING_GUARD_LEAD_MINUTES,
@@ -380,14 +381,35 @@ FULL_COLLECTOR_RUNTIME_SECONDS = 55.0
 expensive case."""
 
 
-def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Findings, now: datetime) -> None:
+def section_trigger(
+    repo_dir: Path,
+    season: int,
+    rows: list[dict],
+    findings: Findings,
+    now: datetime,
+    *,
+    hibernated: bool | None = None,
+) -> None:
     """Trigger health, judged against football deadlines.
 
     Reported PER TRIGGER on purpose: a conductor chain that has silently
     stopped is invisible in an overall 'last run' figure whenever cron
     happens to have fired recently -- and it is the conductor, not cron,
-    that protects CLOSING."""
+    that protects CLOSING.
+
+    HIBERNATED IS NOT AN OUTAGE. While research/hibernation.py lists the
+    collector as HIBERNATED, no trigger is supposed to fire, so a quiet
+    collector, a missing EXTERNAL_SCHEDULE heartbeat, a checkpoint nobody
+    tried to capture, or the last heartbeat's failed schedule fetch are all
+    the intended state rather than findings. The numbers are still printed
+    exactly as before -- only the severity changes -- and the moment the
+    collector is set ACTIVE again every alarm below applies unchanged.
+    `hibernated` defaults to the registry; tests pass it explicitly."""
+    if hibernated is None:
+        hibernated = is_hibernated(CAPTURE_WORKFLOW.name)
     print("\n## Trigger health")
+    if hibernated:
+        print("  collector lifecycle           : HIBERNATED -- no unattended trigger is expected to fire")
     beats = load_heartbeats(heartbeat_sources(repo_dir, season))
     print(f"  heartbeat rows                : {len(beats)}")
     print(f"  primary trigger               : {TriggerType.EXTERNAL_SCHEDULE.value} (conductor chain)")
@@ -410,7 +432,9 @@ def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Fin
         print(f"  supported upcoming            : {latest.get('supported_upcoming_games')}")
         print(f"  next supported kickoff        : {latest.get('next_supported_kickoff')}")
         print(f"  conductor guard engages       : {latest.get('next_critical_checkpoint_at')}")
-        if ok is False:
+        if hibernated:
+            pass  # a stale heartbeat from a collector that is meant to be off
+        elif ok is False:
             findings.add(HIGH, "schedule_fetch_failed", f"last recorded fetch failed: {latest.get('detail')}")
         elif latest.get("schedule_state") == "FETCH_SUCCESS_EMPTY_SCHEDULE":
             findings.add(
@@ -471,6 +495,18 @@ def section_trigger(repo_dir: Path, season: int, rows: list[dict], findings: Fin
         max_dispatch_latency_seconds=MAX_DISPATCH_LATENCY_SECONDS,
         collector_runtime_seconds=FULL_COLLECTOR_RUNTIME_SECONDS,
     )
+    if hibernated:
+        print("  TRIGGER HEALTH                : HIBERNATED")
+        print(f"  (would be, if active)         : {health.value} -- {detail}")
+        print("  closing-risk state            : not collecting (hibernated by operator decision)")
+        findings.add(
+            LOW,
+            "collector_hibernated",
+            "Research Capture and its conductor are HIBERNATED (market-discovery pivot); "
+            "trigger alarms are off until an operator sets them ACTIVE",
+        )
+        return
+
     print(f"  TRIGGER HEALTH                : {health.value}")
     print(f"  reason                        : {detail}")
     print(f"  closing-risk state            : "
