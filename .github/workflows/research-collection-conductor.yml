@@ -43,6 +43,16 @@ name: Research Collection Conductor (trigger layer)
 # See docs/MODEL_RETIREMENT_2026.md for the full retirement plan, what is
 # preserved, and the one genuinely irreversible consequence (closing lines
 # stop accruing while this is hibernated).
+#
+# *** 2026-09-25: THE HIBERNATION GATE ***
+# With cron commented out, the remaining way to relight this chain was a
+# single manual dispatch: `self_continue` defaults to true and successors
+# inherit it, so one click became an unattended, self-relighting chain
+# dispatching the collector for hours. The `hibernation-gate` job now
+# refuses successor/bot runs, non-dispatch events, and any live (non
+# dry_run) run while src/cfb_edge_finder/research/hibernation.py lists this
+# workflow as HIBERNATED. `dry_run=true` (plan only, dispatches nothing)
+# stays available to a human.
 on:
   # Cron here is the RESTARTER, not the cadence. It only needs to relight
   # the chain if it ever breaks -- a job the flaky scheduler can do,
@@ -93,7 +103,25 @@ permissions:
   contents: read
 
 jobs:
+  hibernation-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse unattended or live runs while hibernated
+        id: gate
+        env:
+          GATE_WORKFLOW: research-collection-conductor.yml
+          GATE_EVENT_NAME: ${{ github.event_name }}
+          GATE_ACTOR: ${{ github.actor }}
+          GATE_DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python3 scripts/hibernation_gate.py
+
   conduct:
+    needs: hibernation-gate
+    if: ${{ needs.hibernation-gate.outputs.proceed == 'true' }}
     runs-on: ubuntu-latest
     # Below GitHub's 6h ceiling so the successor handoff happens before a
     # kill, never instead of it.

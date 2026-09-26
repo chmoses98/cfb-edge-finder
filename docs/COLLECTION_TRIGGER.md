@@ -1,5 +1,13 @@
 # Collection Trigger Reliability
 
+> **HIBERNATED since the 2026-09-17 market-discovery pivot.** The trigger
+> layer described here (external scheduler, `*/10` cron, conductor chain)
+> is switched off and must stay off while the research collector is
+> retired: see the status box at the top of `docs/EXTERNAL_SCHEDULER.md`
+> and `docs/MODEL_RETIREMENT_2026.md`. `EXTERNAL_SCHEDULE` dispatches and
+> conductor successor runs are refused by a run-time gate; this document is
+> kept as the design record for a deliberate future reactivation.
+
 How the collector gets invoked, why GitHub's cron alone is not enough,
 and what to do when something stops.
 

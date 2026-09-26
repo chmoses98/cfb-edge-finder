@@ -76,10 +76,25 @@ def test_ops_health_blocks_when_nothing_has_ever_run(data_dir):
     """No heartbeats at all: collection has never run, and the exit code
     must make that impossible to miss in a scheduled job. Note this is
     genuine failure, distinct from an intentionally wide quiet-period
-    interval, which is HEALTHY -- see tests/test_collection_protection.py."""
-    result = run(OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00")
+    interval, which is HEALTHY -- see tests/test_collection_protection.py.
+
+    `--assume-active` because the collector is HIBERNATED today, and a
+    hibernated collector that never runs is the intended state (next
+    test). The alarm for an ACTIVE collector is what this pins."""
+    result = run(
+        OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00", "--assume-active"
+    )
     assert result.returncode == 1
     assert "OVERALL: BLOCKED" in result.stdout
+
+
+def test_ops_health_does_not_block_on_a_hibernated_collector(data_dir):
+    """The same empty ledger with the collector HIBERNATED (the registry
+    default) is not an outage: exit 0, and the check says why."""
+    result = run(OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00")
+    assert result.returncode == 0, result.stdout
+    assert "OVERALL: BLOCKED" not in result.stdout
+    assert "HIBERNATED" in result.stdout
 
 
 def test_ops_health_reports_zero_settled_games_for_pending_settlements(data_dir):

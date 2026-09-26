@@ -1,5 +1,11 @@
 # Week 1 Runbook
 
+> **Historical (Week 1, 2026).** The research collector, its conductor and
+> the cron-job.org external scheduler referenced below are HIBERNATED since
+> the 2026-09-17 market-discovery pivot and must not be re-enabled without
+> the explicit operator decision described in `docs/EXTERNAL_SCHEDULER.md`.
+> The live CFB path is `kalshi-market-catalog.yml`.
+
 The operating procedure for the first live college-football weekend of
 the 2026 season.
 

@@ -1,8 +1,73 @@
-# Independent External Scheduling
+# Independent External Scheduling — HIBERNATED
 
-GitHub's schedule service is no longer the primary clock for prospective
-collection. This document explains why, what replaces it, and the exact
-setup required.
+> ## ⛔ STATUS: HIBERNATED / DISABLED (since the 2026-09-17 market-discovery pivot)
+>
+> **The cron-job.org job described below must NOT be enabled while the old
+> research collector is retired.** Everything after this box is a
+> historical record of how the scheduler *was* set up, kept so the
+> research infrastructure stays recoverable. It is **not** a to-do list.
+>
+> - **What happened.** The pivot (docs/MODEL_RETIREMENT_2026.md) commented
+>   out the GitHub cron on `research-capture.yml` and
+>   `research-collection-conductor.yml`, but this independent job was left
+>   running. Through 2026-09-25 it dispatched Research Capture every 5
+>   minutes with `trigger_source=EXTERNAL_SCHEDULE`; every run failed
+>   (`CFBD_QUOTA_EXHAUSTED`, quota remaining 0,
+>   `FOOTBALL_STATE_STALE_HARD`, `DEADLINE_AT_RISK`, exit 1) and emailed a
+>   failure notification — ~288 a day, for a model nothing reads.
+> - **Current state.** The cron-job.org job is paused/disabled by the
+>   operator outside GitHub. Inside the repository, Research Capture's
+>   `hibernation-gate` job now **refuses** any dispatch declaring
+>   `trigger_source=EXTERNAL_SCHEDULE` (and any conductor/bot or
+>   non-manual run) while `src/cfb_edge_finder/research/hibernation.py`
+>   lists it `HIBERNATED`. A refused run exits green with a
+>   `::warning::` annotation, so a scheduler that was never switched off
+>   still shows up in the Actions tab without re-creating the email storm.
+>   CI (`tests/test_hibernated_workflow_triggers.py`) fails if any
+>   automatic trigger or dispatch path to a hibernated workflow is
+>   reintroduced.
+> - **The live CFB path does not use this.** It is
+>   `kalshi-market-catalog.yml` (keyless, scheduled by GitHub, independent
+>   of the research collector). Nothing about the catalog depends on this
+>   scheduler.
+> - **Manual runs still work.** Actions → *Research Capture (scheduled
+>   scanner)* → Run workflow, with `trigger_source` blank or `MANUAL`.
+>
+> ### Reactivation requires an explicit operator decision
+>
+> Do **not** re-enable the external job on its own — with the registry
+> still `HIBERNATED` every dispatch is refused, and with the checks below
+> skipped every run fails. Reactivation is one deliberate, reviewed
+> change plus a checklist, in this order:
+>
+> 1. **Decide** that prospective research collection is wanted again, and
+>    record why (the model it fed is retired; docs/MODEL_RETIREMENT_2026.md
+>    says CLV research, if revived, should be built on the catalog
+>    instead).
+> 2. **CFBD quota and credentials first.** Confirm `CFBD_API_KEY` is still
+>    valid and that quota is available: read
+>    `data/research/cfbd_access/state.json` on the `research-data` branch
+>    (`access_state`, `cfbd_quota_remaining`, `cfbd_quota_resets_at`), or
+>    run *Validate CFBD Live (manual)*. At 2026-09-25 the Free-tier quota was
+>    1000/1000 used, resetting 2026-10-01T00:00Z. Do not reactivate into
+>    `CFBD_QUOTA_EXHAUSTED` — every run will fail closed.
+> 3. **Football-state freshness.** Run Research Capture once **manually**
+>    with `refresh_football_state=true` and confirm the run reports a
+>    fresh football state (not `FOOTBALL_STATE_STALE_HARD`) and an
+>    operational state that is not `DEADLINE_AT_RISK`.
+> 4. **Flip the registry** in `src/cfb_edge_finder/research/hibernation.py`
+>    to `ACTIVE` for the workflow(s) being revived, and update the tests
+>    that fail naming them, in the same PR.
+> 5. **Only then** resume the cron-job.org job (or uncomment the GitHub
+>    `schedule:` block). Watch the first few runs.
+
+---
+
+## Historical record (pre-pivot, 2026-08-28) — do not act on this
+
+GitHub's schedule service was, at the time, no longer the primary clock
+for prospective collection. The rest of this document explains why, what
+replaced it, and the setup that was used.
 
 ## The measured problem
 
@@ -157,10 +222,10 @@ starting dispatched runs promptly.
 
 | Layer | Role | Status |
 |---|---|---|
-| External scheduler (5 min) | **primary clock** | pending setup |
-| GitHub cron `*/10` | fallback | live but ~1.7% delivery |
-| Conductor `17 * * * *` | closing guard | never self-started |
-| Manual dispatch | emergency | live, proven |
+| External scheduler (5 min) | ~~primary clock~~ | **HIBERNATED — must stay disabled** |
+| GitHub cron `*/10` | fallback | **HIBERNATED** (commented out) |
+| Conductor `17 * * * *` | closing guard | **HIBERNATED** (cron commented out; gate refuses live/successor runs) |
+| Manual dispatch | emergency | still available |
 
 If the external scheduler stops, cron and manual remain. If GitHub Actions
 is down, all four are down together.
@@ -177,7 +242,7 @@ last success [GITHUB_SCHEDULE  ]: ...
 last success [MANUAL           ]: ...
 ```
 
-## Until this is live-proven
+## Until this is live-proven (historical, 2026-08-29)
 
 The manual plan for 2026-08-29 stands. For the 15:46–16:00Z window,
 dispatch **Research Capture** (not the conductor) with `no_push: false` at

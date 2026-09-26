@@ -83,6 +83,19 @@ name: Research Capture (scheduled scanner)
 # See docs/MODEL_RETIREMENT_2026.md for the full retirement plan, what is
 # preserved, and the one genuinely irreversible consequence (closing lines
 # stop accruing while this is hibernated).
+#
+# *** 2026-09-25: THE HIBERNATION GATE ***
+# Commenting out cron stopped GitHub's scheduler and nothing else. The
+# independent cron-job.org job (docs/EXTERNAL_SCHEDULER.md) kept
+# dispatching this workflow every 5 minutes with trigger_source=
+# EXTERNAL_SCHEDULE, and every run failed on CFBD_QUOTA_EXHAUSTED /
+# DEADLINE_AT_RISK -- a failure email every five minutes. The
+# `hibernation-gate` job below now refuses any unattended run (an
+# EXTERNAL_SCHEDULE dispatch, a conductor/bot dispatch, any non-dispatch
+# event) while src/cfb_edge_finder/research/hibernation.py lists this
+# workflow as HIBERNATED. A human pressing Run is never refused.
+# Reactivation = set it ACTIVE there, deliberately, after the checklist in
+# docs/EXTERNAL_SCHEDULER.md.
 on:
 #   schedule:
 #     - cron: "*/10 * * * *"
@@ -100,7 +113,8 @@ on:
         description: "Force a full live CFBD refresh of the durable football-state artifact"
         required: false
         default: "false"
-      # Set to EXTERNAL_SCHEDULE by the independent cron service. A
+      # Set to EXTERNAL_SCHEDULE by the independent cron service (now
+      # HIBERNATED -- the gate below refuses such a dispatch). A
       # dispatch made with a fine-grained PAT carries the token OWNER as
       # the actor, so an external scheduler is otherwise indistinguishable
       # from a human pressing Run -- which would hide a dead external
@@ -112,16 +126,40 @@ on:
         required: false
         default: ""
 
-concurrency:
-  group: research-data-write
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
 jobs:
-  scan-and-capture:
+  # Deliberately OUTSIDE the writers' concurrency group: a refused run must
+  # never queue behind, or displace a pending run of, the live Kalshi
+  # catalog, which holds the same group. Only the job that can write joins
+  # it. No install step: the gate is stdlib-only so a refused run costs
+  # seconds and spends no CFBD quota.
+  hibernation-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse unattended runs while hibernated
+        id: gate
+        env:
+          GATE_WORKFLOW: research-capture.yml
+          GATE_EVENT_NAME: ${{ github.event_name }}
+          GATE_ACTOR: ${{ github.actor }}
+          GATE_TRIGGER_SOURCE: ${{ github.event.inputs.trigger_source }}
+        run: python3 scripts/hibernation_gate.py
+
+  scan-and-capture:
+    needs: hibernation-gate
+    if: ${{ needs.hibernation-gate.outputs.proceed == 'true' }}
+    runs-on: ubuntu-latest
+    # Job-level so the gate above stays out of it; same single group and
+    # queue-never-cancel semantics as every other durable-store writer.
+    concurrency:
+      group: research-data-write
+      cancel-in-progress: false
     # Least-privilege: this job only needs write access to push to the
     # dedicated research-data branch, never to main and never anything
     # beyond `contents`. No Kalshi trading permission of any kind exists
