@@ -31,6 +31,7 @@ from cfb_edge_finder.decision.collection_protection import (  # noqa: E402
     assess_collection_protection,
 )
 from cfb_edge_finder.decision.ops_health import (  # noqa: E402
+    HealthCheck,
     OpsHealthReport,
     OpsState,
     check_closing_coverage,
@@ -45,6 +46,7 @@ from cfb_edge_finder.research.heartbeat import (  # noqa: E402
     last_successful_run,
     load_heartbeats,
 )
+from cfb_edge_finder.research.hibernation import is_hibernated  # noqa: E402
 from cfb_edge_finder.schemas.settlement import MarketSettlementStatus  # noqa: E402
 
 CAPTURE_WORKFLOW = REPO_ROOT / ".github/workflows/research-capture.yml"
@@ -266,6 +268,29 @@ def assess_protection(heartbeats: list[dict], now: datetime):
     )
 
 
+def protection_check(heartbeats: list[dict], now: datetime, *, hibernated: bool | None = None):
+    """The collection-protection check, hibernation-aware.
+
+    A collector the operator has HIBERNATED is supposed to be silent, so
+    COLLECTION_STOPPED against it is the intended state, not a BLOCKED
+    outage. The underlying assessment is still computed and shown; only its
+    severity is withheld, and only while research/hibernation.py says so --
+    an ACTIVE collector gets the unchanged mapping, CLOSING protection
+    included. `hibernated` defaults to the registry; tests pass it."""
+    if hibernated is None:
+        hibernated = is_hibernated(CAPTURE_WORKFLOW.name)
+    check = check_collection_protection(assess_protection(heartbeats, now))
+    if not hibernated:
+        return check
+    return HealthCheck(
+        check.check_id,
+        OpsState.HEALTHY,
+        f"[HIBERNATED] collector deliberately off (market-discovery pivot); "
+        f"if it were active this would read {check.state.value}: {check.detail}",
+        "",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-repo-dir", type=Path, default=REPO_ROOT)
@@ -280,6 +305,12 @@ def main() -> int:
         "default because no such minimum has been validated -- the check then "
         "refuses to claim sufficiency rather than inventing a bar.",
     )
+    parser.add_argument(
+        "--assume-active",
+        action="store_true",
+        help="Judge collection protection as if the collector were ACTIVE, ignoring its "
+        "HIBERNATED registry entry -- to rehearse a reactivation, or to test the alarm.",
+    )
     args = parser.parse_args()
 
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(UTC)
@@ -287,7 +318,9 @@ def main() -> int:
 
     heartbeats = load_heartbeats(heartbeat_sources(args.data_repo_dir, args.season))
     protection = assess_protection(heartbeats, now)
-    report.checks.append(check_collection_protection(protection))
+    report.checks.append(
+        protection_check(heartbeats, now, hibernated=False if args.assume_active else None)
+    )
 
     base_dir = args.data_repo_dir / "data" / "research"
     rows = load_rows(
