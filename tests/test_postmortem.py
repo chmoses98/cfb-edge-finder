@@ -318,6 +318,70 @@ def test_an_unreadable_ticker_is_unknown_rather_than_guessed():
     assert pm.game_key_of("no-dashes") == "unknown"
 
 
+def test_the_slate_date_cut_comes_from_the_row_not_the_execution_time():
+    """A Friday-night game bet after midnight UTC is Friday's wager. The
+    2026-09-26 postmortem had two such rows (Clemson at California, placed
+    02:24Z on the 26th, game_date 2026-09-25) and a report cut by execution
+    time would have counted them on Saturday."""
+    friday = wager("f", executed="2026-09-26T02:24:17Z")
+    friday["game_date"] = "2026-09-25"
+    saturday = wager("s", executed="2026-09-26T15:35:34Z")
+    saturday["game_date"] = "2026-09-26"
+    report = pm.build([friday, saturday], [settlement("f"), settlement("s")], 2026)
+    cut = {row["label"]: row for row in report.as_dict()["by_slate_date"]}
+    assert set(cut) == {"2026-09-25", "2026-09-26"}
+    assert cut["2026-09-25"]["wagers"] == 1
+    assert cut["2026-09-26"]["wagers"] == 1
+    assert "by slate date" in pm.render(report)
+
+
+def test_a_row_without_a_game_date_is_unknown_not_assigned():
+    orphan = wager("o")
+    del orphan["game_date"]
+    report = pm.build([orphan], [settlement("o")], 2026)
+    assert [row["label"] for row in report.as_dict()["by_slate_date"]] == ["unknown"]
+
+
+def test_the_execution_price_cut_reads_the_fill_price_on_the_row():
+    wagers = [
+        wager("lotto", price=0.22),
+        wager("dog", price=0.36),
+        wager("flip", price=0.50),
+        wager("fav", price=0.56),
+        wager("heavy", price=0.83),
+    ]
+    settlements = [settlement(w["source_bet_key"]) for w in wagers]
+    report = pm.build(wagers, settlements, 2026)
+    labels = {row["label"] for row in report.as_dict()["by_execution_price"]}
+    assert labels == {"0.00-0.30", "0.30-0.45", "0.45-0.55", "0.55-0.70", "0.70-1.00"}
+    assert "by execution price" in pm.render(report)
+
+
+def test_an_execution_price_outside_0_1_or_missing_is_unknown():
+    assert pm.execution_price_bucket(None) == "unknown"
+    assert pm.execution_price_bucket("0.5") == "unknown"
+    assert pm.execution_price_bucket(1.5) == "unknown"
+    assert pm.execution_price_bucket(-0.1) == "unknown"
+    assert pm.execution_price_bucket(0.0) == "0.00-0.30"
+    assert pm.execution_price_bucket(1.0) == "0.70-1.00"
+    assert pm.execution_price_bucket(0.45) == "0.45-0.55"
+
+
+def test_the_new_cuts_are_cuts_and_move_no_money():
+    """Same rule as every other cut: the overall figures are identical whether
+    or not the report is read by slate date or by price."""
+    wagers = [wager("a", price=0.53), wager("b", price=0.22)]
+    settlements = [settlement("a"), settlement("b", result="LOST", gross=0.0, net=-10.74)]
+    report = pm.build(wagers, settlements, 2026)
+    document = report.as_dict()
+    for cut in ("by_slate_date", "by_execution_price"):
+        assert sum(row["staked"] for row in document[cut]) == pytest.approx(document["overall"]["staked"])
+        assert sum(row["net_profit_loss"] for row in document[cut]) == pytest.approx(
+            document["overall"]["net_profit_loss"]
+        )
+        assert sum(row["wagers"] for row in document[cut]) == document["overall"]["wagers"]
+
+
 def test_a_thin_cut_says_it_is_thin_rather_than_reading_like_a_finding():
     report = pm.build([wager("a")], [settlement("a")], 2026)
     row = report.as_dict()["by_market_family"][0]
@@ -465,6 +529,36 @@ def test_the_cli_reports_from_the_ledger_alone(tmp_path):
     assert "FINAL" in result.stdout
     assert "wagers:      2" in result.stdout
     assert "no candidate artifacts supplied" in result.stdout
+
+
+def test_the_cli_reports_one_slate_by_game_date(tmp_path):
+    """The slate filter selects wagers by the row's own contest date. A
+    settlement for a wager outside the slate cannot contribute money, because
+    settlements are joined to the selected wagers by key."""
+    friday = wager("f", executed="2026-09-26T02:24:17Z")
+    friday["game_date"] = "2026-09-25"
+    saturday = wager("s", executed="2026-09-26T15:35:34Z")
+    saturday["game_date"] = "2026-09-26"
+    base = ledger_dir(tmp_path, [friday, saturday], [settlement("f"), settlement("s")])
+    out = tmp_path / "saturday.json"
+    result = run_cli(
+        "--base-dir", str(base), "--season", "2026",
+        "--game-date", "2026-09-26", "--json", str(out),
+    )
+    assert result.returncode == 0, result.stderr
+    assert "slate filter" in result.stdout
+    assert "1 of 2 wagers" in result.stdout
+    document = json.loads(out.read_text())
+    assert document["overall"]["wagers"] == 1
+    assert [row["label"] for row in document["by_slate_date"]] == ["2026-09-26"]
+
+
+def test_the_cli_says_so_when_no_wager_carries_the_requested_date(tmp_path):
+    base = ledger_dir(tmp_path, [wager("a")], [settlement("a")])
+    result = run_cli("--base-dir", str(base), "--season", "2026", "--game-date", "2030-01-01")
+    assert result.returncode == 0, result.stderr
+    assert "nothing to report" in result.stdout
+    assert "FINAL" not in result.stdout
 
 
 def test_the_cli_refuses_an_unreadable_ledger_line(tmp_path):
