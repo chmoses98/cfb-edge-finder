@@ -30,6 +30,26 @@ loss be read by:
 robustness tier · handicap confidence · factual data quality · recommended edge
 bucket · family · period · game · attribution state
 
+Two more cuts need no artifact at all, because they are read from the wager
+row itself: **slate date** (the row's `game_date`) and **execution price**
+(the fill price the venue reported, in five bands: under 0.30, 0.30–0.45,
+0.45–0.55, 0.55–0.70, 0.70 and up).
+
+## One slate at a time: `--game-date`
+
+```bash
+python scripts/cfb_postmortem.py --base-dir <accounting-data checkout> --season 2026 \
+    --game-date 2026-09-26
+```
+
+A slate postmortem is one day's card, and the season file cannot answer for
+it. `--game-date` (repeatable) selects wagers by the row's own contest date,
+never by execution time: the two Clemson–California wagers placed at 02:24Z on
+2026-09-26 carry `game_date: 2026-09-25` and belong to Friday. Settlements are
+joined to the selected wagers by key, so a settlement for a wager outside the
+slate cannot contribute money. A date no wager carries prints that fact and
+renders no report: zero wagers is not a result with an ROI.
+
 **Not one monetary figure changes.** Run it with and without: every total is
 the same number, and `tests/test_postmortem.py` asserts exactly that. If it
 were not true, the attribution layer would be able to move the accounting, and

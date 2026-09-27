@@ -99,6 +99,18 @@ def main(argv=None) -> int:
         ),
     )
     parser.add_argument("--json", default=None, help="also write the report as JSON")
+    parser.add_argument(
+        "--game-date",
+        action="append",
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "report only wagers whose contest date is one of these (repeatable). A slate "
+            "postmortem is one day's card, and the whole-season file cannot answer for it. "
+            "Selection is by the row's own game_date, never by execution time: a Friday-night "
+            "game bet at 02:24Z belongs to Friday."
+        ),
+    )
     args = parser.parse_args(argv)
 
     base = Path(args.base_dir)
@@ -116,6 +128,23 @@ def main(argv=None) -> int:
         # exactly that row and look complete doing it.
         print(f"the ledger could not be read: {exc}", file=sys.stderr)
         return EXIT_UNREADABLE
+
+    if args.game_date:
+        # Wagers are selected; settlements are joined by key inside `build`, so
+        # a settlement for a wager outside the slate cannot contribute money.
+        wanted = set(args.game_date)
+        total = len(wagers)
+        wagers = [w for w in wagers if w.get("game_date") in wanted]
+        print(
+            f"  slate filter: game_date in {sorted(wanted)} -- "
+            f"{len(wagers)} of {total} wagers in the ledger"
+        )
+        if not wagers:
+            # Not an error: a date with no wagers is a fact about the card.
+            # Printed rather than rendered as a report of zeros, because zero
+            # wagers is not a result with an ROI.
+            print("  no wagers in the ledger carry that contest date; nothing to report.")
+            return EXIT_OK
 
     recommendations = load_recommendations(
         Path(args.candidates) if args.candidates else None

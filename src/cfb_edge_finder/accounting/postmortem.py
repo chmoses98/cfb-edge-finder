@@ -88,6 +88,43 @@ def edge_bucket(edge: float | None) -> str:
     return "unknown"
 
 
+#: Execution-price buckets, in probability units. A grouping for a report and
+#: not a claim about which group is better -- the same rule as EDGE_BUCKETS.
+#: Boundaries follow how the owner's Kalshi card is actually shaped: a
+#: plus-money longshot, a plus-money underdog, a coin flip, a favourite, and a
+#: heavy favourite laid at 70 cents or more.
+EXECUTION_PRICE_BUCKETS = (
+    (0.0, 0.30),
+    (0.30, 0.45),
+    (0.45, 0.55),
+    (0.55, 0.70),
+    (0.70, 1.01),
+)
+
+
+def execution_price_bucket(price: Any) -> str:
+    """Which EXECUTION_PRICE_BUCKETS band a fill price falls in, or "unknown".
+
+    Read from the wager row's own `execution_price`, which is the price the
+    venue reported. A row without one is `unknown` rather than guessed."""
+    value = _number(price)
+    if value is None or value < 0 or value > 1:
+        return "unknown"
+    for low, high in EXECUTION_PRICE_BUCKETS:
+        if low <= value < high:
+            return f"{low:.2f}-{min(high, 1.0):.2f}"
+    return "unknown"
+
+
+def slate_date_of(wager: dict[str, Any]) -> str:
+    """The contest date the router recorded on the row, or "unknown".
+
+    This is the venue's own `game_date`, not the execution time: a wager placed
+    at 02:24Z on a Friday-night game belongs to Friday's slate."""
+    value = wager.get("game_date")
+    return value if isinstance(value, str) and value.strip() else "unknown"
+
+
 def market_family_of(ticker: str | None) -> tuple[str, str]:
     """(family, period) from the Kalshi series ticker, or ("unknown", "unknown").
 
@@ -207,6 +244,10 @@ class Postmortem:
     by_game: dict[str, Bucket] = field(default_factory=dict)
     by_market_family: dict[str, Bucket] = field(default_factory=dict)
     by_period: dict[str, Bucket] = field(default_factory=dict)
+    #: The two cuts a slate postmortem needs and that no artifact has to
+    #: supply: both are read from the wager row itself.
+    by_slate_date: dict[str, Bucket] = field(default_factory=dict)
+    by_execution_price: dict[str, Bucket] = field(default_factory=dict)
     by_robustness: dict[str, Bucket] = field(default_factory=dict)
     by_confidence: dict[str, Bucket] = field(default_factory=dict)
     by_data_quality: dict[str, Bucket] = field(default_factory=dict)
@@ -272,6 +313,8 @@ class Postmortem:
             "by_game": cuts(self.by_game),
             "by_market_family": cuts(self.by_market_family),
             "by_period": cuts(self.by_period),
+            "by_slate_date": cuts(self.by_slate_date),
+            "by_execution_price": cuts(self.by_execution_price),
             "by_robustness_tier": cuts(self.by_robustness),
             "by_confidence_tier": cuts(self.by_confidence),
             "by_data_quality_tier": cuts(self.by_data_quality),
@@ -342,6 +385,12 @@ def build(
         _accumulate(bucket(report.by_game, game), wager, settlement)
         _accumulate(bucket(report.by_market_family, family), wager, settlement)
         _accumulate(bucket(report.by_period, period), wager, settlement)
+        _accumulate(bucket(report.by_slate_date, slate_date_of(wager)), wager, settlement)
+        _accumulate(
+            bucket(report.by_execution_price, execution_price_bucket(wager.get("execution_price"))),
+            wager,
+            settlement,
+        )
 
         match = match_by_key.get(key)
         recommendation = (
@@ -558,6 +607,8 @@ def render(report: Postmortem) -> str:
 
     section("by market family", document["by_market_family"])
     section("by period", document["by_period"])
+    section("by slate date", document["by_slate_date"])
+    section("by execution price", document["by_execution_price"])
     section("by robustness tier", document["by_robustness_tier"])
     section("by confidence tier", document["by_confidence_tier"])
     section("by factual data-quality tier", document["by_data_quality_tier"])
