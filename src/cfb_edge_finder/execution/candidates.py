@@ -314,6 +314,10 @@ def _removal(loser: Expression, winner: Expression, reason: str) -> dict[str, An
     return {
         "ticker": loser.ticker,
         "game_key": loser.row.get("game_key"),
+        # The side and the price the loser would have been bought at, so the
+        # audit says what was NOT taken and at what, not just that it lost.
+        "best_side": loser.row.get("best_side"),
+        "executable_entry": loser.row.get("executable_entry"),
         "status": loser.row.get("status"),
         "net_edge": loser.row.get("net_edge"),
         "robustness": loser.robustness,

@@ -37,6 +37,22 @@ SCHEMA_VERSION = "cfb_wager_settlement.v1"
 
 SETTLED = "SETTLED"
 
+#: WHICH FORMULA PRODUCED THE NET FIGURE. Named by the router, which owns the
+#: attribution of a settlement to an order:
+#:
+#:   v1  net = gross - stake - fee_cost.  Every CFB settlement filed before
+#:       2026-09-28. The stake already contains the entry fee and Kalshi's
+#:       fee_cost IS that entry fee, so v1 charges it twice.
+#:   v2  net = gross - stake, once the exchange's own fee_cost is shown to
+#:       equal the entry fees of the owner's orders on that market.
+#:
+#: A row with no `economics_version` is a v1 row: every row written before
+#: the field existed was computed that way, and reading absence as anything
+#: else would rewrite history by interpretation.
+ECONOMICS_V1 = "router-settlement-economics.v1"
+ECONOMICS_V2 = "router-settlement-economics.v2"
+ECONOMICS_VERSIONS = (ECONOMICS_V1, ECONOMICS_V2)
+
 WON = "WON"
 LOST = "LOST"
 
@@ -84,8 +100,18 @@ class WagerSettlement:
 
     venue: str = "kalshi"
 
+    #: Present on a v2 row. Absent (None) on a v1 row, and the field is then
+    #: left OFF the written dict so a v1 row keeps the exact shape every row
+    #: before it had: the ledger is compared line by line, and a key that
+    #: appears only because the schema learned a word would read as a change
+    #: to rows that did not change.
+    economics_version: str | None = None
+
     def to_dict(self):
-        return asdict(self)
+        record = asdict(self)
+        if record.get("economics_version") is None:
+            record.pop("economics_version", None)
+        return record
 
 
 def validate(record: dict) -> list[str]:
@@ -115,6 +141,15 @@ def validate(record: dict) -> list[str]:
 
     if record.get("side") not in ("YES", "NO"):
         problems.append(f"side must be YES or NO; got {record.get('side')!r}")
+
+    version = record.get("economics_version")
+    if version is not None and version not in ECONOMICS_VERSIONS:
+        # An unknown contract is not "probably v2". A net computed by a formula
+        # this ledger has never heard of cannot be compared with anything.
+        problems.append(
+            f"economics_version must be one of {list(ECONOMICS_VERSIONS)} or absent; "
+            f"got {version!r}"
+        )
 
     if record.get("result") not in (None, WON, LOST):
         problems.append(

@@ -234,17 +234,19 @@ ATTRIBUTION_MODULES = frozenset(
     {
         "cfb_edge_finder.accounting.recommendation_link",
         "cfb_edge_finder.accounting.postmortem",
+        "cfb_edge_finder.accounting.decision_attribution",
     }
 )
 
 #: The functions that actually write a canonical row.
-LEDGER_WRITE_FUNCTIONS = ("append_wagers", "append_settlements")
+LEDGER_WRITE_FUNCTIONS = ("append_wagers", "append_settlements", "append_amendments")
 
 #: Every accounting module that can write, or that a writer runs.
 LEDGER_WRITING_MODULES = (
     "cfb_edge_finder.accounting.store",
     "cfb_edge_finder.accounting.wager",
     "cfb_edge_finder.accounting.settlement",
+    "cfb_edge_finder.accounting.economics",
     "cfb_edge_finder.accounting.import_routed_wagers",
     "cfb_edge_finder.accounting.import_settlements",
 )

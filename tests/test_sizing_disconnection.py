@@ -41,6 +41,11 @@ GUARDED_PACKAGES = (
     # could end up on the live path. `stake_placeholder` in its report is
     # a blank the operator fills in, and nothing here may compute one.
     "execution",
+    # Decision records: what the live workflow selected, persisted privately
+    # for the postmortem. It carries observed prices and bet-up-to figures,
+    # so it is guarded like execution: it records a decision and may not
+    # size one.
+    "decisions",
     "decision",
     "recommendation",
     "research",

@@ -32,6 +32,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from cfb_edge_finder.decisions import (
+    ENV_STORE,
+    PRIVATE_MARKER,
+    DecisionStore,
+    DecisionStoreUnavailable,
+    build_decision_record,
+)
 from cfb_edge_finder.execution.batching import (
     DEFAULT_BATCH_COST_BUDGET,
     DEFAULT_MAX_CONTEXT_BYTES,
@@ -72,6 +79,12 @@ from cfb_edge_finder.execution.shards import (
 from cfb_edge_finder.execution.slate import build_slate
 from cfb_edge_finder.execution.state import StateStore, eligible_ticker_hash, next_incomplete
 from cfb_edge_finder.execution.windows import DEFAULT_TIMEZONE, WINDOW_ORDER
+
+#: `candidates` exit codes for the decision record. Distinct from the gate's 3
+#: and the slate's 2 and 4, so a scripted caller can tell "no shortlist" from
+#: "a shortlist exists and no auditable record of it does".
+EXIT_NO_DECISION_STORE = 5
+EXIT_DECISION_RECORD_NOT_PERSISTED = 6
 
 DEFAULT_CATALOG_DIR = Path("data/live")
 DEFAULT_OUT_DIR = Path("data/execution/latest")
@@ -757,6 +770,21 @@ def cmd_candidates(args: argparse.Namespace) -> int:
             print(f"  {game_key:20} {why}", file=sys.stderr)
         return 3
 
+    # THE PRIVATE STORE IS RESOLVED BEFORE ANYTHING IS WRITTEN. A run that is
+    # going to fail to record its decision fails HERE, with nothing on disk to
+    # act on, rather than after producing a shortlist nobody can audit. The
+    # one way past this is to say so: --no-decision-record.
+    decision_store: DecisionStore | None = None
+    if not getattr(args, "no_decision_record", False):
+        try:
+            decision_store = DecisionStore.resolve(
+                getattr(args, "decision_store", None),
+                repo_root=Path(__file__).resolve().parents[3],
+            )
+        except DecisionStoreUnavailable as exc:
+            print(f"FATAL: no private decision store; nothing was written. {exc}", file=sys.stderr)
+            return EXIT_NO_DECISION_STORE
+
     try:
         artifact = build_candidate_artifact(
             _shard_doc.get("shard"),
@@ -784,13 +812,49 @@ def cmd_candidates(args: argparse.Namespace) -> int:
         for row in evaluation.rows
         if row.get("status") in CANDIDATE_STATUSES
     ]
+    reduction_ledger = build_reduction_ledger(
+        _shard_doc.get("shard"), label, reduce_candidates(rows_again)
+    )
     ledger_size = _write(
         out_dir / "candidates" / artifact["reduction_ledger_file"],
-        build_reduction_ledger(
-            _shard_doc.get("shard"), label, reduce_candidates(rows_again)
-        ),
+        reduction_ledger,
         compact=True,
     )
+
+    # THE DECISION RECORD, from this run's own artifacts and nothing regenerated.
+    decision_path: Path | None = None
+    if decision_store is not None:
+        try:
+            slate_doc = _read(out_dir / "cfb_execution_slate.json")
+        except (OSError, ValueError):
+            slate_doc = {}
+        batch_entry = next(
+            (b for b in _batch_manifest(out_dir).get("batches") or [] if b.get("batch") == label),
+            None,
+        )
+        try:
+            record = build_decision_record(
+                artifact=artifact,
+                reduction_ledger=reduction_ledger,
+                handicaps={key: payload.as_dict() for key, payload in handicaps.items()},
+                packets=packets,
+                slate=slate_doc,
+                batch_entry=batch_entry,
+                source_files={
+                    "candidates_file": str(path),
+                    "reduction_ledger_file": str(out_dir / "candidates" / artifact["reduction_ledger_file"]),
+                    "out_dir": str(out_dir),
+                },
+            )
+            decision_path = decision_store.write(record)
+        except (DecisionStoreUnavailable, ValueError, OSError) as exc:
+            print(
+                f"FATAL: the candidate artifact was written to {path} but NO DECISION RECORD "
+                f"exists for this run: {exc}",
+                file=sys.stderr,
+            )
+            return EXIT_DECISION_RECORD_NOT_PERSISTED
+
     reconciliation = artifact["reconciliation"]
     reduction = artifact["reduction"]
     print(f"{label}: {reconciliation['games']} games, "
@@ -816,6 +880,13 @@ def cmd_candidates(args: argparse.Namespace) -> int:
         f"  {out_dir}/candidates/{artifact['reduction_ledger_file']} "
         f"({ledger_size / 1e3:.1f} KB, every removal and its reason)"
     )
+    if decision_path is not None:
+        print(f"  decision record: {decision_path}")
+    else:
+        print(
+            "  NO DECISION RECORD: --no-decision-record was passed. The postmortem will be "
+            "unable to attribute any wager from this run to what it decided."
+        )
     return 0
 
 
@@ -1036,6 +1107,29 @@ def build_parser() -> argparse.ArgumentParser:
             "DISPLAY TRUNCATION ONLY, and it is recorded in the artifact when used. The reduction "
             "itself has no cap: every removed contract lost to a named survivor for a "
             "deterministic reason and is in the reduction ledger."
+        ),
+    )
+    # THE DECISION RECORD. Every candidates run persists what it decided to a
+    # PRIVATE store, or says in so many words that it is running without one.
+    # There is no silent third state: an unconfigured store is a refusal
+    # before any artifact is written, and a failed write after the artifact
+    # exists is a non-zero exit that names the missing record.
+    candidates.add_argument(
+        "--decision-store",
+        default=None,
+        help=(
+            f"directory of the PRIVATE decision store (default: ${ENV_STORE}). Must be outside "
+            f"this repository and carry a {PRIVATE_MARKER} marker. The run's decision record -- "
+            "theses, every candidate evaluated, the survivors, decision-time prices, bet-up-to "
+            "-- is written there atomically for the postmortem to read."
+        ),
+    )
+    candidates.add_argument(
+        "--no-decision-record",
+        action="store_true",
+        help=(
+            "run WITHOUT persisting a decision record. The absence is then a stated choice; "
+            "the run prints that no auditable record exists."
         ),
     )
     candidates.set_defaults(func=cmd_candidates)

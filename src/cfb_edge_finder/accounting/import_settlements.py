@@ -47,9 +47,17 @@ import hashlib
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
+from .economics import (
+    AmendmentRefused,
+    build_amendment,
+    economics_version_of,
+    same_correction,
+)
 from .settlement import SCHEMA_VERSION, WagerSettlement, validate
 from .store import (
     _settlement_conflict,
+    amendments_ledger_path,
+    append_amendments,
     append_settlements,
     existing_keys,
     ledger_path,
@@ -57,6 +65,12 @@ from .store import (
     settlement_ledger_path,
     source_bet_key_of,
 )
+
+#: Who filed an amendment this importer produced. Provenance, not identity:
+#: the router's live v2 row and the offline backfill derive the SAME amendment
+#: id and the same figures, and `same_correction` ignores this field so the two
+#: routes agree on one row.
+AMENDMENT_PROVENANCE = "kalshi-bet-router settle-wagers via cfb-edge-finder import_settlements"
 
 #: Prefix on every minted id, so a routed settlement is identifiable as one.
 ID_PREFIX = "stl"
@@ -98,6 +112,9 @@ def build_record(row: dict) -> WagerSettlement:
         net_profit_loss=row.get("net_profit_loss"),
         refusals=list(row.get("refusals") or []),
         venue=row.get("venue") or "kalshi",
+        # Present only on a v2 row. A v1 destination row never carried it, and
+        # `to_dict` leaves it off when absent, so a v1 row keeps its shape.
+        economics_version=row.get("economics_version"),
     )
 
     problems = validate(record.to_dict())
@@ -125,9 +142,18 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
         key: row for row in read_rows(settlement_ledger_path(base_dir, season))
         if (key := source_bet_key_of(row)) is not None
     }
+    # And the corrections already filed, keyed by amendment id, so a repeat of
+    # one is a DUPLICATE_NOOP and a contradiction of one is refused per row.
+    filed_amendments = {
+        row["amendment_id"]: row
+        for row in read_rows(amendments_ledger_path(base_dir, season))
+        if isinstance(row.get("amendment_id"), str)
+    }
 
     built: list[dict] = []
     built_by_key: dict[str, dict] = {}
+    amendments: list[dict] = []
+    amendments_by_id: dict[str, dict] = {}
     refusals: list[tuple[int, str]] = []
     # Per-row receipts, for the same reason the wager importer emits them: a
     # refusal that names only a row index cannot be acted on without the
@@ -154,7 +180,63 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
             if recorded is not None:
                 # FIELD NAMES, NEVER VALUES. This reason is printed, and this
                 # repository's Actions logs are public.
-                disagreements = _settlement_conflict(recorded, record.to_dict())
+                incoming = record.to_dict()
+                disagreements = _settlement_conflict(recorded, incoming)
+                if disagreements and economics_version_of(recorded) != economics_version_of(incoming):
+                    # A LATER ECONOMICS CONTRACT for a settlement already filed.
+                    # Never a rewrite: an append-only amendment that names the
+                    # row it corrects, or a refusal naming why it cannot.
+                    try:
+                        amendment = build_amendment(
+                            recorded,
+                            incoming,
+                            provenance=AMENDMENT_PROVENANCE,
+                            evidence={
+                                "source": "router settlement row",
+                                "router_refusals": list(incoming.get("refusals") or []),
+                            },
+                        )
+                    except AmendmentRefused as exc:
+                        raise SettlementRefused(
+                            "a settlement for this wager is already recorded under "
+                            f"{economics_version_of(recorded)}, this one is under "
+                            f"{economics_version_of(incoming)}, they differ on "
+                            f"{', '.join(disagreements)}, and the difference is not an "
+                            f"admissible correction: {exc}"
+                        ) from exc
+                    ident = amendment["amendment_id"]
+                    already = filed_amendments.get(ident) or amendments_by_id.get(ident)
+                    if already is not None:
+                        if not same_correction(already, amendment):
+                            raise SettlementRefused(
+                                "a DIFFERENT correction is already filed for this wager "
+                                "under the same contract; two derivations disagree about "
+                                "the money and a person has to decide"
+                            )
+                        receipts.append(
+                            {
+                                "row": index,
+                                "source_bet_key": record.source_bet_key,
+                                "settlement_id": record.settlement_id,
+                                "amendment_id": ident,
+                                "duplicate_status": "DUPLICATE_NOOP",
+                                "success": True,
+                            }
+                        )
+                        continue
+                    amendments.append(amendment)
+                    amendments_by_id[ident] = amendment
+                    receipts.append(
+                        {
+                            "row": index,
+                            "source_bet_key": record.source_bet_key,
+                            "settlement_id": record.settlement_id,
+                            "amendment_id": ident,
+                            "duplicate_status": "CORRECTED",
+                            "success": True,
+                        }
+                    )
+                    continue
                 if disagreements:
                     raise SettlementRefused(
                         "a settlement for this wager is already recorded and this one "
@@ -188,6 +270,7 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
         )
 
     result = append_settlements(base_dir, season, built) if built else None
+    amended = append_amendments(base_dir, season, amendments) if amendments else None
 
     written_keys = set(result.keys_written) if result else set()
     for receipt in receipts:
@@ -203,5 +286,8 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
         "refused": len(refusals),
         "refusals": refusals,
         "keys_written": list(result.keys_written) if result else [],
+        "amendments_written": amended.written if amended else 0,
+        "amendments_already_present": amended.skipped_duplicate if amended else 0,
+        "amendment_ids_written": list(amended.keys_written) if amended else [],
         "rows": receipts,
     }

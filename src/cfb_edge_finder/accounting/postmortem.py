@@ -45,10 +45,15 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
+from cfb_edge_finder.accounting.economics import (
+    apply_amendments,
+    economics_version_of,
+)
 from cfb_edge_finder.accounting.recommendation_link import (
     MatchResult,
     MatchState,
 )
+from cfb_edge_finder.accounting.settlement import ECONOMICS_V1
 
 SETTLED = "SETTLED"
 
@@ -258,6 +263,14 @@ class Postmortem:
     price_vs_recommended: dict[str, Any] = field(default_factory=dict)
     issue_categories: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     unit: float | None = None
+    #: Which economics the money above is stated under. When amendments exist,
+    #: every figure in this report is CANONICAL (the corrected contract) and
+    #: this block also carries the as-filed total, so the correction is a
+    #: number a reader can see rather than a formula they have to trust.
+    economics: dict[str, Any] = field(default_factory=dict)
+    #: Decision-record attribution, when a private decision store was read.
+    #: A list of per-wager entries; see `decision_attribution.py`.
+    decision_attribution: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_final(self) -> bool:
@@ -326,6 +339,8 @@ class Postmortem:
             "recommendation_matching": self.match_counts,
             "price_vs_recommended": self.price_vs_recommended,
             "issue_categories": self.issue_categories,
+            "economics": self.economics,
+            "decision_attribution": self.decision_attribution,
         }
 
 
@@ -337,14 +352,38 @@ def build(
     matches: MatchResult | None = None,
     recommendations: list[Any] | None = None,
     unit: float | None = None,
+    amendments: list[dict[str, Any]] | None = None,
+    decision_attribution: dict[str, Any] | None = None,
 ) -> Postmortem:
     """The whole report.
 
     `matches` and `recommendations` add CUTS. They never add or change money:
     every figure is accumulated from the wager row and its settlement row, and
     a bet with no recommendation simply lands in the `unattributed` bucket
-    with its own economics intact."""
+    with its own economics intact.
+
+    `amendments` DO change money, and are the one input that may: an amendment
+    is the ledger's own append-only correction of a settlement's economics,
+    filed by the same importer that files settlements. With amendments the
+    report is stated under the CANONICAL (corrected) economics; the as-filed
+    total is carried beside it in `economics`, never lost."""
     report = Postmortem(season=season, unit=unit)
+
+    # Only the settlements of the wagers in THIS report. A slate report reads
+    # the whole season's settlement file, and an economics block over rows the
+    # report does not otherwise count would state a correction for money it
+    # never shows.
+    in_scope = {w.get("source_bet_key") for w in wagers if isinstance(w, dict)}
+    filed_settlements = [
+        s for s in settlements if isinstance(s, dict) and s.get("source_bet_key") in in_scope
+    ]
+    if amendments:
+        settlements = apply_amendments(filed_settlements, amendments)
+    else:
+        settlements = filed_settlements
+    report.economics = _economics_block(filed_settlements, settlements, amendments or [])
+    if decision_attribution:
+        report.decision_attribution = dict(decision_attribution)
 
     by_key = {
         s.get("source_bet_key"): s
@@ -561,6 +600,61 @@ def build(
     return report
 
 
+def _economics_block(
+    filed: list[dict[str, Any]],
+    canonical: list[dict[str, Any]],
+    amendments: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Counts by contract and the as-filed versus canonical totals.
+
+    Both totals are computed only over settlements whose net is ESTABLISHED
+    in that view, and each says how many it covers, because a difference
+    between two totals over different denominators is not a fee effect."""
+    def established_total(rows: list[dict[str, Any]]) -> tuple[float, int, int]:
+        total, established, unestablished = 0.0, 0, 0
+        for row in rows:
+            value = _number(row.get("net_profit_loss"))
+            if value is None:
+                unestablished += 1
+            else:
+                total += value
+                established += 1
+        return round(total, 4), established, unestablished
+
+    filed_total, filed_established, filed_unestablished = established_total(filed)
+    canonical_total, canonical_established, canonical_unestablished = established_total(canonical)
+    amended = sum(1 for row in canonical if row.get("canonical_amendment_id"))
+    by_contract: dict[str, int] = {}
+    for row in filed:
+        version = economics_version_of(row)
+        by_contract[version] = by_contract.get(version, 0) + 1
+    same_denominator = filed_established == canonical_established
+    return {
+        "filed_rows_by_contract": dict(sorted(by_contract.items())),
+        "amendment_rows": len(amendments),
+        "amended_settlements": amended,
+        "canonical_basis": (
+            "each settlement under its most advanced filed contract; an amended v1 row is "
+            "stated at its amendment's corrected figures"
+            if amended
+            else "as filed; no amendment applies"
+        ),
+        "as_filed_net_profit_loss": filed_total,
+        "as_filed_established": filed_established,
+        "as_filed_unestablished": filed_unestablished,
+        "canonical_net_profit_loss": canonical_total,
+        "canonical_established": canonical_established,
+        "canonical_unestablished": canonical_unestablished,
+        # Stated only over the same denominator. If v2 established a net that
+        # v1 had refused, the totals cover different rows and the difference
+        # is not purely the fee treatment; then it is None, not a guess.
+        "difference_from_fee_treatment": (
+            round(canonical_total - filed_total, 4) if same_denominator and amended else None
+        ),
+        "v1_contract": ECONOMICS_V1,
+    }
+
+
 def render(report: Postmortem) -> str:
     document = report.as_dict()
     overall = document["overall"]
@@ -603,6 +697,29 @@ def render(report: Postmortem) -> str:
             lines.append(
                 f"    {row['label']:34} n={row['wagers']:3} settled={row['settled']:3} "
                 f"{money}{note}"
+            )
+
+    economics = document.get("economics") or {}
+    if economics:
+        lines.extend(["", "  economics:"])
+        lines.append(f"    filed rows by contract:    {economics['filed_rows_by_contract']}")
+        lines.append(f"    amendment rows:            {economics['amendment_rows']}")
+        lines.append(f"    amended settlements:       {economics['amended_settlements']}")
+        lines.append(f"    basis:                     {economics['canonical_basis']}")
+        if economics["amended_settlements"]:
+            lines.append(
+                f"    net P&L canonical:         {economics['canonical_net_profit_loss']:+.2f}"
+                f"  ({economics['canonical_established']} established)"
+            )
+            lines.append(
+                f"    net P&L as filed:          {economics['as_filed_net_profit_loss']:+.2f}"
+                f"  ({economics['as_filed_established']} established)"
+            )
+            diff = economics["difference_from_fee_treatment"]
+            lines.append(
+                "    difference (fee treatment):"
+                + (f" {diff:+.2f}" if diff is not None else
+                   " not stated -- the two totals do not cover the same rows")
             )
 
     section("by market family", document["by_market_family"])

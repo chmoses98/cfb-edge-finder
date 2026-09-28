@@ -35,6 +35,34 @@ row itself: **slate date** (the row's `game_date`) and **execution price**
 (the fill price the venue reported, in five bands: under 0.30, 0.30–0.45,
 0.45–0.55, 0.55–0.70, 0.70 and up).
 
+## Canonical economics
+
+Money is stated under the **canonical** contract: each settlement at its most
+advanced filed economics. Where `settlement_amendments/<season>.jsonl` carries a
+v2 correction of a v1 row, the report uses the corrected net and prints the
+as-filed total beside it, with the count of amended settlements and the
+difference attributable to the fee treatment. The v1 rows themselves are never
+touched. See `docs/SETTLEMENT_ECONOMICS.md`.
+
+## Attribution from the private decision store: `--decisions`
+
+```bash
+python scripts/cfb_postmortem.py --base-dir <accounting-data checkout> --season 2026 \
+    --decisions "$CFB_DECISION_STORE"
+```
+
+Reads every decision record the live workflow wrote (see
+`docs/DECISION_RECORDS.md`) and matches each wager to the decision candidate
+that preceded it: exact market and side, same game, a record created before
+the order and before kickoff, and among several runs the nearest earlier one.
+Ties are `ambiguous` and stay so. The report then shows, per matched wager, the
+thesis, opposing case, bet-up-to, decision-time price, fill price and delta,
+whether the fill stayed inside the bet-up-to, tier and confidence, and the
+alternatives the same record carried for that game. The decision records also
+supply the tier cuts, replacing `--candidates` when both are given. No monetary
+figure depends on any of it, and a store that cannot be read is a refusal
+(exit 2), not an unattributed report.
+
 ## One slate at a time: `--game-date`
 
 ```bash

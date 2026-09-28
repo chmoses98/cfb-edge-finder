@@ -305,11 +305,16 @@ def test_a_settlement_row_carrying_an_import_batch_id_is_refused():
 
 def test_the_canonical_identity_of_a_settlement_row_is_exactly_these_fields():
     record = build_record(ROUTER_ROW).to_dict()
+    # A v1 row -- every row filed before 2026-09-28 -- has EXACTLY these keys.
+    # `economics_version` is written only on a v2 row (see the test below), so
+    # the rows already on disk keep the shape they were filed with.
     assert set(record) == {
         "settlement_id", "schema_version", "source_bet_key", "market_ticker",
         "side", "settlement_status", "settled_at", "result",
         "gross_return", "net_profit_loss", "refusals", "venue",
     }
+    v2 = build_record({**ROUTER_ROW, "economics_version": "router-settlement-economics.v2"}).to_dict()
+    assert set(v2) == set(record) | {"economics_version"}
     # Required, and each one is refused when absent -- see validate().
     for name in ("settlement_id", "source_bet_key", "market_ticker", "side",
                  "settlement_status", "settled_at"):
