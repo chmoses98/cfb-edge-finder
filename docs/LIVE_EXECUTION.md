@@ -29,7 +29,11 @@ UTC Saturday). So:
    every candidate evaluated, decision-time prices, bet-up-to — to the
    PRIVATE store named by `CFB_DECISION_STORE`, and refuses to run without
    one unless told `--no-decision-record`. That record is what the
-   postmortem later attributes each wager to. See `docs/DECISION_RECORDS.md`.
+   postmortem later attributes each wager to. One-time setup on this machine:
+   `python -m cfb_edge_finder.execution decision-store init ~/private-cfb-decisions`,
+   export the variable in your shell profile, then
+   `python -m cfb_edge_finder.execution decision-store check`. See
+   `docs/DECISION_RECORDS.md`.
 4. Place whatever you want on Kalshi, by hand.
 
 Everything after that is automatic: the router records the wager into

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -732,6 +733,46 @@ def cmd_report(args: argparse.Namespace) -> int:
 # ------------------------------------------------------- candidates
 
 
+def cmd_decision_store(args: argparse.Namespace) -> int:
+    """`decision-store init PATH` creates the private store; `decision-store
+    check` says whether the configured one is usable.
+
+    Both exist so the owner's one-time setup is a single verified command and
+    so "is the store configured on THIS machine?" has an answer that does not
+    require a slate. Exit 0 when usable, EXIT_NO_DECISION_STORE otherwise.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    try:
+        if args.action == "init":
+            store = DecisionStore.initialise(args.path, repo_root=repo_root)
+        else:
+            store = DecisionStore.resolve(getattr(args, "decision_store", None), repo_root=repo_root)
+    except DecisionStoreUnavailable as exc:
+        print(f"DECISION STORE UNUSABLE: {exc}", file=sys.stderr)
+        return EXIT_NO_DECISION_STORE
+
+    records = list(store.records())
+    problems = store.problems()
+    print(f"decision store: {store.root}")
+    print(f"  marker:   {PRIVATE_MARKER} present")
+    print(f"  records:  {len(records)}")
+    if records:
+        latest = max((str(r.get("created_at") or "") for r in records), default="")
+        print(f"  latest:   {latest}")
+    print(f"  problems: {len(problems)}")
+    for problem in problems[:20]:
+        print(f"    {problem}")
+    configured = os.environ.get(ENV_STORE, "").strip()
+    if configured and Path(configured).expanduser().exists() and Path(configured).expanduser().resolve() == store.root:
+        print(f"  {ENV_STORE} points here in this shell")
+    else:
+        print(f"  {ENV_STORE} is NOT set to this store in this shell. To make it so wherever")
+        print("  `candidates` is launched (a login shell profile for a terminal; the launcher's")
+        print("  own environment for anything else):")
+        print(f"    export {ENV_STORE}={store.root}")
+    return 0 if not problems else EXIT_NO_DECISION_STORE
+
+
 def cmd_candidates(args: argparse.Namespace) -> int:
     """The small artifact a final review reads, for ONE batch or one shard.
 
@@ -1133,6 +1174,18 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     candidates.set_defaults(func=cmd_candidates)
+
+    dstore = sub.add_parser(
+        "decision-store",
+        help="create (init PATH) or verify (check) the PRIVATE decision store `candidates` writes to",
+    )
+    dscope = dstore.add_subparsers(dest="action", required=True)
+    dinit = dscope.add_parser("init", help="create the directory and its marker, OUTSIDE every public checkout")
+    dinit.add_argument("path")
+    dinit.set_defaults(func=cmd_decision_store)
+    dcheck = dscope.add_parser("check", help=f"verify ${ENV_STORE} (or --decision-store) is usable")
+    dcheck.add_argument("--decision-store", default=None)
+    dcheck.set_defaults(func=cmd_decision_store)
 
     batches = sub.add_parser("batches", help="list handicap batches and what is still open")
     common(batches)
