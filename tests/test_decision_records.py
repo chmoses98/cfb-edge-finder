@@ -472,3 +472,86 @@ def test_the_postmortem_refuses_an_unusable_decision_store(tmp_path):
                              "--decisions", str(tmp_path / "missing")], capture_output=True, text=True)
     assert result.returncode == 2
     assert "decision store" in result.stderr
+
+
+# ------------------------------------------------- decision-store init / check
+#
+# The owner's one-time setup is ONE verified command, and "is the store
+# configured on THIS machine?" has an answer that needs no slate.
+
+
+def test_decision_store_init_creates_a_marked_store_outside_the_repository(tmp_path, capsys):
+    target = tmp_path / "private-cfb-decisions"
+    assert main(["decision-store", "init", str(target)]) == 0
+    assert (target / PRIVATE_MARKER).is_file()
+    out = capsys.readouterr().out
+    assert f"decision store: {target.resolve()}" in out
+    assert "records:  0" in out
+    assert f"export CFB_DECISION_STORE={target.resolve()}" in out
+
+
+def test_decision_store_init_is_idempotent(tmp_path):
+    target = tmp_path / "private-cfb-decisions"
+    assert main(["decision-store", "init", str(target)]) == 0
+    marker_bytes = (target / PRIVATE_MARKER).read_bytes()
+    assert main(["decision-store", "init", str(target)]) == 0
+    assert (target / PRIVATE_MARKER).read_bytes() == marker_bytes
+
+
+def test_decision_store_init_refuses_a_path_inside_the_repository_and_creates_nothing(capsys):
+    inside = ROOT / "data" / "a-private-store-attempt"
+    assert not inside.exists()
+    try:
+        assert main(["decision-store", "init", str(inside)]) == EXIT_NO_DECISION_STORE
+        assert not inside.exists(), "a refused init must leave no directory behind"
+        assert "PUBLIC" in capsys.readouterr().err
+    finally:
+        if inside.exists():
+            (inside / PRIVATE_MARKER).unlink(missing_ok=True)
+            inside.rmdir()
+
+
+def test_decision_store_init_refuses_a_checkout_of_a_public_repository(tmp_path, capsys):
+    clone = tmp_path / "clone"
+    clone.mkdir()
+    subprocess.run(["git", "init", "-q", str(clone)], check=True)
+    subprocess.run(["git", "-C", str(clone), "remote", "add", "origin",
+                    "https://github.com/chmoses98/kalshi-bet-router.git"], check=True)
+    target = clone / "decisions"
+    assert main(["decision-store", "init", str(target)]) == EXIT_NO_DECISION_STORE
+    assert not target.exists()
+    assert "PUBLIC" in capsys.readouterr().err
+
+
+def test_decision_store_check_fails_closed_when_nothing_is_configured(monkeypatch, capsys):
+    monkeypatch.delenv("CFB_DECISION_STORE", raising=False)
+    assert main(["decision-store", "check"]) == EXIT_NO_DECISION_STORE
+    assert "no private decision store is configured" in capsys.readouterr().err
+
+
+def test_decision_store_check_reads_the_configured_store(tmp_path, monkeypatch, capsys):
+    root = private_store(tmp_path)
+    monkeypatch.setenv("CFB_DECISION_STORE", str(root))
+    assert main(["decision-store", "check"]) == 0
+    out = capsys.readouterr().out
+    assert f"decision store: {root.resolve()}" in out
+    assert "CFB_DECISION_STORE points here in this shell" in out
+
+
+def test_decision_store_check_counts_the_records_a_real_run_wrote(tmp_path, monkeypatch, capsys):
+    root = private_store(tmp_path)
+    monkeypatch.setenv("CFB_DECISION_STORE", str(root))
+    out, shard_name = prepared(tmp_path)
+    assert candidates(out, shard_name) == 0
+    assert main(["decision-store", "check"]) == 0
+    text = capsys.readouterr().out
+    assert "records:  1" in text
+    assert "problems: 0" in text
+
+
+def test_decision_store_check_refuses_a_store_without_a_marker(tmp_path, monkeypatch, capsys):
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    monkeypatch.setenv("CFB_DECISION_STORE", str(bare))
+    assert main(["decision-store", "check"]) == EXIT_NO_DECISION_STORE
+    assert PRIVATE_MARKER in capsys.readouterr().err

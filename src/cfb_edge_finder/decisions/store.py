@@ -134,6 +134,12 @@ class DecisionStore:
                 "a private drive); it is the operator's statement that the store may hold the "
                 "prices and sizes of their decisions"
             )
+        cls.refuse_public_location(root, repo_root)
+        return cls(root)
+
+    @staticmethod
+    def refuse_public_location(root: Path, repo_root: Path | None) -> None:
+        """Raise unless `root` is outside every public checkout this system knows."""
         store_top = _git_toplevel(root)
         repo_top = _git_toplevel(repo_root) if repo_root is not None else None
         if store_top is not None and repo_top is not None and store_top == repo_top:
@@ -148,7 +154,35 @@ class DecisionStore:
                 f"the decision store {root} is a checkout of a PUBLIC repository ({remote}); "
                 "refusing to write a decision record there"
             )
-        return cls(root)
+
+    @classmethod
+    def initialise(cls, path: str, *, repo_root: Path | None = None) -> DecisionStore:
+        """Create a private store at `path`: the directory and its marker.
+
+        The location is checked BEFORE anything is created, so a path inside a
+        public checkout leaves no directory and no marker behind. Idempotent:
+        an existing, valid store is returned unchanged.
+        """
+        configured = (path or "").strip()
+        if not configured:
+            raise DecisionStoreUnavailable("a path for the private decision store is required")
+        root = Path(configured).expanduser()
+        probe = root
+        while not probe.exists() and probe.parent != probe:
+            probe = probe.parent
+        cls.refuse_public_location(probe.resolve(), repo_root)
+        if root.exists() and not root.is_dir():
+            raise DecisionStoreUnavailable(f"{root} exists and is not a directory")
+        root.mkdir(parents=True, exist_ok=True)
+        root = root.resolve()
+        cls.refuse_public_location(root, repo_root)
+        marker = root / PRIVATE_MARKER
+        if not marker.exists():
+            marker.write_text(
+                "This directory holds cfb_decision_record files: the prices and sizes of the "
+                "owner's decisions. It is PRIVATE. Never add it to a public repository.\n"
+            )
+        return cls.resolve(str(root), env={}, repo_root=repo_root)
 
     # -------------------------------------------------------------- write
 

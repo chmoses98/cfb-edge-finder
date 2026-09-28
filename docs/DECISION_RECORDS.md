@@ -61,11 +61,49 @@ the local file and says it is not yet durable.
 `tests/test_decision_records.py::test_the_public_repository_holds_no_decision_record`
 scans the repository for the schema tag on every run.
 
+### Activating the store on the machine that runs `candidates`
+
+`evaluate` and `candidates` run **where the operator types them** — a terminal
+on the operator's own machine, per the workflow above. Nothing in GitHub
+Actions runs `candidates`, so no repository setting, secret or workflow can
+configure this; the variable has to exist in the environment that launches the
+command. Once, on that machine:
+
+```bash
+# 1. create the store OUTSIDE every checkout of cfb-edge-finder / kalshi-bet-router.
+#    The command refuses a path inside a public checkout and creates nothing there.
+python -m cfb_edge_finder.execution decision-store init ~/private-cfb-decisions
+
+# 2. make the variable part of the environment that launches `candidates`.
+#    For a terminal that is the login shell's profile:
+echo 'export CFB_DECISION_STORE="$HOME/private-cfb-decisions"' >> ~/.zshrc   # or ~/.bashrc
+exec "$SHELL" -l
+
+# 3. prove it, from a fresh shell, before the next slate:
+python -m cfb_edge_finder.execution decision-store check
+```
+
+`check` prints the resolved root, whether the marker is present, how many
+records the store holds and whether any fail validation, and exits `5` (the
+same code `candidates` uses) when the store is unusable. If `candidates` is
+ever launched by something other than a login shell — a wrapper script, a
+service, a Claude Code session, cron — the variable must be set in **that**
+launcher's environment; a shell profile does not reach it. A cloud session's
+container is ephemeral, so a store created there is lost with it unless it is
+a checkout of a private remote with `CFB_DECISION_STORE_GIT_SYNC=1`.
+
+Back up the directory like anything else private (a private remote, an
+encrypted drive). Never a public repository: the store holds the prices and
+sizes of the owner's decisions.
+
 ### The private repository
 
 Creating one is an **owner action**: the GitHub integration this system runs
-under cannot create repositories. Any private repository works; clone it, add
-the marker, point the variable at it. Retention is then the repository's.
+under cannot create repositories (re-checked 2026-09-28: `POST /user/repos`
+still returns 403 for this integration). Any private repository works; clone
+it, run `decision-store init` on the clone, point the variable at it, and set
+`CFB_DECISION_STORE_GIT_SYNC=1` so every record is committed and pushed.
+Retention is then the repository's.
 
 ## What the scheduled slate workflow does NOT write
 
