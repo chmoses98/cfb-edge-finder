@@ -70,6 +70,12 @@ def main(argv=None) -> int:
     print(f"  written:         {result['written']}")
     print(f"  already present: {result['already_present']}")
     print(f"  refused:         {result['refused']}")
+    # A correction is neither a new settlement nor a repeat of one. It is an
+    # append-only amendment beside the row it corrects, and it is counted on
+    # its own line so a run that corrected forty rows does not read as a run
+    # that wrote nothing.
+    print(f"  amendments written:         {result['amendments_written']}")
+    print(f"  amendments already present: {result['amendments_already_present']}")
     for index, reason in result["refusals"]:
         print(f"    row {index}: {reason}")
 
@@ -85,6 +91,9 @@ def main(argv=None) -> int:
                 "refused": result["refused"],
                 "refusals": [{"row": i, "reason": r} for i, r in result["refusals"]],
                 "keysWritten": result["keys_written"],
+                "amendmentsWritten": result["amendments_written"],
+                "amendmentsAlreadyPresent": result["amendments_already_present"],
+                "amendmentIdsWritten": result["amendment_ids_written"],
                 "rows": result["rows"],
             }, handle, indent=2, sort_keys=True)
             handle.write("\n")

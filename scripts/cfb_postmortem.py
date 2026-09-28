@@ -41,15 +41,22 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
+from cfb_edge_finder.accounting import decision_attribution  # noqa: E402
 from cfb_edge_finder.accounting import postmortem as postmortem_module  # noqa: E402
 from cfb_edge_finder.accounting.recommendation_link import (  # noqa: E402
     match_executions,
     recommendations_from_artifact,
 )
 from cfb_edge_finder.accounting.store import (  # noqa: E402
+    amendments_ledger_path,
     ledger_path,
     read_rows,
     settlement_ledger_path,
+)
+from cfb_edge_finder.decisions import (  # noqa: E402
+    ENV_STORE,
+    DecisionStore,
+    DecisionStoreUnavailable,
 )
 
 EXIT_OK = 0
@@ -100,6 +107,18 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--json", default=None, help="also write the report as JSON")
     parser.add_argument(
+        "--decisions",
+        default=None,
+        metavar="DIR",
+        help=(
+            "the PRIVATE decision store (default: $CFB_DECISION_STORE when set). Its records "
+            "supply the attribution: each wager is matched to the decision candidate that "
+            "preceded it (exact market and side, nearest earlier run), and the report shows the "
+            "thesis, bet-up-to, decision-time price and alternatives beside the fill. No "
+            "monetary figure depends on it. Takes precedence over --candidates for the tier cuts."
+        ),
+    )
+    parser.add_argument(
         "--game-date",
         action="append",
         default=None,
@@ -122,6 +141,9 @@ def main(argv=None) -> int:
     try:
         wagers = read_rows(wagers_path)
         settlements = read_rows(settlement_ledger_path(base, args.season))
+        # The ledger's own corrections. Read from the same checkout, applied
+        # inside `build`, and reported beside the as-filed total.
+        amendments = read_rows(amendments_ledger_path(base, args.season))
     except ValueError as exc:
         # An unreadable ledger LINE is fatal here, deliberately: a report that
         # silently skipped a corrupt row would understate the season by
@@ -151,6 +173,29 @@ def main(argv=None) -> int:
     )
     matches = match_executions(wagers, recommendations) if recommendations else None
 
+    attribution = None
+    decisions_root = args.decisions or os.environ.get(ENV_STORE)
+    if decisions_root:
+        try:
+            decision_store = DecisionStore.resolve(decisions_root)
+        except DecisionStoreUnavailable as exc:
+            # A store that cannot be read is not "no records". Refusing is the
+            # only answer that does not print an unattributed report as if it
+            # were the attributed one.
+            print(f"the decision store could not be used: {exc}", file=sys.stderr)
+            return EXIT_UNREADABLE
+        records = list(decision_store.records())
+        attribution = decision_attribution.attribute(wagers, records)
+        # The decision records ARE the recommendations for the tier cuts. They
+        # carry the same fields the candidate artifacts did, plus the run that
+        # produced them, and one identity rule decides both views.
+        recommendations = [
+            c.as_recommendation() for c in decision_attribution.candidates_from_records(records)
+        ]
+        matches = attribution.matches
+        for problem in decision_store.problems()[:20]:
+            print(f"  (decision store: {problem})", file=sys.stderr)
+
     report = postmortem_module.build(
         wagers,
         settlements,
@@ -158,14 +203,18 @@ def main(argv=None) -> int:
         matches=matches,
         recommendations=recommendations,
         unit=args.unit,
+        amendments=amendments,
+        decision_attribution=attribution.as_dict() if attribution else None,
     )
     print(postmortem_module.render(report))
+    if attribution is not None:
+        print("\n".join(decision_attribution.render(attribution)))
 
     if not recommendations:
         print(
-            "\n  (no candidate artifacts supplied, so the robustness, confidence, "
-            "data-quality and edge-bucket cuts are all `not_recommended`. Every monetary "
-            "figure above is unaffected.)"
+            "\n  (no candidate artifacts supplied and no decision records read, so the "
+            "robustness, confidence, data-quality and edge-bucket cuts are all "
+            "`not_recommended`. Every monetary figure above is unaffected.)"
         )
 
     if args.json:

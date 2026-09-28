@@ -46,6 +46,12 @@ WAGERS_SUBDIR = "wagers"
 #: guarantee is that a row written is a row that stays written.
 SETTLEMENTS_SUBDIR = "settlements"
 
+#: Corrections to a settlement's ECONOMICS live in their own append-only file,
+#: never in the settlement row they correct. See `economics.py`: the exchange
+#: facts stay where they were filed; a later contract's interpretation of them
+#: is a separate row that names the one it amends.
+AMENDMENTS_SUBDIR = "settlement_amendments"
+
 #: Never `main`. Bot-written data stays out of reviewed code history, matching
 #: the `research-data` convention this repo already established.
 DATA_BRANCH = "accounting-data"
@@ -64,6 +70,10 @@ def ledger_path(base_dir: Path, season: int) -> Path:
 
 def settlement_ledger_path(base_dir: Path, season: int) -> Path:
     return Path(base_dir) / SETTLEMENTS_SUBDIR / f"{season}.jsonl"
+
+
+def amendments_ledger_path(base_dir: Path, season: int) -> Path:
+    return Path(base_dir) / AMENDMENTS_SUBDIR / f"{season}.jsonl"
 
 
 def source_bet_key_of(obj: dict) -> str | None:
@@ -235,6 +245,67 @@ def append_wagers(base_dir: Path, season: int, rows: list[dict]) -> AppendResult
     if to_write:
         with path.open("a", encoding="utf-8") as handle:
             for _key, row in to_write:
+                handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    return AppendResult(
+        written=len(to_write),
+        skipped_duplicate=skipped,
+        keys_written=tuple(k for k, _ in to_write),
+    )
+
+
+def append_amendments(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
+    """Append every amendment not already on disk. KEYED ON ``amendment_id``.
+
+    An amendment's id is minted from the wager's key and the contract it
+    applies, so the same correction derived twice -- by the router from live
+    fee evidence and by the backfill from the filed row -- is ONE row. An
+    identical repeat is skipped in silence. A repeat that states DIFFERENT
+    money under the same id is two derivations disagreeing about a correction,
+    and neither may be written over the other: it is refused loudly, for a
+    person.
+
+    The settlement rows this file corrects are never touched here or anywhere.
+    """
+    from .economics import same_correction, validate_amendment
+
+    path = amendments_ledger_path(base_dir, season)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    filed = {
+        row["amendment_id"]: row
+        for row in read_rows(path)
+        if isinstance(row.get("amendment_id"), str)
+    }
+    seen: dict[str, dict] = {}
+    to_write: list[tuple[str, dict]] = []
+    skipped = 0
+
+    for row in rows:
+        problems = validate_amendment(row)
+        if problems:
+            raise ValueError(
+                f"refusing to write an invalid amendment row: {'; '.join(problems)}"
+            )
+        ident = row["amendment_id"]
+        already = filed.get(ident) or seen.get(ident)
+        if already is not None:
+            if not same_correction(already, row):
+                raise ValueError(
+                    "refusing to write an amendment that CONTRADICTS one already filed under "
+                    "the same amendment_id; two derivations disagree about a correction and "
+                    "a person has to decide, not a store"
+                )
+            skipped += 1
+            continue
+        seen[ident] = row
+        to_write.append((ident, row))
+
+    if to_write:
+        with path.open("a", encoding="utf-8") as handle:
+            for _ident, row in to_write:
                 handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
             handle.flush()
             os.fsync(handle.fileno())

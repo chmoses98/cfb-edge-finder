@@ -162,6 +162,7 @@ GUARDED_PACKAGES = (
     # The live execution orchestration reports a fee-adjusted edge, which
     # makes it the obvious place to bolt on a suggested stake.
     "execution",
+    "decisions",
     "decision",
     "recommendation",
     "research",

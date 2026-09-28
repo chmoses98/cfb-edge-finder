@@ -56,8 +56,15 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
+from cfb_edge_finder.accounting.economics import (  # noqa: E402
+    MONEY_TOLERANCE,
+    economics_version_of,
+    mint_amendment_id,
+    validate_amendment,
+)
 from cfb_edge_finder.accounting.settlement import validate as validate_settlement  # noqa: E402
 from cfb_edge_finder.accounting.store import (  # noqa: E402
+    AMENDMENTS_SUBDIR,
     SETTLEMENTS_SUBDIR,
     WAGERS_SUBDIR,
 )
@@ -133,7 +140,8 @@ def append_only_problems(base_dir: Path, against: str) -> list[str]:
     diff that removes one is not a delivery at all, whatever produced it.
     """
     status, out = git(
-        base_dir, "diff", "--unified=0", against, "--", WAGERS_SUBDIR, SETTLEMENTS_SUBDIR
+        base_dir, "diff", "--unified=0", against, "--",
+        WAGERS_SUBDIR, SETTLEMENTS_SUBDIR, AMENDMENTS_SUBDIR,
     )
     if status != 0:
         return [
@@ -209,11 +217,82 @@ def main(argv=None) -> int:
                     "nobody recorded would count in every total while belonging to nothing"
                 )
 
+    # 7. AMENDMENTS. A correction is a row that names the settlement it
+    #    corrects, is identified deterministically, agrees with that
+    #    settlement on the exchange facts it re-interprets, and moves it
+    #    forward along the economics contracts. Each of those is a check,
+    #    because each one is a way a correction could quietly become a
+    #    second, disagreeing settlement.
+    amendment_rows = 0
+    amendments_dir = base / AMENDMENTS_SUBDIR
+    settlements_by_season: dict[str, dict[str, dict]] = {}
+    if amendments_dir.is_dir() and settlements_dir.is_dir():
+        for path in sorted(settlements_dir.glob("*.jsonl")):
+            if _SEASON_FILE.match(path.name):
+                settlements_by_season[path.stem] = {
+                    row["settlement_id"]: row
+                    for _n, row, err in read_lines(path)
+                    if err is None and isinstance(row.get("settlement_id"), str)
+                }
+    if amendments_dir.is_dir():
+        for path in sorted(amendments_dir.glob("*.jsonl")):
+            if not _SEASON_FILE.match(path.name):
+                problems.append(f"{path.name} is not a <season>.jsonl amendment file")
+                continue
+            season_settlements = settlements_by_season.get(path.stem, {})
+            seen_ids: set[str] = set()
+            for number, row, error in read_lines(path):
+                amendment_rows += 1
+                label = f"{AMENDMENTS_SUBDIR}/{path.name}:{number}"
+                if error:
+                    problems.append(f"{label} {error}")
+                    continue
+                issues = validate_amendment(row)
+                if issues:
+                    problems.append(f"{label} {'; '.join(issues)}")
+                    continue
+                ident = row["amendment_id"]
+                if ident in seen_ids:
+                    problems.append(f"{label} duplicates an earlier row's amendment_id")
+                seen_ids.add(ident)
+                if ident != mint_amendment_id(row["source_bet_key"], row["economics_version"]):
+                    problems.append(f"{label} amendment_id is not deterministic for its wager and contract")
+                target = season_settlements.get(row["amends_settlement_id"])
+                if target is None:
+                    problems.append(
+                        f"{label} amends a settlement the {path.stem} settlement ledger has no "
+                        "record of; a correction of nothing is a second settlement in disguise"
+                    )
+                    continue
+                if target.get("source_bet_key") != row["source_bet_key"]:
+                    problems.append(f"{label} names a settlement that belongs to a different wager")
+                for name in ("market_ticker", "side", "result"):
+                    if target.get(name) != row.get(name):
+                        problems.append(f"{label} disagrees with the settlement it amends on {name}")
+                if economics_version_of(target) != row["supersedes_economics_version"]:
+                    problems.append(f"{label} claims to supersede a contract the settlement is not on")
+                for filed, original in (("gross_return", "original_gross_return"),
+                                        ("net_profit_loss", "original_net_profit_loss")):
+                    have, said = target.get(filed), row.get(original)
+                    if have is None and said is None:
+                        continue
+                    if have is None or said is None or abs(float(have) - float(said)) > MONEY_TOLERANCE:
+                        problems.append(f"{label} misstates the settlement's filed {filed}")
+                if (
+                    target.get("gross_return") is not None
+                    and abs(float(target["gross_return"]) - float(row["gross_return"])) > MONEY_TOLERANCE
+                ):
+                    problems.append(
+                        f"{label} changes gross_return; an economics correction cannot change an "
+                        "exchange fact"
+                    )
+
     if args.against:
         problems.extend(append_only_problems(base, args.against))
 
     print(f"wager rows:      {wager_rows}")
     print(f"settlement rows: {settlement_rows}")
+    print(f"amendment rows:  {amendment_rows}")
     print(f"problems:        {len(problems)}")
     for problem in problems[:50]:
         print(f"  {problem}")
@@ -227,6 +306,7 @@ def main(argv=None) -> int:
                     "passed": not problems,
                     "wager_rows": wager_rows,
                     "settlement_rows": settlement_rows,
+                    "amendment_rows": amendment_rows,
                     "problems": problems,
                     "append_only_checked": bool(args.against),
                 },
