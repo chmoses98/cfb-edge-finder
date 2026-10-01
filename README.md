@@ -125,6 +125,16 @@ The region is what makes a recommendation robust. Measured on the retained
 `robust_positive_ev` contracts; with no region it yields **0**, because
 nothing in a point estimate says how wrong it might be.
 
+**Multiple tickers are not multiple ideas.** The candidate artifact
+marks each survivor as the CORE expression of its view and every other
+rung as an incremental-exposure candidate with its cash path -- a nested
+tail extension that only pays when the core already has, or a correlated
+position with an independent cash path. Its `card_review` block is the
+final-review contract: one core per funded thesis, every additional
+correlated position must earn incremental exposure, and exposure is summed
+by bet, thesis, game and slate after the operator sizes the card outside
+this repository. Correlation is not a veto; it is an exposure fact.
+
 **Nothing is written back to the repo by the reader**, and there is no
 bet cap: 0 candidates, 6 or 400, whatever survives evaluation and
 reduction. No stake is computed and no order can be placed; the projection model is retired from

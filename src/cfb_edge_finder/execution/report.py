@@ -43,6 +43,11 @@ from cfb_edge_finder.execution.candidates import (
     exposure_groups,
     reduce_candidates,
 )
+from cfb_edge_finder.execution.card_review import (
+    build_card_review,
+    core_fields,
+    thesis_index,
+)
 from cfb_edge_finder.execution.disagreement import measure
 from cfb_edge_finder.execution.evaluator import (
     CANDIDATE_STATUSES,
@@ -213,6 +218,7 @@ def candidate_record(
     max_alternatives: int | None = None,
     batch: str | None = None,
     shard: str | None = None,
+    theses: dict[tuple[str, str], list[Expression]] | None = None,
 ) -> dict[str, Any]:
     row = candidate.row
     game_key = str(row.get("game_key"))
@@ -300,6 +306,15 @@ def candidate_record(
         ),
         "stake_placeholder": None,
         "why_this_market_expresses_the_thesis": _why_this_market(row),
+        # ---- its place on a card ----------------------------------------
+        # The CORE expression of its view. Every entry in related_alternatives
+        # is an incremental-expression candidate: beside this one on a card it
+        # is more exposure to the same opinion, and must be justified.
+        **(
+            core_fields(candidate, theses)
+            if isinstance(candidate, Expression) and theses is not None
+            else {}
+        ),
     }
 
 
@@ -368,7 +383,27 @@ CANDIDATE_CONVENTIONS = {
     ),
     "related_alternatives": (
         "the nearest rungs of the same view by fee-adjusted edge. The COMPLETE list, with every "
-        "removal's deterministic reason, is in the reduction ledger written beside this file."
+        "removal's deterministic reason, is in the reduction ledger written beside this file. "
+        "Each is an ALTERNATIVE while it is off the card; placed on the card beside its core it "
+        "becomes INCREMENTAL EXPOSURE (`card_role: incremental_expression_candidate`, "
+        "`requires_incremental_justification: true`)."
+    ),
+    "card_role": (
+        "`core_expression` marks the best buy of one VIEW. It is not a recommendation to fund it, "
+        "and a thesis with several cores (`thesis_peers`) still gets ONE core on the card unless "
+        "every other is incrementally justified."
+    ),
+    "cash_path": (
+        "derived from contract terms alone, never from a result. `nested_tail_extension`: pays only "
+        "in a strict subset of the core's winning outcomes (a stronger version of the same script). "
+        "`correlated_independent_cash_path`: shares the opinion but pays in some outcomes where the "
+        "core loses. `equivalent_outcome_set`: the same bet. `extension_points` is how much further "
+        "into the tail the rung reaches. Correlation is not a veto; it is an exposure fact."
+    ),
+    "card_review": (
+        "the final-review contract. `required_before_final_card` is true. Every exposure figure in "
+        "it is null: stakes are chosen outside this repository, and the reviewer sums exposure by "
+        "bet, thesis, game and slate only after choosing them."
     ),
     "fee_adjusted_edge_range": (
         "the edge at the best and worst corner of the handicap's own stated uncertainty region. "
@@ -523,6 +558,7 @@ def build_candidate_artifact(
 
     survivors = reduction.survivors
     shown = survivors if top_n is None else survivors[:top_n]
+    theses = thesis_index(list(survivors))
 
     status_counts: dict[str, int] = {}
     for evaluation in evaluations:
@@ -551,6 +587,20 @@ def build_candidate_artifact(
             "A candidate's per-game facts -- thesis, opposing case, confidence, factual data "
             "quality, the full disagreement reading -- are in `games[game_key]`, stated once. "
             "They are identical on every candidate from that game.",
+            "BEFORE RETURNING A BET CARD, complete `card_review` (machine-readable: "
+            "`card_review.final_review_checklist`): build the game thesis first; choose ONE "
+            "core expression per funded thesis; inspect every related alternative; for any further "
+            "correlated expression state why it is incremental rather than redundant, its shared "
+            "failure mode, whether it has an independent cash path, and whether it is a tail "
+            "extension (`card_review.incremental_justification_template`).",
+            "Correlation is not a veto. It is an exposure fact. Multiple tickers do not "
+            "automatically mean multiple independent bets; every additional correlated position "
+            "must earn incremental exposure; an aggressive ladder rung is a tail extension, not a "
+            "free second edge. Do not reject a genuinely valuable second expression merely because "
+            "it is correlated.",
+            "After assigning stakes OUTSIDE this repository, sum exposure by bet, by thesis, by game "
+            "and by slate, and flag concentrated games. Do not increase a game's exposure simply "
+            "because several attractive tickers exist on it.",
         ],
         "reconciliation": {
             "games": len(evaluations),
@@ -580,6 +630,9 @@ def build_candidate_artifact(
             for evaluation in evaluations
         },
         "exposure": exposure_groups(list(survivors)),
+        # From the WHOLE reduction, never from `shown`: a display truncation
+        # must not shrink what the final review is told about exposure.
+        "card_review": build_card_review(reduction),
         "candidates": [
             candidate_record(
                 expression,
@@ -590,6 +643,7 @@ def build_candidate_artifact(
                 max_alternatives=max_inline_alternatives,
                 batch=batch,
                 shard=shard,
+                theses=theses,
             )
             for expression in shown
         ],
@@ -641,6 +695,7 @@ def build_report(
     reduction = reduce_candidates(positive)
     survivors = reduction.survivors
     final = survivors if top_n is None else survivors[:top_n]
+    theses = thesis_index(list(survivors))
 
     disagreements = {
         evaluation.game_key: measure(
@@ -704,9 +759,11 @@ def build_report(
             candidate_record(
                 c, handicaps, packets, reduction=reduction,
                 disagreements=disagreements, shard=shard,
+                theses=theses,
             )
             for c in final
         ],
+        "card_review": build_card_review(reduction),
         "dominated_duplicates": reduction.removed,
         "reduction_by_reason": reduction.counts,
     }

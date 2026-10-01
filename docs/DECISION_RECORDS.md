@@ -22,12 +22,23 @@ A **decision record** is the versioned, self-contained statement of one
 |---|---|
 | `games` | per game: kickoff, teams, the handicapper's **thesis** and **opposing case** verbatim, confidence (stated and effective), data-quality ceiling, and the full handicap payload that priced every rung |
 | `candidates` | the **selected** shortlist: ticker, side, `observed_price` and `observed_at`, fair probability, edge, **bet_up_to**, tier (robustness), confidence, `recommended_stake` (null — nothing sizes a bet), correlation group, the alternatives each one beat |
-| `evaluated_not_selected` | every candidate the reduction removed, with the survivor it lost to and why |
+| `evaluated_not_selected` | every candidate the reduction removed, with the survivor it lost to and why, and — from a 1.1.0 artifact — its `card_role`, whether placing it beside its core `requires_incremental_justification`, its `cash_path_relation`, `tail_extension` and `extension_points` |
+| `card_review` | the artifact's final-review contract verbatim (`cfb_card_review/1.0.0`): which candidate was the core of each view, the related alternatives grouped by cash path, thesis and game groupings, and every exposure placeholder **null**. `null` on a record built from a 1.0.0 artifact |
 | identity | `record_id` (content hash), `created_at`, `slate_date`, `batch`, `shard`, `kickoff_window`, the artifact's `generated_at`, the catalog capture time, and the source file paths |
 
 Schema `cfb_decision_record/1.0.0`. Fields the handicapper did not emit are
 `null`, never filled: there is no recommended stake and no bankroll context in
 the live workflow today, and the record says so.
+
+Each selected candidate also carries `card_role`, `thesis_group`,
+`thesis_peers` and `wins_when`, and each of its related alternatives the same
+incremental-exposure fields as `evaluated_not_selected`. These card-review
+fields are **optional within 1.0.0** and the schema was deliberately not
+bumped: they are purely additive, no 1.0.0 field changed meaning, every reader
+uses `.get`, and records already in the store stay valid as written. When a
+`card_review` block is present the validator requires
+`sizing_authority: "operator"`, `repository_sizes_positions: false`, and every
+`exposure_after_sizing` figure null — a decision record never invents a stake.
 
 ## Where it lives, and why nowhere here
 
@@ -129,8 +140,11 @@ and side twice, are `ambiguous` and stay so. A record created after kickoff is
 rejected and counted. The report states `matched / unmatched / ambiguous`, and
 for each matched wager: thesis, opposing case, bet-up-to, decision-time price,
 execution price, price delta, whether the fill stayed inside the bet-up-to,
-tier and confidence, recommended stake (null) beside the actual stake, and the
-alternatives that existed for the same game in that record.
+tier and confidence, recommended stake (null) beside the actual stake, the
+candidate's `card_role` and `thesis_group`, and the alternatives that existed
+for the same game in that record — each with whether placing it beside its core
+would have required incremental justification, its cash-path relation, and
+whether it was a tail extension.
 
 **No monetary figure depends on any of this.** `tests/test_decision_records.py`
 runs the postmortem with and without the store and asserts the totals are
