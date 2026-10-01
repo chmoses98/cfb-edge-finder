@@ -556,6 +556,11 @@ def evaluate_game(
             "kind": semantics.get("kind"),
             "team": semantics.get("team"),
             "line": semantics.get("line"),
+            # The strike's comparator and a band's upper bound, so a reader of
+            # the row can state exactly which integer outcomes each side pays
+            # on (the card review's cash-path relations need both).
+            "comparator": semantics.get("comparator"),
+            "cap": semantics.get("cap"),
             "yes_means": semantics.get("yes_means"),
             "no_means": semantics.get("no_means"),
             "yes_entry": yes_block.get("entry"),

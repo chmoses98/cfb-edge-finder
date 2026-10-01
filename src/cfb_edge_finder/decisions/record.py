@@ -26,6 +26,22 @@ price move or a re-handicap is a new record, which is the truth.
 `candidates[].recommendation_id` is the artifact's own deterministic id, kept
 verbatim so a later join from the postmortem is to the same identifier the
 artifact carried when it was read.
+
+*** THE CARD REVIEW, AS IT STOOD AT DECISION TIME ***
+A `cfb_candidate_artifact/1.1.0` artifact carries a `card_review` block: the
+final-review contract, and which candidate was the CORE expression of its view,
+which alternatives existed beside it, and whether each was a nested tail
+extension or had an independent cash path. The record keeps that block
+verbatim and copies the per-candidate and per-alternative fields onto the rows
+the postmortem joins on, so a later question -- "the executed rung was an
+alternative; would it have needed incremental justification?" -- is answered
+from what the run said, not from a reconstruction. Every exposure figure in the
+block is null: the record never invents a stake.
+
+These fields are OPTIONAL within `cfb_decision_record/1.0.0`. They are purely
+additive, no 1.0.0 field changes meaning, every reader uses `.get`, and a record
+built from a 1.0.0 artifact simply has `card_review: null` -- so the schema is
+not bumped, and records already in the store remain valid as written.
 """
 
 from __future__ import annotations
@@ -174,11 +190,18 @@ def build_decision_record(
                         ),
                         "observed_price": _number(alt.get("kalshi_executable_price") or alt.get("executable_entry")),
                         "reason": alt.get("reason"),
+                        **_incremental_fields(alt),
                     }
                     for alt in (entry.get("related_alternatives") or [])
                     if isinstance(alt, dict)
                 ],
                 "related_alternatives_total": entry.get("related_alternatives_total"),
+                # Its place on a card, as the artifact stated it (null for a
+                # 1.0.0 artifact, which did not state it).
+                "card_role": entry.get("card_role"),
+                "thesis_group": entry.get("thesis_group"),
+                "thesis_peers": entry.get("thesis_peers"),
+                "wins_when": entry.get("wins_when"),
                 "selected": True,
             }
         )
@@ -198,6 +221,7 @@ def build_decision_record(
                 "observed_price": _number(removal.get("executable_entry") or removal.get("kalshi_executable_price")),
                 "removal_reason": removal.get("reason"),
                 "lost_to": removal.get("lost_to"),
+                **_incremental_fields(removal),
                 "selected": False,
             }
         )
@@ -236,6 +260,10 @@ def build_decision_record(
         # future handicapper that states them has somewhere to put them, and a
         # reader of an old record sees that they were not stated.
         "bankroll_context": None,
+        # The final-review contract the operator was handed, verbatim, or null
+        # when the artifact predates it. Its exposure figures are all null.
+        "candidate_schema_version": artifact.get("schema_version"),
+        "card_review": artifact.get("card_review"),
         "games": games,
         "candidates": candidates,
         "evaluated_not_selected": evaluated_not_selected,
@@ -245,6 +273,47 @@ def build_decision_record(
     if problems:
         raise ValueError("refusing to build an invalid decision record: " + "; ".join(problems))
     return record
+
+
+def _incremental_fields(entry: dict[str, Any]) -> dict[str, Any]:
+    """The card-review fields of an alternative or a removal, flattened.
+
+    Read from either shape: an inline alternative carries the full `cash_path`;
+    a reduction-ledger entry carries the relation and tail flags flat."""
+    cash_path = entry.get("cash_path") if isinstance(entry.get("cash_path"), dict) else {}
+    return {
+        "card_role": entry.get("card_role"),
+        "requires_incremental_justification": entry.get("requires_incremental_justification"),
+        "cash_path_relation": cash_path.get("relation") or entry.get("cash_path_relation"),
+        "tail_extension": (
+            cash_path.get("tail_extension") if "tail_extension" in cash_path else entry.get("tail_extension")
+        ),
+        "extension_points": (
+            cash_path.get("extension_points") if "extension_points" in cash_path else entry.get("extension_points")
+        ),
+    }
+
+
+def _filled_exposure_figures(block: Any, path: str = "card_review") -> list[str]:
+    """Every exposure placeholder in a card review that is NOT null.
+
+    The repository sizes nothing, so at decision time every one of them is
+    null. A record carrying a number there would be a stake nobody chose."""
+    found: list[str] = []
+    if isinstance(block, dict):
+        for key, value in block.items():
+            if key == "exposure_after_sizing" and isinstance(value, dict):
+                found.extend(
+                    f"{path}.{key}.{name}"
+                    for name, figure in value.items()
+                    if name != "supplied_by" and figure is not None
+                )
+            else:
+                found.extend(_filled_exposure_figures(value, f"{path}.{key}"))
+    elif isinstance(block, list):
+        for index, value in enumerate(block):
+            found.extend(_filled_exposure_figures(value, f"{path}[{index}]"))
+    return found
 
 
 def validate_decision_record(record: dict[str, Any]) -> list[str]:
@@ -279,4 +348,18 @@ def validate_decision_record(record: dict[str, Any]) -> list[str]:
         problems.append("evaluated_not_selected must be a list")
     if "bankroll_context" not in record:
         problems.append("bankroll_context must be present (null when not emitted)")
+    # OPTIONAL in 1.0.0 (absent on records written before it existed), but
+    # when present it must be the contract the artifact handed over: operator
+    # sizing authority, and no exposure figure filled in.
+    review = record.get("card_review")
+    if review is not None:
+        if not isinstance(review, dict):
+            problems.append("card_review must be an object or null")
+        else:
+            if review.get("sizing_authority") != "operator":
+                problems.append("card_review.sizing_authority must be 'operator'")
+            if review.get("repository_sizes_positions") is not False:
+                problems.append("card_review.repository_sizes_positions must be false")
+            for where in _filled_exposure_figures(review):
+                problems.append(f"{where} is filled; a decision record never invents an exposure figure")
     return problems

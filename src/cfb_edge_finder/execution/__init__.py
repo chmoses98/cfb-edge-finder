@@ -45,7 +45,14 @@ schema."""
 
 CONTEXT_SCHEMA_VERSION = "cfb_game_context/1.0.0"
 HANDICAP_BATCH_SCHEMA_VERSION = "cfb_handicap_batch/1.0.0"
-CANDIDATE_SCHEMA_VERSION = "cfb_candidate_artifact/1.0.0"
+CANDIDATE_SCHEMA_VERSION = "cfb_candidate_artifact/1.1.0"
+"""1.1.0 ADDS, and changes the meaning of nothing 1.0.0 carried: the
+`card_review` block (the final-review contract), `card_role` and the
+cash-path fields on every candidate and related alternative, and the matching
+fields on reduction-ledger entries. A 1.0.0 reader reads a 1.1.0 artifact
+correctly and simply does not see the new obligations; the minor bump is what
+tells a final reviewer that `card_review.required_before_final_card` now
+applies."""
 ATTRIBUTION_SCHEMA_VERSION = "cfb_execution_attribution/1.0.0"
 STATE_SCHEMA_VERSION = "cfb_execution_state/1.0.0"
 LEDGER_SCHEMA_VERSION = "cfb_evaluation_ledger/1.0.0"

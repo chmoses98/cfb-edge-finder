@@ -371,6 +371,11 @@ def attribute(
                 fair_probability=recommendation.fair_probability,
                 edge=recommendation.fee_adjusted_edge,
                 recommended_stake=recommendation.recommended_stake,
+                # The card-review facts the run stated (null on a record built
+                # from an artifact that predates them).
+                card_role=chosen.candidate.get("card_role"),
+                thesis_group=chosen.candidate.get("thesis_group"),
+                thesis_peers=chosen.candidate.get("thesis_peers"),
                 match_state=state,
                 match_reason=reason,
                 runs_considered=len(by_record),
@@ -383,6 +388,10 @@ def attribute(
                         "bet_up_to": _number(s.get("bet_up_to")),
                         "selected": bool(s.get("selected")),
                         "removal_reason": s.get("removal_reason"),
+                        "card_role": s.get("card_role"),
+                        "requires_incremental_justification": s.get("requires_incremental_justification"),
+                        "cash_path_relation": s.get("cash_path_relation"),
+                        "tail_extension": s.get("tail_extension"),
                     }
                     for s in chosen.siblings
                 ],

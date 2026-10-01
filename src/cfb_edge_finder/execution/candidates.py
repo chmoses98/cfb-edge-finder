@@ -36,6 +36,14 @@ Only the best member of a VIEW survives. Members of a THESIS all survive --
 they are genuinely different bets -- but they are grouped, counted, and their
 aggregate exposure is reported, because the operator sizing them needs to see
 that they move together.
+
+*** A KEPT ALTERNATIVE IS NOT A FREE SECOND BET ***
+Every rung that loses to a view's survivor is kept as a named alternative, and
+it carries its CASH PATH relative to that survivor (`card_review.relate`): does
+it pay in outcomes where the survivor does not, or only in a stronger version
+of the same script? Placing it on the card beside the survivor turns it from
+an alternative into incremental exposure, and the card review in
+`card_review.py` requires that it earn it. Nothing here promotes or rejects it.
 """
 
 from __future__ import annotations
@@ -44,6 +52,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from cfb_edge_finder.execution.card_review import incremental_fields, relate
 from cfb_edge_finder.execution.evaluator import CANDIDATE_STATUSES
 from cfb_edge_finder.execution.sensitivity import Robustness
 
@@ -265,7 +274,12 @@ def reduce_candidates(rows: list[dict[str, Any]]) -> Reduction:
         )
         by_expression[expression.expression_key] = winner
         reduction.removed.append(
-            _removal(loser, winner, ReductionReason.EXACT_EQUIVALENT.value)
+            _removal(
+                loser,
+                winner,
+                ReductionReason.EXACT_EQUIVALENT.value,
+                incremental_fields(relate(loser.row, winner.row), duplicate=True),
+            )
         )
 
     # 2. Then one survivor per VIEW.
@@ -288,7 +302,11 @@ def reduce_candidates(rows: list[dict[str, Any]]) -> Reduction:
     # ledger would say a row lost to a contract that is not in the artifact.
     for loser, _provisional, reason in losses:
         winner = by_view[loser.view_key]
-        reduction.removed.append(_removal(loser, winner, reason))
+        # Classified against the FINAL survivor, from contract terms only: the
+        # question a final reviewer asks is what this rung adds BESIDE the
+        # core, and the answer cannot depend on how the game finished.
+        incremental = incremental_fields(relate(loser.row, winner.row))
+        reduction.removed.append(_removal(loser, winner, reason, incremental))
         reduction.alternatives.setdefault(winner.ticker, []).append(
             {
                 "ticker": loser.ticker,
@@ -298,6 +316,9 @@ def reduce_candidates(rows: list[dict[str, Any]]) -> Reduction:
                 "fee_adjusted_edge": loser.row.get("net_edge"),
                 "robustness": loser.robustness,
                 "removed_because": reason,
+                # On the card beside the core this stops being an alternative
+                # and becomes incremental exposure to the same view.
+                **incremental,
             }
         )
 
@@ -310,7 +331,13 @@ def reduce_candidates(rows: list[dict[str, Any]]) -> Reduction:
     return reduction
 
 
-def _removal(loser: Expression, winner: Expression, reason: str) -> dict[str, Any]:
+def _removal(
+    loser: Expression,
+    winner: Expression,
+    reason: str,
+    incremental: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    cash_path = (incremental or {}).get("cash_path") or {}
     return {
         "ticker": loser.ticker,
         "game_key": loser.row.get("game_key"),
@@ -329,6 +356,17 @@ def _removal(loser: Expression, winner: Expression, reason: str) -> dict[str, An
             winner=winner.ticker,
             group=f"{loser.driver} / {loser.direction}",
         ),
+        # What placing this row beside its survivor would have meant. Kept on
+        # the ledger -- the COMPLETE list -- so a postmortem can tell whether an
+        # executed rung was incremental exposure, however many rungs the
+        # artifact showed inline.
+        "card_role": (incremental or {}).get("card_role"),
+        "requires_incremental_justification": (incremental or {}).get(
+            "requires_incremental_justification"
+        ),
+        "cash_path_relation": cash_path.get("relation"),
+        "tail_extension": cash_path.get("tail_extension"),
+        "extension_points": cash_path.get("extension_points"),
     }
 
 

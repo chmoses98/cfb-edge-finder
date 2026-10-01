@@ -909,6 +909,17 @@ def cmd_candidates(args: argparse.Namespace) -> int:
     print(f"  surviving candidates        {reduction['surviving_candidates']}")
     for reason, count in reduction["removed_by_reason"].items():
         print(f"    removed {reason:32} {count:5}")
+    review = (artifact.get("card_review") or {}).get("slate") or {}
+    print(
+        f"\n  CARD REVIEW required before a final card: {review.get('thesis_groups', 0)} thesis "
+        f"group(s) across {review.get('games_with_candidates', 0)} game(s); "
+        f"{review.get('related_alternatives', 0)} related alternative(s), "
+        f"{review.get('nested_tail_extension_candidates', 0)} of them nested tail extensions"
+    )
+    print(
+        "    correlation is not a veto, it is an exposure fact: one core expression per funded "
+        "thesis, and every extra correlated position must earn incremental exposure"
+    )
     extreme = [
         row for row in artifact["market_disagreement_by_game"] if row["level"] == "extreme"
     ]

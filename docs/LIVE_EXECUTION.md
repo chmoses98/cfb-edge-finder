@@ -34,7 +34,11 @@ UTC Saturday). So:
    export the variable in your shell profile, then
    `python -m cfb_edge_finder.execution decision-store check`. See
    `docs/DECISION_RECORDS.md`.
-4. Place whatever you want on Kalshi, by hand.
+4. Before returning a card, complete the artifact's `card_review` (see
+   [Card review](#card-review-one-core-per-thesis-and-incremental-exposure-must-be-earned)):
+   one core expression per funded thesis, a stated reason for every extra
+   correlated position, and exposure summed by game and thesis once you have
+   chosen stakes. Then place whatever you want on Kalshi, by hand.
 
 Everything after that is automatic: the router records the wager into
 `accounting-data`, settles it when Kalshi settles, and
@@ -397,6 +401,100 @@ and changes nothing in the reduction.
 
 ---
 
+## Card review: one core per thesis, and incremental exposure must be earned
+
+> **Correlation is not a veto. It is an exposure fact.**
+> **Multiple tickers do not automatically mean multiple independent bets.**
+> **Every additional correlated position must earn incremental exposure.**
+> **An aggressive ladder rung is a tail extension, not a free second edge.**
+
+The 2026-09-26 slate went 20-12 for +19.1% and still lost money on one game
+whose thesis was right: the favourite won, the moneyline cashed, and the two
+deeper margin rungs beside it — each needing a bigger win than the last —
+carried several times the moneyline's risk and lost. Elsewhere an underdog
+moneyline and the same underdog with the points were both on the card, and
+that pair was fine: a close loss pays the points without the moneyline.
+Correlated, not redundant. The lesson is not "never take correlated bets"; it
+is that **an additional correlated position has to earn its place on the
+card.**
+
+The final-review pipeline the artifact now encodes:
+
+```
+GAME THESIS -> CANDIDATE MARKETS -> CORRELATION / THESIS MAP -> CORE EXPRESSION
+  -> INCREMENTAL-EXPRESSION TEST -> GAME / THESIS EXPOSURE REVIEW
+  -> SLATE CONCENTRATION REVIEW -> FINAL CARD
+```
+
+### What the artifact says (`cfb_candidate_artifact/1.1.0`)
+
+| where | field | meaning |
+|---|---|---|
+| every candidate | `card_role: core_expression` | the reducer's best buy of one VIEW — not an instruction to fund it |
+| every candidate | `thesis_group`, `thesis_peers`, `wins_when` | the thesis it belongs to, the other view-cores sharing it, and the integer outcomes it pays on |
+| every related alternative | `card_role: incremental_expression_candidate`, `requires_incremental_justification: true` | off the card it is an ALTERNATIVE; placed beside its core it becomes INCREMENTAL EXPOSURE |
+| every related alternative | `cash_path` | its relation to the core, from contract terms only (below) |
+| every reduction-ledger entry | `card_role`, `requires_incremental_justification`, `cash_path_relation`, `tail_extension`, `extension_points` | the same facts for the COMPLETE list of removed rows, however many are shown inline |
+| top level | `card_review` | the contract, the checklist, and the per-game / per-thesis structure |
+
+### Cash paths
+
+Every margin is stated as home minus away, so an away-team contract and a NO on
+the opposite team compare directly. Scores are integers, so every one-sided
+contract pays on one interval of integer outcomes.
+
+| relation | when | example |
+|---|---|---|
+| `nested_tail_extension` | pays only in a strict subset of the core's outcomes — it can never cash when the core does not. `extension_points` says how much further into the tail it reaches | favourite ML core; favourite -7.5 (7 points further) and -20.5 (20 points further) |
+| `correlated_independent_cash_path` | shares the opinion but pays in some outcomes where the core loses | underdog ML core; underdog +9.5 pays on a 1–9 point loss |
+| `same_thesis_different_mechanism` | same game-level opinion, a different quantity (another period, another scoring measure) | first-half -10.5 beside full-game -6.5 |
+| `equivalent_outcome_set` | pays in exactly the same outcomes | a duplicate listing |
+| `opposing_middle` / `mutually_exclusive` | opposing directions in one game, with or without a middle | home ML beside away +9.5 |
+| `undetermined` | the terms are not one interval (a NO on a band, an explicit-probability contract) — left to the reviewer, never guessed | |
+
+None of these is a verdict. A tail extension carries
+`justification_standard: heightened` — "I already like the favourite" is not a
+reason to fund the -20.5 — and is still eligible if the reviewer can make the
+case. An independent cash path is still exposure to the same game.
+
+### `card_review`
+
+- `required_before_final_card: true`, `sizing_authority: "operator"`,
+  `repository_sizes_positions: false`.
+- `rules` — nine machine-readable rules: one core per funded thesis; additional
+  expressions need explicit justification; alternate rungs are not independent
+  bets; review game and thesis exposure after sizing; name the common failure
+  mode; an independent cash path may survive correlation; correlation is not a
+  rejection rule; the slate gets a concentration review.
+- `final_review_checklist` — the eleven steps a "RUN CFB" final reviewer
+  follows before returning a card (also in `how_to_read`).
+- `incremental_justification_template` — `shared_thesis`,
+  `shared_failure_mode`, `independent_cash_path`, `incremental_edge_case`,
+  `why_not_redundant`, `tail_extension`, `concentration_effect`, `decision`,
+  all null: the reviewer completes one for every position beyond the first
+  core of its thesis.
+- `decisions` — the reviewer's vocabulary: `CORE_EXPRESSION`,
+  `INCREMENTAL_EXPOSURE_JUSTIFIED`, `REDUNDANT_CORRELATED_EXPRESSION`,
+  `TAIL_EXTENSION_NOT_JUSTIFIED`, `CONCENTRATION_TOO_HIGH`,
+  `OPPOSING_HEDGE_WITH_PURPOSE`, `OPPOSING_POSITION_CONTRADICTS_THESIS`. The
+  repository never assigns one.
+- `games[game_key]` — core count, thesis groups, related-alternative count,
+  possible incremental expressions, nested tail extensions, independent cash
+  paths, opposing positions, and per thesis: core expressions, related
+  incremental candidates grouped by relation (complete, not the inline five),
+  the deepest tail extension, what the core loses on, and
+  `common_failure_mode: null` for the reviewer.
+- `exposure_after_sizing` (per thesis, per game, per slate) — **every figure is
+  null.** Stakes are chosen outside this repository; the reviewer sums exposure
+  by bet, thesis, game and slate only after choosing them, and flags
+  concentrated games. More attractive tickers on one game are not a reason for
+  more exposure to it.
+
+It is built from the WHOLE reduction, never from the `--top` display list, and
+it does not select, reject, rank, truncate or size anything.
+
+---
+
 ## Staking guardrails
 
 The repository sizes nothing and can place no order. What it does is make
@@ -407,6 +505,11 @@ tickers are not diversification.
 `LSU -2.5` and `LSU -6.5` are one opinion at two prices; the reduction
 already collapses them. A spread and a team total on the same side are two
 bets in one thesis group.
+
+The `card_review` block (above) is guidance and structure for the operator's
+own sizing, not sizing: its exposure fields are placeholders that stay null in
+everything this repository writes, and the decision record refuses a card
+review whose exposure figures are filled in.
 
 ---
 
