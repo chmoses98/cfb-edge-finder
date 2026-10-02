@@ -143,15 +143,21 @@ jobs:
             ${{ github.event.inputs.refresh != 'false' && '--refresh' || '' }}
       - name: Reconciliation summary
         # The job has already failed if the identity did not close --
-        # prepare-live exits 2 on an unbalanced slate. This step exists so
-        # the numbers are readable from the run page without downloading
-        # the artifact.
+        # prepare-live exits 2 on an unbalanced slate, and 4 when games
+        # exist but no contract is eligible. A date with no games (or one
+        # whose games have all kicked off) is NOT_APPLICABLE and green, but
+        # only when the catalog proves it (execution/slate_health.py); the
+        # verdict is in the slate's `health` block and the step summary.
+        # This step exists so the numbers are readable from the run page
+        # without downloading the artifact.
         run: |
           python3 - <<'PY'
           import json
           slate = json.load(open("data/execution/latest/cfb_execution_slate.json"))
           manifest = json.load(open("data/execution/latest/shard_manifest.json"))
           r = slate["reconciliation"]
+          health = slate.get("health") or {}
+          print(f"health: {health.get('state')} {health.get('reason') or ''} -- {health.get('detail')}")
           print(f"discovered {r['contracts_discovered']} = eligible {r['contracts_eligible']} "
                 f"+ excluded {r['contracts_excluded']}  (unaccounted {r['unaccounted_contracts']})")
           for status, count in r["exclusions_by_status"].items():

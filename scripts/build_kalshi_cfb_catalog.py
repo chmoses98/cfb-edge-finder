@@ -98,6 +98,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def health_fields(capture_complete: bool, games_incomplete_count: int | None) -> dict[str, str]:
+    """The machine-readable operational verdict written into the status file.
+
+    Only two states are reachable here: a run that reaches the status write
+    has published a usable catalog. COMPLETE is HEALTHY; a partial capture
+    published with its diagnostics is DEGRADED -- the workflow stays green
+    (the next tick usually recovers) and says so in a warning and the step
+    summary. The red cases (discovery raised, zero games) exit 1 before any
+    status is written, so they can never be recorded as healthy."""
+    if capture_complete:
+        return {"health_state": "HEALTHY", "health_reason": ""}
+    return {
+        "health_state": "DEGRADED",
+        "health_reason": f"CAPTURE_INCOMPLETE: {games_incomplete_count} game(s) incomplete",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     horizon = None if args.horizon_days is not None and args.horizon_days < 0 else args.horizon_days
@@ -162,6 +179,10 @@ def main(argv: list[str] | None = None) -> int:
             "elapsed_seconds": round((datetime.now(UTC) - started).total_seconds(), 1),
             "catalog_bytes": catalog_bytes,
             "flat_bytes": flat_bytes,
+            **health_fields(
+                catalog["completeness"]["capture_complete"],
+                catalog["completeness"]["games_incomplete_count"],
+            ),
         },
     )
 

@@ -348,3 +348,64 @@ def test_status_reporter_reads_the_keys_the_builder_writes(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "catalog complete: 41 games / 1200 markets" in out
     assert "412" in out
+
+
+# --- operational health (DEGRADED is green, recorded, and summarised) -----
+def _builder():
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "build_kalshi_cfb_catalog.py"
+    spec = importlib.util.spec_from_file_location("build_kalshi_cfb_catalog_health", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_status_file_records_a_machine_readable_health_state():
+    builder = _builder()
+    assert builder.health_fields(True, 0)["health_state"] == "HEALTHY"
+    degraded = builder.health_fields(False, 3)
+    assert degraded["health_state"] == "DEGRADED"
+    assert "3 game(s) incomplete" in degraded["health_reason"]
+
+
+def test_a_published_catalog_carries_its_health_state(stubbed_client_live_clock, tmp_path):
+    _client, _transport = stubbed_client_live_clock
+    assert _builder().main(["--out-dir", str(tmp_path)]) == 0
+    status = json.loads((tmp_path / "cfb_catalog_status.json").read_text())
+    expected = "HEALTHY" if status["capture_complete"] else "DEGRADED"
+    assert status["health_state"] == expected
+
+
+def test_status_reporter_writes_a_degraded_step_summary(tmp_path, capsys, monkeypatch):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    status = tmp_path / "s.json"
+    status.write_text(
+        json.dumps(
+            {
+                "physical_games": 40,
+                "markets": 900,
+                "capture_complete": False,
+                "games_incomplete_count": 2,
+                "health_state": "DEGRADED",
+            }
+        )
+    )
+    assert _reporter().main(["--status-file", str(status)]) == 0
+    assert "::warning title=Catalog capture incomplete::" in capsys.readouterr().out
+    assert "Kalshi catalog DEGRADED" in summary.read_text()
+
+
+def test_status_reporter_does_not_report_a_stale_status_after_a_failed_build(tmp_path, capsys, monkeypatch):
+    """The builder writes no status file when it fails, so the one on disk is
+    the previously committed one. It must not be reported as this run's."""
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    status = tmp_path / "s.json"
+    status.write_text(json.dumps({"physical_games": 41, "markets": 1200, "capture_complete": True}))
+    assert _reporter().main(["--status-file", str(status), "--build-outcome", "failure"]) == 0
+    out = capsys.readouterr().out
+    assert "catalog complete" not in out
+    assert "earlier run" in out
+    assert "FAILED" in summary.read_text()

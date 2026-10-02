@@ -556,9 +556,17 @@ can tell a handicap error from news that arrived after the opinion.
 | 0 | any | done |
 | 2 | `prepare-live` | reconciliation did not close, or the batches do not cover the slate |
 | 4 | `prepare-live` | zero eligible contracts (usually a catalog older than the freshness bar) |
+| 0 | `prepare-live` | NOT_APPLICABLE: no game on the slate date, or every game on it has kicked off -- only when a complete, fresh catalog that lists a later game proves it; otherwise 4 |
 | 2 | `evaluate` | a payload was rejected (team mismatch, stale packet hash, unknown game) |
 | 3 | `evaluate` | games in scope still have no handicap |
 | 3 | `candidates` / `report` | the gate is shut: at least one game is INCOMPLETE |
+
+`prepare-live` records its verdict as `health` in `cfb_execution_slate.json`
+(`state` HEALTHY / DEGRADED / NOT_APPLICABLE / FAILED, plus `reason`,
+`detail`, `exit_code`) and in the Actions step summary. DEGRADED means the
+slate was built but the factual-context collector left no run record or
+reported `sources_unreachable` / `no_events_matched` / `stopped_early`; it
+exits 0 with a warning. See `src/cfb_edge_finder/execution/slate_health.py`.
 
 ---
 

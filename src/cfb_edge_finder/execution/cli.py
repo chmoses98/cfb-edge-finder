@@ -78,6 +78,12 @@ from cfb_edge_finder.execution.shards import (
     write_shards,
 )
 from cfb_edge_finder.execution.slate import build_slate
+from cfb_edge_finder.execution.slate_health import (
+    EXIT_OK,
+    classify_slate_health,
+    emit_github_summary,
+    read_context_run,
+)
 from cfb_edge_finder.execution.state import StateStore, eligible_ticker_hash, next_incomplete
 from cfb_edge_finder.execution.windows import DEFAULT_TIMEZONE, WINDOW_ORDER
 
@@ -375,17 +381,45 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         f"{state_index['counts']['stale']} stale / "
         f"{state_index['counts'].get('handicap_needs_review', 0)} handicap needs review"
     )
+    structural_failure: str | None = None
     if not batch_manifest["reconciles"]:
+        structural_failure = (
+            f"handicap batches cover {batched_games} games but the slate has {len(slate['games'])}"
+        )
         print(
             f"FATAL: handicap batches cover {batched_games} games but the slate has "
             f"{len(slate['games'])}; refusing to report this slate as usable",
             file=sys.stderr,
         )
-        return 2
-    if not reconciliation["balanced"] or not manifest["reconciles"]:
+    elif not reconciliation["balanced"] or not manifest["reconciles"]:
+        structural_failure = "slate or shard reconciliation does not balance"
         print("FATAL: reconciliation failed -- refusing to report this slate as usable", file=sys.stderr)
-        return 2
+
+    # ONE verdict, recorded in the slate itself and in the step summary, and
+    # the exit code derived from it (see execution/slate_health.py). The
+    # slate is rewritten only to carry that verdict; its contents are the
+    # ones written above.
+    context_expected, context_run = read_context_run(
+        Path(args.context_dir) if args.context_dir else None
+    )
+    health = classify_slate_health(
+        slate,
+        index,
+        structural_failure=structural_failure,
+        context_expected=context_expected,
+        context_run=context_run,
+    )
+    slate["health"] = health
+    _write(out_dir / "cfb_execution_slate.json", slate, compact=True)
+    emit_github_summary(health)
+    if structural_failure:
+        return health["exit_code"]
     if reconciliation["contracts_eligible"] == 0:
+        if health["exit_code"] == EXIT_OK:
+            # NOT_APPLICABLE, and the catalog proves it: no game on the
+            # date, or every game on it has already kicked off. Nothing to
+            # bet is the right answer, not a failure.
+            return EXIT_OK
         # Published with its diagnostics -- every exclusion is in the file
         # -- but exit non-zero, because a slate nobody can bet is not a
         # success and a scripted caller must not treat it as one. The
@@ -396,7 +430,7 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
             "Check --max-capture-age-minutes and whether the catalog is fresh (--refresh).",
             file=sys.stderr,
         )
-        return 4
+        return health["exit_code"]
     first_batch = batch_entries[0] if batch_entries else None
     if first_batch:
         print(f"\nSTART HERE:              {out_dir}/{first_batch['context_file']}")
