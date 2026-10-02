@@ -17,6 +17,22 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 TESTS_DIR = Path(__file__).resolve().parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
+
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_the_actions_runner(monkeypatch):
+    """Tests run inside GitHub Actions in CI, where GITHUB_ACTIONS and
+    GITHUB_STEP_SUMMARY are set for real. Code under test that reports its
+    operational verdict would otherwise append fixture verdicts (e.g. a
+    DEGRADED slate built from a fake catalog) to the CI job's own summary,
+    and behave differently in CI than locally. A test that exercises that
+    reporting sets these itself with monkeypatch."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("CATALOG_BUILD_OUTCOME", raising=False)

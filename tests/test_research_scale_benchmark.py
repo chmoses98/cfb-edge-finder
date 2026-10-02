@@ -64,16 +64,32 @@ def test_a_realistic_single_week_appends_quickly(tmp_path: Path):
 
 
 def test_repeated_dedup_lookup_scales_reasonably_not_quadratically(tmp_path: Path):
-    path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
+    # BEST OF THREE, same threshold. A single wall-clock sample on a shared
+    # CI runner is at the mercy of one GC pause or disk flush: main's CI run
+    # 35633648535 went red on a 0.48s sample of the 2000-row batch that
+    # measures ~0.15s (ratio ~4x) everywhere else. Scheduling noise only
+    # ever ADDS time, so the minimum of independent trials is the faithful
+    # estimate of the code's own cost; a genuinely quadratic path is slow on
+    # every trial and still fails the unchanged 20x bound.
+    def _trial(trial: int) -> tuple[float, float]:
+        path = corpus_helpers.ref(tmp_path / f"trial-{trial}", persistence.OBSERVATIONS_SUBDIR, 2026)
 
-    def _append_batch(n: int) -> float:
-        rows = [make_corpus_row(observation=make_observation(kalshi_market_ticker=f"BATCH-{n}-{i}")) for i in range(n)]
-        start = time.perf_counter()
-        persistence.append_observation_rows(path.base, path.season, rows)
-        return time.perf_counter() - start
+        def _append_batch(n: int) -> float:
+            rows = [
+                make_corpus_row(observation=make_observation(kalshi_market_ticker=f"BATCH-{n}-{i}"))
+                for i in range(n)
+            ]
+            start = time.perf_counter()
+            persistence.append_observation_rows(path.base, path.season, rows)
+            return time.perf_counter() - start
 
-    small_elapsed = _append_batch(500)
-    large_elapsed = _append_batch(2000)  # 4x rows, appended against an already-larger file
+        small = _append_batch(500)
+        large = _append_batch(2000)  # 4x rows, appended against an already-larger file
+        return small, large
+
+    trials = [_trial(i) for i in range(3)]
+    small_elapsed = min(small for small, _ in trials)
+    large_elapsed = min(large for _, large in trials)
 
     if small_elapsed > 0.0005:
         assert large_elapsed < small_elapsed * 20, (

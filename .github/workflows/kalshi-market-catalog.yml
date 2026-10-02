@@ -158,4 +158,8 @@ jobs:
         # A script on disk rather than a heredoc nested inside a shell
         # `if` inside a YAML block scalar: that shape is three quoting
         # layers deep, cannot be run outside CI, and cannot be tested.
+        # The build outcome is passed so a failed build does not re-report
+        # the previously committed status file as this run's result.
+        env:
+          CATALOG_BUILD_OUTCOME: ${{ steps.build.outcome }}
         run: python3 scripts/report_catalog_status.py
