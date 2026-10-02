@@ -409,7 +409,10 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
         assert "permissions:" in text, f"{name} schedules itself without declaring permissions"
 
     writers = sorted(name for name, text in scheduled.items() if "contents: write" in text)
-    assert writers == ["kalshi-market-catalog.yml"], f"unexpected scheduled writers: {writers}"
+    # app-export.yml joined the catalog in 2026-10: it reshapes the committed catalog and the
+    # accounting ledger into app/latest (docs/APP_EXPORT.md). Like the catalog it consumes no
+    # secret and produces no projection; unlike it, it writes nothing a model could read.
+    assert writers == ["app-export.yml", "kalshi-market-catalog.yml"], f"unexpected scheduled writers: {writers}"
 
     for name, text in scheduled.items():
         if name not in writers:

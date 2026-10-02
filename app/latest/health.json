@@ -1,0 +1,89 @@
+{
+  "bet_authority": "RESEARCH_ONLY",
+  "commit_sha": "71e26f56598f994c0de0e9ca0ca64ec058179bde",
+  "components": {
+    "export": {
+      "age_seconds": 0.0,
+      "as_of": "2026-10-02T17:37:19Z",
+      "detail": null,
+      "status": "OK"
+    },
+    "market_data": {
+      "age_seconds": 30271.0,
+      "as_of": "2026-10-02T09:12:48Z",
+      "detail": null,
+      "status": "STALE"
+    },
+    "model": {
+      "age_seconds": null,
+      "as_of": null,
+      "detail": null,
+      "status": "NOT_APPLICABLE"
+    },
+    "router": {
+      "age_seconds": 53815.0,
+      "as_of": "2026-10-02T02:40:24Z",
+      "detail": null,
+      "status": "STALE"
+    },
+    "settlement": {
+      "age_seconds": 44685.0,
+      "as_of": "2026-10-02T05:12:34Z",
+      "detail": null,
+      "status": "OK"
+    }
+  },
+  "data_age_seconds": 30271.0,
+  "errors": [],
+  "freshness_status": "STALE",
+  "generated_at": "2026-10-02T17:37:19Z",
+  "kind": "health",
+  "last_export_attempt": "2026-10-02T17:37:19Z",
+  "last_market_capture": "2026-10-02T09:12:48Z",
+  "last_model_generated": null,
+  "last_successful_run": "2026-10-02T17:37:19Z",
+  "market_data_status": "STALE",
+  "model_status": "NOT_APPLICABLE",
+  "next_scheduled_run": "2026-10-02T18:07:19Z",
+  "overall_status": "STALE",
+  "payload_run_id": "run_e95e40fc08938ede5d19",
+  "router_status": "STALE",
+  "run_id": "run_e95e40fc08938ede5d19",
+  "schema_version": "edge_finder.app.v1",
+  "settlement_status": "OK",
+  "sport": "CFB",
+  "thresholds": {
+    "export": {
+      "fresh_after_seconds": 2700,
+      "stale_after_seconds": 21600
+    },
+    "market_data": {
+      "fresh_after_seconds": 2700,
+      "stale_after_seconds": 21600
+    },
+    "model": {
+      "fresh_after_seconds": 3600,
+      "stale_after_seconds": 21600
+    },
+    "recommendations": {
+      "fresh_after_seconds": 3600,
+      "stale_after_seconds": 21600
+    },
+    "router": {
+      "fresh_after_seconds": 1800,
+      "stale_after_seconds": 14400
+    },
+    "schedule": {
+      "fresh_after_seconds": 86400,
+      "stale_after_seconds": 259200
+    },
+    "settlement": {
+      "fresh_after_seconds": 86400,
+      "stale_after_seconds": 259200
+    }
+  },
+  "warnings": [
+    "36 market(s) carry family 'unknown' (kept, not dropped)",
+    "97 wager(s) reference games no longer on the catalog board (market stubs emitted)"
+  ]
+}

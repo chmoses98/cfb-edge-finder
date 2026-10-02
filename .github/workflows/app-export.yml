@@ -1,0 +1,100 @@
+name: App Export
+
+# *** WHAT THIS IS ***
+# Publishes the Edge Finder app bundle (contract edge_finder.app.v1, see
+# docs/APP_EXPORT.md) to app/latest on main. It is a pure read-and-reshape
+# of two things this repository already produces:
+#
+#   data/live/cfb_market_catalog.json + data/live/games/   (the live catalog)
+#   the accounting-data branch                               (wagers, settlements)
+#
+# It consumes NO SECRETS: the catalog is committed, and the ledger branch
+# is fetched read-only with the workflow's own token. It never calls Kalshi.
+#
+# *** WHY IT IS A SEPARATE WORKFLOW ***
+# The catalog workflow commits only when the market surface's fingerprint
+# changed, so an export step inside it would never run on a quiet tick and
+# would never see a ledger change (a settlement lands on accounting-data
+# without touching the catalog at all). This workflow therefore runs after
+# every catalog run AND on its own 30-minute clock, and decides for itself
+# whether anything worth committing changed (`--skip-unchanged`).
+#
+# *** WHY IT IS QUIET ***
+# The exporter compares the new bundle's state key (catalog fingerprint,
+# ledger digest, health and event statuses) with the one already committed
+# and publishes nothing when they match, so a quiet half hour commits
+# nothing. On a build failure it rewrites ONLY app/latest/health.json
+# (export_failed=true, payload left as last-known-good), that file IS
+# committed so the app can see the failure, and the job is red.
+on:
+  workflow_run:
+    workflows: ["Kalshi CFB Market Catalog"]
+    types: [completed]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Shares the single-writer lock with the catalog: both commit to main with
+# a rebase-retry push, and queuing (never cancelling) is the only safe
+# setting for a writer -- see tests/test_research_workflow_concurrency.py.
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Fetch the accounting ledger (read-only)
+        run: |
+          set -euo pipefail
+          ACCT="$RUNNER_TEMP/acct"
+          mkdir -p "$ACCT"
+          if git fetch --depth=1 origin accounting-data 2>/dev/null; then
+            git archive origin/accounting-data | tar -x -C "$ACCT"
+            echo "accounting-data fetched into $ACCT"
+          else
+            echo "::warning::accounting-data branch not reachable; wagers and settlements will export empty"
+          fi
+      - name: Build the app export
+        run: |
+          python scripts/app_export.py \
+            --out app/latest \
+            --accounting-dir "$RUNNER_TEMP/acct" \
+            --commit-sha "$GITHUB_SHA" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --skip-unchanged
+      - name: Commit app/latest only if changed
+        # always(): a failed build leaves a rewritten health.json behind on
+        # purpose, and that is the one file the app most needs to see. The
+        # job stays red because the build step already failed.
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A app/latest
+          if git diff --cached --quiet; then
+            echo "app export byte-identical; nothing to commit"
+            exit 0
+          fi
+          SUMMARY=$(python3 -c "import json,sys;m=json.load(open('app/latest/manifest.json')) if __import__('os').path.exists('app/latest/manifest.json') else {};c=m.get('counts',{});print(f\"{c.get('events',0)} events / {c.get('markets',0)} markets / {c.get('wagers',0)} wagers\")" 2>/dev/null || echo "health only")
+          git commit -m "app export: ${SUMMARY}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt ${attempt} failed; backing off"
+            sleep $((attempt * 4))
+          done
+          exit 1
