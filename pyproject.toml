@@ -24,6 +24,9 @@ packages = ["src/cfb_edge_finder"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `contract/` holds the vendored Edge Finder app contract (edge_finder_contract); the app export
+# and its tests import it from there rather than installing it.
+pythonpath = ["contract"]
 
 [tool.ruff]
 line-length = 120
