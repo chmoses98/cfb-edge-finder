@@ -727,13 +727,20 @@ def _cfbd_limitations(fetched_at: str) -> list[str]:
 
 
 def _participants(events: list[dict]) -> dict[str, dict]:
+    """One participant per id. Kalshi titles occasionally truncate a school's name in one event
+    ("University" for "University at Albany"), so the v1 export can carry two names for one id; the
+    profile takes the most complete one (longest, then alphabetical) so the choice is deterministic."""
     out: dict[str, dict] = {}
+    names: dict[str, set[str]] = {}
     for ev in sorted(events, key=lambda e: (e["start_time_utc"], e["event_id"])):
         for p in ev["participants"]:
+            names.setdefault(p["participant_id"], set()).add(p["display_name"])
             if p["participant_id"] not in out:
                 q = dict(p)
                 q["metadata"] = {k: v for k, v in (p.get("metadata") or {}).items() if k != "slot"}
                 out[p["participant_id"]] = q
+    for pid, q in out.items():
+        q["display_name"] = sorted(names[pid], key=lambda n: (-len(n), n))[0]
     return out
 
 

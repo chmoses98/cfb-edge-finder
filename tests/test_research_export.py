@@ -188,10 +188,15 @@ def test_every_v1_event_and_participant_is_covered(real):
     assert set(explorer_events) == {e["event_id"] for e in events}
     assert histories == {e["event_id"] for e in events}
     v1_participants = {p["participant_id"]: p for e in events for p in e["participants"]}
+    v1_names: dict[str, set[str]] = {}
+    for e in events:
+        for p in e["participants"]:
+            v1_names.setdefault(p["participant_id"], set()).add(p["display_name"])
     assert set(profiles) == set(v1_participants)
     for pid, p in v1_participants.items():
         assert profiles[pid]["entity"]["source_ids"] == p["source_ids"]
-        assert profiles[pid]["entity"]["display_name"] == p["display_name"]
+        # a truncated Kalshi title can give one id two names; the profile keeps the most complete
+        assert profiles[pid]["entity"]["display_name"] == sorted(v1_names[pid], key=lambda n: (-len(n), n))[0]
     markets = {m["market_id"]: m for m in _read(out, "markets.json")["items"]}
     for eid, doc in explorer_events.items():
         assert doc["event"] == next(e for e in events if e["event_id"] == eid)
