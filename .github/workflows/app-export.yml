@@ -56,7 +56,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install package
-        run: pip install -e .
+        # [research] adds pyarrow, which the explorer needs to read the v2 research dataset.
+        run: pip install -e ".[research]"
       - name: Fetch the accounting ledger (read-only)
         run: |
           set -euo pipefail
@@ -68,6 +69,28 @@ jobs:
           else
             echo "::warning::accounting-data branch not reachable; wagers and settlements will export empty"
           fi
+      - name: Deepen the catalog history (market history, read-only)
+        # The explorer reconstructs per-ticker quote states from the catalog's git history on main.
+        # The checkout is shallow; four weeks covers every game the catalog can still list. On failure
+        # market history degrades to the current snapshot and the explorer says so.
+        run: |
+          SINCE=$(date -u -d '28 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          git fetch --shallow-since="$SINCE" origin main 2>/dev/null \
+            || echo "::warning::catalog history not deepened; market history will hold the current snapshot only"
+      - name: Fetch the research-data files (read-only)
+        # Frozen CFBD snapshot + v2 research dataset. If this fails the explorer still publishes
+        # markets, market history, wagers and capabilities; CFBD-backed capabilities read UNAVAILABLE.
+        run: |
+          RES="$RUNNER_TEMP/research"
+          mkdir -p "$RES"
+          if git fetch --depth=1 origin research-data 2>/dev/null \
+             && git archive origin/research-data -- data/research_cache/v2 data/research/v2/dataset.parquet \
+                  data/research/v2/dataset.parquet.meta.json | tar -x -C "$RES"; then
+            echo "research-data files extracted into $RES"
+          else
+            rm -rf "$RES" && mkdir -p "$RES"
+            echo "::warning::research-data branch not available; CFBD-backed explorer capabilities will be UNAVAILABLE"
+          fi
       - name: Build the app export
         run: |
           python scripts/app_export.py \
@@ -76,6 +99,23 @@ jobs:
             --commit-sha "$GITHUB_SHA" \
             --workflow-run-id "$GITHUB_RUN_ID" \
             --skip-unchanged
+      - name: Build the research explorer (app/latest/explorer)
+        # Its own step AFTER the v1 export: a research failure can never block the v1 payload.
+        # continue-on-error lets the commit step still publish app/latest; the last step turns the job red.
+        id: research_export
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python scripts/research_export.py \
+            --out app/latest \
+            --data-root data/live \
+            --research-root "$RUNNER_TEMP/research" 2>&1 | tee "$RUNNER_TEMP/research_export.log"
+          {
+            echo "### Research explorer"
+            echo '```'
+            tail -c 6000 "$RUNNER_TEMP/research_export.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Commit app/latest only if changed
         # always(): a failed build leaves a rewritten health.json behind on
         # purpose, and that is the one file the app most needs to see. The
@@ -97,4 +137,10 @@ jobs:
             echo "push attempt ${attempt} failed; backing off"
             sleep $((attempt * 4))
           done
+          exit 1
+      - name: Fail the job if the research explorer failed
+        # The v1 payload (and its health.json) was committed above; this only makes the failure visible.
+        if: steps.research_export.outcome == 'failure'
+        run: |
+          echo "::error::research explorer export failed; app/latest/explorer was left as last published"
           exit 1

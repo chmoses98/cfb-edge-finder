@@ -17,6 +17,11 @@ dependencies = [
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
+  "pyarrow>=14",
+]
+# scripts/research_export.py reads data/research/v2/dataset.parquet (the research-data branch).
+research = [
+  "pyarrow>=14",
 ]
 
 [tool.hatch.build.targets.wheel]
