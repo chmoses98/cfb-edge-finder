@@ -2,7 +2,8 @@
 """Export the CFB research-graph explorer (contract 1.1.0) beside the v1 app bundle.
 
     python scripts/research_export.py --out app/latest [--data-root data/live]
-                                      [--research-root <git archive of research-data>] [--now <iso-utc>]
+                                      [--include-cfbd --research-root <git archive of research-data>]
+                                      [--min-interval-minutes N] [--check-due] [--now <iso-utc>]
 
 Run it AFTER ``scripts/app_export.py``: it reads the published v1 bundle at ``--out`` (manifest,
 events, markets, wagers), so every ``prt_`` / ``evt_`` / ``mkt_kalshi_`` id it emits is the id the
@@ -26,9 +27,15 @@ Raw CFBD box-score, drive and play rows are NOT republished (CFBD's terms prohib
 raw API data; docs/DATA_SOURCES.md). Nothing here fits a model: rankings are arithmetic over stored
 values (``edge_finder_contract.research``). No network access, no credential.
 
-The research-data files are optional: when ``--research-root`` is absent or empty (the workflow's
-fetch failed) the explorer still publishes markets, market history, wagers and capabilities, and
-every CFBD-backed capability is UNAVAILABLE for that run ("research-data branch not available").
+CFBD-derived values are published ONLY with ``--include-cfbd`` (the owner's opt-in): until the CFBD
+redistribution licence is resolved the default publishes none, and every CFBD-backed capability is
+UNAVAILABLE ("CFBD redistribution licence unresolved; owner opt-in required (--include-cfbd)"). With
+the opt-in, the research-data files are still optional: when ``--research-root`` is absent or empty
+(the fetch failed) the explorer publishes markets, market history, wagers and capabilities, and the
+CFBD-backed capabilities read UNAVAILABLE ("research-data branch not available").
+
+``--min-interval-minutes`` gates rebuilds with ``research.refresh_due``: the tree is rewritten only
+when it is missing, the v1 events changed, or it is older than the interval.
 """
 
 from __future__ import annotations
@@ -65,6 +72,8 @@ AUDIT_DATE = "2026-10-03"
 SERIES_GAME_CAP = 40  # per-game series keep the last 40 games (CFB: ~3 seasons)
 PROFILE_SEASONS = 2  # season observations carried inside a profile; every season is in the rankings
 NO_RESEARCH_REASON = "research-data branch not available"
+#: Default until the owner resolves the CFBD redistribution question: no CFBD-derived value is published.
+LICENCE_OPT_IN_REASON = "CFBD redistribution licence unresolved; owner opt-in required (--include-cfbd)"
 CFBD_CACHE = Path("data/research_cache/v2")
 DATASET = Path("data/research/v2/dataset.parquet")
 CFBD_TABLES = (
@@ -163,17 +172,17 @@ def _read_dataset(path: Path) -> tuple[list[dict] | None, str | None, dict]:
     return rows, None, meta
 
 
-def load_research(research_root: Path | None) -> dict[str, Any]:
+def load_research(research_root: Path | None, *, absent_reason: str = NO_RESEARCH_REASON) -> dict[str, Any]:
     """CFBD snapshot tables (per season) and the v2 dataset rows, or the reason they are absent."""
     out: dict[str, Any] = {
         "present": False,
-        "reason": NO_RESEARCH_REASON,
+        "reason": absent_reason,
         "fetched_at": None,
         "cache_version": None,
         "source": None,
         "tables": {},
         "dataset": None,
-        "dataset_reason": NO_RESEARCH_REASON,
+        "dataset_reason": absent_reason,
         "dataset_meta": {},
     }
     if research_root is None:
@@ -1480,7 +1489,7 @@ def build_explorer(
             )
         else:
             reason = (
-                NO_RESEARCH_REASON
+                research["reason"]
                 if not research.get("present")
                 else "no exact CFBD identity mapping (FCS program or unmatched name)"
             )
@@ -1568,7 +1577,7 @@ def build_explorer(
         if research.get("present"):
             notes.append("Team metrics: " + _cfbd_snapshot_label(research["fetched_at"]) + ".")
         else:
-            notes.append(f"Team metrics unavailable this run: {NO_RESEARCH_REASON}.")
+            notes.append(f"Team metrics unavailable this run: {research['reason']}.")
         links = [
             R.link(
                 rel="TEAM",
@@ -1598,7 +1607,7 @@ def build_explorer(
                 "and RESEARCH opponent-adjusted states side by side; FCS teams have none"
             )
         else:
-            ev_lims.append(f"no matchup rows this run: {NO_RESEARCH_REASON}")
+            ev_lims.append(f"no matchup rows this run: {research['reason']}")
         q_ev = R.quality(
             status="PARTIAL",
             source="Kalshi market catalog + accounting ledger + CFBD snapshot",
@@ -1788,7 +1797,7 @@ def _capabilities(
     have_research = ctx.q_research is not None
     mapped_profile = next((R.team_path(pid) for pid in sorted(mapping) if pid in profiles), None)
     any_profile = next((R.team_path(pid) for pid in sorted(profiles)), None)
-    cfbd_reason = [NO_RESEARCH_REASON] if not have_cfbd else []
+    cfbd_reason = [research["reason"]] if not have_cfbd else []
     cfbd_lims = _cfbd_limitations(research["fetched_at"]) if have_cfbd else []
     seasons = sorted({s for ss in seasons_by_metric.values() for s in ss})
     coverage = f"{seasons[0]}-{seasons[-1]} seasons, {len(mapping)} mapped FBS teams" if seasons else None
@@ -1807,7 +1816,7 @@ def _capabilities(
                 evidence=[mapped_profile or any_profile],
                 limitations=cfbd_lims + [unmapped_note]
                 if have_cfbd
-                else [f"{NO_RESEARCH_REASON}: profiles carry Kalshi markets and games only"],
+                else [f"{research['reason']}: profiles carry Kalshi markets and games only"],
                 coverage=f"{len(profiles)} teams on the current board",
             )
         )
@@ -1832,7 +1841,7 @@ def _capabilities(
                     MODEL_RETIRED,
                     "matchup rows exist only where a team maps to CFBD (FBS) and use the frozen snapshot"
                     if have_cfbd
-                    else f"no matchup rows: {NO_RESEARCH_REASON}",
+                    else f"no matchup rows: {research['reason']}",
                 ],
                 coverage=f"{len(event_docs)} events",
             )
@@ -2231,13 +2240,13 @@ def publication_meta(*, v1: dict, research: dict, history: dict, generated_at: s
     as_of = max(stamps, key=timeutil.parse_ts) if stamps else None
     warnings = []
     if not research.get("present"):
-        warnings.append(f"{NO_RESEARCH_REASON}: CFBD-backed capabilities are UNAVAILABLE for this run")
+        warnings.append(f"{research['reason']}: CFBD-backed capabilities are UNAVAILABLE for this run")
     elif research.get("dataset") is None:
         warnings.append(f"opponent-adjusted research states not read: {research.get('dataset_reason')}")
     if not history.get("git"):
         warnings.append(f"catalog git history not read ({history.get('reason')}); market history = working tree only")
     lims = [HISTORY_LABEL + " (market history)", MODEL_RETIRED]
-    lims += _cfbd_limitations(research["fetched_at"]) if research.get("present") else [NO_RESEARCH_REASON]
+    lims += _cfbd_limitations(research["fetched_at"]) if research.get("present") else [research["reason"]]
     quality = R.quality(
         status="PARTIAL",
         source="Kalshi market catalog + accounting ledger + CFBD snapshot",
@@ -2250,21 +2259,40 @@ def publication_meta(*, v1: dict, research: dict, history: dict, generated_at: s
     return {"as_of": as_of, "warnings": warnings, "quality": quality}
 
 
+def explorer_due(app_root: Path, *, now: str | None, min_interval_seconds: float) -> tuple[bool, str]:
+    """``research.refresh_due`` against the wall clock (or ``now``)."""
+    return R.refresh_due(Path(app_root), now=now or timeutil.now_utc(), min_interval_seconds=min_interval_seconds)
+
+
 def export_explorer(
     app_root: Path,
     *,
     data_root: Path,
     research_root: Path | None,
     now: str | None = None,
+    include_cfbd: bool = False,
+    min_interval_seconds: float = 0,
     max_history_commits: int | None = None,
 ) -> dict:
-    """Build and publish ``<app_root>/explorer``. Returns the explorer index. Raises on failure; the
-    previous explorer tree is left untouched (``research.publish_explorer`` is atomic)."""
+    """Build and publish ``<app_root>/explorer``. Returns the explorer index, or ``{"skipped": True,
+    "reason": ...}`` when ``min_interval_seconds`` > 0 and ``research.refresh_due`` says the published tree
+    is still current (then nothing is touched). Raises on failure; the previous explorer tree is left
+    untouched (``research.publish_explorer`` is atomic).
+
+    ``include_cfbd`` is the owner's opt-in to publish CFBD-derived values (off by default while the CFBD
+    redistribution licence is unresolved); without it ``research_root`` is never read."""
     app_root = Path(app_root)
+    if min_interval_seconds > 0:
+        due, reason = explorer_due(app_root, now=now, min_interval_seconds=min_interval_seconds)
+        if not due:
+            return {"skipped": True, "reason": reason}
     v1 = load_v1(app_root)
     manifest = v1["manifest"]
     generated_at = timeutil.to_iso(now or manifest["generated_at"])
-    research = load_research(Path(research_root) if research_root else None)
+    if include_cfbd:
+        research = load_research(Path(research_root) if research_root else None)
+    else:
+        research = load_research(None, absent_reason=LICENCE_OPT_IN_REASON)
     game_keys = {
         str((ev.get("source_ids") or {}).get("kalshi_game_key"))
         for ev in v1["events"]
@@ -2303,14 +2331,39 @@ def main(argv: list[str] | None = None) -> int:
         help="a read-only git archive of the research-data branch; absent/empty => CFBD capabilities "
         "UNAVAILABLE for this run",
     )
-    parser.add_argument("--now", default=None, help="generated_at (defaults to the v1 manifest's generated_at)")
+    parser.add_argument(
+        "--now", default=None, help="generated_at and refresh clock (defaults: the v1 manifest's generated_at / now)"
+    )
+    parser.add_argument(
+        "--include-cfbd",
+        action="store_true",
+        help="owner opt-in: publish CFBD-derived values from --research-root (default off: licence unresolved)",
+    )
+    parser.add_argument(
+        "--min-interval-minutes",
+        type=float,
+        default=0,
+        help="rebuild only when the v1 events changed or the published explorer is older than this (0 = always)",
+    )
+    parser.add_argument(
+        "--check-due",
+        action="store_true",
+        help="print due=true|false and reason=... (GITHUB_OUTPUT lines) for --min-interval-minutes and exit",
+    )
     args = parser.parse_args(argv)
+    if args.check_due:
+        due, reason = explorer_due(Path(args.out), now=args.now, min_interval_seconds=args.min_interval_minutes * 60)
+        print(f"due={'true' if due else 'false'}")
+        print(f"reason={reason}")
+        return 0
     try:
         index = export_explorer(
             Path(args.out),
             data_root=Path(args.data_root),
             research_root=Path(args.research_root) if args.research_root else None,
             now=args.now,
+            include_cfbd=args.include_cfbd,
+            min_interval_seconds=args.min_interval_minutes * 60,
         )
     except Exception as exc:  # noqa: BLE001 - report and exit 1; the previous explorer tree is untouched
         print(
@@ -2319,6 +2372,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         traceback.print_exc()
         return 1
+    if index.get("skipped"):
+        print(json.dumps({"skipped": True, "reason": index["reason"]}, sort_keys=True))
+        return 0
     caps = json.loads((Path(args.out) / R.EXPLORER_DIR / R.CAPABILITIES_NAME).read_text(encoding="utf-8"))
     print(
         json.dumps(

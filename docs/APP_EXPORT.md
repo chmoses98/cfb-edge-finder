@@ -200,8 +200,24 @@ app's detail screen reads). Every market is standard fields plus the four-key ex
 
 ```
 python scripts/research_export.py --out app/latest [--data-root data/live] \
-    [--research-root <git archive of research-data>] [--now <iso-utc>]
+    [--include-cfbd --research-root <git archive of research-data>] \
+    [--min-interval-minutes N] [--check-due] [--now <iso-utc>]
 ```
+
+**CFBD values are off by default.** `docs/DATA_SOURCES.md` records that redistributing raw CFBD API
+data is prohibited, and the owner has not resolved whether season aggregates may be republished. Until
+then the explorer publishes no CFBD-derived value: without `--include-cfbd` the research root is never
+read and every CFBD-backed capability is UNAVAILABLE with the reason "CFBD redistribution licence
+unresolved; owner opt-in required (--include-cfbd)". The workflow's job-level `INCLUDE_CFBD: "false"`
+is the single switch: setting it to `"true"` fetches research-data and passes `--include-cfbd`.
+Everything below about CFBD metrics describes the opt-in path.
+
+**Refresh cadence.** `--min-interval-minutes N` gates rebuilds with `research.refresh_due`: the tree is
+rewritten only when it is missing, the v1 event set changed, or it is older than N minutes; otherwise
+the exporter prints the reason and leaves `explorer/` untouched. The workflow checks first
+(`--check-due`, written to `$GITHUB_OUTPUT`) with N = 180, so the 30-minute cron rewrites the
+explorer at most every 3 hours unless games were added or removed, and the history deepening and the
+research fetch run only when a rebuild is due.
 
 Honest framing (audit 2026-10-03): CFB's live, maintained surface is **market inventory + market
 history + accounting**. Everything team-level is a frozen CFBD corpus (fetched once, 2026-09-02) on
@@ -216,11 +232,14 @@ the orphan `research-data` branch that nothing refreshes, with **no 2026 in-seas
 | CFBD snapshot | `research-data:data/research_cache/v2/<season>/{teams_fbs,ratings_sp,season_advanced,talent,recruiting_teams,returning_production,games}.json.gz` | team identity, season metrics, rankings, pregame Elo |
 | v2 research dataset | `research-data:data/research/v2/dataset.parquet` (+ `.meta.json`) | opponent-adjusted states (RESEARCH); needs `pyarrow` (`pip install -e ".[research]"`) |
 
-The workflow deepens main to 28 days (`git fetch --shallow-since`), fetches `research-data` with
-`git fetch --depth=1` and extracts only the two paths above with `git archive` into
-`$RUNNER_TEMP/research`. If that fetch fails, the explorer still publishes markets, market history,
-wagers, profiles and capabilities; every CFBD-backed capability is UNAVAILABLE for that run with the
-reason "research-data branch not available" (tested both ways).
+When a rebuild is due the workflow deepens main to 18 days (`git fetch --shallow-since`). This is
+still needed at a 3-hour cadence: market history is rebuilt from git on every rebuild and the
+checkout is depth 1, so without it the history would be the current snapshot only; the catalog lists
+games about two weeks ahead and the exporter stops at the first commit listing none of them. With the
+CFBD opt-in it also fetches `research-data` with `git fetch --depth=1` and extracts only the two paths
+above with `git archive` into `$RUNNER_TEMP/research`. If that fetch fails, the explorer still
+publishes markets, market history, wagers, profiles and capabilities; every CFBD-backed capability is
+UNAVAILABLE for that run with the reason "research-data branch not available" (tested).
 
 ### What it publishes
 
@@ -261,6 +280,8 @@ matching abbreviation); the **127 unmapped are all FCS** programs, which CFBD `t
 
 ### Capability statuses (`explorer/capabilities.json`)
 
+With the CFBD opt-in (default: every CFBD-backed row below is UNAVAILABLE, reason above):
+
 | Status | Capabilities | Why |
 |---|---|---|
 | VERIFIED | market_prices, game_markets, team_props, wager_history, search | production catalog + ledger; wager_history evidence = event docs that list on-board wagers |
@@ -273,13 +294,13 @@ matching abbreviation); the **127 unmapped are all FCS** programs, which CFBD `t
 season-level aggregates and one per-game field (pregame Elo) are published. That licence question is
 open and is stated in every CFBD-backed capability's `limitations`.
 
-### Sizes (real data, 2026-10-03 board, full catalog history)
+### Sizes (real data, 2026-10-03 board, full catalog history, contract 1.1.1)
 
-Measured with `research.tree_bytes`: teams 13.2 MB (266, max 122 KB), events 10.4 MB (261, max
-150 KB), market_history 21.3 MB (261, max 399 KB), series 7.4 MB (554, max 14 KB), rankings 5.4 MB
-(170, max 34 KB), index.json 519 KB, search_index.json 232 KB, metrics.json 55 KB,
-capabilities.json 23 KB — **58.5 MB** in all. Without the research files: 33.4 MB. `index.json`
-exceeds 300 KB because the contract lists every file (≈1,270) in an indented table.
+Measured with `research.tree_bytes`. **Default (no CFBD): 33.3 MB** — market_history 21.3 MB (261,
+max 399 KB), events 6.9 MB, teams 4.7 MB, index.json 279 KB, search_index.json 169 KB,
+capabilities.json 14 KB. **With `--include-cfbd`: 58.4 MB** — adds rankings 5.4 MB (170, max 34 KB)
+and series 7.4 MB (554, max 14 KB); teams 13.2 MB (max 122 KB), events 10.4 MB (max 150 KB),
+index.json 418 KB (one compact entry per file, ≈1,270 files), search_index.json 232 KB.
 
 ### Deliberately not published
 
@@ -291,7 +312,6 @@ shadow ledgers, calibration and backtests; any 2026 in-season team statistic (no
 
 `research.publish_explorer` validates everything and swaps the tree in atomically; on failure the
 previous `explorer/` is untouched and the step exits 1. The workflow step (`id: research_export`)
-is `continue-on-error`, so `app/latest` is still committed, and a final step fails the job. Note that
-the v1 `publish.publish` removes every JSON file under `app/latest` it did not write, including
-`explorer/`: when the v1 export republishes and the explorer then fails, that run's commit has no
-explorer tree (a contract behaviour, reported upstream).
+is `continue-on-error`, so `app/latest` is still committed, and a final step fails the job. Since
+contract 1.1.1 the v1 `publish.publish` never prunes `explorer/`, so a skipped or failed explorer run
+keeps the last published tree beside the new v1 payload (its `run_id` then names the earlier v1 run).

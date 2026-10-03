@@ -118,7 +118,9 @@ def real(tmp_path_factory) -> dict:
     captured_at = _read(REAL_DATA_ROOT, "cfb_market_catalog.json")["capture"]["captured_at"]
     _v1_export(out, REAL_DATA_ROOT, accounting, captured_at)
     # the newest 12 catalog commits keep the test fast; the workflow reads every commit that lists a board game
-    index = rx.export_explorer(out, data_root=REAL_DATA_ROOT, research_root=RESEARCH_ROOT, max_history_commits=12)
+    index = rx.export_explorer(
+        out, data_root=REAL_DATA_ROOT, research_root=RESEARCH_ROOT, include_cfbd=True, max_history_commits=12
+    )
     return {"out": out, "index": index, "accounting": accounting}
 
 
@@ -129,7 +131,7 @@ def synthetic(tmp_path_factory) -> dict:
     accounting = write_accounting_dir(base / "acct")
     out = base / "app" / "latest"
     _v1_export(out, data_root, accounting, NOW)
-    rx.export_explorer(out, data_root=data_root, research_root=RESEARCH_ROOT)
+    rx.export_explorer(out, data_root=data_root, research_root=RESEARCH_ROOT, include_cfbd=True)
     return {"base": base, "out": out, "data_root": data_root, "accounting": accounting}
 
 
@@ -164,10 +166,12 @@ def test_two_publishes_are_byte_identical(synthetic, tmp_path):
     other = tmp_path / "app" / "latest"
     shutil.copytree(synthetic["out"], other)
     shutil.rmtree(other / "explorer")
-    rx.export_explorer(other, data_root=synthetic["data_root"], research_root=RESEARCH_ROOT)
+    rx.export_explorer(other, data_root=synthetic["data_root"], research_root=RESEARCH_ROOT, include_cfbd=True)
     assert R.digest_tree(other) == R.digest_tree(synthetic["out"])
     before = R.digest_tree(synthetic["out"])
-    rx.export_explorer(synthetic["out"], data_root=synthetic["data_root"], research_root=RESEARCH_ROOT)
+    rx.export_explorer(
+        synthetic["out"], data_root=synthetic["data_root"], research_root=RESEARCH_ROOT, include_cfbd=True
+    )
     assert R.digest_tree(synthetic["out"]) == before
 
 
@@ -253,7 +257,7 @@ def test_research_fetch_failure_still_publishes_markets_and_capabilities(synthet
         out = tmp_path / f"app-{'none' if research_root is None else 'empty'}" / "latest"
         shutil.copytree(synthetic["out"], out)
         shutil.rmtree(out / "explorer")
-        rx.export_explorer(out, data_root=synthetic["data_root"], research_root=research_root)
+        rx.export_explorer(out, data_root=synthetic["data_root"], research_root=research_root, include_cfbd=True)
         assert R.verify_explorer(out) == []
         caps = _caps(out)
         for name in CFBD_BACKED:
@@ -271,11 +275,59 @@ def test_research_fetch_failure_still_publishes_markets_and_capabilities(synthet
             assert prof["metrics"] == [] and prof["extensions"]["cfbd"] is None and prof["markets"]
 
 
+def test_default_publishes_no_cfbd_value_until_the_owner_opts_in(synthetic, tmp_path):
+    out = tmp_path / "app" / "latest"
+    shutil.copytree(synthetic["out"], out)
+    # research_root is supplied but must not be read without --include-cfbd
+    assert (
+        rx.main(["--out", str(out), "--data-root", str(synthetic["data_root"]), "--research-root", str(RESEARCH_ROOT)])
+        == 0
+    )
+    assert R.verify_explorer(out) == []
+    caps = _caps(out)
+    for name in CFBD_BACKED:
+        assert caps[name]["status"] == "UNAVAILABLE", name
+        assert rx.LICENCE_OPT_IN_REASON in caps[name]["reasons"], name
+    assert caps["market_prices"]["status"] == "VERIFIED" and caps["wager_history"]["status"] == "VERIFIED"
+    index = R.read_index(out)
+    assert index["counts"]["metrics"] == 0 and index["counts"]["rankings"] == 0 and index["counts"]["series"] == 0
+    _, docs = R.load_explorer(out)
+    text = json.dumps(docs)
+    assert "CFBD snapshot 20" not in text and "met_cfb.sp_plus_rating" not in text
+    for prof in (d for d in docs.values() if d["kind"] == "entity_profile"):
+        assert prof["metrics"] == [] and prof["extensions"]["cfbd"] is None
+
+
+def test_a_second_export_within_the_interval_is_skipped(synthetic, tmp_path):
+    out = tmp_path / "app" / "latest"
+    shutil.copytree(synthetic["out"], out)
+    shutil.rmtree(out / "explorer")
+    args = ["--out", str(out), "--data-root", str(synthetic["data_root"]), "--min-interval-minutes", "180"]
+    assert rx.main(args + ["--now", "2026-10-03T12:30:00Z"]) == 0  # no explorer yet: due
+    assert R.read_index(out) is not None
+    before = R.digest_tree(out)
+    due, reason = rx.explorer_due(out, now="2026-10-03T14:00:00Z", min_interval_seconds=10800)
+    assert not due and "unchanged" in reason
+    assert rx.main(args + ["--now", "2026-10-03T14:00:00Z"]) == 0
+    assert R.digest_tree(out) == before
+    skipped = rx.export_explorer(
+        out,
+        data_root=synthetic["data_root"],
+        research_root=None,
+        now="2026-10-03T14:00:00Z",
+        min_interval_seconds=10800,
+    )
+    assert skipped["skipped"] is True and R.digest_tree(out) == before
+    # past the interval the tree is rebuilt
+    due, _ = rx.explorer_due(out, now="2026-10-03T15:31:00Z", min_interval_seconds=10800)
+    assert due
+
+
 def test_without_pyarrow_the_research_states_are_unavailable(synthetic, tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "pyarrow.parquet", None)
     out = tmp_path / "app" / "latest"
     shutil.copytree(synthetic["out"], out)
-    rx.export_explorer(out, data_root=synthetic["data_root"], research_root=RESEARCH_ROOT)
+    rx.export_explorer(out, data_root=synthetic["data_root"], research_root=RESEARCH_ROOT, include_cfbd=True)
     assert R.verify_explorer(out) == []
     caps = _caps(out)
     assert caps["opponent_adjustment"]["status"] == "UNAVAILABLE"
@@ -355,7 +407,20 @@ def test_a_failing_publish_leaves_the_previous_tree_intact(synthetic, tmp_path):
     broken = tmp_path / "broken"
     shutil.copytree(RESEARCH_ROOT, broken)
     (broken / "data" / "research_cache" / "v2" / "manifest.json").write_text("{not json", encoding="utf-8")
-    assert rx.main(["--out", str(out), "--data-root", str(synthetic["data_root"]), "--research-root", str(broken)]) == 1
+    assert (
+        rx.main(
+            [
+                "--out",
+                str(out),
+                "--data-root",
+                str(synthetic["data_root"]),
+                "--research-root",
+                str(broken),
+                "--include-cfbd",
+            ]
+        )
+        == 1
+    )
     assert R.digest_tree(out) == before
     assert R.verify_explorer(out) == []
 
@@ -410,9 +475,11 @@ def test_observation_context_is_read_off_the_published_ranking(real):
 def test_workflow_runs_the_explorer_after_the_v1_export_without_blocking_it():
     text = (REPO_ROOT / ".github" / "workflows" / "app-export.yml").read_text(encoding="utf-8")
     v1 = text.index("scripts/app_export.py")
-    explorer = text.index("scripts/research_export.py")
+    explorer = text.index("python scripts/research_export.py \\")
     assert v1 < explorer
     assert "id: research_export" in text and "continue-on-error: true" in text
     assert "steps.research_export.outcome == 'failure'" in text
+    assert "--min-interval-minutes 180" in text
+    # CFBD stays off until the owner opts in: the fetch step is gated and --include-cfbd is not passed
+    assert 'INCLUDE_CFBD: "false"' in text and "env.INCLUDE_CFBD == 'true'" in text
     assert "git fetch --depth=1 origin research-data" in text and "git archive origin/research-data" in text
-    assert '--research-root "$RUNNER_TEMP/research"' in text
