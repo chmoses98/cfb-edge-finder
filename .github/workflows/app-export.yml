@@ -48,6 +48,10 @@ jobs:
   export:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Owner opt-in for CFBD-derived explorer values (see docs/APP_EXPORT.md "Research explorer"). Off until
+      # the CFBD redistribution licence question is resolved; "true" fetches research-data and passes --include-cfbd.
+      INCLUDE_CFBD: "false"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,7 +60,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install package
-        run: pip install -e .
+        # [research] adds pyarrow, which the explorer needs for the v2 research dataset (CFBD opt-in only).
+        run: pip install -e ".[research]"
       - name: Fetch the accounting ledger (read-only)
         run: |
           set -euo pipefail
@@ -76,6 +81,69 @@ jobs:
             --commit-sha "$GITHUB_SHA" \
             --workflow-run-id "$GITHUB_RUN_ID" \
             --skip-unchanged
+      - name: Is a research explorer rebuild due?
+        # The explorer is rebuilt only when it is missing, the v1 events changed, or it is older than
+        # 3 hours (research.refresh_due), so the 30-minute cron does not rewrite ~1,300 files each tick.
+        id: explorer_due
+        continue-on-error: true
+        run: python scripts/research_export.py --out app/latest --min-interval-minutes 180 --check-due >> "$GITHUB_OUTPUT"
+      - name: Deepen the catalog history (market history, read-only)
+        # Market history is rebuilt from the catalog's git history on every rebuild, whatever the cadence,
+        # and the checkout is depth 1. The catalog lists games about two weeks ahead and the exporter stops
+        # at the first commit that lists none of them, so 18 days is enough. On failure market history
+        # degrades to the current snapshot and the explorer says so.
+        if: steps.explorer_due.outputs.due == 'true'
+        run: |
+          SINCE=$(date -u -d '18 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          git fetch --shallow-since="$SINCE" origin main 2>/dev/null \
+            || echo "::warning::catalog history not deepened; market history will hold the current snapshot only"
+      - name: Fetch the research-data files (read-only, owner opt-in only)
+        # CFBD-derived values are published only when the owner opts in (INCLUDE_CFBD, --include-cfbd):
+        # the CFBD redistribution licence is unresolved. If the fetch fails the explorer still publishes
+        # markets, market history, wagers and capabilities; CFBD-backed capabilities read UNAVAILABLE.
+        if: env.INCLUDE_CFBD == 'true' && steps.explorer_due.outputs.due == 'true'
+        run: |
+          RES="$RUNNER_TEMP/research"
+          mkdir -p "$RES"
+          if git fetch --depth=1 origin research-data 2>/dev/null \
+             && git archive origin/research-data -- data/research_cache/v2 data/research/v2/dataset.parquet \
+                  data/research/v2/dataset.parquet.meta.json | tar -x -C "$RES"; then
+            echo "research-data files extracted into $RES"
+          else
+            rm -rf "$RES" && mkdir -p "$RES"
+            echo "::warning::research-data branch not available; CFBD-backed explorer capabilities will be UNAVAILABLE"
+          fi
+      - name: Build the research explorer (app/latest/explorer)
+        # Its own step AFTER the v1 export: a research failure can never block the v1 payload.
+        # continue-on-error lets the commit step still publish app/latest; the last step turns the job red.
+        # Runs when a rebuild is due (or the due check itself failed); the age only grows between the two
+        # steps, so its own --min-interval-minutes check agrees with the one above.
+        if: steps.explorer_due.outputs.due != 'false'
+        id: research_export
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          CFBD_ARGS=()
+          if [ "$INCLUDE_CFBD" = "true" ]; then
+            CFBD_ARGS=(--include-cfbd --research-root "$RUNNER_TEMP/research")
+          fi
+          python scripts/research_export.py \
+            --out app/latest \
+            --data-root data/live \
+            --min-interval-minutes 180 \
+            "${CFBD_ARGS[@]}" 2>&1 | tee "$RUNNER_TEMP/research_export.log"
+          {
+            echo "### Research explorer"
+            echo "due: ${{ steps.explorer_due.outputs.reason }}"
+            echo '```'
+            tail -c 6000 "$RUNNER_TEMP/research_export.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Research explorer not due
+        if: steps.explorer_due.outputs.due == 'false'
+        run: |
+          echo "research explorer not rebuilt: ${{ steps.explorer_due.outputs.reason }}"
+          echo "### Research explorer: not rebuilt (${{ steps.explorer_due.outputs.reason }})" >> "$GITHUB_STEP_SUMMARY"
       - name: Commit app/latest only if changed
         # always(): a failed build leaves a rewritten health.json behind on
         # purpose, and that is the one file the app most needs to see. The
@@ -97,4 +165,10 @@ jobs:
             echo "push attempt ${attempt} failed; backing off"
             sleep $((attempt * 4))
           done
+          exit 1
+      - name: Fail the job if the research explorer failed
+        # The v1 payload (and its health.json) was committed above; this only makes the failure visible.
+        if: steps.research_export.outcome == 'failure'
+        run: |
+          echo "::error::research explorer export failed; app/latest/explorer was left as last published"
           exit 1

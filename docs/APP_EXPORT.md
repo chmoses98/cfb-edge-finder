@@ -190,3 +190,128 @@ app's detail screen reads). Every market is standard fields plus the four-key ex
 * `board.build_event_detail` filters `markets` over the full list per call; the adapter pre-groups
   markets by event before calling it, which is worth doing inside the contract for 13k-market
   sports.
+
+## Research explorer (`app/latest/explorer/`, contract 1.1.0)
+
+`scripts/research_export.py` publishes the research graph beside the v1 bundle. It runs **after**
+`app_export.py`, reads the published v1 files (`manifest.json`, `events.json`, `markets.json`,
+`wagers.json`), so every `prt_` / `evt_` / `mkt_kalshi_` id is the v1 id, and `run_id`,
+`generated_at` and `commit_sha` are the v1 publication's own (`--now` overrides `generated_at`).
+
+```
+python scripts/research_export.py --out app/latest [--data-root data/live] \
+    [--include-cfbd --research-root <git archive of research-data>] \
+    [--min-interval-minutes N] [--check-due] [--now <iso-utc>]
+```
+
+**CFBD values are off by default.** `docs/DATA_SOURCES.md` records that redistributing raw CFBD API
+data is prohibited, and the owner has not resolved whether season aggregates may be republished. Until
+then the explorer publishes no CFBD-derived value: without `--include-cfbd` the research root is never
+read and every CFBD-backed capability is UNAVAILABLE with the reason "CFBD redistribution licence
+unresolved; owner opt-in required (--include-cfbd)". The workflow's job-level `INCLUDE_CFBD: "false"`
+is the single switch: setting it to `"true"` fetches research-data and passes `--include-cfbd`.
+Everything below about CFBD metrics describes the opt-in path.
+
+**Refresh cadence.** `--min-interval-minutes N` gates rebuilds with `research.refresh_due`: the tree is
+rewritten only when it is missing, the v1 event set changed, or it is older than N minutes; otherwise
+the exporter prints the reason and leaves `explorer/` untouched. The workflow checks first
+(`--check-due`, written to `$GITHUB_OUTPUT`) with N = 180, so the 30-minute cron rewrites the
+explorer at most every 3 hours unless games were added or removed, and the history deepening and the
+research fetch run only when a rebuild is due.
+
+Honest framing (audit 2026-10-03): CFB's live, maintained surface is **market inventory + market
+history + accounting**. Everything team-level is a frozen CFBD corpus (fetched once, 2026-09-02) on
+the orphan `research-data` branch that nothing refreshes, with **no 2026 in-season stats**.
+
+### Inputs
+
+| Input | Where | Used for |
+|---|---|---|
+| v1 bundle | `app/latest/*.json` | events, participants, markets, wagers, run id |
+| catalog git history | `git log` / `ls-tree` / `cat-file` over `data/live` on main | market history |
+| CFBD snapshot | `research-data:data/research_cache/v2/<season>/{teams_fbs,ratings_sp,season_advanced,talent,recruiting_teams,returning_production,games}.json.gz` | team identity, season metrics, rankings, pregame Elo |
+| v2 research dataset | `research-data:data/research/v2/dataset.parquet` (+ `.meta.json`) | opponent-adjusted states (RESEARCH); needs `pyarrow` (`pip install -e ".[research]"`) |
+
+When a rebuild is due the workflow deepens main to 18 days (`git fetch --shallow-since`). This is
+still needed at a 3-hour cadence: market history is rebuilt from git on every rebuild and the
+checkout is depth 1, so without it the history would be the current snapshot only; the catalog lists
+games about two weeks ahead and the exporter stops at the first commit listing none of them. With the
+CFBD opt-in it also fetches `research-data` with `git fetch --depth=1` and extracts only the two paths
+above with `git archive` into `$RUNNER_TEMP/research`. If that fetch fails, the explorer still
+publishes markets, market history, wagers, profiles and capabilities; every CFBD-backed capability is
+UNAVAILABLE for that run with the reason "research-data branch not available" (tested).
+
+### What it publishes
+
+* **Market history** — one `market_history/<evt_>.json` per v1 event. The catalog commits only when
+  its fingerprint changes; the exporter walks those commits newest to oldest (stopping at the first
+  that lists none of the board's games), plus the working tree, and emits a point per ticker only when
+  the book (yes bid/ask) or last trade changed (`source` = `catalog@<sha12>`). Labelled
+  **"change-detected snapshots, not a closing series"**. Sentinel 0/1 books are null quotes. A
+  document over 400 KB keeps each ticker's most recent states and says so in its quality limitations.
+  The model-era research observation ledger (Aug 26–Sep 16 2026) covers none of the current events
+  and is not republished.
+* **Event research** — one per v1 event: participants, every v1 market (`market_ref`), the ledger
+  wagers on that game, `market_history_path`, and matchup rows (home vs away observations of the same
+  metric) where a team maps to CFBD. No projections: the model is retired. Markets are never dropped;
+  a document over 150 KB trims matchup rows from the end and notes it.
+* **Team profiles** — one per v1 participant (266). Mapped teams carry CFBD season aggregates for the
+  latest two seasons per metric with comparison context, rush/pass splits for the latest season,
+  ranking links for every season, series links, and CFBD identity + home-stadium attributes in
+  `extensions.cfbd`. Unmapped teams carry Kalshi markets and games only.
+* **Rankings** — every CFBD season metric × season over all FBS teams with a stored value (universe
+  "FBS teams, <season> season (CFBD)"); FBS teams not on the board appear under a `cfbd_team_id`
+  participant id with no profile path.
+* **Series** — pregame Elo per completed game (PARTIAL) and opponent-adjusted offensive PPA,
+  defensive PPA and margin states (RESEARCH), each capped at the last 40 completed games, through 2025.
+* **Metrics** — SP+ (overall/offense/defense), season advanced offensive/defensive PPA, success
+  rate, explosiveness, defensive havoc, offensive havoc allowed, talent, recruiting points,
+  returning production (percentPPA), pregame Elo, and five RESEARCH states (adj off/def PPA, adj
+  off/def success rate, adj margin).
+
+### Identity (Kalshi participant ↔ CFBD team)
+
+Exact only: the Kalshi display name must equal the CFBD `school`, one of its `alternateNames`, or
+resolve through `teams.registry.resolve_team_alias` to the same canonical slug as a CFBD school name;
+each rule must name exactly one CFBD team, and no team may be claimed twice. The CFBD abbreviation is
+recorded (`abbreviation_matches_kalshi_code`) but never used alone. On the 2026-10-03 board: **139 of
+266** participants map (106 by school, 30 by registry alias, 3 by alternate name; 122 of them with a
+matching abbreviation); the **127 unmapped are all FCS** programs, which CFBD `teams_fbs` does not list.
+
+### Capability statuses (`explorer/capabilities.json`)
+
+With the CFBD opt-in (default: every CFBD-backed row below is UNAVAILABLE, reason above):
+
+| Status | Capabilities | Why |
+|---|---|---|
+| VERIFIED | market_prices, game_markets, team_props, wager_history, search | production catalog + ledger; wager_history evidence = event docs that list on-board wagers |
+| PARTIAL | team_profiles, event_research, team_metrics, advanced_stats, rankings, comparisons, time_series, situational_splits (play_type only), opponents, venue_effects (stadium attributes, no effects), market_price_history, player_props (inventory only) | real but frozen CFBD snapshot / change-detected history |
+| RESEARCH | opponent_adjustment, matchup_metrics | v2 research dataset; builder not on main |
+| UNAVAILABLE | player_profiles, player_metrics, player_game_logs, usage, lineups, play_by_play, schedule_strength, recent_form_windows, injuries, weather, projection_distributions, raw_projections, calibration, historical_accuracy, clv, team_game_logs, historical_results | no data, retired model, hibernated captures, or not republished (licence) |
+
+`team_game_logs` and `historical_results` are PARTIAL in the audit but are **not republished**:
+`docs/DATA_SOURCES.md` records that redistributing raw CFBD API data is prohibited, so only
+season-level aggregates and one per-game field (pregame Elo) are published. That licence question is
+open and is stated in every CFBD-backed capability's `limitations`.
+
+### Sizes (real data, 2026-10-03 board, full catalog history, contract 1.1.1)
+
+Measured with `research.tree_bytes`. **Default (no CFBD): 33.3 MB** — market_history 21.3 MB (261,
+max 399 KB), events 6.9 MB, teams 4.7 MB, index.json 279 KB, search_index.json 169 KB,
+capabilities.json 14 KB. **With `--include-cfbd`: 58.4 MB** — adds rankings 5.4 MB (170, max 34 KB)
+and series 7.4 MB (554, max 14 KB); teams 13.2 MB (max 122 KB), events 10.4 MB (max 150 KB),
+index.json 418 KB (one compact entry per file, ≈1,270 files), search_index.json 232 KB.
+
+### Deliberately not published
+
+Raw CFBD box-score, advanced per-game, drive and play rows; game scores; betting lines; recruiting
+and portal player rows; injuries, weather and odds sidecars; the retired model's probabilities,
+shadow ledgers, calibration and backtests; any 2026 in-season team statistic (none exists).
+
+### Failure and publication order
+
+`research.publish_explorer` validates everything and swaps the tree in atomically; on failure the
+previous `explorer/` is untouched and the step exits 1. The workflow step (`id: research_export`)
+is `continue-on-error`, so `app/latest` is still committed, and a final step fails the job. Since
+contract 1.1.1 the v1 `publish.publish` never prunes `explorer/`, so a skipped or failed explorer run
+keeps the last published tree beside the new v1 payload (its `run_id` then names the earlier v1 run).
