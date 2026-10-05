@@ -1,16 +1,16 @@
 {
   "bet_authority": "RESEARCH_ONLY",
-  "commit_sha": "8a3f68e26c28d1d3f94cdddcf0144fe8123846e2",
+  "commit_sha": "26d8b834f6bfd5376a227b1be1caf27f366244c2",
   "components": {
     "export": {
       "age_seconds": 0.0,
-      "as_of": "2026-10-05T01:11:59Z",
+      "as_of": "2026-10-05T06:14:13Z",
       "detail": null,
       "status": "OK"
     },
     "market_data": {
-      "age_seconds": 11805.0,
-      "as_of": "2026-10-04T21:55:14Z",
+      "age_seconds": 130.0,
+      "as_of": "2026-10-05T06:12:03Z",
       "detail": null,
       "status": "OK"
     },
@@ -21,34 +21,34 @@
       "status": "NOT_APPLICABLE"
     },
     "router": {
-      "age_seconds": 75883.0,
+      "age_seconds": 94017.0,
       "as_of": "2026-10-04T04:07:16Z",
       "detail": null,
       "status": "STALE"
     },
     "settlement": {
-      "age_seconds": 64402.0,
+      "age_seconds": 82536.0,
       "as_of": "2026-10-04T07:18:37Z",
       "detail": null,
       "status": "OK"
     }
   },
-  "data_age_seconds": 11805.0,
+  "data_age_seconds": 130.0,
   "errors": [],
-  "freshness_status": "AGING",
-  "generated_at": "2026-10-05T01:11:59Z",
+  "freshness_status": "FRESH",
+  "generated_at": "2026-10-05T06:14:13Z",
   "kind": "health",
-  "last_export_attempt": "2026-10-05T01:11:59Z",
-  "last_market_capture": "2026-10-04T21:55:14Z",
+  "last_export_attempt": "2026-10-05T06:14:13Z",
+  "last_market_capture": "2026-10-05T06:12:03Z",
   "last_model_generated": null,
-  "last_successful_run": "2026-10-05T01:11:59Z",
+  "last_successful_run": "2026-10-05T06:14:13Z",
   "market_data_status": "OK",
   "model_status": "NOT_APPLICABLE",
-  "next_scheduled_run": "2026-10-05T01:41:59Z",
+  "next_scheduled_run": "2026-10-05T06:44:13Z",
   "overall_status": "RESEARCH_ONLY",
-  "payload_run_id": "run_c48609d2b940e66d3683",
+  "payload_run_id": "run_464d744d1ab6385c0479",
   "router_status": "STALE",
-  "run_id": "run_c48609d2b940e66d3683",
+  "run_id": "run_464d744d1ab6385c0479",
   "schema_version": "edge_finder.app.v1",
   "settlement_status": "OK",
   "sport": "CFB",
@@ -83,7 +83,6 @@
     }
   },
   "warnings": [
-    "7 market(s) carry family 'unknown' (kept, not dropped)",
-    "127 wager(s) reference games no longer on the catalog board (market stubs emitted)"
+    "135 wager(s) reference games no longer on the catalog board (market stubs emitted)"
   ]
 }
