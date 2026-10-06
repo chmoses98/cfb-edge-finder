@@ -327,3 +327,175 @@ def test_an_independent_second_matchup_advantage_can_pull_away(edge):
     assert "HOME_SCORING_ADVANTAGE" in cand.supporting
     second_step = cand.chain[1]
     assert second_step["findings"] == [f"HOME_{edge}_ADVANTAGE"]
+
+
+# --- the margin-authority contract ---------------------------------------------------------------------
+
+_EDGE = _f("HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "MODERATE", "MATCHUP")
+
+
+def _hangs(findings):
+    from cfb_edge_finder.scripting.scripts import _Ctx, _hangs_around
+
+    return _hangs_around(_Ctx(findings, _NAMES, _BASE), "home")
+
+
+def test_an_efficiency_edge_and_low_possessions_alone_create_no_hangs_around():
+    assert _hangs([_EDGE, _f("LOW_POSSESSION_ENVIRONMENT")]) is None
+
+
+def test_a_trailing_side_disruption_counter_creates_hangs_around():
+    cand = _hangs([_EDGE, _f("AWAY_DISRUPTION_ADVANTAGE", "MODERATE", "MATCHUP")])
+    assert cand is not None and cand.archetype == "UNDERDOG_HANGS_AROUND"
+    assert cand.required == ["HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "AWAY_DISRUPTION_ADVANTAGE"]
+    assert cand.margin_evidence == ["HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "AWAY_DISRUPTION_ADVANTAGE"]
+    assert cand.shape["bands"]["home_margin"] is not None
+
+
+def test_low_possessions_beside_a_real_counter_only_supports_it():
+    cand = _hangs([_EDGE, _f("LOW_POSSESSION_ENVIRONMENT"), _f("AWAY_DISRUPTION_ADVANTAGE", "MODERATE", "MATCHUP")])
+    assert cand is not None
+    assert "LOW_POSSESSION_ENVIRONMENT" not in cand.required
+    assert "LOW_POSSESSION_ENVIRONMENT" in cand.supporting
+    assert "LOW_POSSESSION_ENVIRONMENT" not in cand.margin_evidence
+    assert "AWAY_DISRUPTION_ADVANTAGE" in cand.margin_evidence
+    one_score = [st for st in cand.chain if "one score" in st["step"]]
+    assert one_score and all("AWAY_DISRUPTION_ADVANTAGE" in st["findings"] for st in one_score)
+    assert all(st["findings"] != ["LOW_POSSESSION_ENVIRONMENT"] for st in one_score)
+
+
+def test_a_narrow_efficiency_gap_is_a_legitimate_hangs_around_counter():
+    cand = _hangs([_EDGE, _f("NARROW_EFFICIENCY_GAP")])
+    assert cand is not None and "NARROW_EFFICIENCY_GAP" in cand.margin_evidence
+
+
+def test_the_validator_rejects_unauthorised_margin_bands():
+    from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, margin_authority_violations
+
+    def script(evidence, band=(-8, 8)):
+        return {
+            "archetype": "X",
+            "outcome_shape": {
+                "bands": {"home_margin": list(band) if band else None},
+                "band_authority": {"home_margin": ARCHETYPE_DEFINITION} if band else {},
+                "margin_authority_evidence": evidence,
+            },
+            "causal_chain": [{"step": "the margin stays within one score", "findings": evidence}],
+        }
+
+    assert margin_authority_violations(script(["EVEN_MATCHUP"]), {"EVEN_MATCHUP"}) == []
+    assert margin_authority_violations(script([]))  # no evidence
+    for forbidden in (
+        "HIGH_SCORING_ENVIRONMENT",
+        "LOW_SCORING_ENVIRONMENT",
+        "HIGH_POSSESSION_ENVIRONMENT",
+        "LOW_POSSESSION_ENVIRONMENT",
+        "HOME_SCORING_ADVANTAGE",
+        "AWAY_SCORING_ADVANTAGE",
+    ):
+        assert margin_authority_violations(script([forbidden])), forbidden
+    assert margin_authority_violations(script(["EVEN_MATCHUP"]), set())  # not a finding of this game
+    assert margin_authority_violations(script(["EVEN_MATCHUP"], band=None))  # evidence without a band
+
+
+def test_the_market_map_refuses_a_margin_band_without_authority_evidence():
+    from cfb_edge_finder.execution.card_review import WinSet
+    from cfb_edge_finder.scripting.market_map import RESEARCH_UNCALIBRATED, SUPPORTED, classify_against
+    from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION
+
+    ws = WinSet("full_game:home_margin", 1, float("inf"))
+    base = {"bands": {"home_margin": [7, 24]}, "band_authority": {"home_margin": ARCHETYPE_DEFINITION}}
+    assert classify_against(ws, {**base, "margin_authority_evidence": ["HOME_SUSTAINED_EFFICIENCY_ADVANTAGE"]}) == {
+        "status": SUPPORTED,
+        "coverage": 1.0,
+    }
+    for evidence in ([], ["HOME_SCORING_ADVANTAGE"], ["LOW_POSSESSION_ENVIRONMENT"], ["HIGH_SCORING_ENVIRONMENT"]):
+        assert classify_against(ws, {**base, "margin_authority_evidence": evidence})["status"] == RESEARCH_UNCALIBRATED
+
+
+# Every finding a margin builder reads, with the strengths that change behaviour.
+_POOL = [
+    ("HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "STRONG"),
+    ("HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "MODERATE"),
+    ("AWAY_SUSTAINED_EFFICIENCY_ADVANTAGE", "MODERATE"),
+    ("HOME_SCORING_ADVANTAGE", "STRONG"),
+    ("AWAY_SCORING_ADVANTAGE", "STRONG"),
+    ("HIGH_SCORING_ENVIRONMENT", "STRONG"),
+    ("LOW_SCORING_ENVIRONMENT", "STRONG"),
+    ("HIGH_POSSESSION_ENVIRONMENT", "STRONG"),
+    ("LOW_POSSESSION_ENVIRONMENT", "STRONG"),
+    ("BOTH_OFFENSES_EFFICIENT", "MODERATE"),
+    ("BOTH_DEFENSES_CONTROL", "MODERATE"),
+    ("EVEN_MATCHUP", "MODERATE"),
+    ("NARROW_EFFICIENCY_GAP", "MODERATE"),
+    ("HOME_FINISHING_ADVANTAGE", "MODERATE"),
+    ("AWAY_DISRUPTION_ADVANTAGE", "MODERATE"),
+    ("HOME_DISRUPTION_ADVANTAGE", "MODERATE"),
+    ("AWAY_PASS_EXPLOSIVE_ADVANTAGE", "MODERATE"),
+    ("AWAY_DEFENSIVE_CONTROL", "MODERATE"),
+    ("HOME_OFFENSE_TURNOVER_PRONE", "MODERATE"),
+    ("AWAY_OFFENSE_TURNOVER_PRONE", "MODERATE"),
+    ("HIGH_VARIANCE_MATCHUP", "MODERATE"),
+]
+
+
+def _combos(max_size=3):
+    import itertools
+
+    for size in range(1, max_size + 1):
+        for combo in itertools.combinations(_POOL, size):
+            codes = [c for c, _ in combo]
+            if len(set(codes)) == len(codes):
+                yield [_f(c, strength) for c, strength in combo]
+
+
+def test_no_margin_band_anywhere_in_the_library_rests_on_scoring_or_pace():
+    """The central invariant, swept over every builder and every combination of
+    up to three findings: an active margin band always names evidence, the
+    evidence is present for the game, and none of it is a scoring or pace
+    finding. Scoring/pace-only inputs therefore never produce a margin band."""
+    from cfb_edge_finder.scripting.scripts import (
+        FORBIDDEN_MARGIN_AUTHORITY,
+        band_authority,
+        build_scripts,
+        candidates,
+        margin_authority_violations,
+    )
+
+    checked = 0
+    for findings in _combos():
+        present = {f["code"] for f in findings}
+        for cand in candidates(findings, _NAMES, _BASE):
+            band = cand.shape["bands"].get("home_margin")
+            if band is None:
+                continue
+            checked += 1
+            script = {
+                "archetype": cand.archetype,
+                "outcome_shape": {
+                    **cand.shape,
+                    "band_authority": band_authority(cand.shape["bands"]),
+                    "margin_authority_evidence": cand.margin_evidence,
+                },
+                "causal_chain": cand.chain,
+            }
+            assert margin_authority_violations(script, present) == [], (cand.archetype, sorted(present))
+        if present <= FORBIDDEN_MARGIN_AUTHORITY:
+            # Scoring and pace findings alone: scripts may exist, margins may not.
+            out = build_scripts("E", findings, _NAMES, _BASE, "MEDIUM")
+            assert all(s["outcome_shape"]["bands"]["home_margin"] is None for s in out["scripts"]), sorted(present)
+        else:
+            build_scripts("E", findings, _NAMES, _BASE, "MEDIUM")  # raises on any violation
+    assert checked > 500
+
+
+def test_every_published_script_in_the_synthetic_season_honours_the_contract(season):
+    from cfb_edge_finder.scripting.scripts import margin_authority_violations
+
+    for home, away in [(h, a) for h in ("F00", "F02", "F05") for a in ("F01", "F03", "F04", "F06", "F07")]:
+        content = build_content(_packet(season, home=home, away=away))
+        present = {f["code"] for f in content["matchup_findings"]}
+        for script in content["game_scripts"]["scripts"]:
+            assert margin_authority_violations(script, present) == []
+            shape = script["outcome_shape"]
+            assert bool(shape["margin_authority_evidence"]) == (shape["bands"]["home_margin"] is not None)

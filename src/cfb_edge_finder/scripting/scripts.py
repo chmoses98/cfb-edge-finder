@@ -52,7 +52,19 @@ script keeps its scoring environment and states no margin.
 FAVORITE_PULLS_AWAY's qualifying second edge must be a non-scoring matchup
 advantage (finishing, disruption, explosiveness, rushing, passing);
 SCORING_ADVANTAGE, derived from the uncalibrated points metric, may only
-support it. No line, total
+support it. UNDERDOG_HANGS_AROUND needs a non-pace counter: a low-possession
+environment may support it, never qualify it.
+
+*** THE MARGIN-AUTHORITY CONTRACT ***
+Every script that states a home_margin band names, in
+`outcome_shape.margin_authority_evidence`, the findings that give it
+permission to apply its archetype's margin definition to this game. The
+list must be non-empty, every code must be a finding present for the game,
+and none may be a scoring or pace finding (FORBIDDEN_MARGIN_AUTHORITY):
+those may support a margin script, never authorise one. A script without a
+margin band carries an empty list. `margin_authority_violations` checks it;
+`build_scripts` refuses to publish a script that fails it, and the market
+mapping independently refuses to classify against such a band. No line, total
 or price informs any band or any authority, and the market mapping reads
 bands only after the artifact is frozen.
 
@@ -137,6 +149,8 @@ class Candidate:
     summary: str
     evidence: float = 0.0
     notes: list[str] = field(default_factory=list)
+    #: The findings that authorise this script's home_margin band (empty when it states none).
+    margin_evidence: list[str] = field(default_factory=list)
 
 
 def _weight(finding: dict[str, Any]) -> float:
@@ -188,6 +202,60 @@ class _Ctx:
 #: Matchup findings that independently support a one-score margin. Scoring
 #: and possession environments are not among them.
 CLOSENESS_FINDINGS = ("EVEN_MATCHUP", "NARROW_EFFICIENCY_GAP")
+
+#: Findings that may support a margin script but can never authorise a margin
+#: band: scoring environments, possession (pace) environments, and the
+#: points-derived scoring advantage of either side.
+FORBIDDEN_MARGIN_AUTHORITY = frozenset(
+    {
+        "HIGH_SCORING_ENVIRONMENT",
+        "LOW_SCORING_ENVIRONMENT",
+        "HIGH_POSSESSION_ENVIRONMENT",
+        "LOW_POSSESSION_ENVIRONMENT",
+        "HOME_SCORING_ADVANTAGE",
+        "AWAY_SCORING_ADVANTAGE",
+    }
+)
+
+#: Counters to an efficiency edge that are pace, not football matchup: they
+#: may support UNDERDOG_HANGS_AROUND but cannot qualify it.
+PACE_ONLY_COUNTERS = frozenset({"LOW_POSSESSION_ENVIRONMENT"})
+
+
+class MarginAuthorityError(ValueError):
+    """A script states a margin band without football evidence that authorises it."""
+
+
+def margin_authority_violations(script: dict[str, Any], present: set[str] | None = None) -> list[str]:
+    """Why this script's margin band lacks authority (empty when it is sound).
+
+    `present` is the set of finding codes published for the game; when given,
+    every evidence code must be in it. Applies to a published script dict."""
+    shape = script.get("outcome_shape") or {}
+    band = (shape.get("bands") or {}).get("home_margin")
+    evidence = shape.get("margin_authority_evidence")
+    name = script.get("archetype", "?")
+    if band is None:
+        return [f"{name}: margin evidence {evidence} without a margin band"] if evidence else []
+    out = []
+    if not evidence:
+        out.append(f"{name}: home_margin {band} names no authorising evidence")
+    forbidden = sorted(set(evidence or []) & FORBIDDEN_MARGIN_AUTHORITY)
+    if forbidden:
+        out.append(f"{name}: scoring/pace findings {forbidden} cannot authorise a margin band")
+    if present is not None:
+        missing = sorted(set(evidence or []) - present)
+        if missing:
+            out.append(f"{name}: margin evidence {missing} is not among the game's findings")
+    authority = (shape.get("band_authority") or {}).get("home_margin")
+    if authority != ARCHETYPE_DEFINITION:
+        out.append(f"{name}: home_margin authority is {authority}, not {ARCHETYPE_DEFINITION}")
+    allowed = set(evidence or []) - FORBIDDEN_MARGIN_AUTHORITY
+    for st in script.get("causal_chain") or []:
+        if "one score" in st["step"] and not set(st["findings"]) & allowed:
+            out.append(f"{name}: '{st['step']}' claims a margin without citing its authorising evidence")
+    return out
+
 
 #: Edges that may qualify FAVORITE_PULLS_AWAY as its second advantage
 #: (SCORING_ADVANTAGE is supporting only: points-derived, not validated for margins).
@@ -296,6 +364,7 @@ def _control(ctx: _Ctx, s: str) -> Candidate | None:
             f"{lead_name}'s sustained-efficiency edge turns into longer drives and a multi-score lead "
             f"that {other_name} chases."
         ),
+        margin_evidence=[req],
     )
 
 
@@ -350,6 +419,7 @@ def _pulls_away(ctx: _Ctx, s: str) -> Candidate | None:
         chain,
         f"{lead_name} pulls away",
         f"{lead_name}'s efficiency edge compounds with a second advantage and the margin keeps growing.",
+        margin_evidence=[req, *second],
     )
 
 
@@ -371,7 +441,11 @@ def _hangs_around(ctx: _Ctx, s: str) -> Candidate | None:
     if not ctx.has(req):
         return None
     o = _other(s)
-    counters = ctx.present([c.format(s=_u(s), o=_u(o)) for c in _COUNTERS])
+    all_counters = ctx.present([c.format(s=_u(s), o=_u(o)) for c in _COUNTERS])
+    # A low-possession environment may support the thesis; only a football
+    # counter can qualify it and carry the one-score claim.
+    counters = [c for c in all_counters if c not in PACE_ONLY_COUNTERS]
+    pace = [c for c in all_counters if c in PACE_ONLY_COUNTERS]
     if not counters:
         return None
     lead_name, other_name = ctx.names[s], ctx.names[o]
@@ -393,6 +467,7 @@ def _hangs_around(ctx: _Ctx, s: str) -> Candidate | None:
     }
     chain = [_step(f"{lead_name} owns the efficiency edge", req)]
     chain += [_step(mechanism[c], c) for c in counters[:3]]
+    chain += [_step(mechanism[c], c) for c in pace]
     chain.append(
         _step(f"{lead_name}'s drives stall often enough that {other_name} stays within one score", req, counters[0])
     )
@@ -414,7 +489,7 @@ def _hangs_around(ctx: _Ctx, s: str) -> Candidate | None:
         "UNDERDOG_HANGS_AROUND",
         o,
         [req, counters[0]],
-        counters[1:],
+        counters[1:] + pace,
         contradicting,
         shape,
         chain,
@@ -423,6 +498,7 @@ def _hangs_around(ctx: _Ctx, s: str) -> Candidate | None:
             f"{lead_name} has the better efficiency profile, but {mechanism[counters[0]].lower()} "
             f"keeps {other_name} within one score."
         ),
+        margin_evidence=[req, counters[0]],
     )
 
 
@@ -479,6 +555,7 @@ def _explosive_upset(ctx: _Ctx, s: str) -> Candidate | None:
         chain,
         f"{other_name} wins on explosive plays",
         f"{lead_name} wins more snaps, but {other_name}'s explosive plays against this defense flip the scoreboard.",
+        margin_evidence=[f"{_u(s)}_SUSTAINED_EFFICIENCY_ADVANTAGE", explosive[0]],
     )
 
 
@@ -527,6 +604,7 @@ def _turnover_disruption(ctx: _Ctx, d: str) -> Candidate | None:
             f"{lead_name}'s pressure produces negative plays and short fields: a repeatable source of "
             f"{other_name}'s volatility."
         ),
+        margin_evidence=[req, volatile[0]],
     )
 
 
@@ -601,6 +679,7 @@ def _shootout(ctx: _Ctx) -> Candidate | None:
             f"Both offenses hold the upper hand against the defense they face; {H} and {A} trade scores"
             + (" in a close game." if close else ".")
         ),
+        margin_evidence=close,
     )
 
 
@@ -671,6 +750,7 @@ def _grind(ctx: _Ctx) -> Candidate | None:
         chain,
         "Competitive grind",
         summary,
+        margin_evidence=close,
     )
 
 
@@ -717,6 +797,7 @@ def _tossup(ctx: _Ctx) -> Candidate | None:
         chain,
         "Even matchup, one-score game",
         f"No unit-level edge separates {H} and {A}; the game stays inside one score.",
+        margin_evidence=["EVEN_MATCHUP"],
     )
 
 
@@ -927,6 +1008,7 @@ def build_scripts(
 ) -> dict[str, Any]:
     all_candidates = candidates(findings, names, baseline)
     chosen = select(all_candidates)
+    present = {f["code"] for f in findings}
     scripts = []
     for rank, (role, cand) in enumerate(chosen, start=1):
         scripts.append(
@@ -943,11 +1025,20 @@ def build_scripts(
                 "supporting_findings": list(dict.fromkeys(cand.supporting)),
                 "contradicting_findings": list(dict.fromkeys(cand.contradicting)),
                 "evidence_score": cand.evidence,
-                "outcome_shape": {**cand.shape, "band_authority": band_authority(cand.shape["bands"])},
+                "outcome_shape": {
+                    **cand.shape,
+                    "band_authority": band_authority(cand.shape["bands"]),
+                    "margin_authority_evidence": (
+                        list(dict.fromkeys(cand.margin_evidence)) if cand.shape["bands"].get("home_margin") else []
+                    ),
+                },
                 "data_confidence": data_confidence,
                 "probability": None,
             }
         )
+        violations = margin_authority_violations(scripts[-1], present)
+        if violations:
+            raise MarginAuthorityError("; ".join(violations))
     considered = [
         {
             "archetype": c.archetype,

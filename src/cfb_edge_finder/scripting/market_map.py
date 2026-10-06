@@ -48,7 +48,12 @@ from cfb_edge_finder.execution.card_review import win_set
 from cfb_edge_finder.scripting import MARKET_MAP_SCHEMA_VERSION
 from cfb_edge_finder.scripting.freeze import verify
 from cfb_edge_finder.scripting.gamelog import parse_utc
-from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, CALIBRATED, UNCALIBRATED_DESCRIPTIVE
+from cfb_edge_finder.scripting.scripts import (
+    ARCHETYPE_DEFINITION,
+    CALIBRATED,
+    FORBIDDEN_MARGIN_AUTHORITY,
+    UNCALIBRATED_DESCRIPTIVE,
+)
 
 SUPPORTED = "SUPPORTED"
 PARTIAL = "PARTIAL"
@@ -68,6 +73,9 @@ COMPAT_CODES = {
 #: Band authorities a market classification may rest on. Anything else -- in
 #: V1, every scoring band -- is research context only.
 MARKET_AUTHORITATIVE = frozenset({ARCHETYPE_DEFINITION, CALIBRATED})
+
+#: Recorded when a margin band arrives without valid margin-authority evidence.
+NO_MARGIN_AUTHORITY_EVIDENCE = "NO_MARGIN_AUTHORITY_EVIDENCE"
 
 #: Expression-level market authority.
 ACTIVE = "ACTIVE"
@@ -105,6 +113,13 @@ def classify_against(ws: Any, shape: dict[str, Any]) -> dict[str, Any]:
     if band is None:
         return {"status": status, "coverage": coverage}
     authority = (shape.get("band_authority") or {}).get(quantity) or UNCALIBRATED_DESCRIPTIVE
+    if quantity == "home_margin":
+        # The margin-authority contract, enforced again on the market side: a
+        # margin band with no evidence, or only scoring/pace evidence, has no
+        # authority however it is labelled.
+        evidence = set(shape.get("margin_authority_evidence") or [])
+        if not evidence or evidence & FORBIDDEN_MARGIN_AUTHORITY:
+            authority = NO_MARGIN_AUTHORITY_EVIDENCE
     if authority in MARKET_AUTHORITATIVE:
         return {"status": status, "coverage": coverage}
     return {

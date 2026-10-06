@@ -209,7 +209,7 @@ conclusions. A script exists only if its **required** findings exist.
 |---|---|---|
 | `HOME_CONTROL` / `AWAY_CONTROL` | S sustained-efficiency advantage | S by 7–24 |
 | `FAVORITE_PULLS_AWAY` | **strong** S efficiency edge + a second, non-scoring S advantage (finishing, disruption, explosiveness, rushing or passing; a scoring advantage only supports) | S by 17–45 |
-| `UNDERDOG_HANGS_AROUND` | S efficiency edge + a counter (other side's disruption or defensive control, low possessions, S explosive dependence or turnovers, other side's explosives, narrow gap) | −7 to +8 on S |
+| `UNDERDOG_HANGS_AROUND` | S efficiency edge + a **non-pace** counter (other side's disruption or defensive control, S explosive dependence or turnovers, other side's explosives, both defenses control, narrow gap); low possessions only supports | −7 to +8 on S |
 | `EXPLOSIVE_UPSET` | S efficiency edge + the other side's explosive advantage | other side by 1–14 |
 | `TURNOVER_DISRUPTION` | S disruption advantage + a volatility finding (never turnovers alone) | S by 1–21 |
 | `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | ±8 **only with** `EVEN_MATCHUP` or `NARROW_EFFICIENCY_GAP`, otherwise no margin; total baseline +4 to +28 |
@@ -552,3 +552,38 @@ the 2026 inputs used are snapshotted in `data/scripting/validation/inputs/`;
   baseline would need an 80% band about 40 points wide (p10 / p90 of
   actual − baseline ≈ −19 / +22), so scoring markets stay
   `RESEARCH_UNCALIBRATED`.
+
+## 16. The margin-authority contract
+
+Every script that states a `home_margin` band publishes
+`outcome_shape.margin_authority_evidence`: the findings that give it
+permission to apply its archetype's margin definition to this game. Scripts
+without a margin band publish an empty list.
+
+**Rules** (`scripts.margin_authority_violations`):
+- the list is non-empty whenever a margin band is stated;
+- every code is a finding present for the game;
+- none is a **forbidden sole authority**: `HIGH_/LOW_SCORING_ENVIRONMENT`, `HIGH_/LOW_POSSESSION_ENVIRONMENT`, `HOME_/AWAY_SCORING_ADVANTAGE`;
+- any causal step that claims "one score" cites a non-forbidden code.
+
+Forbidden findings stay valid football findings and may support a margin
+script; they never authorise one.
+
+**Enforcement**:
+- `build_scripts` raises `MarginAuthorityError` rather than publish a violating script.
+- `market_map.classify_against` independently refuses to classify against a margin band whose evidence is empty or contains a forbidden code. Such a contract is classified `RESEARCH_UNCALIBRATED`, never supported or contradicted.
+- `tests/test_script_engine_scripts.py` sweeps every builder over every combination of up to three findings and asserts the contract, and asserts that scoring- and pace-only inputs never produce a margin band.
+
+### 16.1 Archetype authority audit (methodology 1.3.0)
+
+| Archetype | Created by | Margin authority evidence | Margin definition | Scoring/pace may rank or support? | Scoring/pace alone can activate the margin? |
+|---|---|---|---|---|---|
+| `HOME_CONTROL` / `AWAY_CONTROL` | S sustained-efficiency advantage | that advantage | S by 7–24 | yes (S scoring advantage, low possessions support) | **no** |
+| `FAVORITE_PULLS_AWAY` | strong S efficiency advantage + finishing / disruption / explosive / rush / pass advantage | both | S by 17–45 | yes (S scoring advantage supports; low possessions contradicts) | **no** |
+| `UNDERDOG_HANGS_AROUND` | S efficiency advantage + a non-pace counter | advantage + counter | trailing side within −7…+8 | yes (low possessions supports; high possessions contradicts) | **no** |
+| `EXPLOSIVE_UPSET` | S efficiency advantage + other side's explosive advantage | both | other side by 1–14 | no | **no** |
+| `TURNOVER_DISRUPTION` | D disruption advantage + a volatility finding | both | D by 1–21 | no | **no** |
+| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` when present | ±8 only with that evidence | yes (scoring/pace create the script and rank it) | **no** |
+| `COMPETITIVE_GRIND` | low scoring / both defenses control / low possessions; no strong edge | `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` when present | ±8 only with that evidence | yes | **no** |
+| `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP` | `EVEN_MATCHUP` | ±8 | yes (low possessions supports) | **no** |
+| `PACE_DRIVEN_OVER`, `DEFENSIVE_SUPPRESSION` | possession / defensive environment | — | no margin band | — | — |
