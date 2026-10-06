@@ -184,8 +184,15 @@ def test_settlement_modules_expose_no_trading_surface():
     from cfb_edge_finder.research import attribution, settlement, settlement_health
 
     forbidden = (
-        "place_order", "create_order", "cancel_order", "submit_order", "portfolio",
-        "balance", "bankroll", "kelly", "wager",
+        "place_order",
+        "create_order",
+        "cancel_order",
+        "submit_order",
+        "portfolio",
+        "balance",
+        "bankroll",
+        "kelly",
+        "wager",
     )
     for module in (attribution, settlement, settlement_health, check):
         identifiers = {i.lower() for i in _code_identifiers(module)}

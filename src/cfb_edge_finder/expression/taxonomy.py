@@ -146,9 +146,7 @@ class ContractSemantics:
             )
         if self.family is MarketFamily.TOTAL:
             return (
-                self.side is Side.OVER
-                and self.threshold is not None
-                and self.semantic_operator == SUPPORTED_OPERATOR
+                self.side is Side.OVER and self.threshold is not None and self.semantic_operator == SUPPORTED_OPERATOR
             )
         return False
 

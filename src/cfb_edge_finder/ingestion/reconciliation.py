@@ -45,8 +45,10 @@ class IdentityMismatchError(ValueError):
 
 def merge_same_game_update(existing: GameRecord, incoming: GameRecord) -> GameRecord:
     if existing.game_id != incoming.game_id:
-        raise ValueError("merge_same_game_update requires both records to share a game_id; use detect_reschedule "
-                          "for cross-game_id updates")
+        raise ValueError(
+            "merge_same_game_update requires both records to share a game_id; use detect_reschedule "
+            "for cross-game_id updates"
+        )
     identity_fields = ("season", "week_label", "home_team_id", "away_team_id", "neutral_site")
     for field in identity_fields:
         if getattr(existing, field) != getattr(incoming, field):
@@ -63,9 +65,7 @@ def merge_same_game_update(existing: GameRecord, incoming: GameRecord) -> GameRe
     )
 
 
-def detect_reschedule(
-    previous_game_ids_by_source_id: dict[str, str], incoming: GameRecord, source: str
-) -> GameRecord:
+def detect_reschedule(previous_game_ids_by_source_id: dict[str, str], incoming: GameRecord, source: str) -> GameRecord:
     """previous_game_ids_by_source_id: {vendor_game_id: canonical_game_id}
     from a PRIOR ingestion run's artifact. If incoming's vendor id was seen
     before under a different canonical game_id, this was a true reschedule

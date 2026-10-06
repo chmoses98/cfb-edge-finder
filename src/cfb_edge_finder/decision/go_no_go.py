@@ -151,8 +151,7 @@ def evaluate_go_no_go(
     if duplicate_rows or malformed_rows or non_prospective_rows:
         report.block(
             BlockerCode.DUPLICATE_OR_MALFORMED_CORPUS,
-            f"{duplicate_rows} duplicate, {malformed_rows} malformed, "
-            f"{non_prospective_rows} non-prospective row(s)",
+            f"{duplicate_rows} duplicate, {malformed_rows} malformed, {non_prospective_rows} non-prospective row(s)",
         )
     if current_schema_missing_market_status:
         report.block(
@@ -172,9 +171,7 @@ def evaluate_go_no_go(
     if not safety_locks_ok:
         report.block(BlockerCode.SAFETY_LOCK_BROKEN, "a safety lock is not holding")
     if execution_surface_found:
-        report.block(
-            BlockerCode.EXECUTION_SURFACE_PRESENT, "an order-placement surface appeared in the codebase"
-        )
+        report.block(BlockerCode.EXECUTION_SURFACE_PRESENT, "an order-placement surface appeared in the codebase")
     if closing_trigger_at_risk:
         report.block(
             BlockerCode.CLOSING_TRIGGER_INSUFFICIENT,
@@ -197,8 +194,7 @@ def evaluate_go_no_go(
     if legacy_schema_rows:
         report.warn(
             WarningCode.LEGACY_SCHEMA_ROWS_PRESENT,
-            f"{legacy_schema_rows} row(s) predate the current schema; their absent fields are "
-            f"legacy gaps, not defects",
+            f"{legacy_schema_rows} row(s) predate the current schema; their absent fields are legacy gaps, not defects",
         )
     if zero_carryover_games:
         report.warn(
@@ -214,7 +210,6 @@ def evaluate_go_no_go(
     if quiet_period_active:
         report.warn(
             WarningCode.QUIET_PERIOD_CADENCE,
-            "external scheduler is in its intentional low-cadence quiet period; no critical "
-            "checkpoint is near",
+            "external scheduler is in its intentional low-cadence quiet period; no critical checkpoint is near",
         )
     return report

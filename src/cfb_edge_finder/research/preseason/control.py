@@ -143,9 +143,7 @@ def control_manifest() -> ControlManifest:
         "uncertainty": {
             "early_season_uncertainty_scale": EARLY_SEASON_UNCERTAINTY_SCALE,
             "fcs_opponent_uncertainty_scale": FCS_OPPONENT_UNCERTAINTY_SCALE,
-            "qb_uncertainty_multipliers": {
-                state.value: uncertainty_multiplier(state) for state in QBContinuityState
-            },
+            "qb_uncertainty_multipliers": {state.value: uncertainty_multiplier(state) for state in QBContinuityState},
         },
         "qb_continuity_proxy": {
             "high_continuity_threshold": HIGH_CONTINUITY_THRESHOLD,

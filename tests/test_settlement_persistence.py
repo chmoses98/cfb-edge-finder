@@ -42,10 +42,12 @@ REAL_ROWS = [
 
 def _result(home=31, away=17, status=GameFinalStatus.FINAL) -> GameResult:
     return GameResult(
-        game_id="g", season=SEASON,
+        game_id="g",
+        season=SEASON,
         home_points=home if status is GameFinalStatus.FINAL else None,
         away_points=away if status is GameFinalStatus.FINAL else None,
-        status=status, captured_at=NOW,
+        status=status,
+        captured_at=NOW,
     )
 
 
@@ -222,7 +224,9 @@ def test_clv_primitives_are_present_but_ungraded():
     closing_obs = row.observation.model_copy(
         update={
             "snapshot_timing": row.observation.snapshot_timing.model_copy(update={"label": "CLOSING"}),
-            "executable_yes_price": 0.61, "executable_no_price": 0.41, "model_probability": 0.58,
+            "executable_yes_price": 0.61,
+            "executable_no_price": 0.41,
+            "model_probability": 0.58,
         }
     )
     a = _attr(row, closing_row=row.model_copy(update={"observation": closing_obs, "observation_key": "ck"}))

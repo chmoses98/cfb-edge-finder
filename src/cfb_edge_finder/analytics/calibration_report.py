@@ -107,6 +107,7 @@ def build_calibration_report(
     for i in range(len(bins) - 1):
         lower, upper = bins[i], bins[i + 1]
         is_last = i == len(bins) - 2
+
         # Upper edge inclusive only on the FINAL bin, so a prediction of
         # exactly 1.0 lands somewhere instead of being silently dropped.
         def _in_bin(p: float, lo: float = lower, hi: float = upper, last: bool = is_last) -> bool:
@@ -179,9 +180,7 @@ def compare_model_to_market(
         bins=bins,
         caveats=(MARKET_PRICE_CAVEAT,),
     )
-    brier_diff = (
-        None if model.brier is None or market.brier is None else model.brier - market.brier
-    )
+    brier_diff = None if model.brier is None or market.brier is None else model.brier - market.brier
     ll_diff = None if model.log_loss is None or market.log_loss is None else model.log_loss - market.log_loss
     return ModelMarketComparison(
         n=len(outcomes),

@@ -335,8 +335,10 @@ def test_freshness_explanation_states_the_timestamp_is_not_an_observation():
 def test_a_fingerprint_mismatch_is_never_fresh_however_recent_the_run():
     verdict = assess_freshness(
         last_successful_run_at=FRIDAY - timedelta(minutes=2),
-        published_status={"captured_at": (FRIDAY - timedelta(minutes=2)).isoformat(),
-                          "content_fingerprint": "published_abc"},
+        published_status={
+            "captured_at": (FRIDAY - timedelta(minutes=2)).isoformat(),
+            "content_fingerprint": "published_abc",
+        },
         last_run_fingerprint="run_reported_xyz",
         now=FRIDAY,
     )
@@ -467,9 +469,12 @@ def test_preflight_refuses_an_incomplete_requested_game(tmp_path, capsys):
     live = _write_live(tmp_path, [_entry(complete=False, game_key="26SEP19BROKEN")], capture_complete=False)
     code = _preflight().main(
         [
-            "--live-dir", str(live),
-            "--last-successful-run-at", datetime.now(UTC).isoformat(),
-            "--game", "26SEP19BROKEN",
+            "--live-dir",
+            str(live),
+            "--last-successful-run-at",
+            datetime.now(UTC).isoformat(),
+            "--game",
+            "26SEP19BROKEN",
         ]
     )
     assert code == 3, "a requested-but-unusable game must not exit 0"
@@ -480,10 +485,14 @@ def test_preflight_passes_a_fresh_catalog_and_a_complete_game(tmp_path, capsys):
     live = _write_live(tmp_path, [_entry(complete=True)])
     code = _preflight().main(
         [
-            "--live-dir", str(live),
-            "--last-successful-run-at", datetime.now(UTC).isoformat(),
-            "--last-run-fingerprint", "fp1",
-            "--game", "26SEP19UGAARK",
+            "--live-dir",
+            str(live),
+            "--last-successful-run-at",
+            datetime.now(UTC).isoformat(),
+            "--last-run-fingerprint",
+            "fp1",
+            "--game",
+            "26SEP19UGAARK",
         ]
     )
     out = capsys.readouterr().out
@@ -493,11 +502,10 @@ def test_preflight_passes_a_fresh_catalog_and_a_complete_game(tmp_path, capsys):
 
 
 def test_preflight_json_mode_is_machine_readable(tmp_path, capsys):
-    live = _write_live(tmp_path, [_entry(complete=True), _entry(complete=False, game_key="26SEP19BAD")],
-                       capture_complete=False)
-    _preflight().main(
-        ["--live-dir", str(live), "--last-successful-run-at", datetime.now(UTC).isoformat(), "--json"]
+    live = _write_live(
+        tmp_path, [_entry(complete=True), _entry(complete=False, game_key="26SEP19BAD")], capture_complete=False
     )
+    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", datetime.now(UTC).isoformat(), "--json"])
     payload = json.loads(capsys.readouterr().out)
     assert payload["fresh"] is True
     assert payload["capture_complete"] is False
@@ -519,10 +527,14 @@ def test_preflight_can_never_exit_zero_on_a_fingerprint_mismatch(tmp_path, capsy
     live = _write_live(tmp_path, [_entry(complete=True)])  # publishes fingerprint "fp1"
     code = _preflight().main(
         [
-            "--live-dir", str(live),
-            "--last-successful-run-at", datetime.now(UTC).isoformat(),
-            "--last-run-fingerprint", "fp_from_a_different_run",
-            "--game", "26SEP19UGAARK",
+            "--live-dir",
+            str(live),
+            "--last-successful-run-at",
+            datetime.now(UTC).isoformat(),
+            "--last-run-fingerprint",
+            "fp_from_a_different_run",
+            "--game",
+            "26SEP19UGAARK",
         ]
     )
     out = capsys.readouterr().out
@@ -538,9 +550,12 @@ def test_preflight_mismatch_beats_every_other_green_signal(tmp_path, capsys):
     live = _write_live(tmp_path, [_entry(complete=True)])
     code = _preflight().main(
         [
-            "--live-dir", str(live),
-            "--last-successful-run-at", datetime.now(UTC).isoformat(),
-            "--last-run-fingerprint", "definitely_not_fp1",
+            "--live-dir",
+            str(live),
+            "--last-successful-run-at",
+            datetime.now(UTC).isoformat(),
+            "--last-run-fingerprint",
+            "definitely_not_fp1",
         ]
     )
     assert code == 4
@@ -553,14 +568,16 @@ def test_preflight_json_reports_the_corroboration_state_explicitly(tmp_path, cap
     live = _write_live(tmp_path, [_entry(complete=True)])
     now = datetime.now(UTC).isoformat()
 
-    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", now,
-                       "--last-run-fingerprint", "fp1", "--json"])
+    _preflight().main(
+        ["--live-dir", str(live), "--last-successful-run-at", now, "--last-run-fingerprint", "fp1", "--json"]
+    )
     matched = json.loads(capsys.readouterr().out)
     assert matched["fresh"] is True
     assert matched["fingerprint_corroboration"] == "matched"
 
-    _preflight().main(["--live-dir", str(live), "--last-successful-run-at", now,
-                       "--last-run-fingerprint", "nope", "--json"])
+    _preflight().main(
+        ["--live-dir", str(live), "--last-successful-run-at", now, "--last-run-fingerprint", "nope", "--json"]
+    )
     mismatch = json.loads(capsys.readouterr().out)
     assert mismatch["fresh"] is False
     assert mismatch["fingerprint_corroboration"] == "mismatch"
@@ -589,7 +606,7 @@ def test_the_documented_run_lookup_filters_to_main():
     -- including a feature branch of your own -- which says nothing about
     whether the production schedule on main is alive."""
     doc = CONTRACT_DOC.read_text(encoding="utf-8")
-    example = doc[doc.index("actions/workflows/kalshi-market-catalog.yml/runs"):][:400]
+    example = doc[doc.index("actions/workflows/kalshi-market-catalog.yml/runs") :][:400]
     assert "branch=main" in example, "the run-lookup example does not filter to main"
     assert "status=success" in example
     assert "branch=main" in doc and "must never certify" in doc

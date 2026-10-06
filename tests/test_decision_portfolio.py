@@ -81,9 +81,7 @@ def unresolved(name: str, *, game: str = GAME) -> ContractSemantics:
 def test_moneyline_pair_is_the_same_event():
     """Home ML and away ML are one thesis with two spellings: YES on one
     settles exactly when NO on the other does."""
-    assert classify_relationship(ml(Side.HOME), ml(Side.AWAY)) is (
-        ThesisRelationship.EXACT_EQUIVALENT_EVENT
-    )
+    assert classify_relationship(ml(Side.HOME), ml(Side.AWAY)) is (ThesisRelationship.EXACT_EQUIVALENT_EVENT)
 
 
 def test_same_team_spread_ladder_is_nested_not_independent():
@@ -95,9 +93,7 @@ def test_same_team_spread_ladder_is_nested_not_independent():
 def test_moneyline_and_same_team_spread_share_the_margin_thesis():
     """A moneyline is the margin rung at zero. Treating it as its own
     dimension would hide that it moves with every spread on that team."""
-    assert classify_relationship(ml(Side.HOME), spread(Side.HOME, -7.5)) is (
-        ThesisRelationship.NESTED_LADDER_SAME_TEAM
-    )
+    assert classify_relationship(ml(Side.HOME), spread(Side.HOME, -7.5)) is (ThesisRelationship.NESTED_LADDER_SAME_TEAM)
 
 
 def test_opposing_teams_on_the_margin_are_offsetting_not_independent():
@@ -107,18 +103,14 @@ def test_opposing_teams_on_the_margin_are_offsetting_not_independent():
 
 
 def test_total_ladder_is_nested():
-    assert classify_relationship(total(51.5), total(55.5)) is (
-        ThesisRelationship.NESTED_LADDER_SAME_TOTAL
-    )
+    assert classify_relationship(total(51.5), total(55.5)) is (ThesisRelationship.NESTED_LADDER_SAME_TOTAL)
 
 
 def test_margin_and_total_in_one_game_are_related_with_unknown_magnitude():
     """The honest answer. A coefficient here would be invented."""
     relationship = classify_relationship(ml(Side.HOME), total(51.5))
     assert relationship is ThesisRelationship.SAME_GAME_DIFFERENT_DIMENSION
-    assert dependence_magnitude(relationship) is (
-        DependenceMagnitude.UNDETERMINED_PENDING_EMPIRICAL_MEASUREMENT
-    )
+    assert dependence_magnitude(relationship) is (DependenceMagnitude.UNDETERMINED_PENDING_EMPIRICAL_MEASUREMENT)
 
 
 def test_same_team_in_two_different_games_is_not_same_game_correlation():

@@ -44,9 +44,7 @@ def build(snapshots=None, resolution=None):
 
 def text_of(**overrides) -> str:
     run, portfolio = build(**overrides)
-    return render_report(
-        run, portfolio=portfolio, evidence_state="NO_SETTLED_DATA", corpus=CORPUS, generated_at=NOW
-    )
+    return render_report(run, portfolio=portfolio, evidence_state="NO_SETTLED_DATA", corpus=CORPUS, generated_at=NOW)
 
 
 # ------------------------------------------------------ the framing
@@ -95,11 +93,18 @@ def test_rows_are_sorted_by_identifier_not_by_attractiveness():
     """An ordered list of opportunities is a recommendation whatever the
     header says. Sorting by ticker makes the order carry no signal."""
     snapshots = [
-        snapshot(semantics=snapshot().semantics.__class__(
-            market_ticker=t, game_id="g1", family=snapshot().semantics.family,
-            team=snapshot().semantics.team, side=None, threshold=None,
-            semantic_operator=">", parse_status="confirmed_live",
-        ))
+        snapshot(
+            semantics=snapshot().semantics.__class__(
+                market_ticker=t,
+                game_id="g1",
+                family=snapshot().semantics.family,
+                team=snapshot().semantics.team,
+                side=None,
+                threshold=None,
+                semantic_operator=">",
+                parse_status="confirmed_live",
+            )
+        )
         for t in ("ZZZ", "AAA", "MMM")
     ]
     text = text_of(snapshots=snapshots)
@@ -170,9 +175,7 @@ def test_the_payload_and_the_text_agree_on_every_count():
     payload = report_payload(
         run, portfolio=portfolio, evidence_state="NO_SETTLED_DATA", corpus=CORPUS, generated_at=NOW
     )
-    text = render_report(
-        run, portfolio=portfolio, evidence_state="NO_SETTLED_DATA", corpus=CORPUS, generated_at=NOW
-    )
+    text = render_report(run, portfolio=portfolio, evidence_state="NO_SETTLED_DATA", corpus=CORPUS, generated_at=NOW)
     assert f"candidates_considered  : {payload['candidates_considered']}" in text
     assert f"SHADOW_QUALIFIED       : {payload['shadow_qualified_count']}" in text
 
@@ -189,9 +192,7 @@ def test_the_payload_is_json_serialisable_and_sorted():
 
 def test_an_empty_run_renders_without_pretending_to_have_data():
     run, _ = build(snapshots=[])
-    text = render_report(
-        run, portfolio=None, evidence_state="NO_CANDIDATES", corpus=CorpusSummary(), generated_at=NOW
-    )
+    text = render_report(run, portfolio=None, evidence_state="NO_CANDIDATES", corpus=CorpusSummary(), generated_at=NOW)
     assert "(no candidates evaluated in this run)" in text
     assert "(none)" in text
     assert "no portfolio view supplied" in text

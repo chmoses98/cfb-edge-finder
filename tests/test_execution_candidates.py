@@ -35,8 +35,18 @@ TRIPLE_QUOTE = chr(34) * 3
 """Built rather than written, so this file's own source scan does not trip on it."""
 
 
-def row(ticker, *, kind="spread", team="home", side="yes", edge=0.05, line=3.5,
-        fee=0.01, robustness="robust_positive_ev", worst=None):
+def row(
+    ticker,
+    *,
+    kind="spread",
+    team="home",
+    side="yes",
+    edge=0.05,
+    line=3.5,
+    fee=0.01,
+    robustness="robust_positive_ev",
+    worst=None,
+):
     return {
         "ticker": ticker,
         "game_key": "G",
@@ -73,9 +83,7 @@ def test_two_spellings_of_one_view_reduce_to_one_candidate():
 
 
 def test_a_total_and_a_spread_are_different_views_and_both_survive():
-    reduction = reduce_candidates(
-        [row("SPREAD", kind="spread"), row("TOTAL", kind="total", team="none")]
-    )
+    reduction = reduce_candidates([row("SPREAD", kind="spread"), row("TOTAL", kind="total", team="none")])
     assert {e.ticker for e in reduction.survivors} == {"SPREAD", "TOTAL"}
     assert reduction.removed == []
 
@@ -161,9 +169,9 @@ def test_there_is_no_hidden_cap_in_the_reduction():
     reduction = reduce_candidates(rows)
     assert len(reduction.survivors) == 1
     assert len(reduction.removed) == 49
-    assert {e["ticker"] for e in reduction.removed} | {
-        e.ticker for e in reduction.survivors
-    } == {r["ticker"] for r in rows}
+    assert {e["ticker"] for e in reduction.removed} | {e.ticker for e in reduction.survivors} == {
+        r["ticker"] for r in rows
+    }
 
 
 def test_the_reduction_module_contains_no_slice_of_a_survivor_list():
@@ -180,9 +188,7 @@ def test_the_reduction_module_contains_no_slice_of_a_survivor_list():
 
 
 def test_fifty_distinct_views_all_survive():
-    rows = [
-        row(f"G{i:02d}", edge=0.05, line=3.5) | {"game_key": f"GAME{i:02d}"} for i in range(50)
-    ]
+    rows = [row(f"G{i:02d}", edge=0.05, line=3.5) | {"game_key": f"GAME{i:02d}"} for i in range(50)]
     reduction = reduce_candidates(rows)
     assert len(reduction.survivors) == 50
     assert reduction.removed == []
@@ -194,12 +200,9 @@ def test_fifty_distinct_views_all_survive():
 def test_correlated_same_game_positions_are_grouped_not_counted_as_diversified():
     """LSU -2.5 and LSU -6.5 are one opinion. So is LSU's team total over."""
     rows = [
-        row("SPREAD", kind="spread", team="home", line=2.5, edge=0.05)
-        | {"game_key": "LSUMISS"},
-        row("ML", kind="moneyline", team="home", line=None, edge=0.04)
-        | {"game_key": "LSUMISS"},
-        row("TT", kind="team_total", team="home", line=27.5, edge=0.06)
-        | {"game_key": "LSUMISS"},
+        row("SPREAD", kind="spread", team="home", line=2.5, edge=0.05) | {"game_key": "LSUMISS"},
+        row("ML", kind="moneyline", team="home", line=None, edge=0.04) | {"game_key": "LSUMISS"},
+        row("TT", kind="team_total", team="home", line=27.5, edge=0.06) | {"game_key": "LSUMISS"},
     ]
     reduction = reduce_candidates(rows)
     survivors = {e.ticker for e in reduction.survivors}
@@ -209,8 +212,7 @@ def test_correlated_same_game_positions_are_grouped_not_counted_as_diversified()
     assert survivors == {"TT", "SPREAD"}
     groups = exposure_groups(list(reduction.survivors))
     assert groups["largest_game_group"] == 2, (
-        "both surviving contracts are on one game and must be reported as one exposure, not "
-        "as two independent bets"
+        "both surviving contracts are on one game and must be reported as one exposure, not as two independent bets"
     )
     theses = {g["group"].split(":", 1)[1] for g in groups["by_thesis"]}
     assert theses == {"side:home", "team_scoring:home:over"}, (
@@ -349,9 +351,7 @@ def test_the_artifact_does_not_carry_the_losing_contracts(tmp_path):
         "zero_or_negligible_edge",
         "not_robust",
     )
-    priced_out = {
-        r["ticker"] for r in evaluation.rows if r["status"] in priced_out_statuses
-    }
+    priced_out = {r["ticker"] for r in evaluation.rows if r["status"] in priced_out_statuses}
     assert priced_out, "the fixture must contain rows that were priced and did not qualify"
     assert not (shown & priced_out)
     # ...and they are still counted, in the reconciliation block.
@@ -362,9 +362,7 @@ def test_the_artifact_does_not_carry_the_losing_contracts(tmp_path):
 def test_top_is_a_display_truncation_and_records_itself(tmp_path):
     game = packet(tmp_path)
     evaluation = evaluate_game(game, handicap(), min_net_edge=0.02)
-    full = build_candidate_artifact(
-        "early", [evaluation], {GAME_KEY: game}, {GAME_KEY: handicap()}, min_net_edge=0.02
-    )
+    full = build_candidate_artifact("early", [evaluation], {GAME_KEY: game}, {GAME_KEY: handicap()}, min_net_edge=0.02)
     capped = build_candidate_artifact(
         "early",
         [evaluation],
@@ -377,10 +375,7 @@ def test_top_is_a_display_truncation_and_records_itself(tmp_path):
     assert capped["reduction"]["display_truncated_to"] == 1
     assert len(capped["candidates"]) == 1
     # The REDUCTION is identical; only what is printed changed.
-    assert (
-        capped["reduction"]["surviving_candidates"]
-        == full["reduction"]["surviving_candidates"]
-    )
+    assert capped["reduction"]["surviving_candidates"] == full["reduction"]["surviving_candidates"]
 
 
 def test_expression_keys_distinguish_a_rung_from_a_side():

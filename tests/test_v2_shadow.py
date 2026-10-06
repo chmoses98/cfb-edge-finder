@@ -376,9 +376,7 @@ def test_ledger_is_append_only_and_deduped(tmp_path):
     # Re-running: both keys are already present, so nothing is appended
     # and the file is byte-identical.
     fresh = [
-        r
-        for r in (_row("a"), _row("b"))
-        if v2_shadow.dedup_key(r.observation_key, r.v2_model_version) not in seen
+        r for r in (_row("a"), _row("b")) if v2_shadow.dedup_key(r.observation_key, r.v2_model_version) not in seen
     ]
     assert fresh == []
     assert v2_shadow.append_rows(tmp_path, 2026, fresh) == 0
@@ -418,8 +416,6 @@ def test_row_links_to_the_canonical_observation_key(tmp_path):
     assert payload["observation_key"] == "cfb-2026-wk01-x-at-y|TICKER|T_24H|0.5.0"
     assert payload["schema_version"] == v2_shadow.V2_SHADOW_SCHEMA_VERSION
     assert "model_probability" not in payload, "must not mimic the canonical observation schema"
-
-
 
 
 # =============================================== no scipy in the hot path

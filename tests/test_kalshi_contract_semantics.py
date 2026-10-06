@@ -316,9 +316,7 @@ def test_variant_total_title_still_checks_floor_strike():
 
 def test_parses_live_variant_winner_prefixed_title():
     # KXNCAAFGAME-26AUG29MEMUNLV-MEM, verbatim.
-    parsed = parse_winner_market(
-        "Memphis vs UNLV college football game: Memphis wins?", _MEMUNLV_WINNER_RULES
-    )
+    parsed = parse_winner_market("Memphis vs UNLV college football game: Memphis wins?", _MEMUNLV_WINNER_RULES)
     assert parsed.reason is None
     assert parsed.market_family == MarketFamily.MONEYLINE
     assert parsed.raw_team_name == "Memphis"
@@ -344,9 +342,7 @@ def test_variant_winner_title_without_rules_is_unresolved_never_guessed():
 
 
 def test_variant_winner_title_with_disagreeing_rules_is_unresolved():
-    parsed = parse_winner_market(
-        "Will Memphis win the Memphis vs UNLV college football game?", _HAWSTAN_WINNER_RULES
-    )
+    parsed = parse_winner_market("Will Memphis win the Memphis vs UNLV college football game?", _HAWSTAN_WINNER_RULES)
     assert parsed.reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
 
 

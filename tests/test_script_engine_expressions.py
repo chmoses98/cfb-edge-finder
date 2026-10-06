@@ -257,3 +257,29 @@ def test_identical_support_prefers_the_cheaper_rung_never_less_support():
     wide, tight, weaker = expr("ML", 1.7, 0.80, 1), expr("-6.5", 1.7, 0.55, 7), expr("-10.5", 1.2, 0.30, 11)
     ordered = sorted([wide, weaker, tight], key=_sort_key)
     assert [e["expression_id"] for e in ordered] == ["-6.5", "ML", "-10.5"]
+
+
+def test_a_total_band_that_excludes_the_markets_coin_flip_line_is_flagged():
+    from cfb_edge_finder.scripting.expressions import market_disagreement
+
+    content = {
+        "teams": {"home": {"name": "A"}, "away": {"name": "B"}},
+        "game_scripts": {
+            "scripts": [
+                {
+                    "role": "PRIMARY",
+                    "archetype": "COMPETITIVE_SHOOTOUT",
+                    "outcome_shape": {"winner_lean": "NONE", "bands": {"total_points": [73, 97]}},
+                }
+            ]
+        },
+    }
+    totals = [
+        {"kind": "total", "period": "full_game", "side": "YES", "line": line, "team": "none", "price": {"entry": ask}}
+        for line, ask in ((51.5, 0.62), (55.5, 0.49), (60.5, 0.38))
+    ]
+    flag = market_disagreement(content, totals, False)
+    assert flag is not None and flag["flags"][0]["kind"] == "TOTAL"
+    assert flag["flags"][0]["market_median_total"] == 55.5 and flag["flags"][0]["thesis"] == "total:over"
+    totals_inside = [dict(t, line=t["line"] + 20) for t in totals]
+    assert market_disagreement(content, totals_inside, False) is None

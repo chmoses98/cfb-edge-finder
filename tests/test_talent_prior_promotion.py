@@ -100,19 +100,30 @@ def _projection(talent=None):
     as_of = AsOf(season=2026, week=1)
     history = [ln for ln in lines if ln.as_of.is_strictly_before(as_of)]
     ratings = fit_fbs_efficiency_ratings(history, as_of)
-    pool = np.column_stack([np.random.default_rng(3).normal(0, 13, 800),
-                            np.random.default_rng(4).normal(0, 13, 800)])
+    pool = np.column_stack([np.random.default_rng(3).normal(0, 13, 800), np.random.default_rng(4).normal(0, 13, 800)])
     g = games[0]
     raw = project_game(
-        home_id=g.home_team_id, away_id=g.away_team_id,
-        home_classification="fbs", away_classification="fbs",
-        is_neutral_site=False, ratings=ratings, prior_season_ratings=None,
-        residual_pool=pool, home_percent_passing_ppa=None, away_percent_passing_ppa=None,
-        n_simulations=2000, seed=0,
+        home_id=g.home_team_id,
+        away_id=g.away_team_id,
+        home_classification="fbs",
+        away_classification="fbs",
+        is_neutral_site=False,
+        ratings=ratings,
+        prior_season_ratings=None,
+        residual_pool=pool,
+        home_percent_passing_ppa=None,
+        away_percent_passing_ppa=None,
+        n_simulations=2000,
+        seed=0,
     )
     return apply_margin_correction(
-        raw, is_fbs_vs_fbs=True, method="none", correction_model=None,
-        artifact_version=None, as_of=as_of, training_cutoff=None,
+        raw,
+        is_fbs_vs_fbs=True,
+        method="none",
+        correction_model=None,
+        artifact_version=None,
+        as_of=as_of,
+        training_cutoff=None,
         **({"talent_margin_delta": talent} if talent is not None else {}),
     )
 
@@ -166,10 +177,16 @@ def test_prior_is_not_applied_to_non_fbs_games():
     talent = {g.home_team_id: 900.0, g.away_team_id: 400.0}
     cache = GameProjectionCache(lines, talent_by_team=talent)
     req = GameProjectionRequest(
-        game_id=g.game_id, home_id=g.home_team_id, away_id=g.away_team_id,
-        home_classification="fbs", away_classification="fcs",
-        is_neutral_site=False, as_of_season=2026, as_of_week=1,
-        n_simulations=800, seed=0,
+        game_id=g.game_id,
+        home_id=g.home_team_id,
+        away_id=g.away_team_id,
+        home_classification="fbs",
+        away_classification="fcs",
+        is_neutral_site=False,
+        as_of_season=2026,
+        as_of_week=1,
+        n_simulations=800,
+        seed=0,
     )
     assert cache.get_or_build(req).projection.talent_margin_delta == 0.0
 
@@ -181,10 +198,16 @@ def test_prior_is_applied_for_fbs_vs_fbs_and_matches_the_frozen_formula():
     talent = {g.home_team_id: 900.0, g.away_team_id: 400.0}
     cache = GameProjectionCache(lines, talent_by_team=talent)
     req = GameProjectionRequest(
-        game_id=g.game_id, home_id=g.home_team_id, away_id=g.away_team_id,
-        home_classification="fbs", away_classification="fbs",
-        is_neutral_site=False, as_of_season=2026, as_of_week=1,
-        n_simulations=800, seed=0,
+        game_id=g.game_id,
+        home_id=g.home_team_id,
+        away_id=g.away_team_id,
+        home_classification="fbs",
+        away_classification="fbs",
+        is_neutral_site=False,
+        as_of_season=2026,
+        as_of_week=1,
+        n_simulations=800,
+        seed=0,
     )
     got = cache.get_or_build(req).projection.talent_margin_delta
     assert got == pytest.approx(TALENT_BETA * 500.0)
@@ -195,10 +218,16 @@ def test_cache_without_talent_reproduces_the_control_exactly():
     g = games[0]
     lines = make_history_lines(games)
     req = GameProjectionRequest(
-        game_id=g.game_id, home_id=g.home_team_id, away_id=g.away_team_id,
-        home_classification="fbs", away_classification="fbs",
-        is_neutral_site=False, as_of_season=2026, as_of_week=1,
-        n_simulations=800, seed=0,
+        game_id=g.game_id,
+        home_id=g.home_team_id,
+        away_id=g.away_team_id,
+        home_classification="fbs",
+        away_classification="fbs",
+        is_neutral_site=False,
+        as_of_season=2026,
+        as_of_week=1,
+        n_simulations=800,
+        seed=0,
     )
     control = GameProjectionCache(lines).get_or_build(req).projection
     with_empty = GameProjectionCache(lines, talent_by_team={}).get_or_build(req).projection
@@ -223,14 +252,26 @@ def test_model_version_change_cannot_recapture_historical_checkpoints(tmp_path):
     of retroactive observations."""
     path = tmp_path / "2026.jsonl"
     rows = [
-        {"observation_key": "k1", "season": 2026,
-         "observation": {"kalshi_market_ticker": "T-1", "game_id": "g1",
-                         "snapshot_timing": {"label": "T_6H"},
-                         "model_version": {"model_version": "0.4.0-milestone-c2-live-margin-correction"}}},
-        {"observation_key": "k2", "season": 2026,
-         "observation": {"kalshi_market_ticker": "T-1", "game_id": "g1",
-                         "snapshot_timing": {"label": "CLOSING"},
-                         "model_version": {"model_version": "0.4.0-milestone-c2-live-margin-correction"}}},
+        {
+            "observation_key": "k1",
+            "season": 2026,
+            "observation": {
+                "kalshi_market_ticker": "T-1",
+                "game_id": "g1",
+                "snapshot_timing": {"label": "T_6H"},
+                "model_version": {"model_version": "0.4.0-milestone-c2-live-margin-correction"},
+            },
+        },
+        {
+            "observation_key": "k2",
+            "season": 2026,
+            "observation": {
+                "kalshi_market_ticker": "T-1",
+                "game_id": "g1",
+                "snapshot_timing": {"label": "CLOSING"},
+                "model_version": {"model_version": "0.4.0-milestone-c2-live-margin-correction"},
+            },
+        },
     ]
     path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     index = load_observation_index(path)
@@ -241,10 +282,16 @@ def test_old_control_rows_are_never_reinterpreted_as_candidate_output(tmp_path):
     """A 0.4.0 row stays a 0.4.0 row. Nothing in the promotion rewrites
     or re-labels an existing observation."""
     path = tmp_path / "2026.jsonl"
-    original = {"observation_key": "k1", "season": 2026,
-                "observation": {"kalshi_market_ticker": "T-1", "game_id": "g1",
-                                "snapshot_timing": {"label": "T_6H"},
-                                "model_version": {"model_version": milestone_d.MODEL_VERSION}}}
+    original = {
+        "observation_key": "k1",
+        "season": 2026,
+        "observation": {
+            "kalshi_market_ticker": "T-1",
+            "game_id": "g1",
+            "snapshot_timing": {"label": "T_6H"},
+            "model_version": {"model_version": milestone_d.MODEL_VERSION},
+        },
+    }
     raw = json.dumps(original) + "\n"
     path.write_text(raw, encoding="utf-8")
     load_observation_index(path)
@@ -268,8 +315,11 @@ def _prior_code_lines() -> list[str]:
     import ast
 
     tree = ast.parse(_prior_source())
-    return [ast.unparse(node) for node in ast.walk(tree)
-            if isinstance(node, (ast.Import, ast.ImportFrom, ast.Call, ast.Assign, ast.FunctionDef))]
+    return [
+        ast.unparse(node)
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Import, ast.ImportFrom, ast.Call, ast.Assign, ast.FunctionDef))
+    ]
 
 
 def test_week_1_2026_outcomes_are_absent_from_the_prior():

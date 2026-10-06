@@ -120,12 +120,9 @@ def validate(record: dict) -> list[str]:
 
     for name in FORBIDDEN_PROVENANCE_FIELDS:
         if name in record:
-            problems.append(
-                f"{name!r} would assert model provenance this settlement does not have"
-            )
+            problems.append(f"{name!r} would assert model provenance this settlement does not have")
 
-    for name in ("settlement_id", "source_bet_key", "market_ticker", "side",
-                 "settlement_status", "settled_at"):
+    for name in ("settlement_id", "source_bet_key", "market_ticker", "side", "settlement_status", "settled_at"):
         value = record.get(name)
         if not isinstance(value, str) or not value.strip():
             problems.append(f"{name} is required and must be a non-empty string")
@@ -146,15 +143,10 @@ def validate(record: dict) -> list[str]:
     if version is not None and version not in ECONOMICS_VERSIONS:
         # An unknown contract is not "probably v2". A net computed by a formula
         # this ledger has never heard of cannot be compared with anything.
-        problems.append(
-            f"economics_version must be one of {list(ECONOMICS_VERSIONS)} or absent; "
-            f"got {version!r}"
-        )
+        problems.append(f"economics_version must be one of {list(ECONOMICS_VERSIONS)} or absent; got {version!r}")
 
     if record.get("result") not in (None, WON, LOST):
-        problems.append(
-            f"result must be {WON!r}, {LOST!r} or absent; got {record.get('result')!r}"
-        )
+        problems.append(f"result must be {WON!r}, {LOST!r} or absent; got {record.get('result')!r}")
 
     for name in ("gross_return", "net_profit_loss"):
         value = record.get(name)
@@ -176,8 +168,6 @@ def validate(record: dict) -> list[str]:
                 "with no explanation is how an unknown becomes a zero"
             )
         if not missing and refusals:
-            problems.append(
-                "every figure is established, so a refusal has nothing to refuse"
-            )
+            problems.append("every figure is established, so a refusal has nothing to refuse")
 
     return problems

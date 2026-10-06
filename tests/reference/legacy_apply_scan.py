@@ -130,9 +130,7 @@ def _apply_scan(
             if scan_logic.is_genuine_mapping_failure(mapping.reason):
                 report.mapping_failures += len(event_markets)
 
-            matched_game = (
-                next((g for g in games if g.game_id == mapping.game_id), None) if mapping.game_id else None
-            )
+            matched_game = next((g for g in games if g.game_id == mapping.game_id), None) if mapping.game_id else None
             cached_projection = None
             home_cls = away_cls = None
             training_cutoff_str = None
@@ -268,4 +266,3 @@ def _apply_scan(
     return persistence.AppendResult(
         written=total_written, skipped_duplicate=total_skipped, keys_written=tuple(keys_written)
     )
-

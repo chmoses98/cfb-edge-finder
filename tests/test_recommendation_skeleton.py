@@ -54,9 +54,21 @@ GAME = "cfb-2026-wk01-a-at-b"
 
 
 def _snapshot(
-    ticker="KXNCAAFGAME-EV-H", family=MarketFamily.MONEYLINE, team=Side.HOME, side=None,
-    threshold=None, op=None, yes=0.55, no=0.50, model_p=0.60, status="active",
-    fee_status="VERIFIED_CURRENT", captured=None, pricing="model_priced", label="T_24H", game=GAME,
+    ticker="KXNCAAFGAME-EV-H",
+    family=MarketFamily.MONEYLINE,
+    team=Side.HOME,
+    side=None,
+    threshold=None,
+    op=None,
+    yes=0.55,
+    no=0.50,
+    model_p=0.60,
+    status="active",
+    fee_status="VERIFIED_CURRENT",
+    captured=None,
+    pricing="model_priced",
+    label="T_24H",
+    game=GAME,
 ):
     return ContractSnapshot(
         semantics=ContractSemantics(ticker, game, family, team, side, threshold, op, "confirmed_live"),
@@ -77,14 +89,23 @@ def _snapshot(
 def _spread(threshold, team=Side.HOME, ticker=None, model_p=0.6):
     return _snapshot(
         ticker=ticker or f"KXNCAAFSPREAD-EV-{team.value}{threshold}",
-        family=MarketFamily.SPREAD, team=team, threshold=threshold, op=">", model_p=model_p,
+        family=MarketFamily.SPREAD,
+        team=team,
+        threshold=threshold,
+        op=">",
+        model_p=model_p,
     )
 
 
 def _total(threshold, model_p=0.6):
     return _snapshot(
-        ticker=f"KXNCAAFTOTAL-EV-{threshold}", family=MarketFamily.TOTAL, team=None,
-        side=Side.OVER, threshold=threshold, op=">", model_p=model_p,
+        ticker=f"KXNCAAFTOTAL-EV-{threshold}",
+        family=MarketFamily.TOTAL,
+        team=None,
+        side=Side.OVER,
+        threshold=threshold,
+        op=">",
+        model_p=model_p,
     )
 
 
@@ -97,10 +118,23 @@ def test_two_candidates_per_contract_with_full_linkage():
     sides = {c.executable_side for c in result.candidates}
     assert sides == {Side.YES, Side.NO}
     for c in result.candidates:
-        for field in ("game_id", "market_ticker", "market_family", "timing_label", "executable_side",
-                      "executable_price", "estimated_fee", "fee_adjusted_break_even_probability",
-                      "model_probability", "research_probability_surplus", "equivalence_group_id",
-                      "dimension_group_id", "game_group_id", "model_version", "captured_at"):
+        for field in (
+            "game_id",
+            "market_ticker",
+            "market_family",
+            "timing_label",
+            "executable_side",
+            "executable_price",
+            "estimated_fee",
+            "fee_adjusted_break_even_probability",
+            "model_probability",
+            "research_probability_surplus",
+            "equivalence_group_id",
+            "dimension_group_id",
+            "game_group_id",
+            "model_version",
+            "captured_at",
+        ):
             assert getattr(c, field) is not None, f"candidate missing {field}"
 
 
@@ -139,14 +173,19 @@ def test_default_provider_never_supplies_thresholds():
 
 def _artifact(**over):
     provenance = ThresholdProvenance(
-        source_corpus_identifier="corpus-1", prospective_only=True, settled_game_count=200,
-        created_at=NOW, analytics_code_version="analytics_v1", model_version="m1",
+        source_corpus_identifier="corpus-1",
+        prospective_only=True,
+        settled_game_count=200,
+        created_at=NOW,
+        analytics_code_version="analytics_v1",
+        model_version="m1",
         approval_state=over.pop("approval_state", ApprovalState.APPROVED_FOR_LIVE),
     )
     if "provenance" in over:
         provenance = over.pop("provenance")
     base = dict(
-        artifact_version="thr-1", provenance=provenance,
+        artifact_version="thr-1",
+        provenance=provenance,
         applicable_model_versions=frozenset({"m1"}),
         applicable_timing_labels=frozenset({"T_30"}),
         applicable_families=frozenset({"moneyline"}),
@@ -163,9 +202,7 @@ def test_model_version_mismatch_is_refused():
 
 
 def test_timing_mismatch_is_refused():
-    r = StaticThresholdProvider(_artifact()).resolve(
-        model_version="m1", timing_label="EARLY_OPEN", family="moneyline"
-    )
+    r = StaticThresholdProvider(_artifact()).resolve(model_version="m1", timing_label="EARLY_OPEN", family="moneyline")
     assert r.available is False
     assert ThresholdIncompatibility.TIMING_LABEL_MISMATCH in r.failures
 
@@ -173,9 +210,7 @@ def test_timing_mismatch_is_refused():
 def test_family_mismatch_is_refused():
     """A winner threshold must not silently apply to spread or total."""
     for family in ("spread", "total"):
-        r = StaticThresholdProvider(_artifact()).resolve(
-            model_version="m1", timing_label="T_30", family=family
-        )
+        r = StaticThresholdProvider(_artifact()).resolve(model_version="m1", timing_label="T_30", family=family)
         assert r.available is False
         assert ThresholdIncompatibility.FAMILY_MISMATCH in r.failures
 
@@ -203,8 +238,13 @@ def test_unapproved_artifact_is_refused(state):
 
 def test_retrospective_or_evidence_free_artifact_is_refused():
     retro = ThresholdProvenance(
-        source_corpus_identifier="c", prospective_only=False, settled_game_count=200, created_at=NOW,
-        analytics_code_version="a", model_version="m1", approval_state=ApprovalState.APPROVED_FOR_LIVE,
+        source_corpus_identifier="c",
+        prospective_only=False,
+        settled_game_count=200,
+        created_at=NOW,
+        analytics_code_version="a",
+        model_version="m1",
+        approval_state=ApprovalState.APPROVED_FOR_LIVE,
     )
     r = StaticThresholdProvider(_artifact(provenance=retro)).resolve(
         model_version="m1", timing_label="T_30", family="moneyline"
@@ -212,8 +252,13 @@ def test_retrospective_or_evidence_free_artifact_is_refused():
     assert ThresholdIncompatibility.NOT_PROSPECTIVE_ONLY in r.failures
 
     empty = ThresholdProvenance(
-        source_corpus_identifier="c", prospective_only=True, settled_game_count=0, created_at=NOW,
-        analytics_code_version="a", model_version="m1", approval_state=ApprovalState.APPROVED_FOR_LIVE,
+        source_corpus_identifier="c",
+        prospective_only=True,
+        settled_game_count=0,
+        created_at=NOW,
+        analytics_code_version="a",
+        model_version="m1",
+        approval_state=ApprovalState.APPROVED_FOR_LIVE,
     )
     r2 = StaticThresholdProvider(_artifact(provenance=empty)).resolve(
         model_version="m1", timing_label="T_30", family="moneyline"
@@ -317,8 +362,12 @@ def test_passing_every_quality_gate_still_is_not_actionable():
 
 def test_zero_settled_is_no_settled_data():
     r = assess_readiness(
-        family="moneyline", timing_label=None, model_version=None,
-        settled_n=0, unique_game_clusters=0, clv_n=0,
+        family="moneyline",
+        timing_label=None,
+        model_version=None,
+        settled_n=0,
+        unique_game_clusters=0,
+        clv_n=0,
     )
     assert r.state is EvidenceState.NO_SETTLED_DATA and r.actionable is False
 
@@ -327,8 +376,12 @@ def test_readiness_never_reaches_validated_from_data_alone():
     """No volume of rows promotes a slice: 'enough rows' is a different
     question from 'the rows say something real'."""
     r = assess_readiness(
-        family="moneyline", timing_label="T_30", model_version="m1",
-        settled_n=100_000, unique_game_clusters=5_000, clv_n=90_000,
+        family="moneyline",
+        timing_label="T_30",
+        model_version="m1",
+        settled_n=100_000,
+        unique_game_clusters=5_000,
+        clv_n=90_000,
     )
     assert r.state is EvidenceState.VALIDATION_PENDING
     assert r.state is not EvidenceState.VALIDATED
@@ -337,16 +390,25 @@ def test_readiness_never_reaches_validated_from_data_alone():
 
 def test_many_rows_from_few_games_is_low_sample():
     r = assess_readiness(
-        family="spread", timing_label=None, model_version=None,
-        settled_n=600, unique_game_clusters=2, clv_n=100,
+        family="spread",
+        timing_label=None,
+        model_version=None,
+        settled_n=600,
+        unique_game_clusters=2,
+        clv_n=100,
     )
     assert r.state is EvidenceState.LOW_SAMPLE
 
 
 def test_non_prospective_evidence_cannot_support_promotion():
     r = assess_readiness(
-        family="moneyline", timing_label=None, model_version=None,
-        settled_n=5000, unique_game_clusters=500, clv_n=4000, prospective_only=False,
+        family="moneyline",
+        timing_label=None,
+        model_version=None,
+        settled_n=5000,
+        unique_game_clusters=500,
+        clv_n=4000,
+        prospective_only=False,
     )
     assert r.state is EvidenceState.NO_SETTLED_DATA
 
@@ -382,10 +444,7 @@ def test_dominated_expression_is_the_dearer_identical_payout():
     for cluster in view.multi_expression_clusters:
         canonical = cluster.canonical_expression_candidate
         for dominated in cluster.dominated_expressions:
-            assert (
-                dominated.fee_adjusted_break_even_probability
-                > canonical.fee_adjusted_break_even_probability
-            )
+            assert dominated.fee_adjusted_break_even_probability > canonical.fee_adjusted_break_even_probability
 
 
 def test_unpriceable_expression_is_never_called_dominated():

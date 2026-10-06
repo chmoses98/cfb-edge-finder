@@ -312,9 +312,11 @@ thesis is the one with the most script support; between rungs with identical
 support, the cheaper entry (its extra requirement is inside every supporting
 script). Each thesis publishes its ladder: relation to the core expression
 (`card_review.relate`: nested tail extension, correlated path, …), the extra
-points required, which scripts each rung loses. `MARKET_DISAGREEMENT` (the
-football PRIMARY backs a side whose moneyline asks ≤ 40¢) is a flag beside
-the artifact; nothing in the artifact moves.
+points required, which scripts each rung loses. `MARKET_DISAGREEMENT` is a flag
+beside the artifact, raised when the football PRIMARY backs a side whose
+moneyline asks ≤ 40¢, or when the PRIMARY's total band excludes the full-game
+total line the market prices nearest 50¢ (within 15¢); nothing in the
+artifact moves.
 
 ## 11. Publication
 

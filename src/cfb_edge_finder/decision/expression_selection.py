@@ -162,9 +162,7 @@ def build_option(
     )
 
 
-def select_expression(
-    truth_condition_key: str | None, options: list[ExpressionOption]
-) -> ExpressionSelection:
+def select_expression(truth_condition_key: str | None, options: list[ExpressionOption]) -> ExpressionSelection:
     """Pick the cheapest all-in selectable expression.
 
     Tie-breaking is deterministic and documented rather than incidental:

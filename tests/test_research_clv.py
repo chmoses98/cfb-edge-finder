@@ -60,8 +60,12 @@ def test_compute_market_movement_end_to_end():
 
 def test_build_gap_record_gross_and_fee_adjusted():
     record = build_gap_record(
-        market_ticker="MKT-1", model_probability=0.62, executable_market_probability_at_capture=0.55,
-        estimated_taker_fee=0.01, closing_market_probability=0.58, contract_settled_yes=True,
+        market_ticker="MKT-1",
+        model_probability=0.62,
+        executable_market_probability_at_capture=0.55,
+        estimated_taker_fee=0.01,
+        closing_market_probability=0.58,
+        contract_settled_yes=True,
     )
     assert abs(record.gross_gap - 0.07) < 1e-9
     assert abs(record.fee_adjusted_gap - 0.06) < 1e-9
@@ -70,8 +74,12 @@ def test_build_gap_record_gross_and_fee_adjusted():
 
 def test_build_gap_record_hit_false_when_model_favored_side_lost():
     record = build_gap_record(
-        market_ticker="MKT-1", model_probability=0.62, executable_market_probability_at_capture=0.55,
-        estimated_taker_fee=None, closing_market_probability=None, contract_settled_yes=False,
+        market_ticker="MKT-1",
+        model_probability=0.62,
+        executable_market_probability_at_capture=0.55,
+        estimated_taker_fee=None,
+        closing_market_probability=None,
+        contract_settled_yes=False,
     )
     assert record.actual_result_hit is False
     assert record.fee_adjusted_gap is None
@@ -79,7 +87,11 @@ def test_build_gap_record_hit_false_when_model_favored_side_lost():
 
 def test_build_gap_record_hit_none_until_settled():
     record = build_gap_record(
-        market_ticker="MKT-1", model_probability=0.62, executable_market_probability_at_capture=0.55,
-        estimated_taker_fee=None, closing_market_probability=None, contract_settled_yes=None,
+        market_ticker="MKT-1",
+        model_probability=0.62,
+        executable_market_probability_at_capture=0.55,
+        estimated_taker_fee=None,
+        closing_market_probability=None,
+        contract_settled_yes=None,
     )
     assert record.actual_result_hit is None

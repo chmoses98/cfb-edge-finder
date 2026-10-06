@@ -117,22 +117,23 @@ def handicap_fingerprint(handicap: HandicapPayload | None) -> str | None:
                 ),
             )
         )
+    material.append(sorted((k, round(float(v), 6)) for k, v in (handicap.explicit_probabilities or {}).items()))
     material.append(
-        sorted((k, round(float(v), 6)) for k, v in (handicap.explicit_probabilities or {}).items())
-    )
-    material.append(
-        sorted(
-            (k, [round(float(x), 6) for x in v])
-            for k, v in (handicap.explicit_probability_ranges or {}).items()
-        )
+        sorted((k, [round(float(x), 6) for x in v]) for k, v in (handicap.explicit_probability_ranges or {}).items())
     )
     blob = json.dumps(material, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
 
 
 def recommendation_id(
-    *, batch: str | None, shard: str, game_key: str, ticker: str, side: str,
-    packet_hash: str | None, handicap_hash: str | None,
+    *,
+    batch: str | None,
+    shard: str,
+    game_key: str,
+    ticker: str,
+    side: str,
+    packet_hash: str | None,
+    handicap_hash: str | None,
 ) -> str:
     """A stable join key for ONE recommendation.
 
@@ -146,8 +147,7 @@ def recommendation_id(
     accounting ledger and is linked afterwards, never merged in.
     """
     blob = "|".join(
-        str(part) for part in
-        (batch or shard, game_key, ticker, side, packet_hash or "", handicap_hash or "")
+        str(part) for part in (batch or shard, game_key, ticker, side, packet_hash or "", handicap_hash or "")
     ).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()[:20]
 
@@ -181,10 +181,7 @@ def correlation_review(rows: list[dict[str, Any]]) -> tuple[list[Candidate], lis
     a deterministic reason from `candidates.ReductionReason` rather than a
     single generic sentence."""
     reduction = reduce_candidates(rows)
-    survivors = [
-        Candidate(row=e.row, driver=e.driver, direction=e.direction)
-        for e in reduction.survivors
-    ]
+    survivors = [Candidate(row=e.row, driver=e.driver, direction=e.direction) for e in reduction.survivors]
     return survivors, reduction.removed
 
 
@@ -226,15 +223,13 @@ def candidate_record(
     side = str(row.get("best_side"))
     sensitivity = row.get("sensitivity") or {}
     ticker = str(row.get("ticker"))
-    alternatives = (reduction.alternatives.get(ticker, []) if reduction else [])
+    alternatives = reduction.alternatives.get(ticker, []) if reduction else []
     # The NEAREST alternatives by fee-adjusted edge, not the first few by
     # ticker: a reader deciding whether to take a different rung wants the
     # rungs that nearly won, and the rest are in the reduction ledger with
     # every one of their reasons.
     shown = (
-        sorted(alternatives, key=lambda a: -float(a.get("fee_adjusted_edge") or 0.0))[
-            :max_alternatives
-        ]
+        sorted(alternatives, key=lambda a: -float(a.get("fee_adjusted_edge") or 0.0))[:max_alternatives]
         if max_alternatives is not None
         else alternatives
     )
@@ -310,11 +305,7 @@ def candidate_record(
         # The CORE expression of its view. Every entry in related_alternatives
         # is an incremental-expression candidate: beside this one on a card it
         # is more exposure to the same opinion, and must be justified.
-        **(
-            core_fields(candidate, theses)
-            if isinstance(candidate, Expression) and theses is not None
-            else {}
-        ),
+        **(core_fields(candidate, theses) if isinstance(candidate, Expression) and theses is not None else {}),
     }
 
 
@@ -446,15 +437,11 @@ def game_block(
             else "not supplied by the handicap"
         ),
         "strongest_opposing_case": (
-            handicap.opposing_case
-            if handicap and handicap.opposing_case
-            else "not supplied by the handicap"
+            handicap.opposing_case if handicap and handicap.opposing_case else "not supplied by the handicap"
         ),
         "handicap_confidence": handicap.confidence if handicap else "unstated",
         "handicap_confidence_effective": handicap.effective_confidence if handicap else "unstated",
-        "handicap_confidence_capped_by_data": (
-            handicap.confidence_was_capped if handicap else False
-        ),
+        "handicap_confidence_capped_by_data": (handicap.confidence_was_capped if handicap else False),
         "handicap_schema_version": handicap.schema_version_supplied if handicap else None,
         "uncertainty_stated": (not handicap.is_legacy_point_estimate) if handicap else False,
         "factual_data_quality": {
@@ -535,17 +522,11 @@ def build_candidate_artifact(
             f"{len(incomplete)} INCOMPLETE game(s) in {batch or shard!r}; no candidate artifact "
             "may be produced until every game passes its completion gate: "
             + "; ".join(
-                f"{e.game_key} unaccounted={e.unaccounted} missing={e.missing_tickers or '-'}"
-                for e in incomplete
+                f"{e.game_key} unaccounted={e.unaccounted} missing={e.missing_tickers or '-'}" for e in incomplete
             )
         )
 
-    rows = [
-        row
-        for evaluation in evaluations
-        for row in evaluation.rows
-        if row.get("status") in CANDIDATE_STATUSES
-    ]
+    rows = [row for evaluation in evaluations for row in evaluation.rows if row.get("status") in CANDIDATE_STATUSES]
     reduction = reduce_candidates(rows)
 
     disagreements = {
@@ -624,9 +605,7 @@ def build_candidate_artifact(
             ),
         },
         "games": {
-            evaluation.game_key: game_block(
-                evaluation.game_key, packets, handicaps, disagreements
-            )
+            evaluation.game_key: game_block(evaluation.game_key, packets, handicaps, disagreements)
             for evaluation in evaluations
         },
         "exposure": exposure_groups(list(survivors)),
@@ -647,9 +626,7 @@ def build_candidate_artifact(
             )
             for expression in shown
         ],
-        "market_disagreement_by_game": [
-            disagreements[key] for key in sorted(disagreements)
-        ],
+        "market_disagreement_by_game": [disagreements[key] for key in sorted(disagreements)],
         "awaiting_explicit_judgement": _awaiting_judgement(evaluations),
         "disclaimer": (
             "No edge is claimed. Every fair probability here came from a handicap supplied from "
@@ -686,12 +663,7 @@ def build_report(
     for evaluation in evaluations:
         require_complete(evaluation)
 
-    positive = [
-        row
-        for evaluation in evaluations
-        for row in evaluation.rows
-        if row.get("status") in CANDIDATE_STATUSES
-    ]
+    positive = [row for evaluation in evaluations for row in evaluation.rows if row.get("status") in CANDIDATE_STATUSES]
     reduction = reduce_candidates(positive)
     survivors = reduction.survivors
     final = survivors if top_n is None else survivors[:top_n]
@@ -720,12 +692,8 @@ def build_report(
         "priced_evaluated": sum(e.evaluated for e in evaluations),
         "explicitly_unpriceable": sum(e.unpriceable for e in evaluations),
         "unaccounted": sum(e.unaccounted for e in evaluations),
-        "robust_positive_ev_contracts": status_counts.get(
-            EvaluationStatus.ROBUST_POSITIVE_EV.value, 0
-        ),
-        "sensitive_positive_ev_contracts": status_counts.get(
-            EvaluationStatus.SENSITIVE_POSITIVE_EV.value, 0
-        ),
+        "robust_positive_ev_contracts": status_counts.get(EvaluationStatus.ROBUST_POSITIVE_EV.value, 0),
+        "sensitive_positive_ev_contracts": status_counts.get(EvaluationStatus.SENSITIVE_POSITIVE_EV.value, 0),
         "not_robust_contracts": status_counts.get(EvaluationStatus.NOT_ROBUST.value, 0),
         "positive_ev_contracts": len(positive),
         "passed_correlation_review": len(survivors),
@@ -750,15 +718,16 @@ def build_report(
             "nothing else. No order can be placed from this artifact."
         ),
         "games": [e.summary() for e in evaluations],
-        "games_context": {
-            e.game_key: game_block(e.game_key, packets, handicaps, disagreements)
-            for e in evaluations
-        },
+        "games_context": {e.game_key: game_block(e.game_key, packets, handicaps, disagreements) for e in evaluations},
         "market_disagreement_by_game": [disagreements[key] for key in sorted(disagreements)],
         "final_bets": [
             candidate_record(
-                c, handicaps, packets, reduction=reduction,
-                disagreements=disagreements, shard=shard,
+                c,
+                handicaps,
+                packets,
+                reduction=reduction,
+                disagreements=disagreements,
+                shard=shard,
                 theses=theses,
             )
             for c in final
@@ -811,8 +780,7 @@ def render_report(report: dict[str, Any]) -> str:
                 f"stake: {bet['stake_placeholder']}",
                 f"   thesis: {game.get('thesis', 'not supplied by the handicap')}",
                 f"   why this market: {bet['why_this_market_expresses_the_thesis']}",
-                f"   strongest opposing case: "
-                f"{game.get('strongest_opposing_case', 'not supplied by the handicap')}",
+                f"   strongest opposing case: {game.get('strongest_opposing_case', 'not supplied by the handicap')}",
                 "",
             ]
         )

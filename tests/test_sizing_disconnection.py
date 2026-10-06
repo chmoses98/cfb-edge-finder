@@ -184,9 +184,7 @@ def test_new_cli_entry_points_declare_no_sizing_import(entry_point):
 def _ops_module():
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "week1_ops_health", REPO_ROOT / "scripts" / "week1_ops_health.py"
-    )
+    spec = importlib.util.spec_from_file_location("week1_ops_health", REPO_ROOT / "scripts" / "week1_ops_health.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -243,9 +241,9 @@ def test_every_way_of_importing_sizing_is_detected(statement, tmp_path):
     path = tmp_path / "candidate.py"
     path.write_text(statement, encoding="utf-8")
     names = imported_modules(path)
-    assert any(
-        name == SIZING_PACKAGE or name.startswith(SIZING_PACKAGE + ".") for name in names
-    ), f"{statement!r} would reach sizing undetected; saw {sorted(names)}"
+    assert any(name == SIZING_PACKAGE or name.startswith(SIZING_PACKAGE + ".") for name in names), (
+        f"{statement!r} would reach sizing undetected; saw {sorted(names)}"
+    )
 
 
 def test_the_detector_still_ignores_a_docstring_that_names_sizing(tmp_path):

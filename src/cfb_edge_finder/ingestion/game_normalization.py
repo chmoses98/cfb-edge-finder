@@ -55,6 +55,7 @@ def home_classification(raw: dict[str, Any]) -> str | None:
 def away_classification(raw: dict[str, Any]) -> str | None:
     return _first_present(raw, _AWAY_CLASSIFICATION_KEYS)
 
+
 _STATUS_MAP = {
     "scheduled": "scheduled",
     "in_progress": "in_progress",
@@ -132,9 +133,7 @@ def normalize_cfbd_game(raw: dict[str, Any], *, observed_at: datetime) -> GameRe
             playoff=raw.get("playoff"),
         )
 
-        game_id = canonical_game_id(
-            season, week_meta.week_label, away_team_id, home_team_id, neutral_site=neutral_site
-        )
+        game_id = canonical_game_id(season, week_meta.week_label, away_team_id, home_team_id, neutral_site=neutral_site)
 
         raw_start_date = raw.get("startDate")
         start_time_tbd = bool(_first_present(raw, _START_TIME_TBD_KEYS, False))

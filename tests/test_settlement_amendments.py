@@ -42,17 +42,33 @@ TICKER = "KXNCAAFTOTAL-26SEP26UCLAMD-57"
 #: 0.49, stake 31.9975 (which includes the 1.1030 entry fee), WON. Filed v1
 #: net 29.9495 = 63.05 - 31.9975 - 1.1030. Cash net is 31.0525.
 WAGER = {
-    "wager_id": "routed-0c381e461c46cbb8fc40fb0e", "schema_version": "cfb_accounted_wager.v1",
-    "source_bet_key": KEY, "import_batch_id": "kalshi-router-v1",
-    "entry_method": "IMPORTED_RECEIPT", "game_date": "2026-09-26",
-    "market_ticker": TICKER, "side": "YES", "executed_at": "2026-09-26T15:45:04Z",
-    "contracts": 63.05, "execution_price": 0.49, "stake": 31.9975, "fees_paid": 1.103,
-    "fees_are_estimated": False, "venue": "kalshi", "season": SEASON,
+    "wager_id": "routed-0c381e461c46cbb8fc40fb0e",
+    "schema_version": "cfb_accounted_wager.v1",
+    "source_bet_key": KEY,
+    "import_batch_id": "kalshi-router-v1",
+    "entry_method": "IMPORTED_RECEIPT",
+    "game_date": "2026-09-26",
+    "market_ticker": TICKER,
+    "side": "YES",
+    "executed_at": "2026-09-26T15:45:04Z",
+    "contracts": 63.05,
+    "execution_price": 0.49,
+    "stake": 31.9975,
+    "fees_paid": 1.103,
+    "fees_are_estimated": False,
+    "venue": "kalshi",
+    "season": SEASON,
 }
 V1_ROW = {
-    "source_bet_key": KEY, "market_ticker": TICKER, "side": "YES",
-    "settlement_status": "SETTLED", "settled_at": "2026-09-26T20:59:16.465094Z",
-    "result": "WON", "gross_return": 63.05, "net_profit_loss": 29.9495, "refusals": [],
+    "source_bet_key": KEY,
+    "market_ticker": TICKER,
+    "side": "YES",
+    "settlement_status": "SETTLED",
+    "settled_at": "2026-09-26T20:59:16.465094Z",
+    "result": "WON",
+    "gross_return": 63.05,
+    "net_profit_loss": 29.9495,
+    "refusals": [],
 }
 V2_ROW = {**V1_ROW, "net_profit_loss": 31.0525, "economics_version": ECONOMICS_V2}
 
@@ -272,9 +288,7 @@ def test_the_report_and_postmortem_use_canonical_economics_when_amendments_exist
     wagers = store.read_rows(store.ledger_path(base, SEASON))
     settlements = store.read_rows(store.settlement_ledger_path(base, SEASON))
     filed_summary = report.summarize(wagers, SEASON, settlements=settlements)
-    canonical_summary = report.summarize(
-        wagers, SEASON, settlements=apply_amendments(settlements, amendments(base))
-    )
+    canonical_summary = report.summarize(wagers, SEASON, settlements=apply_amendments(settlements, amendments(base)))
     assert filed_summary.realized_profit_loss == pytest.approx(29.9495)
     assert canonical_summary.realized_profit_loss == pytest.approx(31.0525)
 
@@ -302,8 +316,7 @@ def test_the_backfill_amends_reconciled_v1_rows_and_is_idempotent(tmp_path):
     store.append_wagers(base, SEASON, [{**WAGER, "source_bet_key": other_key, "wager_id": "routed-x"}])
     import_rows(
         base,
-        [{**V1_ROW, "source_bet_key": other_key, "net_profit_loss": None,
-          "refusals": ["shared_position_fee"]}],
+        [{**V1_ROW, "source_bet_key": other_key, "net_profit_loss": None, "refusals": ["shared_position_fee"]}],
         season=SEASON,
     )
     before = settlement_bytes(base)
@@ -395,8 +408,17 @@ def test_the_importer_script_reports_amendment_counts_without_money(tmp_path):
     payload = tmp_path / "payload.json"
     payload.write_text(json.dumps({"settlements": [V2_ROW]}))
     receipts = tmp_path / "receipts.json"
-    result = run(IMPORTER, "--payload", str(payload), "--base-dir", str(base),
-                 "--season", str(SEASON), "--receipts-out", str(receipts))
+    result = run(
+        IMPORTER,
+        "--payload",
+        str(payload),
+        "--base-dir",
+        str(base),
+        "--season",
+        str(SEASON),
+        "--receipts-out",
+        str(receipts),
+    )
     assert result.returncode == 0, result.stderr
     assert "amendments written:         1" in result.stdout
     assert "31.05" not in result.stdout and TICKER not in result.stdout

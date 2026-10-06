@@ -36,15 +36,55 @@ import hashlib
 import numpy as np
 import pandas as pd
 
-EFF_METRICS = ["pts_for", "o_ppa", "o_sr", "o_expl", "o_pass_ppa", "o_rush_ppa", "o_pass_sr", "o_rush_sr", "o_sd_sr",
-               "o_pd_sr", "o_line_yds", "o_ppa_ng", "o_sr_ng", "dr_pts_per_drive", "dr_ppo", "dr_to_rate",
-               "dr_3out_rate", "dr_start_ytg", "b_third_rate", "b_pen_yds", "b_havoc_def", "b_sack_rate_def",
-               "b_takeaways"]
+EFF_METRICS = [
+    "pts_for",
+    "o_ppa",
+    "o_sr",
+    "o_expl",
+    "o_pass_ppa",
+    "o_rush_ppa",
+    "o_pass_sr",
+    "o_rush_sr",
+    "o_sd_sr",
+    "o_pd_sr",
+    "o_line_yds",
+    "o_ppa_ng",
+    "o_sr_ng",
+    "dr_pts_per_drive",
+    "dr_ppo",
+    "dr_to_rate",
+    "dr_3out_rate",
+    "dr_start_ytg",
+    "b_third_rate",
+    "b_pen_yds",
+    "b_havoc_def",
+    "b_sack_rate_def",
+    "b_takeaways",
+]
 PACE_METRICS = ["o_plays", "dr_sec_per_play"]
-PRE_FIELDS = ["talent", "recruit_avg4", "recruit_0", "ret_percentPPA", "ret_percentPassingPPA", "ret_percentRushingPPA",
-              "ret_percentReceivingPPA", "ret_usage", "coach_change", "coach_tenure", "prev_margin_strength",
-              "prev2_margin_strength", "prev_pf", "prev_pa", "prev_win_pct", "sp_prev_rating", "sp_prev_off",
-              "sp_prev_def", "poll_pre_ap", "poll_pre_coaches", "fbs_new"]
+PRE_FIELDS = [
+    "talent",
+    "recruit_avg4",
+    "recruit_0",
+    "ret_percentPPA",
+    "ret_percentPassingPPA",
+    "ret_percentRushingPPA",
+    "ret_percentReceivingPPA",
+    "ret_usage",
+    "coach_change",
+    "coach_tenure",
+    "prev_margin_strength",
+    "prev2_margin_strength",
+    "prev_pf",
+    "prev_pa",
+    "prev_win_pct",
+    "sp_prev_rating",
+    "sp_prev_off",
+    "sp_prev_def",
+    "poll_pre_ap",
+    "poll_pre_coaches",
+    "fbs_new",
+]
 
 
 def _col(df: pd.DataFrame, c: str) -> pd.Series:
@@ -63,11 +103,14 @@ def matchup_frame(df: pd.DataFrame) -> pd.DataFrame:
     # long-memory strengths (slow season decay), present when the dataset was built with them
     out["str_margin_diff_L"] = _col(df, "h_o_margin_L") - _col(df, "a_o_margin_L")
     out["diff_pts_for_L"] = (_col(df, "h_o_pts_for_L") - _col(df, "a_d_pts_for_L")) - (
-        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L"))
+        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L")
+    )
     out["sum_pts_for_L"] = (_col(df, "h_o_pts_for_L") - _col(df, "a_d_pts_for_L")) + (
-        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L"))
+        _col(df, "a_o_pts_for_L") - _col(df, "h_d_pts_for_L")
+    )
     out["diff_o_ppa_L"] = (_col(df, "h_o_o_ppa_L") - _col(df, "a_d_o_ppa_L")) - (
-        _col(df, "a_o_o_ppa_L") - _col(df, "h_d_o_ppa_L"))
+        _col(df, "a_o_o_ppa_L") - _col(df, "h_d_o_ppa_L")
+    )
     for m in EFF_METRICS + PACE_METRICS:
         h_exp = _col(df, f"h_o_{m}") - _col(df, f"a_d_{m}")
         a_exp = _col(df, f"a_o_{m}") - _col(df, f"h_d_{m}")
@@ -98,8 +141,16 @@ def matchup_frame(df: pd.DataFrame) -> pd.DataFrame:
     # early-season interactions: preseason differential weighted by lack of current-season evidence
     early = np.exp(-out["min_games"] / 4.0)
     out["early_w"] = early
-    early_fields = ["talent", "recruit_avg4", "prev_margin_strength", "sp_prev_rating", "poll_pre_ap",
-                    "ret_percentPPA", "ret_percentPassingPPA", "coach_change"]
+    early_fields = [
+        "talent",
+        "recruit_avg4",
+        "prev_margin_strength",
+        "sp_prev_rating",
+        "poll_pre_ap",
+        "ret_percentPPA",
+        "ret_percentPassingPPA",
+        "coach_change",
+    ]
     for f in early_fields:
         out[f"early_x_{f}_diff"] = out[f"pre_{f}_diff"] * early
     # alternative decay speeds (Phase 4: learn the prior-decay schedule rather than assume k=4)
@@ -142,16 +193,40 @@ _SCORE = ["diff_pts_for", "sum_pts_for", "hfa_pts_for", "mu_pts_for"]
 _EFF_DIFF = [f"diff_{m}" for m in EFF_METRICS] + [f"hfa_{m}" for m in ["o_ppa", "o_sr", "pts_for"]]
 _EFF_SUM = [f"sum_{m}" for m in EFF_METRICS] + [f"mu_{m}" for m in ["o_ppa", "pts_for", "o_plays"]]
 _PACE = [f"diff_{m}" for m in PACE_METRICS] + [f"sum_{m}" for m in PACE_METRICS]
-_PAIRS = [c for m in ["o_ppa", "o_pass_ppa", "o_rush_ppa", "o_sr", "o_expl"]
-          for c in (f"h_off_{m}", f"a_def_{m}", f"a_off_{m}", f"h_def_{m}")]
+_PAIRS = [
+    c
+    for m in ["o_ppa", "o_pass_ppa", "o_rush_ppa", "o_sr", "o_expl"]
+    for c in (f"h_off_{m}", f"a_def_{m}", f"a_off_{m}", f"h_def_{m}")
+]
 _EVID = ["h_games", "a_games", "min_games", "h_weighted", "a_weighted", "early_w"]
 _PRE_DIFF = [f"pre_{f}_diff" for f in PRE_FIELDS]
 _PRE_SUM = [f"pre_{f}_sum" for f in PRE_FIELDS]
-_EARLY = [c for c in ("early_x_talent_diff", "early_x_recruit_avg4_diff", "early_x_prev_margin_strength_diff",
-                      "early_x_sp_prev_rating_diff", "early_x_poll_pre_ap_diff", "early_x_ret_percentPPA_diff",
-                      "early_x_ret_percentPassingPPA_diff", "early_x_coach_change_diff")]
-_SIT = ["week", "postseason", "conference_game", "rest_diff", "home_short_week", "away_short_week", "travel_diff_km",
-        "away_travel_km", "venue_elev_m", "venue_dome", "kick_hour_utc"]
+_EARLY = [
+    c
+    for c in (
+        "early_x_talent_diff",
+        "early_x_recruit_avg4_diff",
+        "early_x_prev_margin_strength_diff",
+        "early_x_sp_prev_rating_diff",
+        "early_x_poll_pre_ap_diff",
+        "early_x_ret_percentPPA_diff",
+        "early_x_ret_percentPassingPPA_diff",
+        "early_x_coach_change_diff",
+    )
+]
+_SIT = [
+    "week",
+    "postseason",
+    "conference_game",
+    "rest_diff",
+    "home_short_week",
+    "away_short_week",
+    "travel_diff_km",
+    "away_travel_km",
+    "venue_elev_m",
+    "venue_dome",
+    "kick_hour_utc",
+]
 _ELO = ["elo_diff"]
 
 _register("struct", _STRUCT)
@@ -174,8 +249,13 @@ _register("tot_full", FEATURE_SETS["full"])
 # Preseason ablations: struct+pre minus one family at a time (Phase 4 evidence)
 _PRE_FAMILIES = {
     "talent": ["talent", "recruit_avg4", "recruit_0"],
-    "returning": ["ret_percentPPA", "ret_percentPassingPPA", "ret_percentRushingPPA", "ret_percentReceivingPPA",
-                  "ret_usage"],
+    "returning": [
+        "ret_percentPPA",
+        "ret_percentPassingPPA",
+        "ret_percentRushingPPA",
+        "ret_percentReceivingPPA",
+        "ret_usage",
+    ],
     "coaching": ["coach_change", "coach_tenure"],
     "prev_strength": ["prev_margin_strength", "prev2_margin_strength", "prev_pf", "prev_pa", "prev_win_pct"],
     "sp_prev": ["sp_prev_rating", "sp_prev_off", "sp_prev_def"],
@@ -186,18 +266,29 @@ for _fam, _fields in _PRE_FAMILIES.items():
     _drop = {f"pre_{f}_diff" for f in _fields} | {f"early_x_{f}_diff" for f in _fields}
     _register(f"struct+pre-no_{_fam}", [c for c in FEATURE_SETS["struct+pre"] if c not in _drop])
 _register("struct+pre-no_early", [c for c in FEATURE_SETS["struct+pre"] if not c.startswith("early_x_")])
-_register("struct+pre-only_talent_prev", _STRUCT + _EVID + [f"pre_{f}_diff" for f in _PRE_FAMILIES["talent"]
-                                                            + _PRE_FAMILIES["prev_strength"]]
-          + ["early_x_talent_diff", "early_x_prev_margin_strength_diff"])
+_register(
+    "struct+pre-only_talent_prev",
+    _STRUCT
+    + _EVID
+    + [f"pre_{f}_diff" for f in _PRE_FAMILIES["talent"] + _PRE_FAMILIES["prev_strength"]]
+    + ["early_x_talent_diff", "early_x_prev_margin_strength_diff"],
+)
 _register("struct+pre+elo", FEATURE_SETS["struct+pre"] + _ELO)
 _LONG = ["str_margin_diff_L", "diff_pts_for_L", "diff_o_ppa_L"]
 _register("struct+pre+long", FEATURE_SETS["struct+pre"] + _LONG)
-_register("struct+pre+long-no_sp_poll", [c for c in FEATURE_SETS["struct+pre+long"]
-                                          if not any(k in c for k in ("sp_prev", "poll_pre"))])
+_register(
+    "struct+pre+long-no_sp_poll",
+    [c for c in FEATURE_SETS["struct+pre+long"] if not any(k in c for k in ("sp_prev", "poll_pre"))],
+)
 _register("tot_eff+long", FEATURE_SETS["tot_eff"] + ["sum_pts_for_L"])
 for _k in (2, 8):
-    _register(f"struct+pre_k{_k}", [c.replace("early_x_", f"early_k{_k}_x_").replace("early_w", f"early_w_k{_k}")
-                                    for c in FEATURE_SETS["struct+pre"]])
+    _register(
+        f"struct+pre_k{_k}",
+        [
+            c.replace("early_x_", f"early_k{_k}_x_").replace("early_w", f"early_w_k{_k}")
+            for c in FEATURE_SETS["struct+pre"]
+        ],
+    )
 
 
 def feature_hash(name: str) -> str:

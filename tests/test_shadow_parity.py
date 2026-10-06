@@ -31,8 +31,11 @@ MARGINS = np.round(RNG.normal(3.0, 17.0, 8000))
 
 SPEC = CandidateSpec("talent_composite", "talent_composite", "frozen candidate")
 FITTED = FittedCandidate(
-    spec=SPEC, beta=TALENT_BETA, n_games=2183,
-    development_seasons=(2021, 2022, 2023), mean_abs_differential=141.088,
+    spec=SPEC,
+    beta=TALENT_BETA,
+    n_games=2183,
+    development_seasons=(2021, 2022, 2023),
+    mean_abs_differential=141.088,
 )
 
 
@@ -50,9 +53,14 @@ def live(home_talent: float, away_talent: float, control_margin: float = 3.0):
 
 def historical(differential: float, control_margin: float = 3.0) -> GamePrediction:
     base = GamePrediction(
-        game_id="g", season=2026, week=1, home_win_probability=0.61,
-        projected_margin=control_margin, projected_total=53.0,
-        actual_home_margin=0, actual_total=0,
+        game_id="g",
+        season=2026,
+        week=1,
+        home_win_probability=0.61,
+        projected_margin=control_margin,
+        projected_total=53.0,
+        actual_home_margin=0,
+        actual_total=0,
     )
     return apply_candidate(base, differential, FITTED, MARGINS)
 
@@ -60,10 +68,17 @@ def historical(differential: float, control_margin: float = 3.0) -> GamePredicti
 # ---------------------------------------------- numeric parity
 
 
-@pytest.mark.parametrize("home,away", [
-    (900.0, 800.0), (800.0, 900.0), (1003.7, 563.9), (563.9, 1003.7),
-    (700.0, 700.0), (985.2, 624.8),
-])
+@pytest.mark.parametrize(
+    "home,away",
+    [
+        (900.0, 800.0),
+        (800.0, 900.0),
+        (1003.7, 563.9),
+        (563.9, 1003.7),
+        (700.0, 700.0),
+        (985.2, 624.8),
+    ],
+)
 def test_live_margin_matches_the_historical_candidate_exactly(home, away):
     """THE PARITY TEST. Same inputs, same delta, same shifted margin."""
     live_out = live(home, away)
@@ -72,9 +87,15 @@ def test_live_margin_matches_the_historical_candidate_exactly(home, away):
     assert live_out.shadow_margin == pytest.approx(hist.projected_margin, rel=1e-12)
 
 
-@pytest.mark.parametrize("home,away", [
-    (900.0, 800.0), (800.0, 900.0), (1003.7, 563.9), (700.0, 700.0),
-])
+@pytest.mark.parametrize(
+    "home,away",
+    [
+        (900.0, 800.0),
+        (800.0, 900.0),
+        (1003.7, 563.9),
+        (700.0, 700.0),
+    ],
+)
 def test_live_shadow_probability_matches_the_historical_formula_exactly(home, away):
     live_out = live(home, away)
     hist = historical(home - away)
@@ -114,8 +135,10 @@ def test_the_delta_is_applied_after_the_c2_margin_correction():
         corrected_margin_samples=corrected,
         control_margin_corrected=float(np.mean(corrected)),
         control_probability_canonical=0.5,
-        control_expected_home=28.0, control_expected_away=25.0,
-        home_talent=900.0, away_talent=800.0,
+        control_expected_home=28.0,
+        control_expected_away=25.0,
+        home_talent=900.0,
+        away_talent=800.0,
     )
     # Shadow sees raw + c2 + talent, in that order.
     expected = float(np.mean((raw + c2_delta + out.delta) > 0))
@@ -175,9 +198,7 @@ def test_the_canonical_and_basis_control_probabilities_are_both_recorded():
 def test_the_paired_delta_uses_the_basis_not_the_canonical_probability():
     """So the two arms differ ONLY by the talent delta."""
     out = live(900.0, 800.0)
-    assert out.shadow_minus_control_probability == pytest.approx(
-        out.shadow_probability - out.control_probability_basis
-    )
+    assert out.shadow_minus_control_probability == pytest.approx(out.shadow_probability - out.control_probability_basis)
 
 
 def test_at_zero_differential_the_shadow_equals_the_basis_control():
@@ -193,10 +214,13 @@ def test_at_zero_differential_the_shadow_equals_the_basis_control():
 def test_ties_resolve_to_away_matching_settlement():
     zeros = np.zeros(100)
     out = transform(
-        corrected_margin_samples=zeros, control_margin_corrected=0.0,
+        corrected_margin_samples=zeros,
+        control_margin_corrected=0.0,
         control_probability_canonical=0.5,
-        control_expected_home=25.0, control_expected_away=25.0,
-        home_talent=800.0, away_talent=800.0,
+        control_expected_home=25.0,
+        control_expected_away=25.0,
+        home_talent=800.0,
+        away_talent=800.0,
     )
     assert out.control_probability_basis == 0.0
     assert out.shadow_probability == 0.0

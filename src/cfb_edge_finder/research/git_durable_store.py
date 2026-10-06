@@ -212,9 +212,7 @@ def _assert_no_oversize_blobs(repo_dir: Path, *, limit_bytes: int) -> None:
     the remote. Turns a GH001 pre-receive rejection (which names the file
     only in stderr, after a wasted round trip) into an immediate error
     that names the file, its size, and the limit it broke."""
-    offenders = shards.oversize_blobs(
-        repo_dir, limit_bytes=limit_bytes, only=_changed_paths(repo_dir)
-    )
+    offenders = shards.oversize_blobs(repo_dir, limit_bytes=limit_bytes, only=_changed_paths(repo_dir))
     if offenders:
         raise GitDurableStoreOversizeError(
             "refusing to push: "
@@ -364,9 +362,7 @@ def commit_and_push_with_retry(
         # another writer. Reset to the fresh remote tip and retry;
         # apply_fn will recompute dedup fresh against the merged state.
         if attempt == max_retries:
-            raise GitDurableStoreError(
-                f"push to {branch!r} failed after {max_retries} attempts: {push.stderr}"
-            )
+            raise GitDurableStoreError(f"push to {branch!r} failed after {max_retries} attempts: {push.stderr}")
         _reset_to_remote_tip(repo_dir, branch, remote)
 
     assert last_result is not None  # max_retries >= 1 guarantees at least one iteration

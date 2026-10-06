@@ -19,8 +19,13 @@ def test_zero_games_scanned_is_high_severity():
 
 def test_healthy_run_produces_no_diagnostics():
     report = CaptureHealthReport(
-        games_scanned=50, markets_scanned=1000, supported_markets=800, captures_due=10,
-        captures_written=10, captures_skipped_already_present=0, mapping_failures=5,
+        games_scanned=50,
+        markets_scanned=1000,
+        supported_markets=800,
+        captures_due=10,
+        captures_written=10,
+        captures_skipped_already_present=0,
+        mapping_failures=5,
     )
     diagnostics = evaluate_collapse(report, baseline_supported_markets=850)
     assert diagnostics == []
@@ -135,8 +140,12 @@ def test_captures_due_zero_with_zero_supported_markets_is_not_a_collapse():
     # baseline (the scheduled scanner passes None), that must never read
     # as a discovery/mapping collapse.
     report = CaptureHealthReport(
-        games_scanned=3438, markets_scanned=3923, events_scanned=439,
-        captures_due=0, supported_markets=0, mapping_failures=0,
+        games_scanned=3438,
+        markets_scanned=3923,
+        events_scanned=439,
+        captures_due=0,
+        supported_markets=0,
+        mapping_failures=0,
     )
     diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
     assert diagnostics == []
@@ -163,8 +172,12 @@ def test_genuine_large_scale_mapping_failure_still_fails_high_and_loud():
 
 def test_mapping_diagnostics_carry_event_level_context():
     report = CaptureHealthReport(
-        games_scanned=10, markets_scanned=100, events_scanned=20,
-        events_mapping_failed=10, markets_unsupported_population=5, mapping_failures=50,
+        games_scanned=10,
+        markets_scanned=100,
+        events_scanned=20,
+        events_mapping_failed=10,
+        markets_unsupported_population=5,
+        mapping_failures=50,
     )
     diagnostics = evaluate_collapse(report, baseline_supported_markets=None)
     high = next(d for d in diagnostics if d.code == "mapping_failure_rate_high")

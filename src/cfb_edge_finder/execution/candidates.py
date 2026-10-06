@@ -267,11 +267,7 @@ def reduce_candidates(rows: list[dict[str, Any]]) -> Reduction:
         if incumbent is None:
             by_expression[expression.expression_key] = expression
             continue
-        winner, loser = (
-            (expression, incumbent)
-            if _beats(expression, incumbent)[0]
-            else (incumbent, expression)
-        )
+        winner, loser = (expression, incumbent) if _beats(expression, incumbent)[0] else (incumbent, expression)
         by_expression[expression.expression_key] = winner
         reduction.removed.append(
             _removal(
@@ -361,9 +357,7 @@ def _removal(
         # executed rung was incremental exposure, however many rungs the
         # artifact showed inline.
         "card_role": (incremental or {}).get("card_role"),
-        "requires_incremental_justification": (incremental or {}).get(
-            "requires_incremental_justification"
-        ),
+        "requires_incremental_justification": (incremental or {}).get("requires_incremental_justification"),
         "cash_path_relation": cash_path.get("relation"),
         "tail_extension": cash_path.get("tail_extension"),
         "extension_points": cash_path.get("extension_points"),
@@ -436,9 +430,7 @@ def exposure_groups(survivors: list[Expression]) -> dict[str, Any]:
         for game, tickers in sorted(by_game.items())
     ]
     theses = [
-        ExposureGroup(
-            key=f"{game}:{thesis}", scope="thesis", members=tuple(sorted(tickers))
-        )
+        ExposureGroup(key=f"{game}:{thesis}", scope="thesis", members=tuple(sorted(tickers)))
         for (game, thesis), tickers in sorted(by_thesis.items())
     ]
     return {

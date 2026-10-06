@@ -233,8 +233,7 @@ KALSHI_CFB_MARKET_FAMILIES: tuple[KalshiMarketFamilyRecord, ...] = (
         ticker_pattern=None,
         contract_semantic_type="Binary YES/NO on a total-points threshold for a specified time_period",
         boundary_handling=(
-            "PROBABLE, by analogy to point_spread's settlement mechanism -- not independently "
-            "quoted for totals."
+            "PROBABLE, by analogy to point_spread's settlement mechanism -- not independently quoted for totals."
         ),
         alternate_line_support=AlternateLineSupport.LADDER_PROBABLE,
         required_probability_primitive="Total-score distribution: P(home_score + away_score > threshold)",
@@ -384,7 +383,9 @@ KALSHI_CFB_MARKET_FAMILIES: tuple[KalshiMarketFamilyRecord, ...] = (
         scope=MarketScope.FUTURES,
         historical_confidence=EvidenceConfidence.CONFIRMED,
         evidence_summary="KXNCAAFPLAYOFF series confirmed via a real ticker.",
-        evidence_sources=("https://kalshi.com/markets/kxncaafplayoff/college-football-playoff-qualifiers/kxncaafplayoff-26",),
+        evidence_sources=(
+            "https://kalshi.com/markets/kxncaafplayoff/college-football-playoff-qualifiers/kxncaafplayoff-26",
+        ),
         ticker_pattern="kxncaafplayoff-{season}",
         contract_semantic_type="Binary YES/NO per team",
         alternate_line_support=AlternateLineSupport.NONE_APPLICABLE,
@@ -477,8 +478,7 @@ KALSHI_CFB_MARKET_FAMILIES: tuple[KalshiMarketFamilyRecord, ...] = (
         ),
         ticker_pattern=None,
         contract_semantic_type=(
-            "Binary YES/NO, appears to be ad hoc per-program markets rather than one fixed "
-            "recurring series"
+            "Binary YES/NO, appears to be ad hoc per-program markets rather than one fixed recurring series"
         ),
         alternate_line_support=AlternateLineSupport.NONE_APPLICABLE,
         milestone_c_priority=MilestoneCPriority.FUTURES_SEPARATE_ENGINE,

@@ -159,9 +159,7 @@ class SpecDriftError(RuntimeError):
     """A frozen specification changed."""
 
 
-def assert_specs_frozen(
-    *, control_sha256: str, shadow_sha256: str
-) -> None:
+def assert_specs_frozen(*, control_sha256: str, shadow_sha256: str) -> None:
     """Refuse to capture if either arm has drifted.
 
     Called at the top of every shadow capture: a side-by-side comparison

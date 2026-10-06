@@ -95,7 +95,10 @@ def cluster_bootstrap_mean(
         return ClusteredEstimate(None, 0, 0, False, "no observations")
     if n_clusters < min_clusters:
         return ClusteredEstimate(
-            point, len(values), n_clusters, False,
+            point,
+            len(values),
+            n_clusters,
+            False,
             f"only {n_clusters} distinct cluster(s); need >= {min_clusters} for a meaningful interval",
         )
 

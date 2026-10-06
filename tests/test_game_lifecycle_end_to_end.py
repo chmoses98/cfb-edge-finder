@@ -68,9 +68,7 @@ def observation_at(label: str, *, ticker: str = "MKT-HOME", **overrides):
     return make_observation(
         kalshi_market_ticker=ticker,
         captured_at=at(label),
-        snapshot_timing=SnapshotTiming(
-            label=label, hours_before_kickoff=(KICKOFF - at(label)).total_seconds() / 3600
-        ),
+        snapshot_timing=SnapshotTiming(label=label, hours_before_kickoff=(KICKOFF - at(label)).total_seconds() / 3600),
         game_id=GAME_ID,
         **overrides,
     )
@@ -87,8 +85,12 @@ def row_at(label: str, **overrides):
 SETTLED_AT = KICKOFF + timedelta(hours=4)
 
 HOME_WIN = GameResult(
-    game_id=GAME_ID, season=SEASON, home_points=31, away_points=17,
-    status=GameFinalStatus.FINAL, captured_at=SETTLED_AT,
+    game_id=GAME_ID,
+    season=SEASON,
+    home_points=31,
+    away_points=17,
+    status=GameFinalStatus.FINAL,
+    captured_at=SETTLED_AT,
 )
 
 
@@ -99,17 +101,13 @@ def test_every_pregame_checkpoint_becomes_due_at_its_own_window():
     """The scheduler must actually offer each label, or a stage of the
     lifecycle can never be reached in production."""
     for label in PREGAME_SEQUENCE:
-        due = timing.resolve_due_labels(
-            kickoff_utc=KICKOFF, now=at(label), already_captured_labels=set()
-        )
+        due = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=at(label), already_captured_labels=set())
         assert label in due, f"{label} never became due"
 
 
 def test_a_captured_label_is_never_offered_again():
     """Idempotency at the scheduler: a retry must not duplicate work."""
-    due = timing.resolve_due_labels(
-        kickoff_utc=KICKOFF, now=at("T_30"), already_captured_labels={"T_30"}
-    )
+    due = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=at("T_30"), already_captured_labels={"T_30"})
     assert "T_30" not in due
 
 
@@ -119,9 +117,7 @@ def test_closing_is_due_strictly_before_kickoff_only():
     )
     assert timing.CLOSING in inside
 
-    at_kickoff = timing.resolve_due_labels(
-        kickoff_utc=KICKOFF, now=KICKOFF, already_captured_labels=set()
-    )
+    at_kickoff = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=KICKOFF, already_captured_labels=set())
     assert timing.CLOSING not in at_kickoff
 
 
@@ -149,9 +145,7 @@ def test_closing_can_never_be_backfilled_after_kickoff():
 def test_closing_and_t30_windows_are_disjoint():
     """14 not 15, so no instant owes both."""
     boundary = KICKOFF - timedelta(minutes=15)
-    due = timing.resolve_due_labels(
-        kickoff_utc=KICKOFF, now=boundary, already_captured_labels=set()
-    )
+    due = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=boundary, already_captured_labels=set())
     assert not (timing.CLOSING in due and "T_30" in due)
 
 
@@ -218,8 +212,11 @@ def test_spread_settles_on_a_STRICT_greater_than(threshold, expected):
     cover a 14.0 line -- an inclusive comparison would silently flip
     every exact-number push."""
     obs = observation_at(
-        "CLOSING", family=MarketFamily.SPREAD, team=Side.HOME,
-        threshold=threshold, semantic_operator=">",
+        "CLOSING",
+        family=MarketFamily.SPREAD,
+        team=Side.HOME,
+        threshold=threshold,
+        semantic_operator=">",
     )
     settlement = settle_market(obs, HOME_WIN, settled_at=KICKOFF + timedelta(hours=4))
     assert settlement.derived_contract_settlement == expected
@@ -232,8 +229,12 @@ def test_spread_settles_on_a_STRICT_greater_than(threshold, expected):
 def test_total_settles_on_a_STRICT_greater_than(threshold, expected):
     """31 + 17 = 48. Strictly greater, so 48.0 is not exceeded."""
     obs = observation_at(
-        "CLOSING", family=MarketFamily.TOTAL, team=None, side=Side.OVER,
-        threshold=threshold, semantic_operator=">",
+        "CLOSING",
+        family=MarketFamily.TOTAL,
+        team=None,
+        side=Side.OVER,
+        threshold=threshold,
+        semantic_operator=">",
     )
     settlement = settle_market(obs, HOME_WIN, settled_at=KICKOFF + timedelta(hours=4))
     assert settlement.derived_contract_settlement == expected
@@ -242,12 +243,14 @@ def test_total_settles_on_a_STRICT_greater_than(threshold, expected):
 
 def test_a_game_that_is_not_final_does_not_settle():
     pending = GameResult(
-        game_id=GAME_ID, season=SEASON, home_points=None, away_points=None,
-        status=GameFinalStatus.NOT_YET_FINAL, captured_at=SETTLED_AT,
+        game_id=GAME_ID,
+        season=SEASON,
+        home_points=None,
+        away_points=None,
+        status=GameFinalStatus.NOT_YET_FINAL,
+        captured_at=SETTLED_AT,
     )
-    settlement = settle_market(
-        observation_at("CLOSING"), pending, settled_at=KICKOFF + timedelta(hours=4)
-    )
+    settlement = settle_market(observation_at("CLOSING"), pending, settled_at=KICKOFF + timedelta(hours=4))
     assert settlement.status is MarketSettlementStatus.PENDING_NOT_FINAL
     assert settlement.derived_contract_settlement is None
 
@@ -255,8 +258,13 @@ def test_a_game_that_is_not_final_does_not_settle():
 def test_overtime_does_not_change_settlement():
     """A contract settles on the FINAL score regardless of periods."""
     ot = GameResult(
-        game_id=GAME_ID, season=SEASON, home_points=31, away_points=17,
-        status=GameFinalStatus.FINAL, went_to_overtime=True, captured_at=SETTLED_AT,
+        game_id=GAME_ID,
+        season=SEASON,
+        home_points=31,
+        away_points=17,
+        status=GameFinalStatus.FINAL,
+        went_to_overtime=True,
+        captured_at=SETTLED_AT,
     )
     obs = observation_at("CLOSING", family=MarketFamily.MONEYLINE, team=Side.HOME)
     assert (
@@ -272,8 +280,11 @@ def test_attribution_consumes_a_real_settlement():
     row = row_at("T_24H")
     settlement = settle_market(row.observation, HOME_WIN, settled_at=KICKOFF + timedelta(hours=4))
     attribution = attribute_observation(
-        row, settlement, settled_at=KICKOFF + timedelta(hours=4),
-        closing_row=row_at("CLOSING"), series_ticker="KXNCAAFGAME",
+        row,
+        settlement,
+        settled_at=KICKOFF + timedelta(hours=4),
+        closing_row=row_at("CLOSING"),
+        series_ticker="KXNCAAFGAME",
     )
     assert attribution.derived_contract_settlement == "yes"
     assert attribution.closing.closing_captured is True
@@ -284,8 +295,11 @@ def test_a_missing_close_is_attributed_with_a_reason_not_silence():
     row = row_at("T_24H")
     settlement = settle_market(row.observation, HOME_WIN, settled_at=KICKOFF + timedelta(hours=4))
     attribution = attribute_observation(
-        row, settlement, settled_at=KICKOFF + timedelta(hours=4),
-        closing_row=None, closing_missing_reason="window closed before a capture occurred",
+        row,
+        settlement,
+        settled_at=KICKOFF + timedelta(hours=4),
+        closing_row=None,
+        closing_missing_reason="window closed before a capture occurred",
         series_ticker="KXNCAAFGAME",
     )
     assert attribution.closing.closing_captured is False
@@ -297,8 +311,11 @@ def test_clv_requires_a_genuine_close():
     row = row_at("T_24H")
     settlement = settle_market(row.observation, HOME_WIN, settled_at=KICKOFF + timedelta(hours=4))
     without = attribute_observation(
-        row, settlement, settled_at=KICKOFF + timedelta(hours=4),
-        closing_missing_reason="none captured", series_ticker="KXNCAAFGAME",
+        row,
+        settlement,
+        settled_at=KICKOFF + timedelta(hours=4),
+        closing_missing_reason="none captured",
+        series_ticker="KXNCAAFGAME",
     )
     assert without.closing.closing_yes_price is None
     assert without.closing.closing_captured is False
@@ -318,13 +335,23 @@ def test_the_two_moneyline_spellings_settle_together():
     """home YES and away NO name one event -- proven from settlement
     semantics, so a portfolio layer cannot treat them as two theses."""
     home = ContractSemantics(
-        market_ticker="H", game_id=GAME_ID, family=MarketFamily.MONEYLINE,
-        team=Side.HOME, side=None, threshold=None, semantic_operator=">",
+        market_ticker="H",
+        game_id=GAME_ID,
+        family=MarketFamily.MONEYLINE,
+        team=Side.HOME,
+        side=None,
+        threshold=None,
+        semantic_operator=">",
         parse_status="confirmed_live",
     )
     away = ContractSemantics(
-        market_ticker="A", game_id=GAME_ID, family=MarketFamily.MONEYLINE,
-        team=Side.AWAY, side=None, threshold=None, semantic_operator=">",
+        market_ticker="A",
+        game_id=GAME_ID,
+        family=MarketFamily.MONEYLINE,
+        team=Side.AWAY,
+        side=None,
+        threshold=None,
+        semantic_operator=">",
         parse_status="confirmed_live",
     )
     assert truth_condition_key(home, Side.YES) == truth_condition_key(away, Side.NO)
@@ -347,8 +374,13 @@ def test_a_full_lifecycle_still_produces_no_shadow_qualification():
     snapshots = [
         ContractSnapshot(
             semantics=ContractSemantics(
-                market_ticker="MKT-HOME", game_id=GAME_ID, family=MarketFamily.MONEYLINE,
-                team=Side.HOME, side=None, threshold=None, semantic_operator=">",
+                market_ticker="MKT-HOME",
+                game_id=GAME_ID,
+                family=MarketFamily.MONEYLINE,
+                team=Side.HOME,
+                side=None,
+                threshold=None,
+                semantic_operator=">",
                 parse_status="confirmed_live",
             ),
             timing_label=label,
@@ -367,9 +399,7 @@ def test_a_full_lifecycle_still_produces_no_shadow_qualification():
         )
         for label in PREGAME_SEQUENCE
     ]
-    result = run_shadow_pipeline(
-        snapshots, resolution=load_artifact(None), now=KICKOFF - timedelta(minutes=5)
-    )
+    result = run_shadow_pipeline(snapshots, resolution=load_artifact(None), now=KICKOFF - timedelta(minutes=5))
     assert result.decisions
     assert result.shadow_qualified_count == 0
     assert all(d.state is not ShadowDecisionState.SHADOW_QUALIFIED for d in result.decisions)
@@ -378,8 +408,13 @@ def test_a_full_lifecycle_still_produces_no_shadow_qualification():
 def test_a_retrospective_row_is_excluded_at_every_stage():
     snapshot = ContractSnapshot(
         semantics=ContractSemantics(
-            market_ticker="MKT-HOME", game_id=GAME_ID, family=MarketFamily.MONEYLINE,
-            team=Side.HOME, side=None, threshold=None, semantic_operator=">",
+            market_ticker="MKT-HOME",
+            game_id=GAME_ID,
+            family=MarketFamily.MONEYLINE,
+            team=Side.HOME,
+            side=None,
+            threshold=None,
+            semantic_operator=">",
             parse_status="confirmed_live",
         ),
         timing_label="CLOSING",
@@ -396,9 +431,7 @@ def test_a_retrospective_row_is_excluded_at_every_stage():
         schema_version="research_corpus_v2",
         capture_mode="RETROSPECTIVE_BACKFILL",
     )
-    result = run_shadow_pipeline(
-        [snapshot], resolution=load_artifact(None), now=KICKOFF - timedelta(minutes=5)
-    )
+    result = run_shadow_pipeline([snapshot], resolution=load_artifact(None), now=KICKOFF - timedelta(minutes=5))
     assert all(d.state is ShadowDecisionState.NOT_PROSPECTIVE for d in result.decisions)
 
 
@@ -454,9 +487,4 @@ def test_the_kickoff_boundary_is_exact():
         kickoff_utc=KICKOFF, now=KICKOFF - timedelta(seconds=1), already_captured_labels=set()
     )
     assert one_second_before  # CLOSING is due here
-    assert (
-        timing.resolve_due_labels(
-            kickoff_utc=KICKOFF, now=KICKOFF, already_captured_labels=set()
-        )
-        == []
-    )
+    assert timing.resolve_due_labels(kickoff_utc=KICKOFF, now=KICKOFF, already_captured_labels=set()) == []

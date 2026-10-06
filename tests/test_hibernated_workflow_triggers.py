@@ -85,7 +85,7 @@ def triggers(text: str) -> set[str]:
             return {t.strip().strip("'\"") for t in inline.strip("[]").split(",") if t.strip()}
         found: set[str] = set()
         indent: int | None = None
-        for body in lines[index + 1:]:
+        for body in lines[index + 1 :]:
             if not _is_code(body):
                 continue
             width = len(body) - len(body.lstrip())
@@ -145,9 +145,9 @@ def test_the_parser_catches_every_automatic_trigger_shape(snippet, expected):
 
 def test_the_parser_ignores_a_commented_out_schedule():
     text = (
-        "name: x\non:\n#   schedule:\n#     - cron: \"*/10 * * * *\"\n"
+        'name: x\non:\n#   schedule:\n#     - cron: "*/10 * * * *"\n'
         "  # a comment at the trigger indent\n  workflow_dispatch:\n    inputs:\n"
-        "      schedule_season:\n        default: \"2026\"\njobs:\n  a:\n"
+        '      schedule_season:\n        default: "2026"\njobs:\n  a:\n'
     )
     assert triggers(text) == {"workflow_dispatch"}
 
@@ -261,7 +261,7 @@ def _jobs(text: str) -> dict[str, str]:
     start = next(i for i, line in enumerate(lines) if line.startswith("jobs:"))
     jobs: dict[str, list[str]] = {}
     current = None
-    for line in lines[start + 1:]:
+    for line in lines[start + 1 :]:
         match = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
         if match:
             current = match.group(1)
@@ -319,10 +319,15 @@ CONDUCTOR = "research-collection-conductor.yml"
     "kwargs",
     [
         # The 2026-09-25 storm, exactly as cron-job.org sent it.
-        dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98",
-             trigger_source="EXTERNAL_SCHEDULE"),
-        dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98",
-             trigger_source=" external_schedule "),
+        dict(
+            workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98", trigger_source="EXTERNAL_SCHEDULE"
+        ),
+        dict(
+            workflow_file=CAPTURE,
+            event_name="workflow_dispatch",
+            actor="chmoses98",
+            trigger_source=" external_schedule ",
+        ),
         # A conductor-dispatched collector run.
         dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="github-actions[bot]"),
         # Cron uncommented without flipping the registry.
@@ -336,8 +341,7 @@ CONDUCTOR = "research-collection-conductor.yml"
         dict(workflow_file=CONDUCTOR, event_name="workflow_dispatch", actor="chmoses98", dry_run=False),
         dict(workflow_file=CONDUCTOR, event_name="schedule", actor="chmoses98", dry_run=True),
         # dry_run cannot launder a bot/successor run.
-        dict(workflow_file=CONDUCTOR, event_name="workflow_dispatch", actor="github-actions[bot]",
-             dry_run=True),
+        dict(workflow_file=CONDUCTOR, event_name="workflow_dispatch", actor="github-actions[bot]", dry_run=True),
     ],
 )
 def test_unattended_runs_of_a_hibernated_workflow_are_refused(kwargs):
@@ -351,8 +355,7 @@ def test_unattended_runs_of_a_hibernated_workflow_are_refused(kwargs):
     [
         dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98"),
         dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98", trigger_source=""),
-        dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98",
-             trigger_source="MANUAL"),
+        dict(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="chmoses98", trigger_source="MANUAL"),
         dict(workflow_file=CONDUCTOR, event_name="workflow_dispatch", actor="chmoses98", dry_run=True),
     ],
 )
@@ -363,8 +366,7 @@ def test_a_human_can_still_run_a_hibernated_workflow(kwargs):
 def test_an_active_workflow_is_never_gated(monkeypatch):
     monkeypatch.setitem(hibernation.WORKFLOW_LIFECYCLE, CAPTURE, ACTIVE)
     for source in ("EXTERNAL_SCHEDULE", None):
-        assert decide(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="x",
-                      trigger_source=source).proceed
+        assert decide(workflow_file=CAPTURE, event_name="workflow_dispatch", actor="x", trigger_source=source).proceed
     assert decide(workflow_file=CAPTURE, event_name="schedule", actor="x").proceed
     assert decide(workflow_file="kalshi-market-catalog.yml", event_name="schedule", actor="x").proceed
 
@@ -375,7 +377,10 @@ def _run_gate(tmp_path: Path, **env: str) -> tuple[subprocess.CompletedProcess, 
     full = {**os.environ, "GITHUB_OUTPUT": str(output), "GITHUB_STEP_SUMMARY": str(summary), **env}
     result = subprocess.run(
         [sys.executable, str(REPO_ROOT / "scripts" / "hibernation_gate.py")],
-        env=full, capture_output=True, text=True, timeout=60,
+        env=full,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     return result, output.read_text(encoding="utf-8"), summary.read_text(encoding="utf-8")
 
@@ -385,8 +390,11 @@ def test_gate_script_refuses_the_external_scheduler_without_failing_the_run(tmp_
     five-minute failure-email storm. It is not silent: a ::warning:: and a
     job-summary line mark every refused dispatch."""
     result, output, summary = _run_gate(
-        tmp_path, GATE_WORKFLOW=CAPTURE, GATE_EVENT_NAME="workflow_dispatch",
-        GATE_ACTOR="chmoses98", GATE_TRIGGER_SOURCE="EXTERNAL_SCHEDULE",
+        tmp_path,
+        GATE_WORKFLOW=CAPTURE,
+        GATE_EVENT_NAME="workflow_dispatch",
+        GATE_ACTOR="chmoses98",
+        GATE_TRIGGER_SOURCE="EXTERNAL_SCHEDULE",
     )
     assert result.returncode == 0, result.stderr
     assert output.strip() == "proceed=false"
@@ -396,8 +404,11 @@ def test_gate_script_refuses_the_external_scheduler_without_failing_the_run(tmp_
 
 def test_gate_script_lets_a_human_through(tmp_path):
     result, output, _ = _run_gate(
-        tmp_path, GATE_WORKFLOW=CAPTURE, GATE_EVENT_NAME="workflow_dispatch",
-        GATE_ACTOR="chmoses98", GATE_TRIGGER_SOURCE="",
+        tmp_path,
+        GATE_WORKFLOW=CAPTURE,
+        GATE_EVENT_NAME="workflow_dispatch",
+        GATE_ACTOR="chmoses98",
+        GATE_TRIGGER_SOURCE="",
     )
     assert result.returncode == 0, result.stderr
     assert output.strip() == "proceed=true"

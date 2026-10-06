@@ -255,9 +255,7 @@ def assess_freshness(
                 "fails closed. Do not handicap from this catalog; re-run the production "
                 "workflow on main and re-check."
             ),
-            minutes_since_last_success=(
-                (moment - run_at).total_seconds() / 60.0 if run_at else None
-            ),
+            minutes_since_last_success=((moment - run_at).total_seconds() / 60.0 if run_at else None),
             **common,
         )
 

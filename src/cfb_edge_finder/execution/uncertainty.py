@@ -155,9 +155,7 @@ class HandicapUncertainty:
             try:
                 return float(value)
             except (TypeError, ValueError) as exc:
-                raise UncertaintyValidationError(
-                    f"period {period!r}: uncertainty.{key} is not numeric"
-                ) from exc
+                raise UncertaintyValidationError(f"period {period!r}: uncertainty.{key} is not numeric") from exc
 
         margin = number("margin_points", 0.0)
         total = number("total_points", 0.0)
@@ -178,8 +176,7 @@ class HandicapUncertainty:
         for name, value in (("sd_scale_low", sd_low), ("sd_scale_high", sd_high)):
             if not MIN_SD_SCALE <= value <= MAX_SD_SCALE:
                 raise UncertaintyValidationError(
-                    f"period {period!r}: uncertainty.{name} is {value}, outside "
-                    f"[{MIN_SD_SCALE}, {MAX_SD_SCALE}]"
+                    f"period {period!r}: uncertainty.{name} is {value}, outside [{MIN_SD_SCALE}, {MAX_SD_SCALE}]"
                 )
         if sd_low > sd_high:
             raise UncertaintyValidationError(
@@ -188,8 +185,7 @@ class HandicapUncertainty:
             )
         if correlation < 0:
             raise UncertaintyValidationError(
-                f"period {period!r}: uncertainty.correlation_delta is {correlation}; "
-                "a half-width cannot be negative"
+                f"period {period!r}: uncertainty.correlation_delta is {correlation}; a half-width cannot be negative"
             )
         if correlation > 0.9:
             raise UncertaintyValidationError(

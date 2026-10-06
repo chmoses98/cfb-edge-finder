@@ -68,8 +68,16 @@ _CFP_ROUND_KEYWORDS: tuple[tuple[str, CFPRound], ...] = (
 )
 
 _KNOWN_CONFERENCES_FOR_CHAMPIONSHIP = (
-    "sec", "big ten", "acc", "big 12", "american", "mountain west",
-    "conference usa", "sun belt", "mac", "pac-12",
+    "sec",
+    "big ten",
+    "acc",
+    "big 12",
+    "american",
+    "mountain west",
+    "conference usa",
+    "sun belt",
+    "mac",
+    "pac-12",
 )
 
 # CFBD's PlayoffRound enum value -> this project's CFPRound. Verified

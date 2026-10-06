@@ -70,10 +70,7 @@ def test_alternate_spread_rungs_preserve_team_line_and_direction():
 
 
 def test_alternate_spread_rungs_are_distinct_not_collapsed():
-    lines = {
-        semantics_for(f"KXNCAAFSPREAD-{GAME_KEY}-LSU{int(line + 1)}").threshold
-        for line in (2.5, 6.5, 9.5)
-    }
+    lines = {semantics_for(f"KXNCAAFSPREAD-{GAME_KEY}-LSU{int(line + 1)}").threshold for line in (2.5, 6.5, 9.5)}
     assert lines == {2.5, 6.5, 9.5}
 
 

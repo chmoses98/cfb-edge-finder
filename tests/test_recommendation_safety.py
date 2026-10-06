@@ -33,7 +33,16 @@ from cfb_edge_finder.recommendation.eligibility import QUALIFICATION_DISABLED, E
 from cfb_edge_finder.recommendation.pipeline import run_pipeline
 
 SKELETON_MODULES = (
-    candidate, eligibility, thresholds, evidence, risk, dedup, scoring, card, odds, pipeline,
+    candidate,
+    eligibility,
+    thresholds,
+    evidence,
+    risk,
+    dedup,
+    scoring,
+    card,
+    odds,
+    pipeline,
 )
 
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
@@ -45,53 +54,87 @@ def _corpus_rows(n_games, rungs=8):
         game = f"game{g:05d}"
         ev = f"EV{g:05d}"
         for team, price in (("home", 0.60), ("away", 0.44)):
-            rows.append({
-                "observation_key": f"KXNCAAFGAME-{ev}-{team}",
-                "observation": {
-                    "game_id": game, "kalshi_market_ticker": f"KXNCAAFGAME-{ev}-{team.upper()}",
-                    "family": "moneyline", "team": team, "side": None, "threshold": None,
-                    "semantic_operator": None, "model_probability": price,
-                    "executable_yes_price": price, "executable_no_price": 1.0 - price + 0.10,
-                    "market_midpoint": price, "pricing_status": "model_priced",
-                    "parse_status": "confirmed_live", "captured_at": "2026-09-05T11:59:00Z",
-                    "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                    "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
-                    "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
-                },
-            })
-        for team in ("home", "away"):
-            for i in range(rungs):
-                rows.append({
-                    "observation_key": f"KXNCAAFSPREAD-{ev}-{team}{i}",
+            rows.append(
+                {
+                    "observation_key": f"KXNCAAFGAME-{ev}-{team}",
                     "observation": {
-                        "game_id": game, "kalshi_market_ticker": f"KXNCAAFSPREAD-{ev}-{team.upper()}{i}",
-                        "family": "spread", "team": team, "side": None, "threshold": 1.5 + 2 * i,
-                        "semantic_operator": ">", "model_probability": max(0.05, 0.80 - 0.05 * i),
-                        "executable_yes_price": max(0.05, 0.78 - 0.05 * i),
-                        "executable_no_price": min(0.95, 0.30 + 0.05 * i),
-                        "market_midpoint": 0.5, "pricing_status": "model_priced",
-                        "parse_status": "confirmed_live", "captured_at": "2026-09-05T11:59:00Z",
-                        "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                        "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
+                        "game_id": game,
+                        "kalshi_market_ticker": f"KXNCAAFGAME-{ev}-{team.upper()}",
+                        "family": "moneyline",
+                        "team": team,
+                        "side": None,
+                        "threshold": None,
+                        "semantic_operator": None,
+                        "model_probability": price,
+                        "executable_yes_price": price,
+                        "executable_no_price": 1.0 - price + 0.10,
+                        "market_midpoint": price,
+                        "pricing_status": "model_priced",
+                        "parse_status": "confirmed_live",
+                        "captured_at": "2026-09-05T11:59:00Z",
+                        "market_status": "active",
+                        "fee_status": "VERIFIED_CURRENT",
+                        "fee_schedule_version": "v1",
+                        "model_version": {"model_version": "m1"},
                         "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
                     },
-                })
+                }
+            )
+        for team in ("home", "away"):
+            for i in range(rungs):
+                rows.append(
+                    {
+                        "observation_key": f"KXNCAAFSPREAD-{ev}-{team}{i}",
+                        "observation": {
+                            "game_id": game,
+                            "kalshi_market_ticker": f"KXNCAAFSPREAD-{ev}-{team.upper()}{i}",
+                            "family": "spread",
+                            "team": team,
+                            "side": None,
+                            "threshold": 1.5 + 2 * i,
+                            "semantic_operator": ">",
+                            "model_probability": max(0.05, 0.80 - 0.05 * i),
+                            "executable_yes_price": max(0.05, 0.78 - 0.05 * i),
+                            "executable_no_price": min(0.95, 0.30 + 0.05 * i),
+                            "market_midpoint": 0.5,
+                            "pricing_status": "model_priced",
+                            "parse_status": "confirmed_live",
+                            "captured_at": "2026-09-05T11:59:00Z",
+                            "market_status": "active",
+                            "fee_status": "VERIFIED_CURRENT",
+                            "fee_schedule_version": "v1",
+                            "model_version": {"model_version": "m1"},
+                            "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
+                        },
+                    }
+                )
         for i in range(rungs):
-            rows.append({
-                "observation_key": f"KXNCAAFTOTAL-{ev}-{i}",
-                "observation": {
-                    "game_id": game, "kalshi_market_ticker": f"KXNCAAFTOTAL-{ev}-{i}",
-                    "family": "total", "team": None, "side": "over", "threshold": 40.5 + 3 * i,
-                    "semantic_operator": ">", "model_probability": max(0.05, 0.85 - 0.06 * i),
-                    "executable_yes_price": max(0.05, 0.83 - 0.06 * i),
-                    "executable_no_price": min(0.95, 0.25 + 0.06 * i),
-                    "market_midpoint": 0.5, "pricing_status": "model_priced",
-                    "parse_status": "confirmed_live", "captured_at": "2026-09-05T11:59:00Z",
-                    "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                    "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
-                    "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
-                },
-            })
+            rows.append(
+                {
+                    "observation_key": f"KXNCAAFTOTAL-{ev}-{i}",
+                    "observation": {
+                        "game_id": game,
+                        "kalshi_market_ticker": f"KXNCAAFTOTAL-{ev}-{i}",
+                        "family": "total",
+                        "team": None,
+                        "side": "over",
+                        "threshold": 40.5 + 3 * i,
+                        "semantic_operator": ">",
+                        "model_probability": max(0.05, 0.85 - 0.06 * i),
+                        "executable_yes_price": max(0.05, 0.83 - 0.06 * i),
+                        "executable_no_price": min(0.95, 0.25 + 0.06 * i),
+                        "market_midpoint": 0.5,
+                        "pricing_status": "model_priced",
+                        "parse_status": "confirmed_live",
+                        "captured_at": "2026-09-05T11:59:00Z",
+                        "market_status": "active",
+                        "fee_status": "VERIFIED_CURRENT",
+                        "fee_schedule_version": "v1",
+                        "model_version": {"model_version": "m1"},
+                        "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
+                    },
+                }
+            )
     return rows
 
 
@@ -214,13 +257,19 @@ def test_odds_module_contains_no_eligibility_logic():
 
 def test_threshold_artifact_values_are_empty_by_default():
     provenance = thresholds.ThresholdProvenance(
-        source_corpus_identifier="c", prospective_only=True, settled_game_count=1,
-        created_at=NOW, analytics_code_version="a", model_version="m",
+        source_corpus_identifier="c",
+        prospective_only=True,
+        settled_game_count=1,
+        created_at=NOW,
+        analytics_code_version="a",
+        model_version="m",
         approval_state=thresholds.ApprovalState.DRAFT_RESEARCH,
     )
     artifact = thresholds.ThresholdArtifact(
-        artifact_version="v", provenance=provenance,
-        applicable_model_versions=frozenset(), applicable_timing_labels=frozenset(),
+        artifact_version="v",
+        provenance=provenance,
+        applicable_model_versions=frozenset(),
+        applicable_timing_labels=frozenset(),
         applicable_families=frozenset(),
     )
     assert artifact.values == {}
@@ -234,8 +283,14 @@ def test_no_threshold_optimizer_exists(module):
     """Threshold research must be deliberate, holdout-aware and reviewed --
     never a function that maximizes a metric and returns a cutoff."""
     banned = (
-        "optimize", "maximize", "find_best", "best_cutoff", "tune", "search_threshold",
-        "auto_approve", "promote",
+        "optimize",
+        "maximize",
+        "find_best",
+        "best_cutoff",
+        "tune",
+        "search_threshold",
+        "auto_approve",
+        "promote",
     )
     for name in dir(module):
         if name.startswith("_"):
@@ -266,14 +321,8 @@ def test_no_code_path_constructs_an_approved_for_live_artifact():
             if not isinstance(node, ast.keyword):
                 continue
             value = node.value
-            if (
-                isinstance(value, ast.Attribute)
-                and value.attr == "APPROVED_FOR_LIVE"
-                and node.arg == "approval_state"
-            ):
-                raise AssertionError(
-                    f"{module.__name__} constructs provenance already APPROVED_FOR_LIVE"
-                )
+            if isinstance(value, ast.Attribute) and value.attr == "APPROVED_FOR_LIVE" and node.arg == "approval_state":
+                raise AssertionError(f"{module.__name__} constructs provenance already APPROVED_FOR_LIVE")
 
 
 def test_live_approval_gate_is_a_membership_check_not_a_default():
@@ -307,8 +356,18 @@ def _code_identifiers(module) -> set[str]:
 @pytest.mark.parametrize("module", SKELETON_MODULES, ids=lambda m: m.__name__)
 def test_no_sizing_or_execution_surface(module):
     forbidden = (
-        "stake", "bankroll", "kelly", "allocate", "portfolio_optimize", "place_order",
-        "submit_order", "execute_trade", "wager", "bet_size", "tier_a", "tier_b",
+        "stake",
+        "bankroll",
+        "kelly",
+        "allocate",
+        "portfolio_optimize",
+        "place_order",
+        "submit_order",
+        "execute_trade",
+        "wager",
+        "bet_size",
+        "tier_a",
+        "tier_b",
     )
     identifiers = {i.lower() for i in _code_identifiers(module)}
     for token in forbidden:

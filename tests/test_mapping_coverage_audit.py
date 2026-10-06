@@ -84,9 +84,7 @@ def test_fcs_population_is_checked_before_alias_gaps():
     """An FCS school missing from the registry is EXPECTED -- the registry
     is an FBS registry by design -- so it must never be reported as a
     deterministic alias defect that someone would then 'fix'."""
-    category, _ = audit.classify_unresolved(
-        Reason.AMBIGUOUS_TEAM_MAPPING, _side("known_fcs"), _side("unknown")
-    )
+    category, _ = audit.classify_unresolved(Reason.AMBIGUOUS_TEAM_MAPPING, _side("known_fcs"), _side("unknown"))
     assert category != audit.DETERMINISTIC_ALIAS_MISSING
     assert category == audit.FCS_VS_FCS_UNSUPPORTED
 
@@ -100,9 +98,7 @@ def test_ambiguity_never_becomes_a_leak_or_an_alias_gap():
     for other in ("fbs", "unknown"):
         category, _ = audit.classify_unresolved(Reason.AMBIGUOUS_TEAM_MAPPING, _side("ambiguous"), _side(other))
         assert category == audit.AMBIGUOUS_TEAM_NAME
-    fcs_side, why = audit.classify_unresolved(
-        Reason.AMBIGUOUS_TEAM_MAPPING, _side("ambiguous"), _side("known_fcs")
-    )
+    fcs_side, why = audit.classify_unresolved(Reason.AMBIGUOUS_TEAM_MAPPING, _side("ambiguous"), _side("known_fcs"))
     assert fcs_side == audit.FCS_VS_FCS_UNSUPPORTED
     assert "undetermined" in why, "the label must not silently assert both sides are FCS"
     assert fcs_side not in (audit.FBS_VS_FBS_POTENTIAL_LEAK, audit.DETERMINISTIC_ALIAS_MISSING)
@@ -110,8 +106,14 @@ def test_ambiguity_never_becomes_a_leak_or_an_alias_gap():
 
 def test_only_two_resolved_fbs_sides_count_as_a_leak():
     """The success metric is this number, so nothing may inflate it."""
-    for home, away in [("fbs", "known_fcs"), ("fbs", "unknown"), ("fbs", "ambiguous"),
-                       ("fbs", "missing"), ("fbs", "non_fbs"), ("unknown", "unknown")]:
+    for home, away in [
+        ("fbs", "known_fcs"),
+        ("fbs", "unknown"),
+        ("fbs", "ambiguous"),
+        ("fbs", "missing"),
+        ("fbs", "non_fbs"),
+        ("unknown", "unknown"),
+    ]:
         category, _ = audit.classify_unresolved(Reason.AMBIGUOUS_GAME_MAPPING, _side(home), _side(away))
         assert category != audit.FBS_VS_FBS_POTENTIAL_LEAK, f"{home}/{away} inflated the leak count"
 
@@ -167,9 +169,16 @@ def test_registry_covers_the_whole_fbs_universe():
 @pytest.mark.parametrize(
     "token",
     [
-        "University at Albany", "St. Thomas", "LIU", "Winona St.", "Grambling St.",
-        "Southern University", "Tennessee-Martin", "Central Connecticut St.",
-        "Nicholls St.", "Southeastern Louisiana",
+        "University at Albany",
+        "St. Thomas",
+        "LIU",
+        "Winona St.",
+        "Grambling St.",
+        "Southern University",
+        "Tennessee-Martin",
+        "Central Connecticut St.",
+        "Nicholls St.",
+        "Southeastern Louisiana",
     ],
 )
 def test_live_unknown_tokens_are_not_fbs_teams(token):

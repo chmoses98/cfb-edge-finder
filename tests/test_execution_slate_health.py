@@ -28,9 +28,12 @@ from tests.execution_fakes import CAPTURED_AT, NOW, catalog_dir
 def _prepare(catalog: Path, out: Path, *extra: str, as_of: datetime = NOW, context: Path | None = None) -> int:
     args = [
         "prepare-live",
-        "--catalog-dir", str(catalog),
-        "--out-dir", str(out),
-        "--as-of", as_of.isoformat(),
+        "--catalog-dir",
+        str(catalog),
+        "--out-dir",
+        str(out),
+        "--as-of",
+        as_of.isoformat(),
         *extra,
     ]
     if context is not None:
@@ -141,9 +144,7 @@ def test_a_structural_failure_is_red_whatever_else_is_true():
 
 def test_a_built_slate_with_context_is_healthy(tmp_path):
     out = tmp_path / "exec"
-    code = _prepare(
-        catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, "complete")
-    )
+    code = _prepare(catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, "complete"))
     assert code == 0
     assert _health(out)["state"] == slate_health.HEALTHY
 
@@ -154,9 +155,7 @@ def test_lost_factual_context_is_degraded_not_red(tmp_path, monkeypatch, capsys,
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
     out = tmp_path / "exec"
-    code = _prepare(
-        catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, verdict)
-    )
+    code = _prepare(catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, verdict))
     assert code == 0
     health = _health(out)
     assert health["state"] == slate_health.DEGRADED
@@ -174,9 +173,7 @@ def test_a_collector_that_left_no_record_is_degraded(tmp_path):
 
 def test_partial_context_coverage_is_still_healthy(tmp_path):
     out = tmp_path / "exec"
-    code = _prepare(
-        catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, "partial")
-    )
+    code = _prepare(catalog_dir(tmp_path), out, "--date", "2026-09-19", context=_context(tmp_path, "partial"))
     assert code == 0
     assert _health(out)["state"] == slate_health.HEALTHY
 

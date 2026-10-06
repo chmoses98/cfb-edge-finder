@@ -162,8 +162,7 @@ def evaluate_quality_prerequisites(
         failures.append(QualityPrerequisite.FEE_SCHEDULE_VERIFIED)
 
     if config.require_supported_population and (
-        candidate.market_family not in config.allowed_families
-        or candidate.pricing_status != SUPPORTED_PRICING_STATUS
+        candidate.market_family not in config.allowed_families or candidate.pricing_status != SUPPORTED_PRICING_STATUS
     ):
         failures.append(QualityPrerequisite.SUPPORTED_POPULATION)
 

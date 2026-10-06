@@ -41,12 +41,23 @@ def _row(*, schema_version, market_status, ticker="KXNCAAFGAME-EV1-HOME", captur
         "observation_key": ticker,
         "schema_version": schema_version,
         "observation": {
-            "game_id": "g1", "kalshi_market_ticker": ticker, "family": "moneyline",
-            "team": "home", "side": None, "threshold": None, "semantic_operator": None,
-            "model_probability": 0.60, "executable_yes_price": 0.58, "executable_no_price": 0.44,
-            "market_midpoint": 0.59, "pricing_status": "model_priced", "parse_status": "confirmed_live",
-            "captured_at": captured_at, "market_status": market_status,
-            "fee_status": "VERIFIED_CURRENT", "fee_schedule_version": "v1",
+            "game_id": "g1",
+            "kalshi_market_ticker": ticker,
+            "family": "moneyline",
+            "team": "home",
+            "side": None,
+            "threshold": None,
+            "semantic_operator": None,
+            "model_probability": 0.60,
+            "executable_yes_price": 0.58,
+            "executable_no_price": 0.44,
+            "market_midpoint": 0.59,
+            "pricing_status": "model_priced",
+            "parse_status": "confirmed_live",
+            "captured_at": captured_at,
+            "market_status": market_status,
+            "fee_status": "VERIFIED_CURRENT",
+            "fee_schedule_version": "v1",
             "model_version": {"model_version": "m1"},
             "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
         },
@@ -191,9 +202,7 @@ def test_closing_window_is_strictly_pre_kickoff(minutes, due):
     """0 and -1 are the load-bearing cases: a CLOSING row must never be
     written at or after kickoff, because unlike every numeric bucket it
     can never be legitimately recovered later."""
-    assert is_closing_due(
-        kickoff_utc=NOW + timedelta(minutes=minutes), now=NOW, already_captured_labels=set()
-    ) is due
+    assert is_closing_due(kickoff_utc=NOW + timedelta(minutes=minutes), now=NOW, already_captured_labels=set()) is due
 
 
 def test_closing_not_due_once_captured_or_game_started():
@@ -212,9 +221,18 @@ def test_closing_window_is_14_minutes_and_disjoint_from_t30():
 
 def _run_readiness(repo: Path, extra=()):
     return subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / "week1_readiness.py"),
-         "--data-repo-dir", str(repo), "--season", "2026", *extra],
-        capture_output=True, text=True, timeout=600,
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "week1_readiness.py"),
+            "--data-repo-dir",
+            str(repo),
+            "--season",
+            "2026",
+            *extra,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
 
 
@@ -301,9 +319,12 @@ def test_quality_prerequisites_are_pure(tmp_path):
 
 def _git(args, cwd):
     env = {
-        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
-        "PATH": "/usr/bin:/bin", "HOME": str(cwd),
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(cwd),
     }
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, env=env, timeout=120)
 

@@ -284,9 +284,7 @@ def scoreboard_dates_for(kickoff_utc: datetime) -> list[str]:
     return [day.strftime("%Y%m%d"), (day - timedelta(days=1)).strftime("%Y%m%d")]
 
 
-def match_espn_event(
-    identity: GameIdentity, events: list[EspnEventFacts]
-) -> tuple[EspnEventFacts | None, str | None]:
+def match_espn_event(identity: GameIdentity, events: list[EspnEventFacts]) -> tuple[EspnEventFacts | None, str | None]:
     """Exactly one event whose canonical (home, away) equals the durable
     schedule's -- anything else fails closed with the reason. This IS the
     cross-source identity validation: the schedule side is CFBD-derived,

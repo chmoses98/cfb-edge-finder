@@ -25,8 +25,14 @@ from cfb_edge_finder.research.trigger import CLOSING_GUARD_LEAD_MINUTES
 NOW = datetime(2026, 8, 28, 13, 0, tzinfo=UTC)
 
 
-def runs(*, interval_minutes: float, count: int = 5, trigger: str = "EXTERNAL_SCHEDULE",
-         succeeded: bool = True, end: datetime = NOW) -> list[TriggerObservation]:
+def runs(
+    *,
+    interval_minutes: float,
+    count: int = 5,
+    trigger: str = "EXTERNAL_SCHEDULE",
+    succeeded: bool = True,
+    end: datetime = NOW,
+) -> list[TriggerObservation]:
     return [
         TriggerObservation(
             invoked_at=end - timedelta(minutes=interval_minutes * i),
@@ -122,9 +128,7 @@ def test_the_guard_lead_boundary_is_exact():
     wide = runs(interval_minutes=180)
     at = assess(observations=wide, next_checkpoint_at=NOW + timedelta(minutes=CLOSING_GUARD_LEAD_MINUTES))
     assert at.state is ProtectionState.CLOSING_AT_RISK
-    just_after = assess(
-        observations=wide, next_checkpoint_at=NOW + timedelta(minutes=CLOSING_GUARD_LEAD_MINUTES + 1)
-    )
+    just_after = assess(observations=wide, next_checkpoint_at=NOW + timedelta(minutes=CLOSING_GUARD_LEAD_MINUTES + 1))
     assert just_after.state is ProtectionState.CHECKPOINT_APPROACHING
 
 
@@ -228,9 +232,7 @@ def test_wider_checkpoints_are_easier_to_cover_than_closing():
     """T_24H is a 12-hour window; a 3-hour interval covers it. CLOSING's
     14 minutes does not. The label must change the answer."""
     soon = NOW + timedelta(minutes=10)
-    closing = assess(observations=runs(interval_minutes=180), next_checkpoint_at=soon,
-                     next_checkpoint_label=CLOSING)
-    t24 = assess(observations=runs(interval_minutes=180), next_checkpoint_at=soon,
-                 next_checkpoint_label="T_24H")
+    closing = assess(observations=runs(interval_minutes=180), next_checkpoint_at=soon, next_checkpoint_label=CLOSING)
+    t24 = assess(observations=runs(interval_minutes=180), next_checkpoint_at=soon, next_checkpoint_label="T_24H")
     assert closing.state is ProtectionState.CLOSING_AT_RISK
     assert t24.state is ProtectionState.COVERED_TIGHT_CADENCE

@@ -201,9 +201,7 @@ class Bucket:
             "staked": round(self.staked, 4),
             "fees_paid": round(self.fees_paid, 4),
             "gross_return": round(self.gross_return, 4) if self.is_complete else None,
-            "net_profit_loss": (
-                round(self.net_profit_loss, 4) if self.is_complete else None
-            ),
+            "net_profit_loss": (round(self.net_profit_loss, 4) if self.is_complete else None),
             "roi": self.roi,
             "profit_loss_established": self.profit_loss_established,
             "profit_loss_unestablished": self.profit_loss_unestablished,
@@ -291,9 +289,7 @@ class Postmortem:
         def cuts(buckets: dict[str, Bucket]) -> list[dict[str, Any]]:
             return [buckets[key].as_dict() for key in sorted(buckets)]
 
-        settled_games = {
-            key: bucket for key, bucket in self.by_game.items() if bucket.is_complete
-        }
+        settled_games = {key: bucket for key, bucket in self.by_game.items() if bucket.is_complete}
         best = max(settled_games.values(), key=lambda b: b.net_profit_loss, default=None)
         worst = min(settled_games.values(), key=lambda b: b.net_profit_loss, default=None)
 
@@ -374,9 +370,7 @@ def build(
     # report does not otherwise count would state a correction for money it
     # never shows.
     in_scope = {w.get("source_bet_key") for w in wagers if isinstance(w, dict)}
-    filed_settlements = [
-        s for s in settlements if isinstance(s, dict) and s.get("source_bet_key") in in_scope
-    ]
+    filed_settlements = [s for s in settlements if isinstance(s, dict) and s.get("source_bet_key") in in_scope]
     if amendments:
         settlements = apply_amendments(filed_settlements, amendments)
     else:
@@ -385,15 +379,9 @@ def build(
     if decision_attribution:
         report.decision_attribution = dict(decision_attribution)
 
-    by_key = {
-        s.get("source_bet_key"): s
-        for s in settlements
-        if isinstance(s, dict) and s.get("source_bet_key")
-    }
+    by_key = {s.get("source_bet_key"): s for s in settlements if isinstance(s, dict) and s.get("source_bet_key")}
     match_by_key = matches.by_key() if matches else {}
-    recommendation_by_id = {
-        r.recommendation_id: r for r in (recommendations or [])
-    }
+    recommendation_by_id = {r.recommendation_id: r for r in (recommendations or [])}
     if matches:
         report.match_counts = matches.counts
 
@@ -432,9 +420,7 @@ def build(
         )
 
         match = match_by_key.get(key)
-        recommendation = (
-            recommendation_by_id.get(match.recommendation_id) if match else None
-        )
+        recommendation = recommendation_by_id.get(match.recommendation_id) if match else None
 
         _accumulate(
             bucket(report.by_attribution, match.state if match else "unmatched"),
@@ -460,8 +446,7 @@ def build(
         _accumulate(
             bucket(
                 report.by_data_quality,
-                (recommendation.data_quality_ceiling if recommendation else None)
-                or "not_recommended",
+                (recommendation.data_quality_ceiling if recommendation else None) or "not_recommended",
             ),
             wager,
             settlement,
@@ -476,9 +461,7 @@ def build(
         )
 
         group = (
-            recommendation.correlation_group
-            if recommendation and recommendation.correlation_group
-            else f"game:{game}"
+            recommendation.correlation_group if recommendation and recommendation.correlation_group else f"game:{game}"
         )
         exposure[f"{game} / {group}"].append(str(ticker))
 
@@ -530,10 +513,7 @@ def build(
             "group": group,
             "contracts": sorted(tickers),
             "contract_count": len(tickers),
-            "note": (
-                "contracts in one group win or lose together. Two different tickers are not "
-                "diversification."
-            ),
+            "note": ("contracts in one group win or lose together. Two different tickers are not diversification."),
         }
         for group, tickers in sorted(exposure.items())
         if len(tickers) > 1
@@ -541,9 +521,7 @@ def build(
 
     report.price_vs_recommended = {
         "matched_bets": len(price_deltas),
-        "mean_price_delta": (
-            round(sum(price_deltas) / len(price_deltas), 6) if price_deltas else None
-        ),
+        "mean_price_delta": (round(sum(price_deltas) / len(price_deltas), 6) if price_deltas else None),
         "worst_price_delta": round(max(price_deltas), 6) if price_deltas else None,
         "executed_above_bet_up_to": above_ceiling,
         "note": (
@@ -568,8 +546,7 @@ def build(
                     "tier": label,
                     "category": "HANDICAP ERROR (PROMPT, NOT A VERDICT)",
                     "evidence": (
-                        f"{tier.settled} settled bets in the {label} tier, "
-                        f"{tier.net_profit_loss:+.2f} realised"
+                        f"{tier.settled} settled bets in the {label} tier, {tier.net_profit_loss:+.2f} realised"
                     ),
                     "note": (
                         "a losing tier is a reason to re-read the handicaps in it. It is NOT a "
@@ -610,6 +587,7 @@ def _economics_block(
     Both totals are computed only over settlements whose net is ESTABLISHED
     in that view, and each says how many it covers, because a difference
     between two totals over different denominators is not a fee effect."""
+
     def established_total(rows: list[dict[str, Any]]) -> tuple[float, int, int]:
         total, established, unestablished = 0.0, 0, 0
         for row in rows:
@@ -689,15 +667,9 @@ def render(report: Postmortem) -> str:
             return
         lines.extend(["", f"  {title}:"])
         for row in rows:
-            money = (
-                f"{row['net_profit_loss']:+9.2f}" if row["net_profit_loss"] is not None
-                else "  PARTIAL"
-            )
+            money = f"{row['net_profit_loss']:+9.2f}" if row["net_profit_loss"] is not None else "  PARTIAL"
             note = f"   ({row['reading']})" if row["reading"] else ""
-            lines.append(
-                f"    {row['label']:34} n={row['wagers']:3} settled={row['settled']:3} "
-                f"{money}{note}"
-            )
+            lines.append(f"    {row['label']:34} n={row['wagers']:3} settled={row['settled']:3} {money}{note}")
 
     economics = document.get("economics") or {}
     if economics:
@@ -718,8 +690,7 @@ def render(report: Postmortem) -> str:
             diff = economics["difference_from_fee_treatment"]
             lines.append(
                 "    difference (fee treatment):"
-                + (f" {diff:+.2f}" if diff is not None else
-                   " not stated -- the two totals do not cover the same rows")
+                + (f" {diff:+.2f}" if diff is not None else " not stated -- the two totals do not cover the same rows")
             )
 
     section("by market family", document["by_market_family"])

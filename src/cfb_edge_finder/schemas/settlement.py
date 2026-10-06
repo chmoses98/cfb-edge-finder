@@ -88,9 +88,10 @@ class MarketSettlement(BaseModel):
     actual_total_points: float | None = None
 
     derived_contract_settlement: Side | None = Field(
-        default=None, description="Side.YES or Side.NO this specific contract settled to, derived from the same "
+        default=None,
+        description="Side.YES or Side.NO this specific contract settled to, derived from the same "
         "operator/threshold/team semantics used to price it (contract_semantics.py) -- never a generic "
-        "sportsbook rule."
+        "sportsbook rule.",
     )
     official_kalshi_settlement: Side | None = Field(
         default=None,

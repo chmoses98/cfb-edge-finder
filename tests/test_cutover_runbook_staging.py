@@ -77,8 +77,7 @@ def test_at_least_one_forced_add_is_actually_prescribed():
     """The inverse of the check above: -f must be present, not merely
     'no unforced add because there is no add at all'."""
     assert any(
-        re.search(r"\bgit\s+add\b.*\s-f", line) or re.search(r"\bgit\s+add\s+-f", line)
-        for line in _bash_block_lines()
+        re.search(r"\bgit\s+add\b.*\s-f", line) or re.search(r"\bgit\s+add\s+-f", line) for line in _bash_block_lines()
     ), "the runbook no longer prescribes a forced add for the migration commit"
 
 
@@ -105,6 +104,5 @@ def test_the_gitignore_rule_that_makes_the_flag_necessary_still_exists():
     runbook depends on the rationale."""
     ignore = (REPO / ".gitignore").read_text(encoding="utf-8")
     assert re.search(r"^data/research/\s*$", ignore, re.MULTILINE), (
-        "data/research/ is no longer gitignored -- revisit the `git add -f` "
-        "rationale in docs/CUTOVER_SHARDING.md"
+        "data/research/ is no longer gitignored -- revisit the `git add -f` rationale in docs/CUTOVER_SHARDING.md"
     )

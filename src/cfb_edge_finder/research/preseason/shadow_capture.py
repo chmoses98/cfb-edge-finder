@@ -127,7 +127,6 @@ class ShadowObservation:
     shadow_probability: float | None
     shadow_projected_margin: float | None
 
-
     talent_home: float | None
     talent_away: float | None
     talent_differential: float | None
@@ -209,8 +208,13 @@ class ShadowObservation:
 
 
 def _unavailable(
-    *, reason: ShadowUnavailableReason, base: dict, control_probability=None,
-    control_margin=None, talent_home=None, talent_away=None,
+    *,
+    reason: ShadowUnavailableReason,
+    base: dict,
+    control_probability=None,
+    control_margin=None,
+    talent_home=None,
+    talent_away=None,
 ) -> ShadowObservation:
     return ShadowObservation(
         **base,
@@ -291,31 +295,41 @@ def build_shadow_record(
         )
     if kickoff_utc is not None and captured_at >= kickoff_utc:
         return _unavailable(
-            reason=ShadowUnavailableReason.CAPTURED_AT_OR_AFTER_KICKOFF, base=base,
-            control_probability=control_probability, control_margin=control_projected_margin,
+            reason=ShadowUnavailableReason.CAPTURED_AT_OR_AFTER_KICKOFF,
+            base=base,
+            control_probability=control_probability,
+            control_margin=control_projected_margin,
         )
     if not both_fbs:
         return _unavailable(
-            reason=ShadowUnavailableReason.UNSUPPORTED_POPULATION, base=base,
-            control_probability=control_probability, control_margin=control_projected_margin,
+            reason=ShadowUnavailableReason.UNSUPPORTED_POPULATION,
+            base=base,
+            control_probability=control_probability,
+            control_margin=control_projected_margin,
         )
     if control_probability is None or control_projected_margin is None:
         return _unavailable(reason=ShadowUnavailableReason.CONTROL_NOT_PRICED, base=base)
     if talent_home is None and talent_away is None:
         return _unavailable(
-            reason=ShadowUnavailableReason.TALENT_MISSING_BOTH, base=base,
-            control_probability=control_probability, control_margin=control_projected_margin,
+            reason=ShadowUnavailableReason.TALENT_MISSING_BOTH,
+            base=base,
+            control_probability=control_probability,
+            control_margin=control_projected_margin,
         )
     if talent_home is None:
         return _unavailable(
-            reason=ShadowUnavailableReason.TALENT_MISSING_HOME, base=base,
-            control_probability=control_probability, control_margin=control_projected_margin,
+            reason=ShadowUnavailableReason.TALENT_MISSING_HOME,
+            base=base,
+            control_probability=control_probability,
+            control_margin=control_projected_margin,
             talent_away=talent_away,
         )
     if talent_away is None:
         return _unavailable(
-            reason=ShadowUnavailableReason.TALENT_MISSING_AWAY, base=base,
-            control_probability=control_probability, control_margin=control_projected_margin,
+            reason=ShadowUnavailableReason.TALENT_MISSING_AWAY,
+            base=base,
+            control_probability=control_probability,
+            control_margin=control_projected_margin,
             talent_home=talent_home,
         )
 
@@ -330,14 +344,18 @@ def build_shadow_record(
     # arms are now priced through the canonical pricer, with the same
     # parsed contract and the same resolved side, differing only by the
     # talent-shifted distribution.
-    probabilities = price_contract_both_arms(
-        control_distribution=control_distribution,
-        delta=delta,
-        family=contract_family,
-        side=contract_side,
-        threshold=contract_threshold,
-        named_team_side=named_team_side,
-    ) if control_distribution is not None else None
+    probabilities = (
+        price_contract_both_arms(
+            control_distribution=control_distribution,
+            delta=delta,
+            family=contract_family,
+            side=contract_side,
+            threshold=contract_threshold,
+            named_team_side=named_team_side,
+        )
+        if control_distribution is not None
+        else None
+    )
 
     shadow_probability = None if probabilities is None else probabilities.shadow
     basis_probability = None if probabilities is None else probabilities.basis
@@ -365,13 +383,12 @@ def build_shadow_record(
         shadow_minus_control_margin=delta,
         control_probability_canonical=control_probability,
         control_probability_basis=basis_probability,
-        shadow_minus_control_basis_probability=(
-            None if probabilities is None else probabilities.shadow_minus_basis
-        ),
+        shadow_minus_control_basis_probability=(None if probabilities is None else probabilities.shadow_minus_basis),
         probability_semantics_version=PROBABILITY_SEMANTICS_VERSION,
         comparison_basis=COMPARISON_BASIS,
         contract_side=(
-            named_team_side.value if named_team_side is not None
+            named_team_side.value
+            if named_team_side is not None
             else (contract_side.value if contract_side is not None else None)
         ),
         contract_threshold=contract_threshold,

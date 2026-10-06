@@ -32,6 +32,7 @@ wagers is tens of rows. One file per season stays diffable and reviewable, and
 a ledger you can read end to end in one screen is worth more here than
 headroom nobody will use.
 """
+
 from __future__ import annotations
 
 import json
@@ -132,10 +133,7 @@ def _settlement_conflict(existing: dict, incoming: dict) -> list[str]:
     logs, and the whole point of the surrounding design is that a payout never
     reaches one.
     """
-    return [
-        name for name in SETTLEMENT_IDENTITY_FIELDS
-        if existing.get(name) != incoming.get(name)
-    ]
+    return [name for name in SETTLEMENT_IDENTITY_FIELDS if existing.get(name) != incoming.get(name)]
 
 
 def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendResult:
@@ -156,10 +154,7 @@ def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendR
     path = settlement_ledger_path(base_dir, season)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    settled_rows = {
-        key: row for row in read_rows(path)
-        if (key := source_bet_key_of(row)) is not None
-    }
+    settled_rows = {key: row for row in read_rows(path) if (key := source_bet_key_of(row)) is not None}
     seen: dict[str, dict] = {}
     to_write: list[tuple[str, dict]] = []
     skipped = 0
@@ -167,9 +162,7 @@ def append_settlements(base_dir: Path, season: int, rows: list[dict]) -> AppendR
     for row in rows:
         problems = validate(row)
         if problems:
-            raise ValueError(
-                f"refusing to write an invalid settlement row: {'; '.join(problems)}"
-            )
+            raise ValueError(f"refusing to write an invalid settlement row: {'; '.join(problems)}")
         key = source_bet_key_of(row)
         if key is None:
             skipped += 1
@@ -232,9 +225,7 @@ def append_wagers(base_dir: Path, season: int, rows: list[dict]) -> AppendResult
     for row in rows:
         problems = validate(row)
         if problems:
-            raise ValueError(
-                f"refusing to write an invalid wager row: {'; '.join(problems)}"
-            )
+            raise ValueError(f"refusing to write an invalid wager row: {'; '.join(problems)}")
         key = source_bet_key_of(row)
         if key is None or key in on_disk or key in seen:
             skipped += 1
@@ -274,11 +265,7 @@ def append_amendments(base_dir: Path, season: int, rows: list[dict]) -> AppendRe
     path = amendments_ledger_path(base_dir, season)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    filed = {
-        row["amendment_id"]: row
-        for row in read_rows(path)
-        if isinstance(row.get("amendment_id"), str)
-    }
+    filed = {row["amendment_id"]: row for row in read_rows(path) if isinstance(row.get("amendment_id"), str)}
     seen: dict[str, dict] = {}
     to_write: list[tuple[str, dict]] = []
     skipped = 0
@@ -286,9 +273,7 @@ def append_amendments(base_dir: Path, season: int, rows: list[dict]) -> AppendRe
     for row in rows:
         problems = validate_amendment(row)
         if problems:
-            raise ValueError(
-                f"refusing to write an invalid amendment row: {'; '.join(problems)}"
-            )
+            raise ValueError(f"refusing to write an invalid amendment row: {'; '.join(problems)}")
         ident = row["amendment_id"]
         already = filed.get(ident) or seen.get(ident)
         if already is not None:

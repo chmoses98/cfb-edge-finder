@@ -226,9 +226,7 @@ def resolve_effective_fee(
         # comes from the series, which is what "layered on top of the
         # parent series fee" means.
         fee_type = override_type if override_type not in (None, "") else series.get("fee_type")
-        fee_multiplier = (
-            override_multiplier if override_multiplier not in (None, "") else series.get("fee_multiplier")
-        )
+        fee_multiplier = override_multiplier if override_multiplier not in (None, "") else series.get("fee_multiplier")
         source = FeeSource.EVENT_OVERRIDE
     else:
         fee_type = series.get("fee_type")
@@ -328,9 +326,7 @@ def quadratic_model_fee(
     return fee_multiplier * QUADRATIC_FEE_COEFFICIENT * contracts * price * (1.0 - price)
 
 
-def model_trade_fee(
-    price: float | None, contracts: float = 1.0, fee_multiplier: float | None = None
-) -> float | None:
+def model_trade_fee(price: float | None, contracts: float = 1.0, fee_multiplier: float | None = None) -> float | None:
     """The documented TRADE FEE: the model fee rounded UP to $0.000001.
 
     Verified against the docs' worked example: a 1-contract fill at
@@ -358,9 +354,7 @@ class RoundingComponents:
         return round(self.trade_fee + self.rounding_fee, 10)
 
 
-def rounding_fee_components(
-    signed_revenue: float, model_fee: float, target_precision: float
-) -> RoundingComponents:
+def rounding_fee_components(signed_revenue: float, model_fee: float, target_precision: float) -> RoundingComponents:
     """Implements the documented rounding mechanics:
 
         trade_fee      = ceil_6dp(model_fee)
@@ -378,9 +372,7 @@ def rounding_fee_components(
     )
 
 
-def rebate_schedule(
-    per_fill_rounding: list[float], target_precision: float
-) -> list[tuple[float, float, float]]:
+def rebate_schedule(per_fill_rounding: list[float], target_precision: float) -> list[tuple[float, float, float]]:
     """Walk the per-order fee accumulator across an order's fills.
 
     Returns one (accumulated_before_rebate, rebate, carried_forward) per
@@ -449,18 +441,12 @@ def fee_block(
         "per_contracts": contracts,
         "formula": MODEL_TRADE_FEE_FORMULA if computable else None,
         # --- the two EXECUTABLE figures: buying YES, and buying NO ---
-        "model_trade_fee_at_yes_ask": model_trade_fee(yes_ask, contracts, fee.fee_multiplier)
-        if computable
-        else None,
+        "model_trade_fee_at_yes_ask": model_trade_fee(yes_ask, contracts, fee.fee_multiplier) if computable else None,
         "basis_yes_ask": yes_ask,
-        "model_trade_fee_at_no_ask": model_trade_fee(no_ask, contracts, fee.fee_multiplier)
-        if computable
-        else None,
+        "model_trade_fee_at_no_ask": model_trade_fee(no_ask, contracts, fee.fee_multiplier) if computable else None,
         "basis_no_ask": no_ask,
         # --- non-executable market arithmetic, labelled as such ---
-        "model_trade_fee_at_yes_mid": model_trade_fee(yes_mid, contracts, fee.fee_multiplier)
-        if computable
-        else None,
+        "model_trade_fee_at_yes_mid": model_trade_fee(yes_mid, contracts, fee.fee_multiplier) if computable else None,
         "basis_yes_mid": yes_mid,
         "executable_bases": ["basis_yes_ask", "basis_no_ask"],
         "non_executable_bases": ["basis_yes_mid"],

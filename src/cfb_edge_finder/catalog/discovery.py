@@ -301,9 +301,7 @@ class MarketDiscovery:
         return self._sweep("/series", {"category": "Sports"}, "series", stats)
 
     def fetch_series_events(self, series_ticker: str, stats: SweepStats) -> PageSweep:
-        return self._sweep(
-            "/events", {"series_ticker": series_ticker, "status": QUERY_STATUS_OPEN}, "events", stats
-        )
+        return self._sweep("/events", {"series_ticker": series_ticker, "status": QUERY_STATUS_OPEN}, "events", stats)
 
     def fetch_multivariate_collections(self, stats: SweepStats) -> PageSweep:
         return self._sweep("/multivariate_event_collections", {}, "multivariate_contracts", stats)
@@ -332,9 +330,7 @@ class MarketDiscovery:
         series was never swept, or the bucket for an event comes back
         empty -- so an empty bucket is always confirmed directly rather
         than published as "no markets"."""
-        return self._sweep(
-            "/markets", {"series_ticker": series_ticker, "min_close_ts": min_close_ts}, "markets", stats
-        )
+        return self._sweep("/markets", {"series_ticker": series_ticker, "min_close_ts": min_close_ts}, "markets", stats)
 
     def prefetch_markets_by_series(
         self, series_tickers: list[str], min_close_ts: int | None, stats: SweepStats
@@ -382,9 +378,7 @@ class MarketDiscovery:
 
         series_fees = self._series_fee_index(run)
         cfb_series = sorted(
-            ticker
-            for ticker, series in series_fees.items()
-            if self._series_looks_college_football(ticker, series)
+            ticker for ticker, series in series_fees.items() if self._series_looks_college_football(ticker, series)
         )
 
         # ---- bulk prefetch: markets and events, in series-sized sweeps -
@@ -547,9 +541,7 @@ class MarketDiscovery:
             # A series we never resolved yields NO fee rather than a
             # defaulted one -- see catalog/fees.py on failing closed.
             series = series_fees.get(series_ticker)
-            effective_fee = resolve_effective_fee(
-                event, series, series_lookup_succeeded=series is not None
-            )
+            effective_fee = resolve_effective_fee(event, series, series_lookup_succeeded=series is not None)
             settlement_sources = event.get("settlement_sources") or []
 
             for market in markets:
@@ -560,9 +552,7 @@ class MarketDiscovery:
                     settlement_sources=settlement_sources,
                     effective_fee=effective_fee,
                     captured_at=run.captured_at,
-                    classification=classify_market(
-                        series_ticker, market.get("title"), market.get("rules_primary")
-                    ),
+                    classification=classify_market(series_ticker, market.get("title"), market.get("rules_primary")),
                 )
                 game.contracts.append(contract)
 

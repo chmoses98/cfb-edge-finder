@@ -217,8 +217,7 @@ def check_closing_coverage(*, closing_due: int, closing_captured: int) -> Health
         return HealthCheck(
             "closing_coverage",
             OpsState.WARN,
-            f"{closing_captured} of {closing_due} CLOSING checkpoints captured. "
-            f"The missed ones are permanently lost.",
+            f"{closing_captured} of {closing_due} CLOSING checkpoints captured. The missed ones are permanently lost.",
             "Check trigger timing against the affected kickoffs before the next slate.",
         )
     return HealthCheck(
@@ -273,8 +272,7 @@ def check_natural_data(*, settled_games: int, minimum_for_research: int | None) 
         return HealthCheck(
             "natural_data",
             OpsState.PENDING_NATURAL_DATA,
-            "0 settled prospective games. EMPIRICAL THRESHOLD RESEARCH BLOCKED ON "
-            "NATURAL SAMPLE SIZE.",
+            "0 settled prospective games. EMPIRICAL THRESHOLD RESEARCH BLOCKED ON NATURAL SAMPLE SIZE.",
         )
     if minimum_for_research is None:
         return HealthCheck(

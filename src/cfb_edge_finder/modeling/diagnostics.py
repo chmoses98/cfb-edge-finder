@@ -307,9 +307,7 @@ def favorite_tail_margin_diagnosis(outcomes: list[GameOutcome]) -> list[MarginTa
                     slice_name=slice_name,
                     bin_label=f"[{lo:g},{hi:g})",
                     n=len(bin_subset),
-                    favorite_direction_bias=float(
-                        np.mean([favorite_direction_margin_error(o) for o in bin_subset])
-                    ),
+                    favorite_direction_bias=float(np.mean([favorite_direction_margin_error(o) for o in bin_subset])),
                     margin_mae=metrics.margin_mae,
                     winner_log_loss=metrics.winner_log_loss,
                     margin_coverage_90=metrics.margin_interval_coverage_90,
@@ -349,9 +347,7 @@ def source_of_margin_bias_summary(outcomes: list[GameOutcome]) -> dict:
     def bias(subset):
         if not subset:
             return None
-        return float(
-            np.mean([o.actual_home_points - o.actual_away_points - o.model_margin_mean for o in subset])
-        )
+        return float(np.mean([o.actual_home_points - o.actual_away_points - o.model_margin_mean for o in subset]))
 
     return {
         "overall_bias": all_metrics.margin_bias,
@@ -399,9 +395,7 @@ def source_of_total_bias_summary(outcomes: list[GameOutcome]) -> dict:
     def bias(subset):
         if not subset:
             return None
-        return float(
-            np.mean([o.actual_home_points + o.actual_away_points - o.model_total_mean for o in subset])
-        )
+        return float(np.mean([o.actual_home_points + o.actual_away_points - o.model_total_mean for o in subset]))
 
     return {
         "overall_bias": all_metrics.total_bias,

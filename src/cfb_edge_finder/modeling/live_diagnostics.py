@@ -88,28 +88,35 @@ def check_probability_valid(probability: float | None, *, context: str) -> list[
         return findings
     if not math.isfinite(probability):
         findings.append(
-            ModelFinding("probability_finite", DiagnosticSeverity.BLOCKER,
-                         f"{context}: probability is {probability!r}, not finite")
+            ModelFinding(
+                "probability_finite",
+                DiagnosticSeverity.BLOCKER,
+                f"{context}: probability is {probability!r}, not finite",
+            )
         )
         return findings
     if not 0.0 <= probability <= 1.0:
         findings.append(
-            ModelFinding("probability_in_unit_interval", DiagnosticSeverity.BLOCKER,
-                         f"{context}: probability {probability} outside [0, 1]")
+            ModelFinding(
+                "probability_in_unit_interval",
+                DiagnosticSeverity.BLOCKER,
+                f"{context}: probability {probability} outside [0, 1]",
+            )
         )
         return findings
     if probability in (0.0, 1.0):
         findings.append(
-            ModelFinding("probability_degenerate", DiagnosticSeverity.HIGH,
-                         f"{context}: probability is exactly {probability} -- "
-                         f"the model is asserting certainty about a football game")
+            ModelFinding(
+                "probability_degenerate",
+                DiagnosticSeverity.HIGH,
+                f"{context}: probability is exactly {probability} -- "
+                f"the model is asserting certainty about a football game",
+            )
         )
     return findings
 
 
-def check_ladder_monotonic(
-    snapshots: list[ContractSnapshot], *, family: MarketFamily
-) -> list[ModelFinding]:
+def check_ladder_monotonic(snapshots: list[ContractSnapshot], *, family: MarketFamily) -> list[ModelFinding]:
     """A harder threshold must not be MORE likely than an easier one.
 
     For spreads on one team, a higher threshold is harder to cover, so
@@ -231,8 +238,7 @@ def check_unsupported_population_unpriced(snapshots: list[ContractSnapshot]) -> 
                 ModelFinding(
                     "unsupported_population_priced",
                     DiagnosticSeverity.BLOCKER,
-                    f"pricing_status={snap.pricing_status!r} but model_probability="
-                    f"{snap.model_probability} is set",
+                    f"pricing_status={snap.pricing_status!r} but model_probability={snap.model_probability} is set",
                     game_id=snap.semantics.game_id,
                     market_ticker=snap.semantics.market_ticker,
                 )
@@ -281,8 +287,7 @@ def check_projection_reuse(snapshots: list[ContractSnapshot]) -> list[ModelFindi
                 ModelFinding(
                     "projection_not_reused",
                     DiagnosticSeverity.BLOCKER,
-                    f"{game_id} priced under {len(versions)} model versions in one snapshot set: "
-                    f"{sorted(versions)}",
+                    f"{game_id} priced under {len(versions)} model versions in one snapshot set: {sorted(versions)}",
                     game_id=game_id,
                 )
             )
@@ -373,11 +378,7 @@ def run_model_health(snapshots: list[ContractSnapshot]) -> ModelHealthReport:
         games_checked=len({s.semantics.game_id for s in snapshots}),
     )
     for snap in snapshots:
-        report.findings.extend(
-            check_probability_valid(
-                snap.model_probability, context=snap.semantics.market_ticker
-            )
-        )
+        report.findings.extend(check_probability_valid(snap.model_probability, context=snap.semantics.market_ticker))
     report.findings.extend(check_ladder_monotonic(snapshots, family=MarketFamily.SPREAD))
     report.findings.extend(check_ladder_monotonic(snapshots, family=MarketFamily.TOTAL))
     report.findings.extend(check_winner_complementarity(snapshots))

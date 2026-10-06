@@ -378,9 +378,7 @@ def test_fcs_vs_fcs_mapping_is_unsupported_population_not_priced():
     fcs_vs_fcs_mapping = KalshiGameMappingResult(
         reason=KalshiCfbCoverageReason.FCS_VS_FCS, game_id=None, detail="both sides deterministically FCS"
     )
-    obs = _price(
-        _spread_market("SPREAD-3.5", "Cornell", 3.5), MarketFamily.SPREAD, fcs_vs_fcs_mapping, cached=None
-    )
+    obs = _price(_spread_market("SPREAD-3.5", "Cornell", 3.5), MarketFamily.SPREAD, fcs_vs_fcs_mapping, cached=None)
     assert obs.coverage_reason == KalshiCfbCoverageReason.FCS_VS_FCS.value
     assert obs.pricing_status == "unsupported_population"
     assert obs.model_probability is None
@@ -391,9 +389,7 @@ def test_failed_game_mapping_propagates_through_to_the_observation(cached_projec
     failed_mapping = KalshiGameMappingResult(
         reason=KalshiCfbCoverageReason.AMBIGUOUS_GAME_MAPPING, game_id=None, detail="ambiguous"
     )
-    obs = _price(
-        _spread_market("SPREAD-3.5", "Ohio State", 3.5), MarketFamily.SPREAD, failed_mapping, cached=None
-    )
+    obs = _price(_spread_market("SPREAD-3.5", "Ohio State", 3.5), MarketFamily.SPREAD, failed_mapping, cached=None)
     assert obs.coverage_reason == KalshiCfbCoverageReason.AMBIGUOUS_GAME_MAPPING.value
     assert obs.game_id is None
 

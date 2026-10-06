@@ -115,9 +115,7 @@ def hypothesis_hash() -> str:
         "registered_at": REGISTERED_AT,
         "settled_at_registration": SETTLED_2026_GAMES_AT_REGISTRATION,
     }
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def hypothesis_manifest() -> dict:
@@ -230,10 +228,7 @@ def compare(
     and no numbers at all -- reporting a delta of 0.0 would invite a
     reader to treat absence of measurement as a measured null."""
     if require_prospective_capture:
-        pairs = [
-            p for p in pairs
-            if p.provenance is EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE
-        ]
+        pairs = [p for p in pairs if p.provenance is EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE]
     if not pairs:
         return ShadowComparison(
             state=EvidenceState.INSUFFICIENT_NATURAL_EVIDENCE,
@@ -296,16 +291,10 @@ def _probability_metrics(pairs: list[SettledShadowPair]) -> dict:
         "n_probability_games": len(eligible),
         "probability_state": EvidenceState.MEASURED,
         "probability_exclusions": exclusions,
-        "control_log_loss": statistics.fmean(
-            _log_loss(p.control_probability, p.home_won) for p in eligible
-        ),
-        "shadow_log_loss": statistics.fmean(
-            _log_loss(p.shadow_probability, p.home_won) for p in eligible
-        ),
+        "control_log_loss": statistics.fmean(_log_loss(p.control_probability, p.home_won) for p in eligible),
+        "shadow_log_loss": statistics.fmean(_log_loss(p.shadow_probability, p.home_won) for p in eligible),
         "control_brier": statistics.fmean(
             (p.control_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in eligible
         ),
-        "shadow_brier": statistics.fmean(
-            (p.shadow_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in eligible
-        ),
+        "shadow_brier": statistics.fmean((p.shadow_probability - (1.0 if p.home_won else 0.0)) ** 2 for p in eligible),
     }

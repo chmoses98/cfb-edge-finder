@@ -146,40 +146,77 @@ def _sort_key(expr: dict[str, Any]) -> tuple[float, float, float, str]:
     return (-expr["script_survival"]["weighted_score"], _entry(expr), _requirement(expr), expr["expression_id"])
 
 
+def _market_median_total(expressions: list[dict[str, Any]]) -> float | None:
+    """The full-game total line the market prices nearest a coin flip (YES-over asks)."""
+    best = None
+    for e in expressions:
+        if e["kind"] != "total" or e["period"] != "full_game" or e["side"] != "YES" or e.get("line") is None:
+            continue
+        entry = (e.get("price") or {}).get("entry")
+        if entry is None:
+            continue
+        gap = abs(entry - 0.5)
+        if best is None or gap < best[0]:
+            best = (gap, float(e["line"]))
+    return None if best is None or best[0] > 0.15 else best[1]
+
+
 def market_disagreement(
     content: dict[str, Any], expressions: list[dict[str, Any]], orientation_swapped: bool
 ) -> dict[str, Any] | None:
     """Does the market baseline materially disagree with the football PRIMARY?
 
-    Read AFTER the freeze, from full-game moneyline mids. The flag is
-    published beside the artifact; nothing in the artifact moves."""
+    Two checks, read AFTER the freeze: the PRIMARY backs a side whose
+    moneyline asks <= 40c, or the PRIMARY states a total band and the line the
+    market prices nearest 50c sits outside it. Published beside the artifact;
+    nothing in the artifact moves."""
     primary = next(
         (s for s in (content.get("game_scripts") or {}).get("scripts") or [] if s["role"] == "PRIMARY"), None
     )
     if primary is None:
         return None
+    flags: list[dict[str, Any]] = []
     lean = primary["outcome_shape"]["winner_lean"]
-    if lean not in ("HOME", "AWAY"):
+    if lean in ("HOME", "AWAY"):
+        side = lean.lower()
+        asks = [
+            (e.get("price") or {}).get("entry")
+            for e in expressions
+            if e["kind"] == "moneyline" and e["period"] == "full_game" and e["side"] == "YES" and e["team"] == side
+        ]
+        asks = [a for a in asks if a is not None]
+        if asks and min(asks) <= DISAGREE_MONEYLINE_MID:
+            name = content["teams"][side]["name"]
+            flags.append(
+                {
+                    "kind": "WINNER",
+                    "thesis": f"side:{side}",
+                    "market_moneyline_ask": min(asks),
+                    "rule": (
+                        f"PRIMARY backs {name} while {name}'s moneyline asks {min(asks):.2f} "
+                        f"(<= {DISAGREE_MONEYLINE_MID:.2f})"
+                    ),
+                }
+            )
+    band = (primary["outcome_shape"].get("bands") or {}).get("total_points")
+    median = _market_median_total(expressions)
+    if band and median is not None and not (band[0] - 0.5 <= median <= band[1] + 0.5):
+        flags.append(
+            {
+                "kind": "TOTAL",
+                "thesis": "total:over" if median < band[0] else "total:under",
+                "market_median_total": median,
+                "script_total_band": band,
+                "rule": f"PRIMARY's total band {band[0]}-{band[1]} excludes the market's coin-flip total line {median}",
+            }
+        )
+    if not flags:
         return None
-    side = lean.lower()
-    mids = []
-    for e in expressions:
-        if e["kind"] == "moneyline" and e["period"] == "full_game" and e["side"] == "YES" and e["team"] == side:
-            price = e.get("price") or {}
-            if price.get("entry") is not None:
-                mids.append(price["entry"])
-    if not mids:
-        return None
-    market = min(mids)
-    if market > DISAGREE_MONEYLINE_MID:
-        return None
-    name = content["teams"][side]["name"]
     return {
         "flag": MARKET_DISAGREEMENT,
         "football_primary": primary["archetype"],
-        "football_winner_lean": lean,
-        "market_moneyline_ask": market,
-        "rule": f"PRIMARY backs {name} while {name}'s moneyline asks {market:.2f} (<= {DISAGREE_MONEYLINE_MID:.2f})",
+        "flags": flags,
+        "rule": "; ".join(f["rule"] for f in flags),
         "note": "Reported, never obeyed: the football artifact is not rewritten because the market disagrees.",
     }
 
@@ -252,9 +289,9 @@ def annotate(content: dict[str, Any], market_map: dict[str, Any]) -> dict[str, A
 
     disagreement = market_disagreement(content, expressions, market_map.get("orientation_swapped", False))
     if disagreement is not None:
-        lean = disagreement["football_winner_lean"].lower()
+        flagged = {f["thesis"] for f in disagreement["flags"]}
         for expr in expressions:
-            if expr["thesis"] == f"side:{lean}":
+            if expr["thesis"] in flagged and expr["unmappable_reason"] is None:
                 expr["labels"].append(MARKET_DISAGREEMENT)
 
     featured = [e for e in expressions if {BEST_EXPRESSION, MULTI_SCRIPT} & set(e["labels"])]

@@ -131,9 +131,7 @@ def test_the_same_order_re_reconstructed_with_different_wording_still_dedupes(tm
     recorded exposure.
     """
     store.append_wagers(tmp_path, 2026, [make()])
-    again = store.append_wagers(
-        tmp_path, 2026, [make(wager_id="cfb-2026-9999", notes="re-derived")]
-    )
+    again = store.append_wagers(tmp_path, 2026, [make(wager_id="cfb-2026-9999", notes="re-derived")])
     assert again.written == 0
 
 
@@ -148,9 +146,7 @@ def test_writes_append_and_never_rewrite_an_existing_line(tmp_path):
     path = store.ledger_path(tmp_path, 2026)
     before = path.read_text(encoding="utf-8")
 
-    store.append_wagers(
-        tmp_path, 2026, [make(wager_id="cfb-2026-0002", source_bet_key="kalshi:order:7a11")]
-    )
+    store.append_wagers(tmp_path, 2026, [make(wager_id="cfb-2026-0002", source_bet_key="kalshi:order:7a11")])
     after = path.read_text(encoding="utf-8")
 
     assert after.startswith(before), "an existing ledger line was rewritten"

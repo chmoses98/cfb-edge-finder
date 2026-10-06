@@ -223,10 +223,7 @@ class DataQuality:
 
         ceiling = str(payload.get("confidence_ceiling") or ConfidenceCeiling.INSUFFICIENT.value)
         if ceiling not in _CEILING_ORDER:
-            raise ValueError(
-                f"data_quality.confidence_ceiling {ceiling!r} is not one of "
-                f"{sorted(_CEILING_ORDER)}"
-            )
+            raise ValueError(f"data_quality.confidence_ceiling {ceiling!r} is not one of {sorted(_CEILING_ORDER)}")
 
         raw_coverage = payload.get("coverage") or {}
         if not isinstance(raw_coverage, dict):
@@ -236,8 +233,7 @@ class DataQuality:
             word = str(value or FieldQuality.MISSING.value)
             if word not in set(FieldQuality):
                 raise ValueError(
-                    f"data_quality.coverage[{domain!r}] is {word!r}, not one of "
-                    f"{sorted(q.value for q in FieldQuality)}"
+                    f"data_quality.coverage[{domain!r}] is {word!r}, not one of {sorted(q.value for q in FieldQuality)}"
                 )
             coverage[str(domain)] = word
 
@@ -258,9 +254,7 @@ class DataQuality:
 
         missing = tuple(str(d) for d in (payload.get("missing_domains") or []))
         if not missing:
-            missing = tuple(
-                sorted(d for d, q in coverage.items() if q == FieldQuality.MISSING.value)
-            )
+            missing = tuple(sorted(d for d, q in coverage.items() if q == FieldQuality.MISSING.value))
 
         return cls(
             confidence_ceiling=ceiling,

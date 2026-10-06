@@ -100,9 +100,7 @@ def _empty_date_is_evidenced(slate: dict[str, Any], catalog_index: dict[str, Any
         gaps.append("catalog lists no games at all")
     elif slate_date:
         tz_name = str(slate.get("timezone") or "America/New_York")
-        later = [
-            g for g in games if (_local_date(g.get("kickoff"), tz_name) or "") > str(slate_date)
-        ]
+        later = [g for g in games if (_local_date(g.get("kickoff"), tz_name) or "") > str(slate_date)]
         if not later:
             gaps.append(f"catalog lists no game after {slate_date}, so it does not prove the date is covered")
     return gaps

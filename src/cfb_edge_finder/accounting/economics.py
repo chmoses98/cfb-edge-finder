@@ -186,9 +186,7 @@ def build_amendment(
             f"the correction carries refusals {list(incoming.get('refusals') or [])}; a refused "
             "figure cannot amend an established one"
         )
-    if existing.get("gross_return") is not None and not _same_money(
-        existing.get("gross_return"), incoming_gross
-    ):
+    if existing.get("gross_return") is not None and not _same_money(existing.get("gross_return"), incoming_gross):
         raise AmendmentRefused(
             "gross_return differs between the filed settlement and the correction; the gross "
             "is an exchange fact (contracts x settlement value) and an economics contract "
@@ -231,8 +229,7 @@ def same_correction(left: dict[str, Any], right: dict[str, Any]) -> bool:
     amendment_id, two derivations disagree about the money and NEITHER may be
     written over the other."""
     for name in CORRECTION_FIELDS:
-        if name in ("gross_return", "net_profit_loss", "original_gross_return",
-                    "original_net_profit_loss"):
+        if name in ("gross_return", "net_profit_loss", "original_gross_return", "original_net_profit_loss"):
             if not _same_money(left.get(name), right.get(name)):
                 return False
         elif left.get(name) != right.get(name):
@@ -245,8 +242,16 @@ def validate_amendment(row: dict[str, Any]) -> list[str]:
     problems: list[str] = []
     if row.get("schema_version") != AMENDMENT_SCHEMA_VERSION:
         problems.append(f"schema_version must be {AMENDMENT_SCHEMA_VERSION!r}")
-    for name in ("amendment_id", "source_bet_key", "amends_settlement_id", "market_ticker",
-                 "side", "supersedes_economics_version", "economics_version", "provenance"):
+    for name in (
+        "amendment_id",
+        "source_bet_key",
+        "amends_settlement_id",
+        "market_ticker",
+        "side",
+        "supersedes_economics_version",
+        "economics_version",
+        "provenance",
+    ):
         value = row.get(name)
         if not isinstance(value, str) or not value.strip():
             problems.append(f"{name} is required and must be a non-empty string")
@@ -291,9 +296,7 @@ def index_amendments(amendments: list[dict[str, Any]]) -> dict[str, dict[str, An
     return out
 
 
-def apply_amendments(
-    settlements: list[dict[str, Any]], amendments: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def apply_amendments(settlements: list[dict[str, Any]], amendments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The CANONICAL view: each settlement with its most advanced correction applied.
 
     Returns NEW dicts and mutates nothing. A corrected row carries the

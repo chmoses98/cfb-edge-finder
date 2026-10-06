@@ -209,8 +209,12 @@ class TestPrimaryRouting:
         espn = _FakeESPN({})
         cfbd = _FakeCFBD(raw_games=[_raw_cfbd_game(homePoints=28, awayPoints=17, status="completed")])
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=cfbd, repo_dir=repo_with_preseason_cache,
-            needed_game_ids={GAME_ID}, espn_client=espn,
+            season=SEASON,
+            now=NOW,
+            cfbd_client=cfbd,
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={GAME_ID},
+            espn_client=espn,
         )
         assert outcome.provider == CFBD_PRIMARY
         assert outcome.fallback_reason is None
@@ -225,8 +229,12 @@ class TestPrimaryRouting:
         espn = _espn_for_slate([_espn_event()])
         cfbd = _FakeCFBD(raw_games=[_raw_cfbd_game(status="in_progress")])
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=cfbd, repo_dir=repo_with_preseason_cache,
-            needed_game_ids={GAME_ID}, espn_client=espn,
+            season=SEASON,
+            now=NOW,
+            cfbd_client=cfbd,
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={GAME_ID},
+            espn_client=espn,
         )
         assert outcome.provider == CFBD_PRIMARY
         assert espn.fetched_dates == []
@@ -235,8 +243,12 @@ class TestPrimaryRouting:
     @pytest.mark.parametrize("exc", [_http_error(429), _http_error(502), requests.ConnectionError("boom")])
     def test_recoverable_cfbd_failures_engage_fallback(self, repo_with_preseason_cache, exc):
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=exc), repo_dir=repo_with_preseason_cache,
-            needed_game_ids={GAME_ID}, espn_client=_espn_for_slate([_espn_event()]),
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=exc),
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={GAME_ID},
+            espn_client=_espn_for_slate([_espn_event()]),
         )
         assert outcome.provider == ESPN_FALLBACK
         assert "cfbd unavailable (recoverable)" in (outcome.fallback_reason or "")
@@ -246,8 +258,11 @@ class TestPrimaryRouting:
     def test_non_recoverable_cfbd_errors_raise_instead_of_falling_back(self, repo_with_preseason_cache, status):
         with pytest.raises(requests.HTTPError):
             resolve_game_results(
-                season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(status)),
-                repo_dir=repo_with_preseason_cache, needed_game_ids={GAME_ID},
+                season=SEASON,
+                now=NOW,
+                cfbd_client=_FakeCFBD(raises=_http_error(status)),
+                repo_dir=repo_with_preseason_cache,
+                needed_game_ids={GAME_ID},
                 espn_client=_espn_for_slate([_espn_event()]),
             )
 
@@ -259,8 +274,12 @@ class TestPrimaryRouting:
         espn = _FakeESPN({}, raises=requests.ConnectionError("espn down too"))
         with pytest.raises(ResultProviderUnavailable, match="all sources unavailable"):
             resolve_game_results(
-                season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)),
-                repo_dir=repo_with_preseason_cache, needed_game_ids={GAME_ID}, espn_client=espn,
+                season=SEASON,
+                now=NOW,
+                cfbd_client=_FakeCFBD(raises=_http_error(429)),
+                repo_dir=repo_with_preseason_cache,
+                needed_game_ids={GAME_ID},
+                espn_client=espn,
             )
 
 
@@ -270,8 +289,11 @@ class TestPrimaryRouting:
 class TestIdentityMatching:
     def test_exact_match_settles_with_full_provenance(self, repo_with_preseason_cache):
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)),
-            repo_dir=repo_with_preseason_cache, needed_game_ids={GAME_ID},
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={GAME_ID},
             espn_client=_espn_for_slate([_espn_event()]),
         )
         result = outcome.results_by_game_id[GAME_ID]
@@ -337,14 +359,23 @@ class TestIdentityMatching:
         )
         unlv_game_id = "cfb-2026-wk01-memphis-at-unlv"
         event = _espn_event(
-            event_id="401862693", date="2026-08-30T02:00Z",
-            home=("UNLV", "UNLV Rebels"), away=("Memphis", "Memphis Tigers"),
-            home_score="21", away_score="27", home_winner=False, away_winner=True,
+            event_id="401862693",
+            date="2026-08-30T02:00Z",
+            home=("UNLV", "UNLV Rebels"),
+            away=("Memphis", "Memphis Tigers"),
+            home_score="21",
+            away_score="27",
+            home_winner=False,
+            away_winner=True,
         )
         espn = _FakeESPN({"20260830": [], "20260829": [event]})
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)),
-            repo_dir=repo_with_preseason_cache, needed_game_ids={unlv_game_id}, espn_client=espn,
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={unlv_game_id},
+            espn_client=espn,
         )
         assert set(espn.fetched_dates) == {"20260830", "20260829"}
         result = outcome.results_by_game_id[unlv_game_id]
@@ -452,15 +483,24 @@ class TestScores:
 
     def test_overtime_detection_from_linescore_periods(self):
         five, _ = espn_game_result(
-            parse_espn_event(_espn_event(linescore_periods=5)), game_id=GAME_ID, season=SEASON, now=NOW,
+            parse_espn_event(_espn_event(linescore_periods=5)),
+            game_id=GAME_ID,
+            season=SEASON,
+            now=NOW,
             fallback_reason="r",
         )
         four, _ = espn_game_result(
-            parse_espn_event(_espn_event(linescore_periods=4)), game_id=GAME_ID, season=SEASON, now=NOW,
+            parse_espn_event(_espn_event(linescore_periods=4)),
+            game_id=GAME_ID,
+            season=SEASON,
+            now=NOW,
             fallback_reason="r",
         )
         absent, _ = espn_game_result(
-            parse_espn_event(_espn_event(linescore_periods=0)), game_id=GAME_ID, season=SEASON, now=NOW,
+            parse_espn_event(_espn_event(linescore_periods=0)),
+            game_id=GAME_ID,
+            season=SEASON,
+            now=NOW,
             fallback_reason="r",
         )
         assert (five.went_to_overtime, four.went_to_overtime, absent.went_to_overtime) == (True, False, None)
@@ -474,8 +514,14 @@ class TestIdentitySources:
         save_football_state(
             tmp_path,
             FootballState(
-                season=SEASON, history_seasons=(), schedule_fetched_at=NOW, teams_fetched_at=NOW,
-                history_fetched_at=NOW, schedule_games=[_raw_cfbd_game()], all_division_teams=[], history={},
+                season=SEASON,
+                history_seasons=(),
+                schedule_fetched_at=NOW,
+                teams_fetched_at=NOW,
+                history_fetched_at=NOW,
+                schedule_games=[_raw_cfbd_game()],
+                all_division_teams=[],
+                history={},
             ),
         )
         identity, source = load_identity_map(tmp_path, SEASON, NOW)
@@ -491,8 +537,12 @@ class TestIdentitySources:
 
     def test_no_identity_source_fails_every_game_closed(self, tmp_path):
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)), repo_dir=tmp_path,
-            needed_game_ids={GAME_ID}, espn_client=_espn_for_slate([_espn_event()]),
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=tmp_path,
+            needed_game_ids={GAME_ID},
+            espn_client=_espn_for_slate([_espn_event()]),
         )
         assert outcome.results_by_game_id == {}
         assert "identity unavailable" in outcome.unresolved[GAME_ID]
@@ -500,13 +550,15 @@ class TestIdentitySources:
     def test_unknown_kickoff_fails_closed_before_any_espn_query(self, tmp_path):
         cache_dir = tmp_path / "data" / "research_cache" / "preseason"
         cache_dir.mkdir(parents=True)
-        (cache_dir / f"{SEASON}.json").write_text(
-            json.dumps({"games": [_raw_cfbd_game(startTimeTBD=True)]})
-        )
+        (cache_dir / f"{SEASON}.json").write_text(json.dumps({"games": [_raw_cfbd_game(startTimeTBD=True)]}))
         espn = _espn_for_slate([_espn_event()])
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)), repo_dir=tmp_path,
-            needed_game_ids={GAME_ID}, espn_client=espn,
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=tmp_path,
+            needed_game_ids={GAME_ID},
+            espn_client=espn,
         )
         assert "kickoff unknown" in outcome.unresolved[GAME_ID]
         assert espn.fetched_dates == []
@@ -532,20 +584,30 @@ class TestEndToEndSettlement:
         rows = [
             make_corpus_row(
                 observation=make_observation(
-                    game_id=GAME_ID, kalshi_market_ticker="KXNCAAFGAME-X-EMU",
-                    family=MarketFamily.MONEYLINE, team=Side.HOME,
+                    game_id=GAME_ID,
+                    kalshi_market_ticker="KXNCAAFGAME-X-EMU",
+                    family=MarketFamily.MONEYLINE,
+                    team=Side.HOME,
                 )
             ),
             make_corpus_row(
                 observation=make_observation(
-                    game_id=GAME_ID, kalshi_market_ticker="KXNCAAFSPREAD-X-SAC5",
-                    family=MarketFamily.SPREAD, team=Side.AWAY, threshold=5.5, side=None,
+                    game_id=GAME_ID,
+                    kalshi_market_ticker="KXNCAAFSPREAD-X-SAC5",
+                    family=MarketFamily.SPREAD,
+                    team=Side.AWAY,
+                    threshold=5.5,
+                    side=None,
                 )
             ),
             make_corpus_row(
                 observation=make_observation(
-                    game_id=GAME_ID, kalshi_market_ticker="KXNCAAFTOTAL-X-T44",
-                    family=MarketFamily.TOTAL, team=None, side=Side.OVER, threshold=44.5,
+                    game_id=GAME_ID,
+                    kalshi_market_ticker="KXNCAAFTOTAL-X-T44",
+                    family=MarketFamily.TOTAL,
+                    team=None,
+                    side=Side.OVER,
+                    threshold=44.5,
                 )
             ),
         ]
@@ -560,8 +622,12 @@ class TestEndToEndSettlement:
         assert needed == {GAME_ID}
 
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)), repo_dir=repo_dir,
-            needed_game_ids=needed, espn_client=_espn_for_slate([_espn_event()]),
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_dir,
+            needed_game_ids=needed,
+            espn_client=_espn_for_slate([_espn_event()]),
         )
         first = research_settle._apply_settle(
             repo_dir, season=SEASON, results_by_game_id=outcome.results_by_game_id, now=NOW
@@ -594,8 +660,12 @@ class TestEndToEndSettlement:
         self._seed(repo_dir)
         needed = {GAME_ID}
         espn_outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)), repo_dir=repo_dir,
-            needed_game_ids=needed, espn_client=_espn_for_slate([_espn_event()]),
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_dir,
+            needed_game_ids=needed,
+            espn_client=_espn_for_slate([_espn_event()]),
         )
         research_settle._apply_settle(
             repo_dir, season=SEASON, results_by_game_id=espn_outcome.results_by_game_id, now=NOW
@@ -607,8 +677,12 @@ class TestEndToEndSettlement:
         # the ledger.
         cfbd = _FakeCFBD(raw_games=[_raw_cfbd_game(homePoints=28, awayPoints=17, status="completed")])
         cfbd_outcome = resolve_game_results(
-            season=SEASON, now=NOW + timedelta(hours=6), cfbd_client=cfbd, repo_dir=repo_dir,
-            needed_game_ids=needed, espn_client=_FakeESPN({}),
+            season=SEASON,
+            now=NOW + timedelta(hours=6),
+            cfbd_client=cfbd,
+            repo_dir=repo_dir,
+            needed_game_ids=needed,
+            espn_client=_FakeESPN({}),
         )
         assert cfbd_outcome.provider == CFBD_PRIMARY
         result = research_settle._apply_settle(
@@ -621,7 +695,10 @@ class TestEndToEndSettlement:
         self._seed(repo_dir)
         # ESPN slate does not contain the game at all.
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)), repo_dir=repo_dir,
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_dir,
             needed_game_ids={GAME_ID},
             espn_client=_espn_for_slate([_espn_event(home=("Stanford", "Stanford Cardinal"), away=("Hawai'i", "H"))]),
         )
@@ -634,8 +711,11 @@ class TestEndToEndSettlement:
 
     def test_summary_dict_reports_the_live_validation_counts(self, repo_with_preseason_cache):
         outcome = resolve_game_results(
-            season=SEASON, now=NOW, cfbd_client=_FakeCFBD(raises=_http_error(429)),
-            repo_dir=repo_with_preseason_cache, needed_game_ids={GAME_ID},
+            season=SEASON,
+            now=NOW,
+            cfbd_client=_FakeCFBD(raises=_http_error(429)),
+            repo_dir=repo_with_preseason_cache,
+            needed_game_ids={GAME_ID},
             espn_client=_espn_for_slate([_espn_event()]),
         )
         summary = outcome.summary_dict()

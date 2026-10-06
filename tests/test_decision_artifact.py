@@ -167,9 +167,7 @@ def test_an_approved_complete_artifact_does_resolve(tmp_path):
 
 def test_live_approval_is_a_strictly_stronger_state(tmp_path):
     path = tmp_path / "a.json"
-    path.write_text(
-        json.dumps(artifact_dict(approval_state=ApprovalState.APPROVED_FOR_LIVE.value)), encoding="utf-8"
-    )
+    path.write_text(json.dumps(artifact_dict(approval_state=ApprovalState.APPROVED_FOR_LIVE.value)), encoding="utf-8")
     artifact = load_artifact(path).artifact
     assert artifact.is_live_eligible and artifact.is_shadow_eligible
 
@@ -181,9 +179,7 @@ def test_retrospective_evidence_is_rejected_even_when_approved(tmp_path):
     """An approved artifact built on backfilled data is still refused.
     Approval cannot launder the provenance."""
     path = tmp_path / "a.json"
-    path.write_text(
-        json.dumps(artifact_dict(evidence=evidence_dict(prospective_only=False))), encoding="utf-8"
-    )
+    path.write_text(json.dumps(artifact_dict(evidence=evidence_dict(prospective_only=False))), encoding="utf-8")
     resolution = load_artifact(path)
     assert resolution.status == THRESHOLD_ARTIFACT_MALFORMED
     assert ArtifactProblem.NOT_PROSPECTIVE_ONLY in resolution.problems
@@ -292,9 +288,7 @@ def test_each_axis_mismatch_is_reported(override, expected):
 def test_none_on_an_axis_is_a_mismatch_never_a_wildcard():
     """A candidate that cannot say which model priced it must not inherit
     evidence gathered under a different one."""
-    problems = rule().incompatibilities(
-        **compatible_kwargs(model_version=None, family=None, timing_label=None)
-    )
+    problems = rule().incompatibilities(**compatible_kwargs(model_version=None, family=None, timing_label=None))
     assert {
         RuleIncompatibility.MODEL_VERSION_MISMATCH,
         RuleIncompatibility.FAMILY_MISMATCH,
@@ -344,12 +338,10 @@ def test_side_scope_is_optional_but_enforced_when_present():
 
 
 def test_sample_minimum_boundary_is_exact():
-    assert rule(minimum_settled_games=200).incompatibilities(
-        **compatible_kwargs(available_settled_games=200)
-    ) == []
-    assert RuleIncompatibility.SAMPLE_BELOW_RULE_MINIMUM in rule(
-        minimum_settled_games=200
-    ).incompatibilities(**compatible_kwargs(available_settled_games=199))
+    assert rule(minimum_settled_games=200).incompatibilities(**compatible_kwargs(available_settled_games=200)) == []
+    assert RuleIncompatibility.SAMPLE_BELOW_RULE_MINIMUM in rule(minimum_settled_games=200).incompatibilities(
+        **compatible_kwargs(available_settled_games=199)
+    )
 
 
 def test_parsed_artifact_round_trips_its_declared_evidence(tmp_path):

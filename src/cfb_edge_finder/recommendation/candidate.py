@@ -85,16 +85,12 @@ def build_candidates(
     would make the universe look tidier than it is."""
     semantics = snapshot.semantics
     dimension = semantics.dimension
-    dimension_group_id = (
-        f"{semantics.game_id}|{dimension.value}" if dimension is not MarketDimension.UNKNOWN else None
-    )
+    dimension_group_id = f"{semantics.game_id}|{dimension.value}" if dimension is not MarketDimension.UNKNOWN else None
 
     candidates: list[ResearchCandidate] = []
     for side in (Side.YES, Side.NO):
         economics = economics_by_side.get(side)
-        model_probability = (
-            snapshot.model_probability if side is Side.YES else snapshot.model_probability_no_side
-        )
+        model_probability = snapshot.model_probability if side is Side.YES else snapshot.model_probability_no_side
         candidates.append(
             ResearchCandidate(
                 game_id=semantics.game_id,
@@ -111,9 +107,7 @@ def build_candidates(
                     economics.fee_adjusted_break_even_probability if economics else None
                 ),
                 model_probability=model_probability,
-                research_probability_surplus=(
-                    economics.research_probability_surplus if economics else None
-                ),
+                research_probability_surplus=(economics.research_probability_surplus if economics else None),
                 projection_snapshot_id=projection_snapshot_id,
                 equivalence_group_id=truth_condition_key(semantics, side),
                 dimension_group_id=dimension_group_id,

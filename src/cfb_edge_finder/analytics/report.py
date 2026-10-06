@@ -80,9 +80,7 @@ def build_family_report(family: str, rows: list[AnalysisRow], *, side: str = "ye
     if usable:
         is_yes = side == "yes"
         model_probs = [r.model_probability if is_yes else (1.0 - r.model_probability) for r in usable]
-        market_probs = [
-            (r.entry_yes_price if is_yes else r.entry_no_price) for r in usable
-        ]
+        market_probs = [(r.entry_yes_price if is_yes else r.entry_no_price) for r in usable]
         outcomes = [r.event_true if is_yes else (not r.event_true) for r in usable]
         comparison = compare_model_to_market(
             model_probabilities=model_probs,
@@ -97,37 +95,37 @@ def build_family_report(family: str, rows: list[AnalysisRow], *, side: str = "ye
         n=len(usable),
         # Family-level totals are CORE (preregistered); every sub-slice is
         # EXPLORATORY because that is where the multiplicity lives.
-        overall=summarize_slice(
-            family, "family", usable, side=side, analysis_status=CORE, extra_caveats=caveat
-        ),
+        overall=summarize_slice(family, "family", usable, side=side, analysis_status=CORE, extra_caveats=caveat),
         comparison=comparison,
         signed_gap_buckets=slice_by(
             usable,
-            lambda r: signed_gap_bucket(
-                r.gaps.yes_probability_gap if side == "yes" else (r.gaps.no_probability_gap or 0.0)
-            )
-            if (r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) is not None
-            else None,
+            lambda r: (
+                signed_gap_bucket(r.gaps.yes_probability_gap if side == "yes" else (r.gaps.no_probability_gap or 0.0))
+                if (r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) is not None
+                else None
+            ),
             "signed_gap_bucket",
             [b[0] for b in SIGNED_GAP_BUCKETS],
             side=side,
         ),
         absolute_gap_buckets=slice_by(
             usable,
-            lambda r: absolute_gap_bucket(
-                (r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) or 0.0
-            )
-            if (r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) is not None
-            else None,
+            lambda r: (
+                absolute_gap_bucket((r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) or 0.0)
+                if (r.gaps.yes_probability_gap if side == "yes" else r.gaps.no_probability_gap) is not None
+                else None
+            ),
             "absolute_gap_bucket",
             [b[0] for b in ABSOLUTE_GAP_BUCKETS],
             side=side,
         ),
         price_buckets=slice_by(
             usable,
-            lambda r: price_bucket(r.entry_yes_price if side == "yes" else r.entry_no_price)
-            if (r.entry_yes_price if side == "yes" else r.entry_no_price) is not None
-            else None,
+            lambda r: (
+                price_bucket(r.entry_yes_price if side == "yes" else r.entry_no_price)
+                if (r.entry_yes_price if side == "yes" else r.entry_no_price) is not None
+                else None
+            ),
             "price_bucket",
             [b[0] for b in PRICE_BUCKETS],
             side=side,
@@ -211,8 +209,12 @@ def build_report(
         filters=filters or {},
         families=[build_family_report(f, [r for r in rows if r.family == f], side=side) for f in families],
         overall_timing=slice_by(
-            _side_rows(rows, side), lambda r: r.timing_label, "timing", list(TIMING_ORDER),
-            side=side, analysis_status=EXPLORATORY,
+            _side_rows(rows, side),
+            lambda r: r.timing_label,
+            "timing",
+            list(TIMING_ORDER),
+            side=side,
+            analysis_status=EXPLORATORY,
         ),
         warnings=warnings,
     )
@@ -232,10 +234,25 @@ def report_to_dict(report: AnalyticsReport) -> dict[str, Any]:
 
 
 SLICE_CSV_COLUMNS = (
-    "dimension", "label", "analysis_status", "n", "n_games", "confidence_label",
-    "mean_model_probability", "mean_entry_price", "mean_signed_gap", "observed_event_rate",
-    "calibration_error", "clv_n", "mean_clv", "median_clv", "favorable_clv_rate",
-    "gross_unit_pnl", "fee_adjusted_unit_pnl", "fee_adjusted_roi", "pnl_n",
+    "dimension",
+    "label",
+    "analysis_status",
+    "n",
+    "n_games",
+    "confidence_label",
+    "mean_model_probability",
+    "mean_entry_price",
+    "mean_signed_gap",
+    "observed_event_rate",
+    "calibration_error",
+    "clv_n",
+    "mean_clv",
+    "median_clv",
+    "favorable_clv_rate",
+    "gross_unit_pnl",
+    "fee_adjusted_unit_pnl",
+    "fee_adjusted_roi",
+    "pnl_n",
 )
 
 
@@ -312,8 +329,7 @@ def render_markdown(report: AnalyticsReport) -> str:
                     )
                 lines.append("")
                 lines.append(
-                    f"Brier difference (model − market): {_fmt(c.brier_difference)} "
-                    "(negative = model scored better)"
+                    f"Brier difference (model − market): {_fmt(c.brier_difference)} (negative = model scored better)"
                 )
                 lines.append("")
             lines.append(_slice_table("Signed gap buckets", fam.signed_gap_buckets))

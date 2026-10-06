@@ -230,9 +230,7 @@ def test_identical_result_from_every_host(monkeypatch):
         events = _events_from(host, envelope)
         assert events is not None
         facts = parse_espn_event(events[0])
-        result, reason = espn_game_result(
-            facts, game_id="g", season=2026, now=NOW, fallback_reason="probe"
-        )
+        result, reason = espn_game_result(facts, game_id="g", season=2026, now=NOW, fallback_reason="probe")
         assert reason is None
         results.append(result)
 

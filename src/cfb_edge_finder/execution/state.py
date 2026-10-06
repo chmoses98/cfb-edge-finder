@@ -158,9 +158,7 @@ class GameState:
         return self.handicap_status == "complete" and bool(self.handicap_payload)
 
     def note(self, event: str, detail: str) -> None:
-        self.history.append(
-            {"at": datetime.now(UTC).isoformat(), "event": event, "detail": detail}
-        )
+        self.history.append({"at": datetime.now(UTC).isoformat(), "event": event, "detail": detail})
 
 
 class StateStore:
@@ -292,9 +290,7 @@ class StateStore:
         # A fresh handicap is a handicap of the game AS IT IS NOW, so it clears
         # the review flag the material change raised. The retired payload stays
         # in `superseded_handicaps` either way.
-        state.material_context_hash = (packet.get("factual_context") or {}).get(
-            "material_context_hash"
-        )
+        state.material_context_hash = (packet.get("factual_context") or {}).get("material_context_hash")
         state.context_hash = (packet.get("factual_context") or {}).get("context_hash")
         state.note("handicap_recorded", f"packet_hash={state.packet_hash}")
         self.save(state)
@@ -362,27 +358,15 @@ class StateStore:
             "games": rows,
             "counts": {
                 "total": len(rows),
-                "complete": sum(
-                    1 for r in rows if r["state"] == ExecutionState.EVALUATION_COMPLETE.value
-                ),
-                "pending_handicap": sum(
-                    1 for r in rows if r["state"] == ExecutionState.PENDING_HANDICAP.value
-                ),
-                "stale": sum(
-                    1
-                    for r in rows
-                    if r["state"] == ExecutionState.STALE_DUE_TO_INPUT_CHANGE.value
-                ),
+                "complete": sum(1 for r in rows if r["state"] == ExecutionState.EVALUATION_COMPLETE.value),
+                "pending_handicap": sum(1 for r in rows if r["state"] == ExecutionState.PENDING_HANDICAP.value),
+                "stale": sum(1 for r in rows if r["state"] == ExecutionState.STALE_DUE_TO_INPUT_CHANGE.value),
                 "handicap_needs_review": sum(
-                    1
-                    for r in rows
-                    if r["state"] == ExecutionState.HANDICAP_NEEDS_REVIEW.value
+                    1 for r in rows if r["state"] == ExecutionState.HANDICAP_NEEDS_REVIEW.value
                 ),
             },
         }
-        out_path.write_text(
-            json.dumps(index, indent=1, sort_keys=True, default=str) + "\n", encoding="utf-8"
-        )
+        out_path.write_text(json.dumps(index, indent=1, sort_keys=True, default=str) + "\n", encoding="utf-8")
         return index
 
 

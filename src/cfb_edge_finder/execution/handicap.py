@@ -98,16 +98,13 @@ class PeriodDistribution:
     def parse(cls, period: str, payload: Any) -> PeriodDistribution:
         if not isinstance(payload, dict):
             raise HandicapValidationError(f"period {period!r}: expected an object, got {type(payload).__name__}")
-        missing = [
-            key
-            for key in ("home_mean", "away_mean", "home_sd", "away_sd", "correlation")
-            if key not in payload
-        ]
+        missing = [key for key in ("home_mean", "away_mean", "home_sd", "away_sd", "correlation") if key not in payload]
         if missing:
             raise HandicapValidationError(f"period {period!r}: missing {', '.join(missing)}")
         try:
-            values = {key: float(payload[key]) for key in
-                      ("home_mean", "away_mean", "home_sd", "away_sd", "correlation")}
+            values = {
+                key: float(payload[key]) for key in ("home_mean", "away_mean", "home_sd", "away_sd", "correlation")
+            }
         except (TypeError, ValueError) as exc:
             raise HandicapValidationError(f"period {period!r}: non-numeric value ({exc})") from exc
         if values["home_mean"] < 0 or values["away_mean"] < 0:
@@ -221,10 +218,10 @@ class HandicapPayload:
 
         Read by the evaluator, which refuses to call anything robust on the
         strength of a payload that never claimed a region."""
-        return not any(
-            dist.uncertainty.supports_robustness
-            for dist in self.period_distributions.values()
-        ) and not self.explicit_probability_ranges
+        return (
+            not any(dist.uncertainty.supports_robustness for dist in self.period_distributions.values())
+            and not self.explicit_probability_ranges
+        )
 
     @property
     def effective_confidence(self) -> str:
@@ -246,9 +243,7 @@ class HandicapPayload:
             "teams": dict(self.teams),
             "period_distributions": {k: v.as_dict() for k, v in self.period_distributions.items()},
             "explicit_probabilities": dict(self.explicit_probabilities),
-            "explicit_probability_ranges": {
-                k: list(v) for k, v in self.explicit_probability_ranges.items()
-            },
+            "explicit_probability_ranges": {k: list(v) for k, v in self.explicit_probability_ranges.items()},
             "low_confidence_families": list(self.low_confidence_families),
             "declared_unpriceable_families": list(self.declared_unpriceable_families),
             "assumptions": self.assumptions,
@@ -282,23 +277,15 @@ def _parse_explicit_ranges(payload: Any, explicit: dict[str, float]) -> dict[str
         if value is None or value == "":
             continue
         if not isinstance(value, (list, tuple)) or len(value) != 2:
-            raise HandicapValidationError(
-                f"explicit_probability_ranges[{ticker!r}] must be a two-element [low, high]"
-            )
+            raise HandicapValidationError(f"explicit_probability_ranges[{ticker!r}] must be a two-element [low, high]")
         try:
             low, high = float(value[0]), float(value[1])
         except (TypeError, ValueError) as exc:
-            raise HandicapValidationError(
-                f"explicit_probability_ranges[{ticker!r}] is not numeric"
-            ) from exc
+            raise HandicapValidationError(f"explicit_probability_ranges[{ticker!r}] is not numeric") from exc
         if not (0.0 <= low <= 1.0 and 0.0 <= high <= 1.0):
-            raise HandicapValidationError(
-                f"explicit_probability_ranges[{ticker!r}] is outside [0, 1]"
-            )
+            raise HandicapValidationError(f"explicit_probability_ranges[{ticker!r}] is outside [0, 1]")
         if low > high:
-            raise HandicapValidationError(
-                f"explicit_probability_ranges[{ticker!r}] has low above high"
-            )
+            raise HandicapValidationError(f"explicit_probability_ranges[{ticker!r}] has low above high")
         point = explicit.get(str(ticker))
         if point is None:
             # A range with no point estimate is not usable: there is nothing
@@ -323,9 +310,7 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
         raise HandicapValidationError("handicap payload must be a JSON object")
     version = str(payload.get("schema_version") or "")
     if version and version not in ACCEPTED_SCHEMA_VERSIONS:
-        raise HandicapValidationError(
-            f"schema_version {version!r} is not one of {', '.join(ACCEPTED_SCHEMA_VERSIONS)}"
-        )
+        raise HandicapValidationError(f"schema_version {version!r} is not one of {', '.join(ACCEPTED_SCHEMA_VERSIONS)}")
     game_key = payload.get("game_key")
     if not game_key:
         raise HandicapValidationError("handicap payload has no game_key")
@@ -343,9 +328,7 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
         raise HandicapValidationError("period_distributions must be an object keyed by period")
     for period, block in raw_distributions.items():
         if period not in PERIODS:
-            raise HandicapValidationError(
-                f"unknown period {period!r}; expected one of {', '.join(PERIODS)}"
-            )
+            raise HandicapValidationError(f"unknown period {period!r}; expected one of {', '.join(PERIODS)}")
         if _is_blank_block(block):
             # An untouched template slot means "I did not handicap this
             # period", which is a legitimate answer. Every contract that
@@ -367,13 +350,9 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
         try:
             probability = float(value)
         except (TypeError, ValueError) as exc:
-            raise HandicapValidationError(
-                f"explicit probability for {ticker!r} is not numeric"
-            ) from exc
+            raise HandicapValidationError(f"explicit probability for {ticker!r} is not numeric") from exc
         if not 0.0 <= probability <= 1.0:
-            raise HandicapValidationError(
-                f"explicit probability for {ticker!r} is {probability}, outside [0, 1]"
-            )
+            raise HandicapValidationError(f"explicit probability for {ticker!r} is {probability}, outside [0, 1]")
         explicit[str(ticker)] = probability
 
     ranges = _parse_explicit_ranges(payload.get("explicit_probability_ranges"), explicit)
@@ -392,9 +371,7 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
         explicit_probabilities=explicit,
         explicit_probability_ranges=ranges,
         low_confidence_families=tuple(str(f) for f in payload.get("low_confidence_families") or ()),
-        declared_unpriceable_families=tuple(
-            str(f) for f in payload.get("declared_unpriceable_families") or ()
-        ),
+        declared_unpriceable_families=tuple(str(f) for f in payload.get("declared_unpriceable_families") or ()),
         assumptions=str(payload.get("assumptions") or ""),
         confidence=str(payload.get("confidence") or "unstated"),
         data_quality=data_quality,

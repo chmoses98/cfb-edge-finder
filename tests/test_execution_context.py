@@ -62,9 +62,7 @@ def field(domain, values, *, quality=FieldQuality.FRESH.value, observed_at=None)
 
 def full_context(game_key=GAME_KEY, **overrides):
     fields = {domain: field(domain, {"x": 1}) for domain in CONTEXT_DOMAINS}
-    fields["scoring"] = field(
-        "scoring", {"home_games_observed": 5, "away_games_observed": 5}
-    )
+    fields["scoring"] = field("scoring", {"home_games_observed": 5, "away_games_observed": 5})
     fields.update(overrides)
     return GameContext(game_key=game_key, fields=fields, collected_at=NOW.isoformat())
 
@@ -120,9 +118,7 @@ def test_one_side_readable_and_one_not_is_partial_and_names_the_null():
     one = availability_field({"items": []}, None, observed_at=NOW.isoformat())
     assert one.quality == FieldQuality.PARTIAL.value
     assert one.values["home_listed"] == 0
-    assert one.values["away_listed"] is None, (
-        "a team whose list could not be read is null, never zero"
-    )
+    assert one.values["away_listed"] is None, "a team whose list could not be read is null, never zero"
 
 
 def test_an_absent_context_store_produces_a_full_object_of_missing_domains():
@@ -147,9 +143,7 @@ def test_freshness_is_measured_against_the_slate_clock_not_the_collection_clock(
     """A context file that recorded `fresh` when it was written and was read
     two days later would report two-day-old weather as current."""
     stale_weather = full_context(
-        environment=field(
-            "environment", {"temperature_f": 70}, observed_at=(NOW - timedelta(hours=20)).isoformat()
-        )
+        environment=field("environment", {"temperature_f": 70}, observed_at=(NOW - timedelta(hours=20)).isoformat())
     )
     aged = refresh_quality(stale_weather, as_of=NOW)
     assert aged.fields["environment"].quality == FieldQuality.STALE.value
@@ -167,9 +161,7 @@ def test_an_observation_with_no_timestamp_is_missing_not_fresh():
 
 
 def test_a_future_forecast_hour_is_fresh_rather_than_negatively_aged():
-    quality, age = freshness_of(
-        "environment", (NOW + timedelta(hours=3)).isoformat(), as_of=NOW
-    )
+    quality, age = freshness_of("environment", (NOW + timedelta(hours=3)).isoformat(), as_of=NOW)
     assert quality == FieldQuality.FRESH.value
     assert age == 0.0
 
@@ -203,18 +195,14 @@ def test_a_handicapper_may_lower_the_confidence_and_may_not_raise_it():
     claimed_high = DataQuality(confidence_ceiling=ConfidenceCeiling.HIGH.value)
     claimed_low = DataQuality(confidence_ceiling=ConfidenceCeiling.INSUFFICIENT.value)
     assert claimed_high.merged_with_measurement(measured).confidence_ceiling == "low"
-    assert (
-        claimed_low.merged_with_measurement(measured).confidence_ceiling == "insufficient"
-    )
+    assert claimed_low.merged_with_measurement(measured).confidence_ceiling == "insufficient"
 
 
 def test_a_handicap_may_not_remove_a_gate_the_measurement_raised():
     """Otherwise the fail-closed behaviour is one forgotten key away from off."""
     from cfb_edge_finder.execution.quality import DataQualityGate
 
-    measured = DataQuality(
-        gates=(DataQualityGate("team_total", "thin evidence", "min_games_observed=1"),)
-    )
+    measured = DataQuality(gates=(DataQualityGate("team_total", "thin evidence", "min_games_observed=1"),))
     silent = DataQuality()
     merged = silent.merged_with_measurement(measured)
     assert merged.gated_families == {"team_total"}
@@ -224,9 +212,7 @@ def test_a_handicap_may_not_remove_a_gate_the_measurement_raised():
 
 
 def test_thin_scoring_evidence_closes_team_totals_and_names_the_measurement():
-    context = full_context(
-        scoring=field("scoring", {"home_games_observed": 6, "away_games_observed": 1})
-    )
+    context = full_context(scoring=field("scoring", {"home_games_observed": 6, "away_games_observed": 1}))
     gates = gates_for(context)
     assert {g.family for g in gates} >= {"team_total"}
     assert all("min_games_observed=1" in g.measured for g in gates)
@@ -279,11 +265,7 @@ def test_a_gated_family_becomes_a_counted_terminal_bucket_never_a_guess(tmp_path
         }
     )
     evaluation = evaluate_game(game, handicap, min_net_edge=0.02)
-    gated = [
-        r
-        for r in evaluation.rows
-        if r["status"] == EvaluationStatus.UNPRICEABLE_INSUFFICIENT_DATA.value
-    ]
+    gated = [r for r in evaluation.rows if r["status"] == EvaluationStatus.UNPRICEABLE_INSUFFICIENT_DATA.value]
     assert gated, "the fixture has no collected context, so team totals must be gated"
     assert evaluation.unaccounted == 0
     for row in gated:
@@ -304,9 +286,7 @@ def test_the_material_fingerprint_ignores_an_efficiency_refresh():
 
 def test_the_material_fingerprint_moves_when_availability_moves():
     before = full_context()
-    after = full_context(
-        availability=field("availability", {"home_injuries": [{"athlete": "QB1"}]})
-    )
+    after = full_context(availability=field("availability", {"home_injuries": [{"athlete": "QB1"}]}))
     assert material_fingerprint(before) != material_fingerprint(after)
 
 
@@ -325,9 +305,7 @@ def test_an_absent_context_directory_is_an_empty_store_not_an_error(tmp_path):
 def test_an_unreadable_context_file_costs_that_game_its_context_not_the_run(tmp_path):
     store_dir = tmp_path / "context"
     store_dir.mkdir()
-    (store_dir / "GOOD.json").write_text(
-        json.dumps(full_context("GOOD").as_dict()), encoding="utf-8"
-    )
+    (store_dir / "GOOD.json").write_text(json.dumps(full_context("GOOD").as_dict()), encoding="utf-8")
     (store_dir / "BROKEN.json").write_text("{not json", encoding="utf-8")
     store = load_context_store(store_dir)
     assert set(store) == {"GOOD"}
@@ -336,17 +314,11 @@ def test_an_unreadable_context_file_costs_that_game_its_context_not_the_run(tmp_
 def test_a_slate_built_with_context_carries_it_and_the_hashes(tmp_path):
     store_dir = tmp_path / "context"
     store_dir.mkdir()
-    (store_dir / f"{GAME_KEY}.json").write_text(
-        json.dumps(full_context().as_dict()), encoding="utf-8"
-    )
-    build = build_slate(
-        catalog_dir(tmp_path), config(), slate_date=None, context_dir=store_dir
-    )
+    (store_dir / f"{GAME_KEY}.json").write_text(json.dumps(full_context().as_dict()), encoding="utf-8")
+    build = build_slate(catalog_dir(tmp_path), config(), slate_date=None, context_dir=store_dir)
     context = build.packets[0]["factual_context"]
     assert context["context_hash"] and context["material_context_hash"]
-    assert context["data_quality"]["confidence_ceiling"] in {
-        c.value for c in ConfidenceCeiling
-    }
+    assert context["data_quality"]["confidence_ceiling"] in {c.value for c in ConfidenceCeiling}
     assert context["coverage"]["records"] in {q.value for q in FieldQuality}
 
 

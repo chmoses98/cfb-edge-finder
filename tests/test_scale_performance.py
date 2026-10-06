@@ -152,12 +152,8 @@ def test_model_health_is_not_quadratic(scaled):
 def test_manifest_building_is_not_quadratic():
     small = synthetic_rows(150, 20)
     large = synthetic_rows(600, 20)
-    _, t_small = timed_stable(
-        lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in small])
-    )
-    report, t_large = timed_stable(
-        lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in large])
-    )
+    _, t_small = timed_stable(lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in small]))
+    report, t_large = timed_stable(lambda: ManifestCompletenessReport([manifest_from_corpus_row(r) for r in large]))
     assert report.complete_count == 12_000
     if t_small < MIN_MEASURABLE_SECONDS:
         pytest.skip(f"baseline {t_small:.4f}s too small to time reliably")
@@ -186,8 +182,6 @@ def test_direction_conflicts_is_not_used_on_a_corpus_scale_path():
     for script in ("run_cfb.py", "week1_ops_health.py", "build_research_decision_report.py"):
         tree = ast.parse((repo_root / "scripts" / script).read_text())
         called = {
-            node.func.id
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            node.func.id for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
         }
         assert "direction_conflicts" not in called, script

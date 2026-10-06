@@ -200,9 +200,7 @@ def test_a_changed_oversize_blob_is_refused_before_the_push(tmp_path, monkeypatc
         return persistence.AppendResult(written=1, skipped_duplicate=0)
 
     with pytest.raises(store.GitDurableStoreOversizeError) as exc:
-        store.commit_and_push_with_retry(
-            clone, BRANCH, apply_big, "test", max_retries=5, max_blob_bytes=1000
-        )
+        store.commit_and_push_with_retry(clone, BRANCH, apply_big, "test", max_retries=5, max_blob_bytes=1000)
 
     assert pushed == [], "the oversize blob was pushed instead of refused locally"
     assert "observations/2026.jsonl" in str(exc.value)
@@ -225,9 +223,7 @@ def test_an_unchanged_oversize_blob_does_not_block_an_unrelated_write(tmp_path, 
 
     # Now write something small, with the guard set below the existing
     # blob's size. The unchanged big file must be ignored.
-    result = store.commit_and_push_with_retry(
-        clone, BRANCH, _apply, "small write", max_blob_bytes=1000
-    )
+    result = store.commit_and_push_with_retry(clone, BRANCH, _apply, "small write", max_blob_bytes=1000)
     assert result.append_result.written == 1
 
 
@@ -240,11 +236,12 @@ def test_a_normal_sharded_write_passes_the_production_guard(tmp_path):
 
     tracked = subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", f"origin/{BRANCH}"],
-        cwd=clone, capture_output=True, text=True, check=True,
+        cwd=clone,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.split()
-    assert tracked == [
-        str(shards.shard_path(Path("data/research"), shards.OBSERVATIONS_SUBDIR, 2026, "2026-09-12", 1))
-    ]
+    assert tracked == [str(shards.shard_path(Path("data/research"), shards.OBSERVATIONS_SUBDIR, 2026, "2026-09-12", 1))]
 
 
 # --- no Git LFS anywhere --------------------------------------------------
@@ -255,13 +252,13 @@ def test_the_repository_introduces_no_git_lfs():
     quota-bearing pointer store and change how every consumer reads the
     corpus."""
     root = Path(__file__).resolve().parents[1]
-    assert not (root / ".gitattributes").exists() or "filter=lfs" not in (
-        root / ".gitattributes"
-    ).read_text()
+    assert not (root / ".gitattributes").exists() or "filter=lfs" not in (root / ".gitattributes").read_text()
     for pattern in ("git-lfs", "git lfs", "lfs.fetchexclude", "lfs install"):
         hits = subprocess.run(
             ["git", "grep", "-il", pattern, "--", "src", "scripts", ".github", "tests"],
-            cwd=root, capture_output=True, text=True,
+            cwd=root,
+            capture_output=True,
+            text=True,
         ).stdout.split()
         # research/shards.py and this file name LFS only to say it is not used.
         assert not [h for h in hits if h != "tests/test_research_push_guard.py"], (

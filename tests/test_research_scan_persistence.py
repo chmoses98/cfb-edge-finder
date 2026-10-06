@@ -173,9 +173,7 @@ def test_scanner_never_calls_the_full_pydantic_row_reader(tmp_path, monkeypatch)
 
     calls: list[Path] = []
     real = persistence.read_observation_rows
-    monkeypatch.setattr(
-        persistence, "read_observation_rows", lambda path: (calls.append(path), real(path))[1]
-    )
+    monkeypatch.setattr(persistence, "read_observation_rows", lambda path: (calls.append(path), real(path))[1])
     _run_scan(repo_dir, monkeypatch, run_id="second")
     assert calls == [], f"scanner still calls read_observation_rows: {calls}"
 
@@ -313,8 +311,7 @@ def test_index_tolerates_and_counts_malformed_lines(tmp_path):
     path = corpus_helpers.ref(tmp_path / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     good = json.loads(_SAMPLE_ROW)
     good["observation_key"] = "good-key"
-    path.seed_text(
-        json.dumps(good, sort_keys=True) + "\n" + "{not json at all\n" + "\n")
+    path.seed_text(json.dumps(good, sort_keys=True) + "\n" + "{not json at all\n" + "\n")
     index = persistence.load_observation_index(path.sources)
     assert index.keys == {"good-key"}
     assert index.row_count == 1

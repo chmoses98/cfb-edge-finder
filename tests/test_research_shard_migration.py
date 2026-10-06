@@ -76,10 +76,7 @@ def test_every_row_survives_byte_for_byte(tmp_path):
     assert report["byte_identical"] is True
 
     after_lines = [
-        line
-        for _p, line in shards.iter_raw_lines(
-            shards.source_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)
-        )
+        line for _p, line in shards.iter_raw_lines(shards.source_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON))
     ]
     assert sorted(after_lines) == sorted(before_lines), "a line changed bytes during migration"
 
@@ -390,11 +387,15 @@ def test_dry_run_changes_nothing_on_disk(tmp_path, capsys):
 
     exit_code = migrate.main_with_args(
         [
-            "--data-repo-dir", str(repo),
-            "--season", str(SEASON),
-            "--families", shards.OBSERVATIONS_SUBDIR,
+            "--data-repo-dir",
+            str(repo),
+            "--season",
+            str(SEASON),
+            "--families",
+            shards.OBSERVATIONS_SUBDIR,
             "--dry-run",
-            "--report", str(report_path),
+            "--report",
+            str(report_path),
         ]
     )
     assert exit_code == 0
@@ -437,9 +438,7 @@ def test_re_running_a_completed_migration_is_a_no_op(tmp_path):
     args = ["--data-repo-dir", str(repo), "--season", str(SEASON), "--families", shards.OBSERVATIONS_SUBDIR]
     assert migrate.main_with_args(args) == 0
 
-    snapshot = {
-        p.name: p.read_bytes() for p in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)
-    }
+    snapshot = {p.name: p.read_bytes() for p in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)}
     assert migrate.main_with_args(args) == 0
     after = {p.name: p.read_bytes() for p in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)}
     assert after == snapshot
@@ -469,9 +468,7 @@ def _cutover_row(key: str, *, day: int = 12, extra: str = "x") -> dict:
 def _cutover_monolith(base: Path, rows: list[dict]) -> Path:
     legacy = shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026)
     legacy.parent.mkdir(parents=True, exist_ok=True)
-    legacy.write_text(
-        "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows), encoding="utf-8"
-    )
+    legacy.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in rows), encoding="utf-8")
     return legacy
 
 
@@ -490,11 +487,7 @@ def _cutover_shard_rows(base: Path, rows: list[dict]) -> None:
         base,
         shards.OBSERVATIONS_SUBDIR,
         2026,
-        [
-            (shards.shard_date_for(row, shards.OBSERVATIONS_SUBDIR),
-             json.dumps(row, sort_keys=True))
-            for row in rows
-        ],
+        [(shards.shard_date_for(row, shards.OBSERVATIONS_SUBDIR), json.dumps(row, sort_keys=True)) for row in rows],
     )
 
 
@@ -554,9 +547,7 @@ def test_the_deadlock_is_recoverable_with_allow_existing_shards(tmp_path):
     _cutover_monolith(base, monolith_rows)
     _cutover_shard_rows(base, [_cutover_row("c", day=13)])  # the writer that landed in the gap
 
-    report = migrate.migrate_family(
-        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
-    )
+    report = migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
 
     assert report["status"] == "MIGRATED"
     assert report["preexisting_shard_rows"] == 1
@@ -581,9 +572,7 @@ def test_a_row_the_writer_already_captured_is_not_appended_twice(tmp_path):
     _cutover_monolith(base, [shared, _cutover_row("b")])
     _cutover_shard_rows(base, [shared])
 
-    report = migrate.migrate_family(
-        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
-    )
+    report = migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
 
     assert report["rows_already_present"] == 1
     assert report["rows_appended"] == 1
@@ -623,13 +612,18 @@ def test_allow_existing_shards_is_a_no_op_when_no_shards_exist(tmp_path):
     _cutover_monolith(base_flag, rows)
 
     plain = migrate.migrate_family(base_plain, shards.OBSERVATIONS_SUBDIR, 2026)
-    flagged = migrate.migrate_family(
-        base_flag, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
-    )
+    flagged = migrate.migrate_family(base_flag, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
 
     assert plain["status"] == flagged["status"] == "MIGRATED"
-    for field in ("rows_in", "rows_out", "shards_written", "duplicate_keys", "missing_keys",
-                  "order_violations", "byte_identical"):
+    for field in (
+        "rows_in",
+        "rows_out",
+        "shards_written",
+        "duplicate_keys",
+        "missing_keys",
+        "order_violations",
+        "byte_identical",
+    ):
         assert plain[field] == flagged[field], field
     assert _cutover_lines(base_plain) == _cutover_lines(base_flag)
 
@@ -657,9 +651,7 @@ def test_migration_is_idempotent_after_the_deadlock_recovery(tmp_path):
     migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
     first = _cutover_lines(base)
 
-    again = migrate.migrate_family(
-        base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True
-    )
+    again = migrate.migrate_family(base, shards.OBSERVATIONS_SUBDIR, 2026, allow_existing_shards=True)
     assert again["status"] == "NOTHING_TO_MIGRATE"
     assert _cutover_lines(base) == first
 
@@ -669,10 +661,20 @@ def test_the_cli_exposes_the_recovery_flag(tmp_path):
     _cutover_monolith(base, [_cutover_row("a")])
     _cutover_shard_rows(base, [_cutover_row("c", day=13)])
 
-    assert migrate.main_with_args(
-        ["--data-repo-dir", str(tmp_path), "--season", "2026",
-         "--families", shards.OBSERVATIONS_SUBDIR, "--allow-existing-shards"]
-    ) == 0
+    assert (
+        migrate.main_with_args(
+            [
+                "--data-repo-dir",
+                str(tmp_path),
+                "--season",
+                "2026",
+                "--families",
+                shards.OBSERVATIONS_SUBDIR,
+                "--allow-existing-shards",
+            ]
+        )
+        == 0
+    )
     assert not shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).exists()
 
 
@@ -684,10 +686,21 @@ def test_a_dry_run_of_the_recovery_rehearses_against_the_real_shards(tmp_path):
     _cutover_monolith(base, [_cutover_row("a", extra="from-the-monolith")])
     _cutover_shard_rows(base, [_cutover_row("a", extra="from-the-shard")])
 
-    assert migrate.main_with_args(
-        ["--data-repo-dir", str(tmp_path), "--season", "2026",
-         "--families", shards.OBSERVATIONS_SUBDIR, "--allow-existing-shards", "--dry-run"]
-    ) == 1
+    assert (
+        migrate.main_with_args(
+            [
+                "--data-repo-dir",
+                str(tmp_path),
+                "--season",
+                "2026",
+                "--families",
+                shards.OBSERVATIONS_SUBDIR,
+                "--allow-existing-shards",
+                "--dry-run",
+            ]
+        )
+        == 1
+    )
     # And the real tree is untouched by the rehearsal, as always.
     assert shards.legacy_monolith_path(base, shards.OBSERVATIONS_SUBDIR, 2026).is_file()
     assert len(_cutover_lines(base)) == 1

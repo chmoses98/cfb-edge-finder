@@ -74,9 +74,7 @@ class Robustness(StrEnum):
 #: deliberately NOT here: it is published, counted and readable in the ledger,
 #: and it does not reach the candidate artifact unless the operator asks for it
 #: explicitly.
-RECOMMENDABLE = frozenset(
-    {Robustness.ROBUST_POSITIVE_EV.value, Robustness.SENSITIVE_POSITIVE_EV.value}
-)
+RECOMMENDABLE = frozenset({Robustness.ROBUST_POSITIVE_EV.value, Robustness.SENSITIVE_POSITIVE_EV.value})
 
 
 class SensitivityBound(StrEnum):
@@ -186,8 +184,7 @@ def classify(
     if base_net_edge < min_required_edge:
         return (
             Robustness.BELOW_REQUIRED_EDGE.value,
-            f"base fee-adjusted edge {base_net_edge:.4f} is positive but below the "
-            f"{min_required_edge:.4f} bar",
+            f"base fee-adjusted edge {base_net_edge:.4f} is positive but below the {min_required_edge:.4f} bar",
         )
 
     if bound == SensitivityBound.NOT_TESTED.value:
@@ -238,8 +235,7 @@ def evaluate_side(
 
     breakeven = float(entry) + float(fee)
     edges = [
-        ScenarioEdge(label=label, fair_probability=fair, net_edge=fair - breakeven)
-        for label, fair in fair_by_scenario
+        ScenarioEdge(label=label, fair_probability=fair, net_edge=fair - breakeven) for label, fair in fair_by_scenario
     ]
     base = edges[0]
     worst = min(edges, key=lambda e: e.net_edge)

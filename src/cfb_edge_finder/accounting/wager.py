@@ -1,4 +1,5 @@
 """One wager the owner actually placed. Reconstructed, never recommended."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -80,21 +81,15 @@ def validate(record: dict) -> list[str]:
 
     for name in FORBIDDEN_PROVENANCE_FIELDS:
         if name in record:
-            problems.append(
-                f"{name!r} would assert model provenance this wager does not have"
-            )
+            problems.append(f"{name!r} would assert model provenance this wager does not have")
 
-    for name in ("wager_id", "source_bet_key", "import_batch_id",
-                 "market_ticker", "side", "game_date", "executed_at"):
+    for name in ("wager_id", "source_bet_key", "import_batch_id", "market_ticker", "side", "game_date", "executed_at"):
         value = record.get(name)
         if not isinstance(value, str) or not value.strip():
             problems.append(f"{name} is required and must be a non-empty string")
 
     if record.get("entry_method") != ENTRY_METHOD_IMPORTED_RECEIPT:
-        problems.append(
-            f"entry_method must be {ENTRY_METHOD_IMPORTED_RECEIPT!r}; "
-            f"got {record.get('entry_method')!r}"
-        )
+        problems.append(f"entry_method must be {ENTRY_METHOD_IMPORTED_RECEIPT!r}; got {record.get('entry_method')!r}")
 
     if record.get("side") not in ("YES", "NO"):
         problems.append(f"side must be YES or NO; got {record.get('side')!r}")

@@ -228,6 +228,7 @@ def extract_matchup_from_rules_primary(rules_primary: str | None) -> str | None:
         return None
     return match.group("matchup").strip()
 
+
 _CONFIRMED_OPERATOR = ">"
 """The only operator confirmed from real live rules_primary text this
 session -- see module docstring."""

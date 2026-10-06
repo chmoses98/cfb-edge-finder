@@ -299,9 +299,7 @@ def usable_families() -> tuple[str, ...]:
 
 
 def rejected_families() -> dict[str, str]:
-    return {
-        a.family: a.verdict.value for a in SOURCE_AUDIT if not a.usable_as_model_feature
-    }
+    return {a.family: a.verdict.value for a in SOURCE_AUDIT if not a.usable_as_model_feature}
 
 
 def audit_payload() -> dict:

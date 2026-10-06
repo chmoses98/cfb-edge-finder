@@ -34,8 +34,11 @@ def test_negative_minutes_rejected_never_post_kickoff():
 
 def _candidate(minutes: float, status: str = "scheduled", price: float | None = 0.55) -> ClosingCandidate:
     return ClosingCandidate(
-        market_ticker="MKT-1", captured_at=None, game_status_at_capture=status,
-        executable_yes_price=price, minutes_before_kickoff=minutes,
+        market_ticker="MKT-1",
+        captured_at=None,
+        game_status_at_capture=status,
+        executable_yes_price=price,
+        minutes_before_kickoff=minutes,
     )
 
 

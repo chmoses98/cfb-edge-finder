@@ -287,9 +287,7 @@ def fair_probability(
         )
 
     if family and family in handicap.declared_unpriceable_families:
-        return FairProbability(
-            None, "none", f"handicap declared family {family!r} unpriceable"
-        )
+        return FairProbability(None, "none", f"handicap declared family {family!r} unpriceable")
 
     period = handicap.period_distributions.get(period_name)
     if period is None:
@@ -420,9 +418,7 @@ class GameEvaluation:
 
     @property
     def unpriceable(self) -> int:
-        return sum(
-            count for status, count in self.status_counts.items() if status in UNPRICEABLE_STATUSES
-        )
+        return sum(count for status, count in self.status_counts.items() if status in UNPRICEABLE_STATUSES)
 
     @property
     def accounted(self) -> int:
@@ -534,10 +530,7 @@ def evaluate_game(
     # One scenario grid per PERIOD, not per contract. The grid depends only on
     # the stated region, and 14,000 contracts rebuilding the same eight corners
     # is the kind of waste that turns a two-second evaluation into a minute.
-    grids = {
-        name: scenarios(dist.uncertainty)
-        for name, dist in handicap.period_distributions.items()
-    }
+    grids = {name: scenarios(dist.uncertainty) for name, dist in handicap.period_distributions.items()}
 
     for record in contracts:
         ticker = str(record.get("ticker"))
@@ -674,9 +667,7 @@ def evaluate_game(
         row["uncertainty_tested"] = bool(tested)
         if best_sensitivity is not None:
             row["sensitivity"] = best_sensitivity.as_dict()
-            row["bet_up_to_price"] = round(
-                bet_up_to(best.fair_probability, best.fee, min_net_edge), 6
-            )
+            row["bet_up_to_price"] = round(bet_up_to(best.fair_probability, best.fee, min_net_edge), 6)
 
         if family in low_confidence:
             row.update(
@@ -736,9 +727,7 @@ def require_complete(evaluation: GameEvaluation) -> None:
     the game as fully scanned unless it returns."""
     if evaluation.complete:
         return
-    missing = (
-        evaluation.missing_tickers + evaluation.duplicate_tickers + evaluation.unexpected_tickers
-    )
+    missing = evaluation.missing_tickers + evaluation.duplicate_tickers + evaluation.unexpected_tickers
     raise CompletionGateError(evaluation.game_key, missing, evaluation)
 
 

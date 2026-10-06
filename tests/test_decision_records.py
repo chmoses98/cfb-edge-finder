@@ -41,15 +41,43 @@ def prepared(tmp_path: Path):
     """A slate prepared, evaluated and ready for `candidates`."""
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
-    assert main(["prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
-                 "--as-of", NOW.isoformat(), "--date", "all"]) == 0
+    assert (
+        main(
+            [
+                "prepare-live",
+                "--catalog-dir",
+                str(catalog),
+                "--out-dir",
+                str(out),
+                "--as-of",
+                NOW.isoformat(),
+                "--date",
+                "all",
+            ]
+        )
+        == 0
+    )
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard_name = manifest["shards"][0]["shard"]
     shard = json.loads((out / "shards" / f"{shard_name}.json").read_text())
     handicap_file = tmp_path / "handicaps.json"
     handicap_file.write_text(json.dumps(filled_handicaps(shard["games"])))
-    assert main(["evaluate", "--shard", shard_name, "--out-dir", str(out),
-                 "--handicaps", str(handicap_file), "--min-edge", "0.0"]) == 0
+    assert (
+        main(
+            [
+                "evaluate",
+                "--shard",
+                shard_name,
+                "--out-dir",
+                str(out),
+                "--handicaps",
+                str(handicap_file),
+                "--min-edge",
+                "0.0",
+            ]
+        )
+        == 0
+    )
     return out, shard_name
 
 
@@ -104,8 +132,10 @@ def test_a_store_inside_this_public_repository_is_refused(tmp_path):
 def test_a_checkout_of_a_public_repository_is_refused_even_with_the_marker(tmp_path):
     root = private_store(tmp_path)
     subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
-    subprocess.run(["git", "-C", str(root), "remote", "add", "origin",
-                    "https://github.com/chmoses98/kalshi-bet-router.git"], check=True)
+    subprocess.run(
+        ["git", "-C", str(root), "remote", "add", "origin", "https://github.com/chmoses98/kalshi-bet-router.git"],
+        check=True,
+    )
     with pytest.raises(DecisionStoreUnavailable) as excinfo:
         DecisionStore.resolve(str(root))
     assert "PUBLIC repository" in str(excinfo.value)
@@ -416,6 +446,7 @@ def test_an_old_schema_version_is_not_attributed_from():
     # The store filters unsupported versions before they reach attribution;
     # attribution itself only ever sees supported records. Prove the store does.
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / PRIVATE_MARKER).write_text("")
@@ -427,27 +458,77 @@ def test_the_postmortem_reads_the_private_store_and_moves_no_money(tmp_path):
     from cfb_edge_finder.accounting import store as ledger_store
 
     base = tmp_path / "ledger"
-    ledger_store.append_wagers(base, 2026, [{
-        **wager(), "wager_id": "routed-x", "schema_version": "cfb_accounted_wager.v1",
-        "import_batch_id": "kalshi-router-v1", "entry_method": "IMPORTED_RECEIPT",
-        "contracts": 63.05, "fees_paid": 1.103, "fees_are_estimated": False, "venue": "kalshi",
-        "season": 2026,
-    }])
-    ledger_store.append_settlements(base, 2026, [{
-        "settlement_id": "stl-x", "schema_version": "cfb_wager_settlement.v1",
-        "source_bet_key": "kalshi:v1:ucla", "market_ticker": "KXNCAAFTOTAL-26SEP26UCLAMD-57",
-        "side": "YES", "settlement_status": "SETTLED", "settled_at": "2026-09-26T20:59:16Z",
-        "result": "WON", "gross_return": 63.05, "net_profit_loss": 29.9495, "refusals": [],
-        "venue": "kalshi",
-    }])
+    ledger_store.append_wagers(
+        base,
+        2026,
+        [
+            {
+                **wager(),
+                "wager_id": "routed-x",
+                "schema_version": "cfb_accounted_wager.v1",
+                "import_batch_id": "kalshi-router-v1",
+                "entry_method": "IMPORTED_RECEIPT",
+                "contracts": 63.05,
+                "fees_paid": 1.103,
+                "fees_are_estimated": False,
+                "venue": "kalshi",
+                "season": 2026,
+            }
+        ],
+    )
+    ledger_store.append_settlements(
+        base,
+        2026,
+        [
+            {
+                "settlement_id": "stl-x",
+                "schema_version": "cfb_wager_settlement.v1",
+                "source_bet_key": "kalshi:v1:ucla",
+                "market_ticker": "KXNCAAFTOTAL-26SEP26UCLAMD-57",
+                "side": "YES",
+                "settlement_status": "SETTLED",
+                "settled_at": "2026-09-26T20:59:16Z",
+                "result": "WON",
+                "gross_return": 63.05,
+                "net_profit_loss": 29.9495,
+                "refusals": [],
+                "venue": "kalshi",
+            }
+        ],
+    )
     root = private_store(tmp_path)
     DecisionStore(root).write(minimal_record())
 
-    bare = subprocess.run([sys.executable, str(POSTMORTEM), "--base-dir", str(base), "--season", "2026",
-                           "--json", str(tmp_path / "bare.json")], capture_output=True, text=True)
-    cut = subprocess.run([sys.executable, str(POSTMORTEM), "--base-dir", str(base), "--season", "2026",
-                          "--decisions", str(root), "--json", str(tmp_path / "cut.json")],
-                         capture_output=True, text=True)
+    bare = subprocess.run(
+        [
+            sys.executable,
+            str(POSTMORTEM),
+            "--base-dir",
+            str(base),
+            "--season",
+            "2026",
+            "--json",
+            str(tmp_path / "bare.json"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    cut = subprocess.run(
+        [
+            sys.executable,
+            str(POSTMORTEM),
+            "--base-dir",
+            str(base),
+            "--season",
+            "2026",
+            "--decisions",
+            str(root),
+            "--json",
+            str(tmp_path / "cut.json"),
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert bare.returncode == 0 and cut.returncode == 0, (bare.stderr, cut.stderr)
     bare_doc = json.loads((tmp_path / "bare.json").read_text())
     cut_doc = json.loads((tmp_path / "cut.json").read_text())
@@ -462,14 +543,39 @@ def test_the_postmortem_reads_the_private_store_and_moves_no_money(tmp_path):
 def test_the_postmortem_refuses_an_unusable_decision_store(tmp_path):
     base = tmp_path / "ledger"
     from cfb_edge_finder.accounting import store as ledger_store
-    ledger_store.append_wagers(base, 2026, [{
-        **wager(), "wager_id": "routed-x", "schema_version": "cfb_accounted_wager.v1",
-        "import_batch_id": "kalshi-router-v1", "entry_method": "IMPORTED_RECEIPT",
-        "contracts": 63.05, "fees_paid": 1.103, "fees_are_estimated": False, "venue": "kalshi",
-        "season": 2026,
-    }])
-    result = subprocess.run([sys.executable, str(POSTMORTEM), "--base-dir", str(base), "--season", "2026",
-                             "--decisions", str(tmp_path / "missing")], capture_output=True, text=True)
+
+    ledger_store.append_wagers(
+        base,
+        2026,
+        [
+            {
+                **wager(),
+                "wager_id": "routed-x",
+                "schema_version": "cfb_accounted_wager.v1",
+                "import_batch_id": "kalshi-router-v1",
+                "entry_method": "IMPORTED_RECEIPT",
+                "contracts": 63.05,
+                "fees_paid": 1.103,
+                "fees_are_estimated": False,
+                "venue": "kalshi",
+                "season": 2026,
+            }
+        ],
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(POSTMORTEM),
+            "--base-dir",
+            str(base),
+            "--season",
+            "2026",
+            "--decisions",
+            str(tmp_path / "missing"),
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 2
     assert "decision store" in result.stderr
 
@@ -515,8 +621,10 @@ def test_decision_store_init_refuses_a_checkout_of_a_public_repository(tmp_path,
     clone = tmp_path / "clone"
     clone.mkdir()
     subprocess.run(["git", "init", "-q", str(clone)], check=True)
-    subprocess.run(["git", "-C", str(clone), "remote", "add", "origin",
-                    "https://github.com/chmoses98/kalshi-bet-router.git"], check=True)
+    subprocess.run(
+        ["git", "-C", str(clone), "remote", "add", "origin", "https://github.com/chmoses98/kalshi-bet-router.git"],
+        check=True,
+    )
     target = clone / "decisions"
     assert main(["decision-store", "init", str(target)]) == EXIT_NO_DECISION_STORE
     assert not target.exists()

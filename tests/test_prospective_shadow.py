@@ -54,9 +54,7 @@ CAPTURED = KICKOFF - timedelta(hours=24)
 SAMPLES = np.array([-14.0, -7.0, -1.0, 0.0, 1.0, 7.0, 14.0, 21.0])
 
 
-CONTROL_DISTRIBUTION = GameDistribution(
-    home_mean=27.0, away_mean=24.0, home_sd=10.0, away_sd=9.5, correlation=0.1
-)
+CONTROL_DISTRIBUTION = GameDistribution(home_mean=27.0, away_mean=24.0, home_sd=10.0, away_sd=9.5, correlation=0.1)
 
 
 def record(**kw):
@@ -262,9 +260,17 @@ def test_the_record_links_to_the_canonical_observation():
     out = record()
     payload = out.to_dict()
     for field in (
-        "observation_key", "game_id", "timing_label", "captured_at", "market_ticker",
-        "market_family", "control_model_version", "shadow_model_version",
-        "talent_source_version", "beta", "provenance",
+        "observation_key",
+        "game_id",
+        "timing_label",
+        "captured_at",
+        "market_ticker",
+        "market_family",
+        "control_model_version",
+        "shadow_model_version",
+        "talent_source_version",
+        "beta",
+        "provenance",
     ):
         assert field in payload, field
     assert payload["shadow_model_version"] == SHADOW_MODEL_VERSION
@@ -337,9 +343,14 @@ def test_with_settled_games_both_arms_are_compared_pairwise():
     pairs = [
         SettledShadowPair(
             provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
-            game_id=f"g{i}", week=1, timing_label="T_24H",
-            control_probability=0.6, shadow_probability=0.65,
-            control_margin=3.0, shadow_margin=6.0, actual_home_margin=7,
+            game_id=f"g{i}",
+            week=1,
+            timing_label="T_24H",
+            control_probability=0.6,
+            shadow_probability=0.65,
+            control_margin=3.0,
+            shadow_margin=6.0,
+            actual_home_margin=7,
         )
         for i in range(30)
     ]
@@ -354,9 +365,14 @@ def test_with_settled_games_both_arms_are_compared_pairwise():
 def test_a_zero_margin_is_an_away_win_in_the_comparison():
     pair = SettledShadowPair(
         provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
-        game_id="g", week=1, timing_label="T_24H",
-        control_probability=0.5, shadow_probability=0.5,
-        control_margin=0.0, shadow_margin=0.0, actual_home_margin=0,
+        game_id="g",
+        week=1,
+        timing_label="T_24H",
+        control_probability=0.5,
+        shadow_probability=0.5,
+        control_margin=0.0,
+        shadow_margin=0.0,
+        actual_home_margin=0,
     )
     assert pair.home_won is False
 
@@ -364,9 +380,7 @@ def test_a_zero_margin_is_an_away_win_in_the_comparison():
 # --------------------------- production is untouched
 
 
-@pytest.mark.parametrize(
-    "package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"]
-)
+@pytest.mark.parametrize("package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"])
 def test_no_production_package_imports_the_shadow(package):
     root = SRC / package
     if not root.exists():
@@ -426,9 +440,14 @@ def test_end_to_end_settlement_is_identical_for_both_arms():
     """One game, one outcome. The arms differ only in prediction."""
     pair = SettledShadowPair(
         provenance=EvidenceProvenance.PROSPECTIVE_SHADOW_CAPTURE,
-        game_id="g", week=1, timing_label="CLOSING",
-        control_probability=0.60, shadow_probability=0.70,
-        control_margin=3.0, shadow_margin=6.0, actual_home_margin=10,
+        game_id="g",
+        week=1,
+        timing_label="CLOSING",
+        control_probability=0.60,
+        shadow_probability=0.70,
+        control_margin=3.0,
+        shadow_margin=6.0,
+        actual_home_margin=10,
     )
     assert pair.home_won is True
     result = compare([pair] * 2)
@@ -443,9 +462,15 @@ def test_end_to_end_settlement_is_identical_for_both_arms():
 
 def _pair(provenance):
     return SettledShadowPair(
-        provenance=provenance, game_id="g", week=1, timing_label="T_24H",
-        control_probability=0.6, shadow_probability=0.65,
-        control_margin=3.0, shadow_margin=6.0, actual_home_margin=7,
+        provenance=provenance,
+        game_id="g",
+        week=1,
+        timing_label="T_24H",
+        control_probability=0.6,
+        shadow_probability=0.65,
+        control_margin=3.0,
+        shadow_margin=6.0,
+        actual_home_margin=7,
     )
 
 

@@ -260,14 +260,17 @@ def run_shadow_pipeline(
             # A candidate whose snapshot cannot be found is a structural
             # inconsistency, not something to evaluate around.
             continue
-        state = evidence_state or assess_readiness(
-            family=candidate.market_family or "",
-            timing_label=candidate.timing_label,
-            model_version=candidate.model_version,
-            settled_n=available_settled_games,
-            unique_game_clusters=available_settled_games,
-            clv_n=available_settled_games,
-        ).state
+        state = (
+            evidence_state
+            or assess_readiness(
+                family=candidate.market_family or "",
+                timing_label=candidate.timing_label,
+                model_version=candidate.model_version,
+                settled_n=available_settled_games,
+                unique_game_clusters=available_settled_games,
+                clv_n=available_settled_games,
+            ).state
+        )
         group = portfolio.group_for(candidate.market_ticker)
         result.decisions.append(
             evaluate_shadow_candidate(

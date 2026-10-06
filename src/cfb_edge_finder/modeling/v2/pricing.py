@@ -47,6 +47,7 @@ def _norm_cdf(x: float) -> float:
     """Standard Normal CDF, standard library only."""
     return 0.5 * math.erfc(-float(x) / _SQRT2)
 
+
 CONTINUITY = 0.5
 """Half a point, applied only to integer thresholds -- see the module
 docstring for why a half-point strike must never receive it."""
@@ -62,9 +63,7 @@ def effective_threshold(threshold: float, continuity: float = CONTINUITY) -> flo
     return t + continuity if abs(t - round(t)) < 1e-9 else t
 
 
-def contract_probability(
-    point: float, sd: float, threshold: float, *, continuity: float = CONTINUITY
-) -> float:
+def contract_probability(point: float, sd: float, threshold: float, *, continuity: float = CONTINUITY) -> float:
     """P(outcome > threshold) for an integer-valued outcome.
 
     `point` and `sd` are the frozen V2 prediction and its conditional

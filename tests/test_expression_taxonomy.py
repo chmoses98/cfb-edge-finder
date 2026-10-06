@@ -119,13 +119,13 @@ def test_yes_and_no_of_one_ticker_are_complementary_events():
 @pytest.mark.parametrize(
     "bad",
     [
-        ContractSemantics("X", GAME, MarketFamily.SPREAD, Side.HOME, None, None, ">"),          # no threshold
-        ContractSemantics("X", GAME, MarketFamily.SPREAD, None, None, 3.5, ">"),                # no team
-        ContractSemantics("X", GAME, MarketFamily.SPREAD, Side.HOME, None, 3.5, ">="),          # wrong operator
-        ContractSemantics("X", GAME, MarketFamily.MONEYLINE, None, None, None, None),           # no team
-        ContractSemantics("X", GAME, MarketFamily.TOTAL, None, None, 45.5, ">="),               # wrong operator
-        ContractSemantics("X", GAME, MarketFamily.TOTAL, None, Side.UNDER, 45.5, ">"),          # unmodelled side
-        ContractSemantics("X", GAME, None, None, None, None, None),                             # no family
+        ContractSemantics("X", GAME, MarketFamily.SPREAD, Side.HOME, None, None, ">"),  # no threshold
+        ContractSemantics("X", GAME, MarketFamily.SPREAD, None, None, 3.5, ">"),  # no team
+        ContractSemantics("X", GAME, MarketFamily.SPREAD, Side.HOME, None, 3.5, ">="),  # wrong operator
+        ContractSemantics("X", GAME, MarketFamily.MONEYLINE, None, None, None, None),  # no team
+        ContractSemantics("X", GAME, MarketFamily.TOTAL, None, None, 45.5, ">="),  # wrong operator
+        ContractSemantics("X", GAME, MarketFamily.TOTAL, None, Side.UNDER, 45.5, ">"),  # unmodelled side
+        ContractSemantics("X", GAME, None, None, None, None, None),  # no family
     ],
 )
 def test_incomplete_semantics_never_produce_a_truth_condition(bad):

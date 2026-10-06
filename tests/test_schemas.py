@@ -138,9 +138,7 @@ def make_projection_record(**overrides) -> ProjectionRecord:
         provenance=DataProvenance(schedule_source="cfbd", data_timestamp=NOW),
         projection_timestamp=NOW,
         distribution=GameDistribution(home_mean=28, away_mean=24, home_sd=10, away_sd=10),
-        uncertainty=UncertaintyProfile(
-            data_completeness=0.8, qb_status_confirmed=True, early_season_prior_weight=0.5
-        ),
+        uncertainty=UncertaintyProfile(data_completeness=0.8, qb_status_confirmed=True, early_season_prior_weight=0.5),
     )
     defaults.update(overrides)
     return ProjectionRecord(**defaults)

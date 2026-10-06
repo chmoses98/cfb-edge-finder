@@ -51,7 +51,9 @@ def test_weekly_report_settled_observations_counted():
     row = make_corpus_row(observation=obs)
     result = extract_game_result(
         {"status": "final", "homePoints": 31, "awayPoints": 24},
-        game_id="cfb-2026-wk01-a-at-b", season=2026, captured_at=NOW,
+        game_id="cfb-2026-wk01-a-at-b",
+        season=2026,
+        captured_at=NOW,
     )
     settlement = settle_market(obs, result, settled_at=NOW)
 
@@ -74,8 +76,14 @@ def test_weekly_report_gap_bucket_distribution_covers_all_buckets():
 
 def test_weekly_report_mapping_errors_counted():
     obs = make_observation(
-        kalshi_market_ticker="MKT-1", game_id=None, parse_status="unresolved", family=None,
-        model_probability=None, model_version=None, coverage_outcome="ticker_unresolved", pricing_status="not_priced",
+        kalshi_market_ticker="MKT-1",
+        game_id=None,
+        parse_status="unresolved",
+        family=None,
+        model_probability=None,
+        model_version=None,
+        coverage_outcome="ticker_unresolved",
+        pricing_status="not_priced",
     )
     row = make_corpus_row(observation=obs)
     report = reporting.build_weekly_report(
@@ -87,7 +95,11 @@ def test_weekly_report_mapping_errors_counted():
 def test_season_report_aggregates_across_weeks_and_versions_incrementally():
     rows_v1 = [_row("MKT-1", "cfb-2026-wk01-a-at-b")]
     report_v1 = reporting.build_season_report(
-        season=2026, report_version=1, all_rows=rows_v1, settlement_rows=[], weeks_included=["wk01"],
+        season=2026,
+        report_version=1,
+        all_rows=rows_v1,
+        settlement_rows=[],
+        weeks_included=["wk01"],
         generated_at=NOW,
     )
     assert report_v1.report_version == 1
@@ -95,7 +107,11 @@ def test_season_report_aggregates_across_weeks_and_versions_incrementally():
 
     rows_v2 = rows_v1 + [_row("MKT-2", "cfb-2026-wk02-e-at-f")]
     report_v2 = reporting.build_season_report(
-        season=2026, report_version=2, all_rows=rows_v2, settlement_rows=[], weeks_included=["wk01", "wk02"],
+        season=2026,
+        report_version=2,
+        all_rows=rows_v2,
+        settlement_rows=[],
+        weeks_included=["wk01", "wk02"],
         generated_at=NOW,
     )
     assert report_v2.report_version == 2

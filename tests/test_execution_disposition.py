@@ -131,9 +131,8 @@ def test_started_games_fail_closed(tmp_path):
     build_result = build(tmp_path, kickoff="2026-09-19T11:00:00Z")
     slate = build_result.slate
     assert slate["reconciliation"]["contracts_eligible"] == 0
-    assert (
-        slate["reconciliation"]["exclusions_by_status"][MechanicalStatus.GAME_STARTED.value]
-        == len(standard_markets())
+    assert slate["reconciliation"]["exclusions_by_status"][MechanicalStatus.GAME_STARTED.value] == len(
+        standard_markets()
     )
     assert slate["reconciliation"]["balanced"] is True
 
@@ -149,9 +148,8 @@ def test_stale_captures_fail_closed(tmp_path):
     cfg = config(as_of=CAPTURED_AT + timedelta(hours=6))
     slate = build(tmp_path, cfg=cfg).slate
     assert slate["reconciliation"]["contracts_eligible"] == 0
-    assert (
-        slate["reconciliation"]["exclusions_by_status"][MechanicalStatus.STALE_QUOTE.value]
-        == len(standard_markets())
+    assert slate["reconciliation"]["exclusions_by_status"][MechanicalStatus.STALE_QUOTE.value] == len(
+        standard_markets()
     )
 
 
@@ -183,10 +181,7 @@ def test_a_contract_with_no_buyable_side_is_excluded(tmp_path):
     )
     packet = build(tmp_path, markets).packets[0]
     statuses = {e["ticker"]: e["status"] for e in packet["excluded_contracts"]}
-    assert (
-        statuses[f"KXNCAAFTOTAL-{GAME_KEY}-70"]
-        == MechanicalStatus.MISSING_EXECUTABLE_PRICE.value
-    )
+    assert statuses[f"KXNCAAFTOTAL-{GAME_KEY}-70"] == MechanicalStatus.MISSING_EXECUTABLE_PRICE.value
 
 
 def test_sentinel_prices_of_zero_and_one_are_not_executable(tmp_path):
@@ -203,10 +198,7 @@ def test_sentinel_prices_of_zero_and_one_are_not_executable(tmp_path):
     )
     packet = build(tmp_path, markets).packets[0]
     statuses = {e["ticker"]: e["status"] for e in packet["excluded_contracts"]}
-    assert (
-        statuses[f"KXNCAAFTOTAL-{GAME_KEY}-71"]
-        == MechanicalStatus.MISSING_EXECUTABLE_PRICE.value
-    )
+    assert statuses[f"KXNCAAFTOTAL-{GAME_KEY}-71"] == MechanicalStatus.MISSING_EXECUTABLE_PRICE.value
 
 
 def test_duplicate_tickers_are_dispositioned_not_double_counted(tmp_path):
@@ -235,19 +227,14 @@ def test_a_team_scoped_contract_with_no_resolvable_team_is_a_mapping_failure(tmp
 
 def test_a_contract_with_no_stateable_meaning_is_excluded(tmp_path):
     markets = standard_markets()
-    blank = market(
-        f"KXNCAAFMYSTERY-{GAME_KEY}-1", family="unknown", period="unknown", title="x"
-    )
+    blank = market(f"KXNCAAFMYSTERY-{GAME_KEY}-1", family="unknown", period="unknown", title="x")
     blank["title"] = None
     blank["yes_sub_title"] = None
     blank["rules_primary"] = None
     markets.append(blank)
     packet = build(tmp_path, markets).packets[0]
     statuses = {e["ticker"]: e["status"] for e in packet["excluded_contracts"]}
-    assert (
-        statuses[f"KXNCAAFMYSTERY-{GAME_KEY}-1"]
-        == MechanicalStatus.UNSUPPORTED_MARKET_SEMANTICS.value
-    )
+    assert statuses[f"KXNCAAFMYSTERY-{GAME_KEY}-1"] == MechanicalStatus.UNSUPPORTED_MARKET_SEMANTICS.value
 
 
 # -------------------------------------- unknown families stay in the count

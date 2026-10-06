@@ -218,11 +218,7 @@ def install_fake_market_feed(monkeypatch, markets_by_series: dict[str, list[dict
         # fixture would be unfaithful in exactly the direction that hides
         # bugs: suspended/closed markets would reach pricing in tests but
         # never in production.
-        return [
-            m
-            for m in markets_by_series.get(series_ticker, [])
-            if str(m.get("status", "")).lower() == "active"
-        ]
+        return [m for m in markets_by_series.get(series_ticker, []) if str(m.get("status", "")).lower() == "active"]
 
     def _fake(_client, series_ticker: str) -> list[dict]:
         calls[series_ticker] = calls.get(series_ticker, 0) + 1

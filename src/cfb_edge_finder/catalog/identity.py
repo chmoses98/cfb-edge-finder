@@ -117,18 +117,14 @@ def parse_event_ticker(event_ticker: str) -> EventTickerParts | None:
         month = _MONTHS.get(date_match.group("mon"))
         if month:
             try:
-                game_date = datetime(
-                    2000 + int(date_match.group("yy")), month, int(date_match.group("dd")), tzinfo=UTC
-                )
+                game_date = datetime(2000 + int(date_match.group("yy")), month, int(date_match.group("dd")), tzinfo=UTC)
             except ValueError:
                 game_date = None
     # A game key with no team codes at all (KXNCAAFCFPPOLL-26NOV17R1 style
     # already excluded above) is not a matchup.
     if not team_codes:
         return None
-    return EventTickerParts(
-        series_ticker=series_ticker, game_key=game_key, team_codes=team_codes, game_date=game_date
-    )
+    return EventTickerParts(series_ticker=series_ticker, game_key=game_key, team_codes=team_codes, game_date=game_date)
 
 
 CFB_COMPETITIONS = frozenset({"NCAA FOOTBALL", "COLLEGE FOOTBALL", "COLLEGE FOOTBALL PLAYOFFS"})
@@ -183,7 +179,7 @@ class MilestoneGame:
 
     @property
     def game_key(self) -> str | None:
-        for ticker in ((self.main_game_event_ticker,) + self.event_tickers):
+        for ticker in (self.main_game_event_ticker,) + self.event_tickers:
             if not ticker:
                 continue
             parts = parse_event_ticker(ticker)

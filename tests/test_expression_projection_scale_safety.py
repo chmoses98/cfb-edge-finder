@@ -48,9 +48,16 @@ strictly after that window or there is no leakage-safe history to fit."""
 def _request(game_index=0, week=HISTORY_WEEKS + 1, **over):
     game = _harness_games()[game_index]
     base = dict(
-        game_id=game.game_id, home_id=game.home_team_id, away_id=game.away_team_id,
-        home_classification="fbs", away_classification="fbs", is_neutral_site=False,
-        as_of_season=2025, as_of_week=week, n_simulations=200, seed=0,
+        game_id=game.game_id,
+        home_id=game.home_team_id,
+        away_id=game.away_team_id,
+        home_classification="fbs",
+        away_classification="fbs",
+        is_neutral_site=False,
+        as_of_season=2025,
+        as_of_week=week,
+        n_simulations=200,
+        seed=0,
     )
     base.update(over)
     return GameProjectionRequest(**base)
@@ -122,55 +129,89 @@ def _snapshot_rows(n_games, rungs_per_ladder=8):
         game = f"game{g:05d}"
         event = f"KXNCAAFGAME-EV{g:05d}"
         for team, price in (("home", 0.60), ("away", 0.44)):
-            rows.append({
-                "observation_key": f"{event}-{team}",
-                "observation": {
-                    "game_id": game, "kalshi_market_ticker": f"{event}-{team.upper()}",
-                    "family": "moneyline", "team": team, "side": None, "threshold": None,
-                    "semantic_operator": None, "model_probability": price,
-                    "executable_yes_price": price, "executable_no_price": 1.0 - price + 0.10,
-                    "market_midpoint": price, "pricing_status": "model_priced",
-                    "parse_status": "confirmed_live", "captured_at": f"2026-09-0{1+(g%9)}T00:00:00Z",
-                    "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                    "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
-                    "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
-                },
-            })
+            rows.append(
+                {
+                    "observation_key": f"{event}-{team}",
+                    "observation": {
+                        "game_id": game,
+                        "kalshi_market_ticker": f"{event}-{team.upper()}",
+                        "family": "moneyline",
+                        "team": team,
+                        "side": None,
+                        "threshold": None,
+                        "semantic_operator": None,
+                        "model_probability": price,
+                        "executable_yes_price": price,
+                        "executable_no_price": 1.0 - price + 0.10,
+                        "market_midpoint": price,
+                        "pricing_status": "model_priced",
+                        "parse_status": "confirmed_live",
+                        "captured_at": f"2026-09-0{1 + (g % 9)}T00:00:00Z",
+                        "market_status": "active",
+                        "fee_status": "VERIFIED_CURRENT",
+                        "fee_schedule_version": "v1",
+                        "model_version": {"model_version": "m1"},
+                        "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
+                    },
+                }
+            )
         for team in ("home", "away"):
             for i in range(rungs_per_ladder):
                 threshold = 1.5 + 2 * i
-                rows.append({
-                    "observation_key": f"KXNCAAFSPREAD-EV{g:05d}-{team}{i}",
-                    "observation": {
-                        "game_id": game, "kalshi_market_ticker": f"KXNCAAFSPREAD-EV{g:05d}-{team.upper()}{i}",
-                        "family": "spread", "team": team, "side": None, "threshold": threshold,
-                        "semantic_operator": ">", "model_probability": max(0.05, 0.80 - 0.05 * i),
-                        "executable_yes_price": max(0.05, 0.78 - 0.05 * i),
-                        "executable_no_price": min(0.95, 0.30 + 0.05 * i),
-                        "market_midpoint": 0.5, "pricing_status": "model_priced",
-                        "parse_status": "confirmed_live", "captured_at": "2026-09-01T00:00:00Z",
-                        "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                        "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
-                        "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
-                    },
-                })
+                rows.append(
+                    {
+                        "observation_key": f"KXNCAAFSPREAD-EV{g:05d}-{team}{i}",
+                        "observation": {
+                            "game_id": game,
+                            "kalshi_market_ticker": f"KXNCAAFSPREAD-EV{g:05d}-{team.upper()}{i}",
+                            "family": "spread",
+                            "team": team,
+                            "side": None,
+                            "threshold": threshold,
+                            "semantic_operator": ">",
+                            "model_probability": max(0.05, 0.80 - 0.05 * i),
+                            "executable_yes_price": max(0.05, 0.78 - 0.05 * i),
+                            "executable_no_price": min(0.95, 0.30 + 0.05 * i),
+                            "market_midpoint": 0.5,
+                            "pricing_status": "model_priced",
+                            "parse_status": "confirmed_live",
+                            "captured_at": "2026-09-01T00:00:00Z",
+                            "market_status": "active",
+                            "fee_status": "VERIFIED_CURRENT",
+                            "fee_schedule_version": "v1",
+                            "model_version": {"model_version": "m1"},
+                            "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
+                        },
+                    }
+                )
         for i in range(rungs_per_ladder):
             threshold = 40.5 + 3 * i
-            rows.append({
-                "observation_key": f"KXNCAAFTOTAL-EV{g:05d}-{i}",
-                "observation": {
-                    "game_id": game, "kalshi_market_ticker": f"KXNCAAFTOTAL-EV{g:05d}-{i}",
-                    "family": "total", "team": None, "side": "over", "threshold": threshold,
-                    "semantic_operator": ">", "model_probability": max(0.05, 0.85 - 0.06 * i),
-                    "executable_yes_price": max(0.05, 0.83 - 0.06 * i),
-                    "executable_no_price": min(0.95, 0.25 + 0.06 * i),
-                    "market_midpoint": 0.5, "pricing_status": "model_priced",
-                    "parse_status": "confirmed_live", "captured_at": "2026-09-01T00:00:00Z",
-                    "market_status": "active", "fee_status": "VERIFIED_CURRENT",
-                    "fee_schedule_version": "v1", "model_version": {"model_version": "m1"},
-                    "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
-                },
-            })
+            rows.append(
+                {
+                    "observation_key": f"KXNCAAFTOTAL-EV{g:05d}-{i}",
+                    "observation": {
+                        "game_id": game,
+                        "kalshi_market_ticker": f"KXNCAAFTOTAL-EV{g:05d}-{i}",
+                        "family": "total",
+                        "team": None,
+                        "side": "over",
+                        "threshold": threshold,
+                        "semantic_operator": ">",
+                        "model_probability": max(0.05, 0.85 - 0.06 * i),
+                        "executable_yes_price": max(0.05, 0.83 - 0.06 * i),
+                        "executable_no_price": min(0.95, 0.25 + 0.06 * i),
+                        "market_midpoint": 0.5,
+                        "pricing_status": "model_priced",
+                        "parse_status": "confirmed_live",
+                        "captured_at": "2026-09-01T00:00:00Z",
+                        "market_status": "active",
+                        "fee_status": "VERIFIED_CURRENT",
+                        "fee_schedule_version": "v1",
+                        "model_version": {"model_version": "m1"},
+                        "snapshot_timing": {"label": "T_24H", "hours_before_kickoff": 24.0},
+                    },
+                }
+            )
     return rows
 
 
@@ -223,9 +264,7 @@ def test_malformed_rows_are_counted(tmp_path):
 # --- Scale (section 26) ---------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "n_games,rungs,label", [(100, 24, "~5k"), (500, 24, "~25k")]
-)
+@pytest.mark.parametrize("n_games,rungs,label", [(100, 24, "~5k"), (500, 24, "~25k")])
 def test_grouping_scales_without_rescanning(tmp_path, n_games, rungs, label):
     rows = _snapshot_rows(n_games, rungs_per_ladder=rungs)
     path = _write(tmp_path, rows)
@@ -269,9 +308,22 @@ def test_memory_stays_proportional_to_contracts(tmp_path):
 # --- Safety (section 27) --------------------------------------------------
 
 FORBIDDEN = (
-    "recommend", "select_bet", "best_bet", "qualify", "qualification", "stake", "staking",
-    "allocate", "portfolio_optimize", "bankroll", "kelly", "wager", "place_order", "bet_size",
-    "tier_a", "tier_b",
+    "recommend",
+    "select_bet",
+    "best_bet",
+    "qualify",
+    "qualification",
+    "stake",
+    "staking",
+    "allocate",
+    "portfolio_optimize",
+    "bankroll",
+    "kelly",
+    "wager",
+    "place_order",
+    "bet_size",
+    "tier_a",
+    "tier_b",
 )
 
 

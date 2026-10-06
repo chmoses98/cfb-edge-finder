@@ -363,11 +363,18 @@ def read_state_from_git(repo_dir: Path, branch: str) -> dict:
     try:
         subprocess.run(
             ["git", "fetch", "origin", branch, "--depth=1"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=120, check=True,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
         )
         show = subprocess.run(
             ["git", "show", f"origin/{branch}:{rel}"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=120,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if show.returncode != 0:
             return {}

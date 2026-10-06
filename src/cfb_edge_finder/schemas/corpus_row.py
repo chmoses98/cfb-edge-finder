@@ -55,9 +55,7 @@ class ResearchCorpusRow(BaseModel):
         default=None,
         description="The game's kickoff_utc as known AT capture time -- see closing.py/reschedule handling.",
     )
-    game_status_at_capture: str = Field(
-        ..., description="GameRecord.status at capture time -- stale-guard evidence."
-    )
+    game_status_at_capture: str = Field(..., description="GameRecord.status at capture time -- stale-guard evidence.")
     schedule_source_timestamp: AwareDatetime | None = Field(
         default=None,
         description="Freshness of the schedule data used for the stale-schedule guard (mission section 9).",

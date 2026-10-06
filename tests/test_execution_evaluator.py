@@ -62,13 +62,9 @@ def test_the_evaluator_does_not_stop_when_it_finds_a_good_bet(tmp_path):
     """A handicap wildly out of line with the book produces positive EV on
     the very first contract. The loop must still reach the last one."""
     game = packet(tmp_path)
-    lopsided = handicap(
-        period_distributions={"full_game": PeriodDistribution(55.0, 3.0, 4.0, 4.0, 0.0)}
-    )
+    lopsided = handicap(period_distributions={"full_game": PeriodDistribution(55.0, 3.0, 4.0, 4.0, 0.0)})
     evaluation = evaluate_game(game, lopsided)
-    candidates = sum(
-        evaluation.status_counts.get(status, 0) for status in CANDIDATE_STATUSES
-    )
+    candidates = sum(evaluation.status_counts.get(status, 0) for status in CANDIDATE_STATUSES)
     assert candidates > 0
     assert len(evaluation.rows) == game["counts"]["eligible"]
     assert evaluation.complete
@@ -85,19 +81,13 @@ def test_the_invariant_holds_and_is_reported(tmp_path):
 def test_unpriceable_contracts_stay_visible_and_counted(tmp_path):
     game = packet(tmp_path)
     evaluation = evaluate_game(game, handicap())
-    unpriceable = [
-        r for r in evaluation.rows
-        if r["status"] == EvaluationStatus.UNPRICEABLE_FROM_HANDICAP.value
-    ]
+    unpriceable = [r for r in evaluation.rows if r["status"] == EvaluationStatus.UNPRICEABLE_FROM_HANDICAP.value]
     assert unpriceable, "the fixture deliberately contains ties, first-TD and double-result markets"
     # `unpriceable` is the sum of BOTH unpriceable buckets. The fixture carries
     # no factual context, so its team-total families are also closed by the
     # data-quality gate -- a second, separately named terminal bucket that the
     # invariant counts and this assertion must not confuse with the first.
-    gated = [
-        r for r in evaluation.rows
-        if r["status"] == EvaluationStatus.UNPRICEABLE_INSUFFICIENT_DATA.value
-    ]
+    gated = [r for r in evaluation.rows if r["status"] == EvaluationStatus.UNPRICEABLE_INSUFFICIENT_DATA.value]
     assert len(unpriceable) + len(gated) == evaluation.unpriceable
     for row in unpriceable:
         assert row["reason"]
@@ -158,14 +148,26 @@ def test_an_away_spread_is_the_mirror_of_the_home_margin():
     distribution = PeriodDistribution(27.0, 24.0, 10.5, 10.0, 0.1)
     payload = handicap(period_distributions={"full_game": distribution})
     home = fair_probability(
-        {"kind": "spread", "period": "full_game", "requires": "period_distribution",
-         "comparator": "greater", "line": 6.5, "team": "home"},
+        {
+            "kind": "spread",
+            "period": "full_game",
+            "requires": "period_distribution",
+            "comparator": "greater",
+            "line": 6.5,
+            "team": "home",
+        },
         "H",
         payload,
     ).value
     away = fair_probability(
-        {"kind": "spread", "period": "full_game", "requires": "period_distribution",
-         "comparator": "greater", "line": 6.5, "team": "away"},
+        {
+            "kind": "spread",
+            "period": "full_game",
+            "requires": "period_distribution",
+            "comparator": "greater",
+            "line": 6.5,
+            "team": "away",
+        },
         "A",
         payload,
     ).value
@@ -183,8 +185,14 @@ def test_a_deeper_rung_is_never_more_likely_than_a_shallower_one(tmp_path):
     payload = handicap()
     probabilities = [
         fair_probability(
-            {"kind": "spread", "period": "full_game", "requires": "period_distribution",
-             "comparator": "greater", "line": line, "team": "home"},
+            {
+                "kind": "spread",
+                "period": "full_game",
+                "requires": "period_distribution",
+                "comparator": "greater",
+                "line": line,
+                "team": "home",
+            },
             f"L{line}",
             payload,
         ).value
@@ -234,9 +242,7 @@ def test_the_required_edge_separates_positive_from_merely_positive(tmp_path):
 
 def test_a_low_confidence_family_is_marked_too_uncertain_not_dropped(tmp_path):
     game = packet(tmp_path)
-    evaluation = evaluate_game(
-        game, handicap(low_confidence_families=("game_total",)), min_net_edge=0.0
-    )
+    evaluation = evaluate_game(game, handicap(low_confidence_families=("game_total",)), min_net_edge=0.0)
     flagged = [r for r in evaluation.rows if r["status"] == EvaluationStatus.TOO_UNCERTAIN.value]
     assert flagged
     assert all(r["family"] == "game_total" for r in flagged)
@@ -248,9 +254,7 @@ def test_a_declared_unpriceable_family_is_counted_as_unpriceable(tmp_path):
     evaluation = evaluate_game(game, handicap(declared_unpriceable_families=("game_spread",)))
     spreads = [r for r in evaluation.rows if r["family"] == "game_spread"]
     assert spreads
-    assert all(
-        r["status"] == EvaluationStatus.UNPRICEABLE_FROM_HANDICAP.value for r in spreads
-    )
+    assert all(r["status"] == EvaluationStatus.UNPRICEABLE_FROM_HANDICAP.value for r in spreads)
     assert evaluation.complete
 
 
@@ -382,14 +386,8 @@ def test_the_template_lists_every_period_the_game_needs(tmp_path):
     game = packet(tmp_path)
     template = template_for_packet(game)
     needed = {
-        c["semantics"]["period"]
-        for c in game["contracts"]
-        if c["semantics"]["requires"] == "period_distribution"
+        c["semantics"]["period"] for c in game["contracts"] if c["semantics"]["requires"] == "period_distribution"
     }
     assert set(template["period_distributions"]) == needed
-    explicit_needed = {
-        c["ticker"]
-        for c in game["contracts"]
-        if c["semantics"]["requires"] == "explicit_probability"
-    }
+    explicit_needed = {c["ticker"] for c in game["contracts"] if c["semantics"]["requires"] == "explicit_probability"}
     assert set(template["explicit_probabilities"]) == explicit_needed

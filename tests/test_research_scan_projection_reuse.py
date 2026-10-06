@@ -63,11 +63,7 @@ def _scan(repo_dir: Path, monkeypatch, *, n_games: int, contracts_per_ladder: in
         telemetry=telemetry,
     )
     path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
-    rows = [
-        __import__("json").loads(line)
-        for line in path.text().splitlines()
-        if line.strip()
-    ]
+    rows = [__import__("json").loads(line) for line in path.text().splitlines() if line.strip()]
     return cache, telemetry, report, rows
 
 
@@ -85,9 +81,7 @@ def test_one_projection_per_game_not_per_contract(tmp_path, monkeypatch):
         f"{cache.projection_builds} projections built for {len(distinct_games)} distinct games "
         "-- projection is no longer once-per-game"
     )
-    assert len(priced) > cache.projection_builds, (
-        "no contract reuse at all: as many projections as priced contracts"
-    )
+    assert len(priced) > cache.projection_builds, "no contract reuse at all: as many projections as priced contracts"
     assert telemetry.priced_contract_count == len(priced)
 
 

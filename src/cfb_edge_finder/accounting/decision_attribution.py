@@ -130,20 +130,14 @@ def candidates_from_records(records: list[dict[str, Any]]) -> list[DecisionCandi
             continue
         games = record.get("games") or {}
         selected = [c for c in record.get("candidates") or [] if isinstance(c, dict)]
-        not_selected = [
-            e for e in record.get("evaluated_not_selected") or [] if isinstance(e, dict)
-        ]
+        not_selected = [e for e in record.get("evaluated_not_selected") or [] if isinstance(e, dict)]
         for candidate in selected:
             game_key = str(candidate.get("game_key") or _game_key_of(candidate.get("market_ticker")) or "")
             siblings = tuple(
                 {**other, "selected": True}
                 for other in selected
                 if other is not candidate and str(other.get("game_key")) == game_key
-            ) + tuple(
-                {**other, "selected": False}
-                for other in not_selected
-                if str(other.get("game_key")) == game_key
-            )
+            ) + tuple({**other, "selected": False} for other in not_selected if str(other.get("game_key")) == game_key)
             out.append(
                 DecisionCandidate(
                     record_id=str(record.get("record_id") or ""),
@@ -262,10 +256,12 @@ def attribute(
         if not eligible:
             result.entries.append(
                 _entry(
-                    wager, UNMATCHED,
+                    wager,
+                    UNMATCHED,
                     reason=(
                         "no decision record carries this market and side before the order"
-                        if not pool else "; ".join(rejected) or "no eligible decision record"
+                        if not pool
+                        else "; ".join(rejected) or "no eligible decision record"
                     ),
                     candidates_considered=len(pool),
                 )
@@ -273,8 +269,11 @@ def attribute(
             result.matches.matches.append(
                 Match(
                     state=MatchState.EXECUTED_NOT_RECOMMENDED.value,
-                    source_bet_key=key, ticker=ticker, side=side,
-                    executed_price=price, executed_stake=stake,
+                    source_bet_key=key,
+                    ticker=ticker,
+                    side=side,
+                    executed_price=price,
+                    executed_stake=stake,
                     reason="no decision record for this market and side preceded the order",
                     candidates_considered=len(pool),
                 )
@@ -292,7 +291,8 @@ def attribute(
         if len(nearest) > 1 or any(len(v) > 1 for v in by_record.values() if v[0].record_id in nearest_records):
             result.entries.append(
                 _entry(
-                    wager, AMBIGUOUS,
+                    wager,
+                    AMBIGUOUS,
                     reason=(
                         f"{len(nearest)} decision candidates for this market and side are equally "
                         "near before the order; choosing one would be a guess"
@@ -304,8 +304,11 @@ def attribute(
             result.matches.matches.append(
                 Match(
                     state=MatchState.AMBIGUOUS_MATCH.value,
-                    source_bet_key=key, ticker=ticker, side=side,
-                    executed_price=price, executed_stake=stake,
+                    source_bet_key=key,
+                    ticker=ticker,
+                    side=side,
+                    executed_price=price,
+                    executed_stake=stake,
                     reason="more than one decision candidate is equally near before the order",
                     candidates_considered=len(eligible),
                 )
@@ -339,16 +342,25 @@ def attribute(
 
         result.matches.matches.append(
             Match(
-                state=state, source_bet_key=key, recommendation_id=chosen.recommendation_id,
-                ticker=ticker, side=side, executed_price=price, recommended_price=observed,
-                bet_up_to=bet_up_to, price_delta=delta, executed_stake=stake,
-                recommended_stake=recommendation.recommended_stake, reason=reason,
+                state=state,
+                source_bet_key=key,
+                recommendation_id=chosen.recommendation_id,
+                ticker=ticker,
+                side=side,
+                executed_price=price,
+                recommended_price=observed,
+                bet_up_to=bet_up_to,
+                price_delta=delta,
+                executed_stake=stake,
+                recommended_stake=recommendation.recommended_stake,
+                reason=reason,
                 candidates_considered=len(eligible),
             )
         )
         result.entries.append(
             _entry(
-                wager, MATCHED,
+                wager,
+                MATCHED,
                 record_id=chosen.record_id,
                 record_created_at=chosen.record_created_at,
                 record_path=chosen.record_path,
@@ -405,8 +417,11 @@ def attribute(
         result.matches.matches.append(
             Match(
                 state=MatchState.RECOMMENDED_NOT_EXECUTED.value,
-                recommendation_id=candidate.recommendation_id, ticker=candidate.ticker,
-                side=candidate.side, recommended_price=rec.quoted_entry, bet_up_to=rec.bet_up_to,
+                recommendation_id=candidate.recommendation_id,
+                ticker=candidate.ticker,
+                side=candidate.side,
+                recommended_price=rec.quoted_entry,
+                bet_up_to=rec.bet_up_to,
                 recommended_stake=rec.recommended_stake,
                 reason="no execution matched this decision candidate",
             )
@@ -427,9 +442,7 @@ def render(attribution: DecisionAttribution) -> list[str]:
     ]
     for entry in attribution.entries:
         if entry["state"] != MATCHED:
-            lines.append(
-                f"    {entry['state']:9} {entry['market_ticker']} {entry['side']} -- {entry.get('reason')}"
-            )
+            lines.append(f"    {entry['state']:9} {entry['market_ticker']} {entry['side']} -- {entry.get('reason')}")
             continue
         inside = entry.get("inside_bet_up_to")
         inside_word = "n/a" if inside is None else ("inside" if inside else "ABOVE")

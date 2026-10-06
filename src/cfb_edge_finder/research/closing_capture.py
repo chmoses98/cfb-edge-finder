@@ -202,9 +202,7 @@ def resolve_closing_status(
     if has_closing_row:
         return ClosingEligibility(True, ClosingStatus.CLOSING_CAPTURED, "CLOSING row present in the corpus")
     if not is_supported_population:
-        return ClosingEligibility(
-            False, ClosingStatus.CLOSING_NOT_APPLICABLE, "not a priced population"
-        )
+        return ClosingEligibility(False, ClosingStatus.CLOSING_NOT_APPLICABLE, "not a priced population")
     if kickoff_utc is None:
         return ClosingEligibility(
             False, ClosingStatus.CLOSING_NOT_APPLICABLE, "no kickoff time -- game never scheduled to start"
@@ -223,9 +221,7 @@ def resolve_closing_status(
         )
     if last_observed_market_status is not None and not is_executable_status(last_observed_market_status):
         reason = missing_reason_for_status(last_observed_market_status)
-        return ClosingEligibility(
-            False, reason, f"last observed market status was {last_observed_market_status!r}"
-        )
+        return ClosingEligibility(False, reason, f"last observed market status was {last_observed_market_status!r}")
     return ClosingEligibility(
         False,
         ClosingStatus.CLOSING_MISSING_NO_SCAN_IN_WINDOW,

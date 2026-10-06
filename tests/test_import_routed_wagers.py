@@ -34,9 +34,7 @@ from cfb_edge_finder.accounting.import_routed_wagers import (
 
 #: `scripts/` is not a package, so the delivery entry point is imported by path.
 #: The tests below import it inside the test body, after this runs.
-sys.path.insert(
-    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 
 #: Exactly what the router sends -- no wager_id, no season, no week.
 ROUTER_ROW = {
@@ -94,8 +92,7 @@ def test_the_id_is_derived_only_from_the_venue_key():
     """
     base = mint_wager_id(ROUTER_ROW["source_bet_key"])
 
-    richer = dict(ROUTER_ROW, stake=999.0, fees_paid=9.99,
-                  import_batch_id="some-other-batch")
+    richer = dict(ROUTER_ROW, stake=999.0, fees_paid=9.99, import_batch_id="some-other-batch")
     assert mint_wager_id(richer["source_bet_key"]) == base
     assert base != mint_wager_id("kalshi:v1:some-other-order")
     assert base.startswith("routed-")
@@ -106,9 +103,16 @@ def test_no_model_provenance_is_fabricated():
     about whether this repository's research-only model called it."""
     record = build_record(ROUTER_ROW, season=SEASON).to_dict()
 
-    for forbidden in ("recommendation_id", "model_evaluation_id",
-                      "model_fair_probability", "model_supported",
-                      "projection_id", "rating", "edge", "expected_value"):
+    for forbidden in (
+        "recommendation_id",
+        "model_evaluation_id",
+        "model_fair_probability",
+        "model_supported",
+        "projection_id",
+        "rating",
+        "edge",
+        "expected_value",
+    ):
         assert forbidden not in record
     assert record["entry_method"] == "IMPORTED_RECEIPT"
     assert record["schema_version"] == "cfb_accounted_wager.v1"
@@ -226,6 +230,7 @@ def test_the_row_lands_in_the_named_seasons_ledger(tmp_path):
 
 # ------------------------------------------ the script the router actually runs
 
+
 class TestPayloadEnvelope:
     """The batch label appears twice, so the two copies are made unable to
     disagree quietly.
@@ -294,19 +299,33 @@ def test_the_script_prints_no_wager(tmp_path, capsys):
     import import_routed_wagers as script
 
     payload = tmp_path / "CFB.json"
-    payload.write_text(json.dumps({
-        "importBatchId": ROUTER_ROW["import_batch_id"], "rows": [ROUTER_ROW],
-    }), encoding="utf-8")
+    payload.write_text(
+        json.dumps(
+            {
+                "importBatchId": ROUTER_ROW["import_batch_id"],
+                "rows": [ROUTER_ROW],
+            }
+        ),
+        encoding="utf-8",
+    )
 
-    assert script.main([
-        "--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
-        "--season", str(SEASON),
-    ]) == script.EXIT_OK
+    assert (
+        script.main(
+            [
+                "--payload",
+                str(payload),
+                "--base-dir",
+                str(tmp_path / "ledger"),
+                "--season",
+                str(SEASON),
+            ]
+        )
+        == script.EXIT_OK
+    )
 
     printed = capsys.readouterr().out
     assert "written:         1" in printed
-    for sensitive in (ROUTER_ROW["market_ticker"], "0.47", "11.94", "25.0",
-                      ROUTER_ROW["source_bet_key"]):
+    for sensitive in (ROUTER_ROW["market_ticker"], "0.47", "11.94", "25.0", ROUTER_ROW["source_bet_key"]):
         assert sensitive not in printed, printed
 
 
@@ -317,15 +336,29 @@ def test_a_refused_row_fails_the_script(tmp_path):
     import import_routed_wagers as script
 
     payload = tmp_path / "CFB.json"
-    payload.write_text(json.dumps({
-        "importBatchId": ROUTER_ROW["import_batch_id"],
-        "rows": [dict(ROUTER_ROW, side="MAYBE")],
-    }), encoding="utf-8")
+    payload.write_text(
+        json.dumps(
+            {
+                "importBatchId": ROUTER_ROW["import_batch_id"],
+                "rows": [dict(ROUTER_ROW, side="MAYBE")],
+            }
+        ),
+        encoding="utf-8",
+    )
 
-    assert script.main([
-        "--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
-        "--season", str(SEASON),
-    ]) == script.EXIT_REFUSED
+    assert (
+        script.main(
+            [
+                "--payload",
+                str(payload),
+                "--base-dir",
+                str(tmp_path / "ledger"),
+                "--season",
+                str(SEASON),
+            ]
+        )
+        == script.EXIT_REFUSED
+    )
 
 
 def test_running_the_script_twice_writes_one_row(tmp_path):
@@ -333,11 +366,16 @@ def test_running_the_script_twice_writes_one_row(tmp_path):
     import import_routed_wagers as script
 
     payload = tmp_path / "CFB.json"
-    payload.write_text(json.dumps({
-        "importBatchId": ROUTER_ROW["import_batch_id"], "rows": [ROUTER_ROW],
-    }), encoding="utf-8")
-    argv = ["--payload", str(payload), "--base-dir", str(tmp_path / "ledger"),
-            "--season", str(SEASON)]
+    payload.write_text(
+        json.dumps(
+            {
+                "importBatchId": ROUTER_ROW["import_batch_id"],
+                "rows": [ROUTER_ROW],
+            }
+        ),
+        encoding="utf-8",
+    )
+    argv = ["--payload", str(payload), "--base-dir", str(tmp_path / "ledger"), "--season", str(SEASON)]
 
     assert script.main(argv) == script.EXIT_OK
     assert script.main(argv) == script.EXIT_OK

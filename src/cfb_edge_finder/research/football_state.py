@@ -177,9 +177,7 @@ def _compact_advanced(rows: list[dict]) -> list[dict]:
     kept = []
     for row in rows:
         offense = row.get("offense") or {}
-        kept.append(
-            {**{k: row.get(k) for k in _ADVANCED_KEEP}, "offense": {"plays": offense.get("plays")}}
-        )
+        kept.append({**{k: row.get(k) for k in _ADVANCED_KEEP}, "offense": {"plays": offense.get("plays")}})
     return kept
 
 
@@ -397,9 +395,7 @@ def save_football_state(repo_dir: Path, state: FootballState) -> None:
     sha = hashlib.sha256(payload_bytes).hexdigest()
     if not payload_path.exists() or hashlib.sha256(payload_path.read_bytes()).hexdigest() != sha:
         payload_path.write_bytes(payload_bytes)
-    manifest_path.write_text(
-        json.dumps(state.manifest_dict(sha), indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    manifest_path.write_text(json.dumps(state.manifest_dict(sha), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def load_football_state(repo_dir: Path, season: int) -> tuple[FootballState | None, str]:
@@ -443,7 +439,11 @@ def load_football_state_from_git(repo_dir: Path, branch: str, season: int) -> tu
     try:
         subprocess.run(
             ["git", "fetch", "origin", branch, "--depth=1"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=120, check=True,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
         )
         with tempfile.TemporaryDirectory() as tmp:
             tmp_repo = Path(tmp)
@@ -452,7 +452,9 @@ def load_football_state_from_git(repo_dir: Path, branch: str, season: int) -> tu
             for name in (f"{season}.json", f"{season}.manifest.json"):
                 show = subprocess.run(
                     ["git", "show", f"origin/{branch}:data/research/{FOOTBALL_STATE_SUBDIR}/{name}"],
-                    cwd=repo_dir, capture_output=True, timeout=120,
+                    cwd=repo_dir,
+                    capture_output=True,
+                    timeout=120,
                 )
                 if show.returncode != 0:
                     return None, FOOTBALL_STATE_MISSING
@@ -511,11 +513,7 @@ def resolve_football_state(
     if cached is not None and not force_refresh and cached.freshness(now) == FOOTBALL_STATE_FRESH:
         return RefreshOutcome(state=cached, source="cache", cfbd_requests=0, freshness=FOOTBALL_STATE_FRESH)
 
-    needs_full = (
-        cached is None
-        or force_refresh
-        or cached.history_age_hours(now) > HISTORY_SOFT_REFRESH_HOURS
-    )
+    needs_full = cached is None or force_refresh or cached.history_age_hours(now) > HISTORY_SOFT_REFRESH_HOURS
     if not allow_cfbd:
         gated_error = "cfbd gated (quota exhausted per durable access state): no live attempt made"
         if cached is not None and cached.freshness(now) != FOOTBALL_STATE_STALE_HARD:
@@ -551,9 +549,7 @@ def resolve_football_state(
             requests_made = 1
             source = "live_schedule_refresh"
         save_football_state(repo_dir, fresh)
-        return RefreshOutcome(
-            state=fresh, source=source, cfbd_requests=requests_made, freshness=FOOTBALL_STATE_FRESH
-        )
+        return RefreshOutcome(state=fresh, source=source, cfbd_requests=requests_made, freshness=FOOTBALL_STATE_FRESH)
     except Exception as exc:  # noqa: BLE001 -- any live failure degrades identically
         error = f"{type(exc).__name__}: {exc}"
         http_status = getattr(getattr(exc, "response", None), "status_code", None)

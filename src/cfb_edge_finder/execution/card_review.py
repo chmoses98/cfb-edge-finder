@@ -325,9 +325,7 @@ def relate(
 
     if opposing:
         out["relation"] = (
-            CashPathRelation.OPPOSING_MIDDLE.value
-            if overlap
-            else CashPathRelation.MUTUALLY_EXCLUSIVE.value
+            CashPathRelation.OPPOSING_MIDDLE.value if overlap else CashPathRelation.MUTUALLY_EXCLUSIVE.value
         )
     elif a_in_b and b_in_a:
         out["relation"] = CashPathRelation.EQUIVALENT_OUTCOME_SET.value
@@ -351,9 +349,7 @@ def incremental_fields(relation: dict[str, Any], *, duplicate: bool = False) -> 
     wins = relation.get("this_wins_when") or {}
     return {
         "card_role": (
-            CardRole.DUPLICATE_LISTING.value
-            if duplicate
-            else CardRole.INCREMENTAL_EXPRESSION_CANDIDATE.value
+            CardRole.DUPLICATE_LISTING.value if duplicate else CardRole.INCREMENTAL_EXPRESSION_CANDIDATE.value
         ),
         "requires_incremental_justification": True,
         "justification_standard": _justification_standard(relation["relation"]),
@@ -415,15 +411,13 @@ RULES = (
     {
         "id": "review_game_exposure_after_sizing",
         "rule": (
-            "After stakes are assigned outside this repository, sum and examine the combined exposure "
-            "of each game."
+            "After stakes are assigned outside this repository, sum and examine the combined exposure of each game."
         ),
     },
     {
         "id": "review_thesis_exposure_after_sizing",
         "rule": (
-            "After stakes are assigned outside this repository, sum and examine the combined exposure "
-            "of each thesis."
+            "After stakes are assigned outside this repository, sum and examine the combined exposure of each thesis."
         ),
     },
     {
@@ -484,9 +478,7 @@ INCREMENTAL_JUSTIFICATION_TEMPLATE = {
     "decision": None,
 }
 
-CASH_PATH_VOCABULARY = {
-    relation.value: " ".join((relation.__doc__ or "").split()) for relation in CashPathRelation
-}
+CASH_PATH_VOCABULARY = {relation.value: " ".join((relation.__doc__ or "").split()) for relation in CashPathRelation}
 
 DECISIONS = {
     CardDecision.CORE_EXPRESSION.value: "the one expression chosen to carry a funded thesis",
@@ -506,8 +498,7 @@ DECISIONS = {
         "too large a share of the card"
     ),
     CardDecision.OPPOSING_HEDGE_WITH_PURPOSE.value: (
-        "a position against the card's own thesis in the same game, held for a stated reason (a middle, "
-        "a priced hedge)"
+        "a position against the card's own thesis in the same game, held for a stated reason (a middle, a priced hedge)"
     ),
     CardDecision.OPPOSING_POSITION_CONTRADICTS_THESIS.value: (
         "a position against the card's own thesis in the same game with no stated purpose"
@@ -542,9 +533,7 @@ def thesis_index(survivors: list[Expression]) -> dict[tuple[str, str], list[Expr
     return index
 
 
-def core_fields(
-    expression: Expression, index: dict[tuple[str, str], list[Expression]]
-) -> dict[str, Any]:
+def core_fields(expression: Expression, index: dict[tuple[str, str], list[Expression]]) -> dict[str, Any]:
     """What a surviving candidate carries about its place on a card."""
     peers = [e.ticker for e in index.get(expression.thesis_key, []) if e.ticker != expression.ticker]
     wins = win_set(expression.row)
@@ -588,9 +577,7 @@ def build_card_review(reduction: Reduction) -> dict[str, Any]:
             for core in cores:
                 for alternative in reduction.alternatives.get(core.ticker, []):
                     alternative_count += 1
-                    relation = (alternative.get("cash_path") or {}).get(
-                        "relation", CashPathRelation.UNDETERMINED.value
-                    )
+                    relation = (alternative.get("cash_path") or {}).get("relation", CashPathRelation.UNDETERMINED.value)
                     by_relation.setdefault(relation, []).append(str(alternative["ticker"]))
                     if relation == CashPathRelation.NESTED_TAIL_EXTENSION.value:
                         tails.append(
@@ -644,9 +631,7 @@ def build_card_review(reduction: Reduction) -> dict[str, Any]:
                 continue
             for a in theses[thesis]:
                 for b in theses[other]:
-                    opposing.append(
-                        {"a": a.ticker, "b": b.ticker, **_pair(a, b, same_thesis=False, opposing=True)}
-                    )
+                    opposing.append({"a": a.ticker, "b": b.ticker, **_pair(a, b, same_thesis=False, opposing=True)})
 
         core_count = sum(len(c) for c in theses.values())
         extra_cores = core_count - len(theses)

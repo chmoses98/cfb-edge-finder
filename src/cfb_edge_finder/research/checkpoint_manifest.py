@@ -116,10 +116,7 @@ class CheckpointManifest:
     def content_hash(self) -> str:
         """Stable identity for this manifest. Lets a later report cite a
         checkpoint without re-embedding it."""
-        payload = {
-            k: (sorted(v) if isinstance(v, tuple) else v)
-            for k, v in sorted(self.to_payload().items())
-        }
+        payload = {k: (sorted(v) if isinstance(v, tuple) else v) for k, v in sorted(self.to_payload().items())}
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
         ).hexdigest()
@@ -182,9 +179,7 @@ def manifest_from_corpus_row(row: dict, *, code_sha: str | None = None) -> Check
         fee_schedule_version=obs.get("fee_schedule_version"),
         semantics_version=obs.get("parse_status"),
         mapping_version=versions.get("mapping_version") if isinstance(versions, dict) else None,
-        context_capture_version=versions.get("context_capture_version")
-        if isinstance(versions, dict)
-        else None,
+        context_capture_version=versions.get("context_capture_version") if isinstance(versions, dict) else None,
         trigger_source=row.get("run_id"),
         observation_schema_version=row.get("schema_version"),
         capture_mode=row.get("capture_mode"),

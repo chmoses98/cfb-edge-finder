@@ -199,7 +199,9 @@ def test_settlement_delay_pending_then_settled_preserves_both_facts(tmp_path: Pa
 
     final_result = extract_game_result(
         {"status": "final", "homePoints": 20, "awayPoints": 17},
-        game_id="g-delay", season=2026, captured_at=KICKOFF + timedelta(days=1),
+        game_id="g-delay",
+        season=2026,
+        captured_at=KICKOFF + timedelta(days=1),
     )
     final_settlement = settle_market(obs, final_result, settled_at=KICKOFF + timedelta(days=1))
     persistence.append_settlement_rows(path.base, path.season, [final_settlement])

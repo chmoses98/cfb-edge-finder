@@ -161,9 +161,7 @@ def test_page_sweep_cannot_lie_about_itself():
 def test_sweep_stats_accumulate_failures():
     stats = SweepStats()
     stats.record_sweep("/markets a", PageSweep(items=[], complete=True, pages_fetched=2))
-    stats.record_sweep(
-        "/markets b", PageSweep(items=[], complete=False, pages_fetched=1, failure_reason="429")
-    )
+    stats.record_sweep("/markets b", PageSweep(items=[], complete=False, pages_fetched=1, failure_reason="429"))
     assert stats.requests_made == 3
     assert stats.pagination_failures == 1
     assert stats.failed_paths == ["/markets b: 429"]

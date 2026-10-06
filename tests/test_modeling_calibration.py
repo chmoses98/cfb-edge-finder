@@ -52,9 +52,7 @@ def test_calibrate_isotonic_falls_back_below_its_own_higher_threshold():
 def test_calibrated_probabilities_stay_in_valid_bounds(method):
     raw_p, outcomes = _synthetic_miscalibrated_history(n=3000)
     target = np.linspace(0.01, 0.99, 50)
-    calibrated = calibrate(
-        method=method, history_raw_probs=raw_p, history_outcomes=outcomes, target_raw_probs=target
-    )
+    calibrated = calibrate(method=method, history_raw_probs=raw_p, history_outcomes=outcomes, target_raw_probs=target)
     assert np.all(calibrated >= 0.0)
     assert np.all(calibrated <= 1.0)
 
@@ -63,9 +61,7 @@ def test_calibrated_probabilities_stay_in_valid_bounds(method):
 def test_calibration_is_monotonic_in_raw_probability(method):
     raw_p, outcomes = _synthetic_miscalibrated_history(n=3000)
     target = np.linspace(0.01, 0.99, 50)  # already sorted ascending
-    calibrated = calibrate(
-        method=method, history_raw_probs=raw_p, history_outcomes=outcomes, target_raw_probs=target
-    )
+    calibrated = calibrate(method=method, history_raw_probs=raw_p, history_outcomes=outcomes, target_raw_probs=target)
     assert np.all(np.diff(calibrated) >= -1e-9)
 
 

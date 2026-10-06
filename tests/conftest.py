@@ -24,7 +24,6 @@ if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
 
-
 @pytest.fixture(autouse=True)
 def _isolate_from_the_actions_runner(monkeypatch):
     """Tests run inside GitHub Actions in CI, where GITHUB_ACTIONS and

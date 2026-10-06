@@ -74,9 +74,7 @@ def test_every_state_is_reachable_from_the_real_check_functions():
     """A state nobody can produce is decoration."""
 
     def protection(state):
-        return check_collection_protection(
-            ProtectionAssessment(state=state, detail="d")
-        ).state
+        return check_collection_protection(ProtectionAssessment(state=state, detail="d")).state
 
     produced = {
         protection(ProtectionState.QUIET_PERIOD),
@@ -122,21 +120,21 @@ def test_any_integrity_breach_is_blocked_with_no_degraded_mode(kwargs):
 
 
 def test_an_empty_corpus_is_blocked_not_healthy():
-    assert check_corpus_integrity(
-        duplicate_rows=0, malformed_rows=0, non_prospective_rows=0, total_rows=0
-    ).state is OpsState.BLOCKED
+    assert (
+        check_corpus_integrity(duplicate_rows=0, malformed_rows=0, non_prospective_rows=0, total_rows=0).state
+        is OpsState.BLOCKED
+    )
 
 
 def test_a_clean_corpus_is_healthy():
-    assert check_corpus_integrity(
-        duplicate_rows=0, malformed_rows=0, non_prospective_rows=0, total_rows=1909
-    ).state is OpsState.HEALTHY
+    assert (
+        check_corpus_integrity(duplicate_rows=0, malformed_rows=0, non_prospective_rows=0, total_rows=1909).state
+        is OpsState.HEALTHY
+    )
 
 
 def test_all_integrity_problems_are_reported_together():
-    detail = check_corpus_integrity(
-        duplicate_rows=2, malformed_rows=3, non_prospective_rows=4, total_rows=100
-    ).detail
+    detail = check_corpus_integrity(duplicate_rows=2, malformed_rows=3, non_prospective_rows=4, total_rows=100).detail
     assert "2 duplicate" in detail and "3 malformed" in detail and "4 rows not marked" in detail
 
 
@@ -167,12 +165,15 @@ def test_full_coverage_is_healthy():
 
 
 def test_all_locks_holding_is_healthy():
-    assert check_safety_locks(
-        qualification_disabled=True,
-        threshold_artifact_absent=True,
-        validated_state_unreachable=True,
-        sizing_disconnected=True,
-    ).state is OpsState.HEALTHY
+    assert (
+        check_safety_locks(
+            qualification_disabled=True,
+            threshold_artifact_absent=True,
+            validated_state_unreachable=True,
+            sizing_disconnected=True,
+        ).state
+        is OpsState.HEALTHY
+    )
 
 
 @pytest.mark.parametrize(
@@ -216,9 +217,7 @@ def test_no_established_minimum_cannot_claim_sufficiency():
 
 
 def test_below_a_stated_minimum_is_still_blocked():
-    assert check_natural_data(settled_games=199, minimum_for_research=200).state is (
-        OpsState.PENDING_NATURAL_DATA
-    )
+    assert check_natural_data(settled_games=199, minimum_for_research=200).state is (OpsState.PENDING_NATURAL_DATA)
 
 
 def test_meeting_a_stated_minimum_does_not_approve_anything():

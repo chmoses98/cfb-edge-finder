@@ -267,8 +267,7 @@ def map_kalshi_event_to_game(
         matches = [
             g
             for g in matches
-            if g.kickoff_utc is not None
-            and abs(g.kickoff_utc - evidence.reference_timestamp) <= GAME_DATE_MATCH_WINDOW
+            if g.kickoff_utc is not None and abs(g.kickoff_utc - evidence.reference_timestamp) <= GAME_DATE_MATCH_WINDOW
         ]
 
     if len(matches) == 1:

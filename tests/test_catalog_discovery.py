@@ -147,9 +147,7 @@ def test_unknown_new_series_is_discovered_and_retained_as_unknown():
         },
         markets_by_event={
             f"KXNCAAFGAME-{game}": [make_market(f"KXNCAAFGAME-{game}-UGA", floor_strike=None)],
-            novel: [
-                make_market(f"{novel}-X", title="Something Kalshi has never listed before", floor_strike=None)
-            ],
+            novel: [make_market(f"{novel}-X", title="Something Kalshi has never listed before", floor_strike=None)],
         },
         series=CFB_SERIES,
     )
@@ -218,9 +216,7 @@ def test_partial_pagination_failure_marks_the_game_incomplete():
     api = HalfBrokenApi(
         milestones=[make_milestone(game, (event,))],
         events={event: make_event(event)},
-        markets_by_event={
-            event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(10)]
-        },
+        markets_by_event={event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(10)]},
         series=CFB_SERIES,
         page_size=4,
     )
@@ -238,9 +234,7 @@ def test_cursor_pagination_collects_every_market_across_pages():
     api = FakeKalshi(
         milestones=[make_milestone(game, (event,))],
         events={event: make_event(event)},
-        markets_by_event={
-            event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(25)]
-        },
+        markets_by_event={event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(25)]},
         series=CFB_SERIES,
         page_size=4,
     )
@@ -389,9 +383,7 @@ def test_multiple_physical_games_are_grouped_independently():
             events[ticker] = make_event(ticker)
             markets[ticker] = [make_market(f"{ticker}-A", floor_strike=None)]
         milestones.append(make_milestone(g, (f"KXNCAAFGAME-{g}", f"KXNCAAFSPREAD-{g}"), milestone_id=f"ms-{g}"))
-    api = FakeKalshi(
-        milestones=milestones, events=events, markets_by_event=markets, series=CFB_SERIES
-    )
+    api = FakeKalshi(milestones=milestones, events=events, markets_by_event=markets, series=CFB_SERIES)
     run = MarketDiscovery(api).run(as_of=NOW)
     assert set(run.games) == set(games)
     for g in games:
@@ -404,7 +396,9 @@ def test_finished_and_far_future_games_are_excluded_by_status_and_horizon():
             make_milestone("26SEP19AAABBB", ("KXNCAAFGAME-26SEP19AAABBB",), status="complete"),
             make_milestone("26SEP19CCCDDD", ("KXNCAAFGAME-26SEP19CCCDDD",), status="closed"),
             make_milestone(
-                "26DEC31EEEFFF", ("KXNCAAFGAME-26DEC31EEEFFF",), status="scheduled",
+                "26DEC31EEEFFF",
+                ("KXNCAAFGAME-26DEC31EEEFFF",),
+                status="scheduled",
                 start_date="2026-12-31T19:00:00Z",
             ),
             make_milestone("26SEP19GGGHHH", ("KXNCAAFGAME-26SEP19GGGHHH",), status="scheduled"),
@@ -430,9 +424,7 @@ def test_non_cfb_milestones_are_ignored():
             make_milestone("26SEP19UGAARK", ("KXNCAAFGAME-26SEP19UGAARK",), league="NCAAFB"),
         ],
         events={"KXNCAAFGAME-26SEP19UGAARK": make_event("KXNCAAFGAME-26SEP19UGAARK")},
-        markets_by_event={
-            "KXNCAAFGAME-26SEP19UGAARK": [make_market("KXNCAAFGAME-26SEP19UGAARK-A", floor_strike=None)]
-        },
+        markets_by_event={"KXNCAAFGAME-26SEP19UGAARK": [make_market("KXNCAAFGAME-26SEP19UGAARK-A", floor_strike=None)]},
         series=CFB_SERIES,
     )
     run = MarketDiscovery(api).run(as_of=NOW)
@@ -572,9 +564,7 @@ def test_a_failed_series_sweep_falls_back_rather_than_publishing_a_partial_bucke
     api = TruncatedSeriesSweep(
         milestones=[make_milestone(game, (event,))],
         events={event: make_event(event)},
-        markets_by_event={
-            event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(10)]
-        },
+        markets_by_event={event: [make_market(f"{event}-UGA{i}", floor_strike=i + 0.5) for i in range(10)]},
         series=CFB_SERIES,
         events_by_series={"KXNCAAFSPREAD": [make_event(event)]},
         page_size=4,
