@@ -191,3 +191,11 @@ def test_report_joins_prospective_rows_to_outcomes_only(tmp_path, season):
     # A realized record with no pregame row cannot enter the report.
     orphan = dict(record, game_key="OTHER", artifact_hash="none")
     assert build_report([row], [orphan])["script_accuracy"]["by_data_confidence"].get("UNKNOWN")
+
+
+def test_a_previous_artifact_stamped_in_the_future_is_replaced_not_reused(season):
+    future = freeze(build_content(_packet(season)), generated_at="2026-10-23T18:00:00Z")
+    now = freeze(build_content(_packet(season)), generated_at="2026-10-23T12:00:00Z", previous_envelope=future)
+    assert now["generated_at"] == "2026-10-23T12:00:00Z"
+    assert now["artifact_hash"] == future["artifact_hash"]
+    assert now["regeneration"]["reasons"][0] == "PREVIOUS_ARTIFACT_STAMPED_AFTER_NOW"

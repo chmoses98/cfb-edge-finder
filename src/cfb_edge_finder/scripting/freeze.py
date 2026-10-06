@@ -91,11 +91,16 @@ def freeze(
 ) -> dict[str, Any]:
     """Wrap content in its envelope, reusing the previous envelope when unchanged."""
     digest = content_hash(content)
-    if previous_envelope is not None and previous_envelope.get("artifact_hash") == digest:
+    from_the_future = previous_envelope is not None and str(previous_envelope.get("generated_at") or "") > generated_at
+    if previous_envelope is not None and previous_envelope.get("artifact_hash") == digest and not from_the_future:
         return previous_envelope
     previous_content = (previous_envelope or {}).get("content")
     history = list((previous_envelope or {}).get("regeneration", {}).get("history") or [])
     reasons = regeneration_reasons(previous_content, content)
+    if from_the_future:
+        # A previous artifact stamped later than now cannot be the one this
+        # publication froze; it is replaced, and the clock problem is named.
+        reasons = ["PREVIOUS_ARTIFACT_STAMPED_AFTER_NOW"] + [r for r in reasons if not r.startswith("CONTENT_CHANGED")]
     if previous_envelope is not None:
         history.append(
             {
