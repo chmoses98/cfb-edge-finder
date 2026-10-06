@@ -1,0 +1,26 @@
+name: Script engine probe (dev branch only)
+
+# Throwaway: prints the real shape of ESPN CFB summary payloads so the script
+# engine's parser is written against a captured payload rather than memory.
+# Runs only on the development branch and is removed before review.
+on:
+  push:
+    branches: [claude/peaceful-meitner-n7d125]
+    paths:
+      - scripts/probes/**
+      - .github/workflows/script-engine-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - run: python scripts/probes/espn_summary_probe.py 20261003
