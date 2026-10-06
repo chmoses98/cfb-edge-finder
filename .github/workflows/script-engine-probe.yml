@@ -1,7 +1,7 @@
 name: Script engine probe (dev branch only)
 
-# Throwaway: prints the real shape of ESPN CFB summary payloads so the script
-# engine's parser is written against a captured payload rather than memory.
+# Throwaway: captures real ESPN CFB payloads as test fixtures so the script
+# engine's parser is written against captured payloads rather than memory.
 # Runs only on the development branch and is removed before review.
 on:
   push:
@@ -11,7 +11,11 @@ on:
       - .github/workflows/script-engine-probe.yml
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: script-engine-probe
+  cancel-in-progress: false
 
 jobs:
   probe:
@@ -24,3 +28,11 @@ jobs:
           python-version: "3.11"
       - run: pip install requests
       - run: python scripts/probes/espn_summary_probe.py 20261003
+      - name: Commit fixtures to the development branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/fixtures/espn
+          git diff --cached --quiet && exit 0
+          git commit -m "fixtures: real ESPN CFB payloads captured by the script-engine probe"
+          git push origin HEAD:${{ github.ref_name }}
