@@ -35,13 +35,17 @@ the opt-in, the research-data files are still optional: when ``--research-root``
 CFBD-backed capabilities read UNAVAILABLE ("research-data branch not available").
 
 ``--min-interval-minutes`` gates rebuilds with ``research.refresh_due``: the tree is rewritten only
-when it is missing, the v1 events changed, or it is older than the interval.
+when it is missing, the v1 events changed, or it is older than the interval -- and also, at any age,
+when the CFB Script Engine publication it embeds changed (``script_engine_fingerprint``, recorded in
+``explorer/sources.json``). ``--force`` bypasses the interval (the owner's escape hatch); every
+validation still runs.
 """
 
 from __future__ import annotations
 
 import argparse
 import gzip
+import hashlib
 import json
 import os
 import subprocess
@@ -1233,6 +1237,83 @@ def load_script_engine(directory: Path | None) -> dict[str, dict]:
     return out
 
 
+#: Run clocks the engine stamps on every payload it maps (``scripts/script_engine.py``): they move on
+#: every run whatever the content, so they are not part of the publication's identity. Everything
+#: else -- artifact hash, generated_at (the freeze time, which moves only with the hash), methodology
+#: version, scripts, market map, labels -- is.
+SCRIPT_ENGINE_RUN_CLOCKS = ("mapped_at", "prices_captured_at")
+DEFAULT_SCRIPT_ENGINE_DIR = os.path.join(REPO_ROOT, "data", "scripting", "live", "sift")
+SOURCES_NAME = "sources.json"
+SOURCES_SCHEMA = "cfb_explorer_sources/1.0.0"
+NO_FINGERPRINT_REASON = (
+    "script-engine fingerprint not recorded for the published explorer (rebuilding once to record it)"
+)
+
+
+def script_engine_fingerprint(payloads: dict[str, dict]) -> str:
+    """One sha256 for the SIFT-consumable Script Engine payload set (``load_script_engine``'s result):
+    game key + the canonical JSON of each payload minus ``SCRIPT_ENGINE_RUN_CLOCKS``, in game-key order,
+    so file order, gzip bytes and a run that changed nothing cannot move it. An empty set has a
+    fingerprint too (no publication is a state)."""
+    outer = hashlib.sha256()
+    for key in sorted(payloads):
+        payload = dict(payloads[key])
+        if isinstance(payload.get("script_generation"), dict):
+            payload["script_generation"] = {
+                k: v for k, v in payload["script_generation"].items() if k not in SCRIPT_ENGINE_RUN_CLOCKS
+            }
+        body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        outer.update(f"{key}\0{hashlib.sha256(body).hexdigest()}\n".encode())
+    return outer.hexdigest()
+
+
+def _index_digest(app_root: Path) -> str | None:
+    path = Path(app_root) / R.EXPLORER_DIR / R.INDEX_NAME
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+
+
+def write_explorer_sources(app_root: Path, index: dict, payloads: dict[str, dict]) -> dict:
+    """Record what the just-published explorer embeds, bound to its ``index.json`` by digest. Written
+    AFTER ``research.publish_explorer`` swapped the tree in (which prunes any earlier copy), so a crash
+    in between leaves no record and the next run rebuilds: a missing or stale record only ever errs
+    towards rebuilding."""
+    versions = sorted(
+        {
+            str(p.get("methodology_version") or (p.get("script_generation") or {}).get("methodology_version"))
+            for p in payloads.values()
+        }
+    )
+    doc = {
+        "schema": SOURCES_SCHEMA,
+        "explorer_run_id": index["run_id"],
+        "explorer_generated_at": index["generated_at"],
+        "explorer_index_sha256": _index_digest(app_root),
+        "commit_sha": index.get("commit_sha"),
+        "script_engine": {
+            "fingerprint": script_engine_fingerprint(payloads),
+            "payloads": len(payloads),
+            "methodology_versions": versions,
+            "excluded_run_clocks": list(SCRIPT_ENGINE_RUN_CLOCKS),
+        },
+    }
+    path = Path(app_root) / R.EXPLORER_DIR / SOURCES_NAME
+    path.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    return doc
+
+
+def recorded_script_engine_fingerprint(app_root: Path) -> str | None:
+    """The fingerprint recorded for the explorer that is published now, or None when there is no
+    record or the record belongs to another tree (its index digest differs)."""
+    path = Path(app_root) / R.EXPLORER_DIR / SOURCES_NAME
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if doc.get("schema") != SOURCES_SCHEMA or doc.get("explorer_index_sha256") != _index_digest(app_root):
+        return None
+    return (doc.get("script_engine") or {}).get("fingerprint")
+
+
 def fit_script_engine(engine: dict, common: dict, matchup: list, notes: list) -> tuple[dict, str | None]:
     """Fit a script-engine payload inside the event_research byte budget.
 
@@ -2380,9 +2461,32 @@ def publication_meta(*, v1: dict, research: dict, history: dict, generated_at: s
     return {"as_of": as_of, "warnings": warnings, "quality": quality}
 
 
-def explorer_due(app_root: Path, *, now: str | None, min_interval_seconds: float) -> tuple[bool, str]:
-    """``research.refresh_due`` against the wall clock (or ``now``)."""
-    return R.refresh_due(Path(app_root), now=now or timeutil.now_utc(), min_interval_seconds=min_interval_seconds)
+def explorer_due(
+    app_root: Path,
+    *,
+    now: str | None,
+    min_interval_seconds: float,
+    script_engine_dir: Path | None = None,
+    force: bool = False,
+) -> tuple[bool, str]:
+    """Whether to rebuild the explorer, and why, in this order: forced; ``research.refresh_due``'s
+    structural reasons (no explorer, v1 events changed); the Script Engine publication changed, or its
+    fingerprint was never recorded for this tree; then ``research.refresh_due``'s age throttle against
+    the wall clock (or ``now``). The first three ignore the explorer's age."""
+    app_root = Path(app_root)
+    if force:
+        return True, "forced rebuild requested (force_explorer); the age throttle is bypassed"
+    clock = now or timeutil.now_utc()
+    due, reason = R.refresh_due(app_root, now=clock, min_interval_seconds=float("inf"))
+    if due:
+        return due, reason
+    recorded = recorded_script_engine_fingerprint(app_root)
+    if recorded is None:
+        return True, NO_FINGERPRINT_REASON
+    current = script_engine_fingerprint(load_script_engine(script_engine_dir))
+    if current != recorded:
+        return True, f"script-engine publication changed (published {recorded[:12]}, current {current[:12]})"
+    return R.refresh_due(app_root, now=clock, min_interval_seconds=min_interval_seconds)
 
 
 def export_explorer(
@@ -2405,7 +2509,9 @@ def export_explorer(
     redistribution licence is unresolved); without it ``research_root`` is never read."""
     app_root = Path(app_root)
     if min_interval_seconds > 0:
-        due, reason = explorer_due(app_root, now=now, min_interval_seconds=min_interval_seconds)
+        due, reason = explorer_due(
+            app_root, now=now, min_interval_seconds=min_interval_seconds, script_engine_dir=script_engine_dir
+        )
         if not due:
             return {"skipped": True, "reason": reason}
     v1 = load_v1(app_root)
@@ -2421,16 +2527,17 @@ def export_explorer(
         if (ev.get("source_ids") or {}).get("kalshi_game_key")
     }
     history = load_catalog_history(Path(data_root), game_keys, max_commits=max_history_commits)
+    script_engine = load_script_engine(script_engine_dir)
     documents = build_explorer(
         v1=v1,
         research=research,
         history=history,
         generated_at=generated_at,
-        script_engine=load_script_engine(script_engine_dir),
+        script_engine=script_engine,
     )
     meta = publication_meta(v1=v1, research=research, history=history, generated_at=generated_at)
     caps = next(d for d in documents if d["kind"] == "capability_manifest")
-    return R.publish_explorer(
+    index = R.publish_explorer(
         app_root=app_root,
         sport=SPORT,
         run_id=manifest["run_id"],
@@ -2443,6 +2550,9 @@ def export_explorer(
         windows=caps["windows"],
         warnings=meta["warnings"],
     )
+    # the fingerprint of exactly the payloads embedded above, recorded only once the tree is in place
+    write_explorer_sources(app_root, index, script_engine)
+    return index
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2475,7 +2585,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--script-engine-dir",
-        default=os.path.join(REPO_ROOT, "data", "scripting", "live", "sift"),
+        default=DEFAULT_SCRIPT_ENGINE_DIR,
         help="CFB Script Engine payloads (one <game_key>.json.gz per game); absent => no script engine extension",
     )
     parser.add_argument(
@@ -2483,9 +2593,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="print due=true|false and reason=... (GITHUB_OUTPUT lines) for --min-interval-minutes and exit",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="rebuild even when the published explorer is current: bypasses only the --min-interval-minutes "
+        "throttle; validation and the atomic publish still apply (App Export's force_explorer input)",
+    )
     args = parser.parse_args(argv)
+    script_engine_dir = Path(args.script_engine_dir) if args.script_engine_dir else None
     if args.check_due:
-        due, reason = explorer_due(Path(args.out), now=args.now, min_interval_seconds=args.min_interval_minutes * 60)
+        due, reason = explorer_due(
+            Path(args.out),
+            now=args.now,
+            min_interval_seconds=args.min_interval_minutes * 60,
+            script_engine_dir=script_engine_dir,
+            force=args.force,
+        )
         print(f"due={'true' if due else 'false'}")
         print(f"reason={reason}")
         return 0
@@ -2496,8 +2619,8 @@ def main(argv: list[str] | None = None) -> int:
             research_root=Path(args.research_root) if args.research_root else None,
             now=args.now,
             include_cfbd=args.include_cfbd,
-            min_interval_seconds=args.min_interval_minutes * 60,
-            script_engine_dir=Path(args.script_engine_dir) if args.script_engine_dir else None,
+            min_interval_seconds=0 if args.force else args.min_interval_minutes * 60,
+            script_engine_dir=script_engine_dir,
         )
     except Exception as exc:  # noqa: BLE001 - report and exit 1; the previous explorer tree is untouched
         print(
@@ -2520,6 +2643,9 @@ def main(argv: list[str] | None = None) -> int:
                 "warnings": index["warnings"],
                 "bytes": R.tree_bytes(Path(args.out)),
                 "capabilities": {c["capability"]: c["status"] for c in caps["items"]},
+                "script_engine": json.loads(
+                    (Path(args.out) / R.EXPLORER_DIR / SOURCES_NAME).read_text(encoding="utf-8")
+                )["script_engine"],
             },
             sort_keys=True,
         )

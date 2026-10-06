@@ -201,7 +201,8 @@ app's detail screen reads). Every market is standard fields plus the four-key ex
 ```
 python scripts/research_export.py --out app/latest [--data-root data/live] \
     [--include-cfbd --research-root <git archive of research-data>] \
-    [--min-interval-minutes N] [--check-due] [--now <iso-utc>]
+    [--min-interval-minutes N] [--check-due] [--force] [--now <iso-utc>]
+    [--script-engine-dir data/scripting/live/sift]
 ```
 
 **CFBD values are off by default.** `docs/DATA_SOURCES.md` records that redistributing raw CFBD API
@@ -212,12 +213,41 @@ unresolved; owner opt-in required (--include-cfbd)". The workflow's job-level `I
 is the single switch: setting it to `"true"` fetches research-data and passes `--include-cfbd`.
 Everything below about CFBD metrics describes the opt-in path.
 
-**Refresh cadence.** `--min-interval-minutes N` gates rebuilds with `research.refresh_due`: the tree is
-rewritten only when it is missing, the v1 event set changed, or it is older than N minutes; otherwise
-the exporter prints the reason and leaves `explorer/` untouched. The workflow checks first
+**Refresh cadence.** `--min-interval-minutes N` gates rebuilds. In order, the tree is rewritten when:
+
+1. `--force` was given (App Export's `force_explorer` dispatch input): bypasses only the age throttle;
+2. it is missing, or the v1 event set changed (`research.refresh_due`);
+3. the CFB Script Engine publication it embeds changed, at any age: the content fingerprint of
+   `--script-engine-dir` differs from the one recorded for the published tree, or none is recorded;
+4. it is older than N minutes (`research.refresh_due`).
+
+Otherwise the exporter prints the reason and leaves `explorer/` untouched. The workflow checks first
 (`--check-due`, written to `$GITHUB_OUTPUT`) with N = 180, so the 30-minute cron rewrites the
-explorer at most every 3 hours unless games were added or removed, and the history deepening and the
-research fetch run only when a rebuild is due.
+explorer at most every 3 hours unless games were added or removed or the scripts changed, and the
+history deepening and the research fetch run only when a rebuild is due.
+
+*Script Engine fingerprint.* `script_engine_fingerprint` is one sha256 over the payloads the explorer
+embeds (`data/scripting/live/sift/*.json.gz`, decompressed): game key plus the canonical JSON
+(sorted keys) of each payload, in game-key order. It leaves out only the engine's per-run clocks
+`script_generation.mapped_at` and `script_generation.prices_captured_at`, which move on every run
+whatever the content. Everything else counts: artifact hash, freeze time, methodology version, scripts,
+market map and labels. So file order, gzip bytes and a run that changed nothing cannot move it, and a
+new artifact, a removed game, a re-mapped market or a methodology change always does. After each
+successful publish the exporter writes `explorer/sources.json` (`cfb_explorer_sources/1.0.0`): the
+fingerprint, the payload count and methodology versions, bound to the published `explorer/index.json`
+by its sha256. A record bound to another tree (a copy, an older run) reads as no record. The record is
+written after the atomic swap, so a crash in between, a failed publish or an explorer published before
+fingerprints all err the same way: the next run rebuilds once. The contract's `explorer_index` schema
+is shared with other repositories and closed (`additionalProperties: false`), so the record lives
+beside the index rather than in it.
+
+*Triggers.* App Export runs after every Kalshi catalog run, on its 30-minute clock, on manual dispatch,
+and after the **CFB Script Engine** workflow completes. The job starts on a Script Engine completion
+only when that run succeeded, on `main`, in this repository. The checkout is always `main`, so only
+main's payloads can be fingerprinted, embedded or recorded. Because invalidation is by content, not by
+which event started the run, any later run (the clock, the catalog) also rebuilds when a Script Engine
+publication was missed. For example, GitHub may drop a queued run in the shared `research-data-write`
+concurrency group.
 
 Honest framing (audit 2026-10-03): CFB's live, maintained surface is **market inventory + market
 history + accounting**. Everything team-level is a frozen CFBD corpus (fetched once, 2026-09-02) on

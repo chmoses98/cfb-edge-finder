@@ -307,11 +307,15 @@ def test_a_second_export_within_the_interval_is_skipped(synthetic, tmp_path):
     out = tmp_path / "app" / "latest"
     shutil.copytree(synthetic["out"], out)
     shutil.rmtree(out / "explorer")
+    engine = tmp_path / "no_script_engine"  # hermetic: not the repository's live payloads
     args = ["--out", str(out), "--data-root", str(synthetic["data_root"]), "--min-interval-minutes", "180"]
+    args += ["--script-engine-dir", str(engine)]
     assert rx.main(args + ["--now", "2026-10-03T12:30:00Z"]) == 0  # no explorer yet: due
     assert R.read_index(out) is not None
     before = R.digest_tree(out)
-    due, reason = rx.explorer_due(out, now="2026-10-03T14:00:00Z", min_interval_seconds=10800)
+    due, reason = rx.explorer_due(
+        out, now="2026-10-03T14:00:00Z", min_interval_seconds=10800, script_engine_dir=engine
+    )
     assert not due and "unchanged" in reason
     assert rx.main(args + ["--now", "2026-10-03T14:00:00Z"]) == 0
     assert R.digest_tree(out) == before
@@ -321,10 +325,11 @@ def test_a_second_export_within_the_interval_is_skipped(synthetic, tmp_path):
         research_root=None,
         now="2026-10-03T14:00:00Z",
         min_interval_seconds=10800,
+        script_engine_dir=engine,
     )
     assert skipped["skipped"] is True and R.digest_tree(out) == before
     # past the interval the tree is rebuilt
-    due, _ = rx.explorer_due(out, now="2026-10-03T15:31:00Z", min_interval_seconds=10800)
+    due, _ = rx.explorer_due(out, now="2026-10-03T15:31:00Z", min_interval_seconds=10800, script_engine_dir=engine)
     assert due
 
 
