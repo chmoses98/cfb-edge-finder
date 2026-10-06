@@ -21,13 +21,6 @@ on:
     - cron: "41 */6 * * 0-3"
     - cron: "11 9,13 * * 0"
   workflow_dispatch:
-  push:
-    branches: [claude/peaceful-meitner-n7d125]
-    paths:
-      - src/cfb_edge_finder/scripting/**
-      - scripts/script_engine.py
-      - scripts/collect_football_gamelog.py
-      - .github/workflows/script-engine.yml
 
 permissions:
   contents: write
