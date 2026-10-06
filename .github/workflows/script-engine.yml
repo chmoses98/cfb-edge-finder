@@ -1,0 +1,103 @@
+name: CFB Script Engine
+
+# football data -> opponent-adjusted matchup -> frozen scripts -> market map.
+#
+# 1. collect the season game log from ESPN (keyless, read-only)
+# 2. build every catalog game's FOOTBALL artifact from football data alone and
+#    freeze it (content hash); only then map that game's Kalshi contracts
+# 3. append the prospective ledger (pregame only, append-only) on the
+#    `script-ledger` branch, settle finished games, rebuild the report
+#
+# The explorer export (app-export.yml) embeds data/scripting/live/sift/*.json.gz
+# into event_research.extensions.script_engine on its next run.
+#
+# No credential is used or needed. Nothing here can place an order.
+
+on:
+  schedule:
+    # Every 2 hours Thursday-Saturday, so every kickoff gets a FINAL_PREGAME ledger row inside the
+    # 3-hour final window; every 6 hours otherwise; Sunday mornings when the week's results land.
+    - cron: "41 */2 * * 4-6"
+    - cron: "41 */6 * * 0-3"
+    - cron: "11 9,13 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Writes the repository (data/football, data/scripting/live), so it shares the
+# one writer group with the catalog and the app export -- see
+# tests/test_research_workflow_concurrency.py.
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SEASON: "2026"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Collect the football game log (ESPN, keyless)
+        run: python scripts/collect_football_gamelog.py --season "$SEASON" --out-dir "data/football/$SEASON"
+
+      - name: Check out the prospective ledger
+        run: |
+          echo "LEDGER=$RUNNER_TEMP/ledger" >> "$GITHUB_ENV"
+          LEDGER="$RUNNER_TEMP/ledger"
+          if git fetch --depth=1 origin script-ledger 2>/dev/null; then
+            git worktree add -B script-ledger "$LEDGER" FETCH_HEAD
+          else
+            git worktree add --orphan -b script-ledger "$LEDGER"
+          fi
+
+      - name: Build (football artifact frozen first, then the market map)
+        run: >
+          python scripts/script_engine.py build
+          --football-dir "data/football/$SEASON" --catalog-dir data/live
+          --out-dir data/scripting/live --ledger-dir "$LEDGER/data/scripting/ledger" --season "$SEASON"
+
+      - name: Settle finished games and rebuild the report
+        run: |
+          python scripts/script_engine.py settle --football-dir "data/football/$SEASON" \
+            --ledger-dir "$LEDGER/data/scripting/ledger" --season "$SEASON"
+          python scripts/script_engine.py report --ledger-dir "$LEDGER/data/scripting/ledger" \
+            --season "$SEASON" --out "$LEDGER/data/scripting/reports/$SEASON"
+          cat "$LEDGER/data/scripting/reports/$SEASON/script_engine_report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit football data and live payloads
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/football data/scripting/live
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "script engine: football log + frozen artifacts ($(date -u +%Y-%m-%dT%H:%MZ))"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      - name: Commit the prospective ledger (main only)
+        if: github.ref_name == 'main'
+        working-directory: ${{ runner.temp }}/ledger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/scripting
+          if git diff --cached --quiet; then echo "no ledger change"; exit 0; fi
+          git commit -m "script ledger: prospective publications ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git push origin script-ledger
+
+      - name: Ledger dry-run summary (development branches)
+        if: github.ref_name != 'main'
+        run: |
+          echo "Ledger NOT pushed from ${{ github.ref_name }}: prospective records come from main only."
+          wc -l "$LEDGER/data/scripting/ledger/$SEASON/publications.jsonl" || true

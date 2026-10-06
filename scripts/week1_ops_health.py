@@ -177,6 +177,9 @@ GUARDED_PACKAGES = (
     "teams",
     "schemas",
     "data",
+    # The CFB Script Engine labels market expressions against football
+    # scripts; it never prices or sizes them.
+    "scripting",
 )
 
 

@@ -315,3 +315,17 @@ previous `explorer/` is untouched and the step exits 1. The workflow step (`id: 
 is `continue-on-error`, so `app/latest` is still committed, and a final step fails the job. Since
 contract 1.1.1 the v1 `publish.publish` never prunes `explorer/`, so a skipped or failed explorer run
 keeps the last published tree beside the new v1 payload (its `run_id` then names the earlier v1 run).
+
+
+## CFB Script Engine extension
+
+`research_export.py --script-engine-dir data/scripting/live/sift` (the
+default) embeds each game's CFB Script Engine payload under
+`event_research.extensions.script_engine`. `extensions` is the contract's
+open, backward-compatible slot, so no schema, `MANIFEST.json` or vendored
+contract changes, and other sports' documents are unaffected. Payloads are
+trimmed (correlations, then unlabelled expressions, then registry
+descriptions, then all but best/multi-script expressions) only when an event
+would exceed its 150 KB budget, with a note in `context.notes`. When payloads
+are present the capability manifest reports `opponent_adjustment` and
+`matchup_metrics` as `RESEARCH`. See `docs/SCRIPT_ENGINE.md`.
