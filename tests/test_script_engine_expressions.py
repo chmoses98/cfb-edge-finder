@@ -241,3 +241,19 @@ def test_the_sift_payload_fits_the_event_budget_and_keeps_every_metric_field(map
     gen = payload["script_generation"]
     assert gen["market_blind"] is True and gen["artifact_hash"] == envelope["artifact_hash"]
     assert "price" not in json.dumps(payload["script_market_map"]["expressions"])
+
+
+def test_identical_support_prefers_the_cheaper_rung_never_less_support():
+    from cfb_edge_finder.scripting.expressions import _sort_key
+
+    def expr(eid, weighted, cost, at_least):
+        return {
+            "expression_id": eid,
+            "script_survival": {"weighted_score": weighted},
+            "price": {"cost_per_contract": cost},
+            "wins_when": {"at_least": at_least, "at_most": None},
+        }
+
+    wide, tight, weaker = expr("ML", 1.7, 0.80, 1), expr("-6.5", 1.7, 0.55, 7), expr("-10.5", 1.2, 0.30, 11)
+    ordered = sorted([wide, weaker, tight], key=_sort_key)
+    assert [e["expression_id"] for e in ordered] == ["-6.5", "ML", "-10.5"]

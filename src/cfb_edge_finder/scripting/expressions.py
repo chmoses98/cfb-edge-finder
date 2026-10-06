@@ -7,8 +7,9 @@ scripts. None of them is a price judgement:
   MULTI_SCRIPT        survives most meaningful scripts, PRIMARY included,
                       and neither PRIMARY nor SECONDARY contradicts it
   BEST_EXPRESSION     the best representation of one football thesis
-                      (highest script survival, then the least additional
-                      requirement, then the cheaper entry)
+                      (highest script survival; between rungs with identical
+                      survival, the cheaper entry -- its extra requirement is
+                      inside every script that supports it)
   SCRIPT_ALIGNED      PRIMARY supports it (fully or partly), uncontradicted
   AGGRESSIVE          a stronger version of a supported thesis: its win set
                       is a nested tail of the thesis's best expression and it
@@ -138,7 +139,11 @@ def _profit_multiple(expr: dict[str, Any]) -> float | None:
 
 
 def _sort_key(expr: dict[str, Any]) -> tuple[float, float, float, str]:
-    return (-expr["script_survival"]["weighted_score"], _requirement(expr), _entry(expr), expr["expression_id"])
+    """Most script support first. Between rungs with IDENTICAL support, the
+    cheaper entry: its extra requirement is inside every script that supports
+    it, so it is the more efficient expression of the same thesis. Price can
+    only break a tie in football support -- it never outranks it."""
+    return (-expr["script_survival"]["weighted_score"], _entry(expr), _requirement(expr), expr["expression_id"])
 
 
 def market_disagreement(
