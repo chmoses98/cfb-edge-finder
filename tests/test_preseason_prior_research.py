@@ -106,14 +106,15 @@ def test_the_control_module_only_reads_production():
     src = (SRC / "research" / "preseason" / "control.py").read_text()
     tree = ast.parse(src)
     assigned = {
-        t.id for node in ast.walk(tree) if isinstance(node, ast.Assign) for t in node.targets if isinstance(t, ast.Name)
+        t.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        for t in node.targets
+        if isinstance(t, ast.Name)
     }
     for production_param in (
-        "DEFAULT_RIDGE_LAMBDA",
-        "DEFAULT_SEASON_SHRINKAGE_K",
-        "DEFAULT_RESIDUAL_SCALE",
-        "EARLY_SEASON_UNCERTAINTY_SCALE",
-        "FROZEN_MARGIN_CORRECTION_PARAMS",
+        "DEFAULT_RIDGE_LAMBDA", "DEFAULT_SEASON_SHRINKAGE_K", "DEFAULT_RESIDUAL_SCALE",
+        "EARLY_SEASON_UNCERTAINTY_SCALE", "FROZEN_MARGIN_CORRECTION_PARAMS",
     ):
         assert production_param not in assigned, production_param
 
@@ -143,13 +144,8 @@ def test_no_production_package_imports_the_preseason_research(package):
 def test_the_research_never_assigns_a_production_parameter():
     root = SRC / "research" / "preseason"
     protected = {
-        "model_probability",
-        "projected_margin",
-        "projected_total",
-        "DEFAULT_RIDGE_LAMBDA",
-        "DEFAULT_SEASON_SHRINKAGE_K",
-        "hfa",
-        "ridge_lambda",
+        "model_probability", "projected_margin", "projected_total",
+        "DEFAULT_RIDGE_LAMBDA", "DEFAULT_SEASON_SHRINKAGE_K", "hfa", "ridge_lambda",
     }
     for path in sorted(root.rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text())):
@@ -163,10 +159,7 @@ def test_running_the_research_cli_does_not_change_the_control():
     before = control_manifest().content_hash()
     subprocess.run(
         [sys.executable, str(REPO_ROOT / "scripts" / "research_preseason_prior.py")],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        check=True,
+        capture_output=True, text=True, cwd=REPO_ROOT, check=True,
     )
     assert control_manifest().content_hash() == before
 
@@ -178,13 +171,8 @@ def test_a_feature_derived_from_the_season_it_predicts_raises():
     """THE CORE LEAK. Off-by-one here would let a feature see the season
     it is forecasting and leave no trace in the output."""
     bad = PreseasonFeature(
-        team_id="Team",
-        family=FeatureFamily.TALENT,
-        name="talent_composite",
-        value=900.0,
-        derived_from_season=2024,
-        applies_to_season=2024,
-        source_endpoint="/talent",
+        team_id="Team", family=FeatureFamily.TALENT, name="talent_composite", value=900.0,
+        derived_from_season=2024, applies_to_season=2024, source_endpoint="/talent",
     )
     with pytest.raises(LeakageViolation, match="may never see the season it predicts"):
         bad.validate_for(AsOf(season=2024, week=1))
@@ -192,13 +180,8 @@ def test_a_feature_derived_from_the_season_it_predicts_raises():
 
 def test_a_feature_derived_from_a_later_season_raises():
     worse = PreseasonFeature(
-        team_id="Team",
-        family=FeatureFamily.TALENT,
-        name="talent_composite",
-        value=900.0,
-        derived_from_season=2025,
-        applies_to_season=2024,
-        source_endpoint="/talent",
+        team_id="Team", family=FeatureFamily.TALENT, name="talent_composite", value=900.0,
+        derived_from_season=2025, applies_to_season=2024, source_endpoint="/talent",
     )
     with pytest.raises(LeakageViolation):
         worse.validate_for(AsOf(season=2024, week=1))
@@ -206,13 +189,8 @@ def test_a_feature_derived_from_a_later_season_raises():
 
 def test_a_feature_used_for_the_wrong_season_raises():
     feature = PreseasonFeature(
-        team_id="Team",
-        family=FeatureFamily.TALENT,
-        name="talent_composite",
-        value=900.0,
-        derived_from_season=2023,
-        applies_to_season=2024,
-        source_endpoint="/talent",
+        team_id="Team", family=FeatureFamily.TALENT, name="talent_composite", value=900.0,
+        derived_from_season=2023, applies_to_season=2024, source_endpoint="/talent",
     )
     with pytest.raises(LeakageViolation, match="applies to season"):
         feature.validate_for(AsOf(season=2025, week=1))
@@ -220,13 +198,8 @@ def test_a_feature_used_for_the_wrong_season_raises():
 
 def test_a_correctly_dated_feature_passes():
     feature = PreseasonFeature(
-        team_id="Team",
-        family=FeatureFamily.TALENT,
-        name="talent_composite",
-        value=900.0,
-        derived_from_season=2023,
-        applies_to_season=2024,
-        source_endpoint="/talent",
+        team_id="Team", family=FeatureFamily.TALENT, name="talent_composite", value=900.0,
+        derived_from_season=2023, applies_to_season=2024, source_endpoint="/talent",
     )
     feature.validate_for(AsOf(season=2024, week=1))  # must not raise
 
@@ -236,8 +209,7 @@ def test_returning_production_is_dated_to_the_prior_season():
     the production described is the prior season's."""
     features = returning_production_features(
         [{"team": "A", "percent_passing_ppa": 0.8}],
-        applies_to_season=2024,
-        splits=("percent_passing_ppa",),
+        applies_to_season=2024, splits=("percent_passing_ppa",),
     )
     assert features[0].derived_from_season == 2023
     assert features[0].applies_to_season == 2024
@@ -273,20 +245,17 @@ def test_an_unknown_prior_coach_yields_none_not_a_manufactured_change():
 def test_missing_values_are_never_imputed():
     """Imputing a league average would assert that an unknown team is
     average -- a modelling claim, not data cleaning."""
-    features = returning_production_features([{"team": "A"}], applies_to_season=2024, splits=("percent_passing_ppa",))
+    features = returning_production_features(
+        [{"team": "A"}], applies_to_season=2024, splits=("percent_passing_ppa",)
+    )
     assert features[0].value is None
     assert not features[0].is_present
 
 
 def test_the_feature_table_rejects_a_season_mismatch():
     feature = PreseasonFeature(
-        team_id="A",
-        family=FeatureFamily.TALENT,
-        name="t",
-        value=1.0,
-        derived_from_season=2022,
-        applies_to_season=2023,
-        source_endpoint="/talent",
+        team_id="A", family=FeatureFamily.TALENT, name="t", value=1.0,
+        derived_from_season=2022, applies_to_season=2023, source_endpoint="/talent",
     )
     with pytest.raises(LeakageViolation):
         FeatureTable.build([feature], applies_to_season=2024)
@@ -294,13 +263,8 @@ def test_the_feature_table_rejects_a_season_mismatch():
 
 def test_the_feature_table_validates_on_every_lookup():
     feature = PreseasonFeature(
-        team_id="A",
-        family=FeatureFamily.TALENT,
-        name="t",
-        value=1.0,
-        derived_from_season=2024,
-        applies_to_season=2024,
-        source_endpoint="/talent",
+        team_id="A", family=FeatureFamily.TALENT, name="t", value=1.0,
+        derived_from_season=2024, applies_to_season=2024, source_endpoint="/talent",
     )
     table = FeatureTable.build([feature], applies_to_season=2024)
     with pytest.raises(LeakageViolation):
@@ -333,7 +297,10 @@ def test_transfer_portal_is_recorded_unavailable_not_approximated():
 def test_preseason_ratings_stay_disqualified_while_timing_is_unconfirmed():
     """The highest-value leak available, so it stays out until someone
     can confirm the pre/post-week semantics."""
-    assert rejected_families()["preseason_ratings_sp_elo_srs"] == Verdict.UNUSABLE_TIMING_UNCONFIRMED.value
+    assert (
+        rejected_families()["preseason_ratings_sp_elo_srs"]
+        == Verdict.UNUSABLE_TIMING_UNCONFIRMED.value
+    )
 
 
 def test_betting_lines_are_evaluation_only_and_never_a_feature():
@@ -426,8 +393,12 @@ def test_results_carry_the_control_they_were_measured_against():
 
 
 def test_effect_type_distinguishes_mean_from_uncertainty():
-    improving = paired_comparison(metric="margin_mae", control_errors=[10.0] * 40, candidate_errors=[8.0] * 40)
-    assert classify_effect(margin_comparison=improving, coverage_delta=0.0) is (EffectType.POINT_ESTIMATE)
+    improving = paired_comparison(
+        metric="margin_mae", control_errors=[10.0] * 40, candidate_errors=[8.0] * 40
+    )
+    assert classify_effect(margin_comparison=improving, coverage_delta=0.0) is (
+        EffectType.POINT_ESTIMATE
+    )
     assert classify_effect(margin_comparison=None, coverage_delta=0.05) is EffectType.UNCERTAINTY
     assert classify_effect(margin_comparison=improving, coverage_delta=0.05) is EffectType.BOTH
     assert classify_effect(margin_comparison=None, coverage_delta=0.0) is EffectType.NEITHER
@@ -442,14 +413,9 @@ def test_small_coverage_wobble_is_not_read_as_an_uncertainty_effect():
 
 def prediction(margin: float, actual: int, prob: float = 0.6, **kw) -> GamePrediction:
     base = dict(
-        game_id="g",
-        season=2024,
-        week=1,
-        home_win_probability=prob,
-        projected_margin=margin,
-        projected_total=50.0,
-        actual_home_margin=actual,
-        actual_total=48,
+        game_id="g", season=2024, week=1, home_win_probability=prob,
+        projected_margin=margin, projected_total=50.0,
+        actual_home_margin=actual, actual_total=48,
     )
     base.update(kw)
     return GamePrediction(**base)
@@ -525,7 +491,9 @@ def test_noise_is_not_reported_as_improvement():
     rng = random.Random(11)
     control = [rng.gauss(10, 3) for _ in range(120)]
     candidate = [c + rng.gauss(0, 3) for c in control]
-    result = paired_comparison(metric="margin_mae", control_errors=control, candidate_errors=candidate)
+    result = paired_comparison(
+        metric="margin_mae", control_errors=control, candidate_errors=candidate
+    )
     assert not result.improves
 
 
@@ -535,37 +503,30 @@ def test_noise_is_not_reported_as_improvement():
 def test_the_cli_reports_blocked_without_historical_data(tmp_path):
     result = subprocess.run(
         [
-            sys.executable,
-            str(REPO_ROOT / "scripts" / "research_preseason_prior.py"),
-            "--historical-cache",
-            str(tmp_path / "absent"),
-            "--json-out",
-            str(tmp_path / "out.json"),
+            sys.executable, str(REPO_ROOT / "scripts" / "research_preseason_prior.py"),
+            "--historical-cache", str(tmp_path / "absent"),
+            "--json-out", str(tmp_path / "out.json"),
         ],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
+        capture_output=True, text=True, cwd=REPO_ROOT,
     )
     assert result.returncode == 0, result.stderr
     payload = json.loads((tmp_path / "out.json").read_text())
     assert payload["historical_data_available"] is False
     assert payload["any_candidate_promoted"] is False
-    assert all(c["verdict"] == CandidateVerdict.BLOCKED_NO_HISTORICAL_DATA.value for c in payload["candidates"])
+    assert all(
+        c["verdict"] == CandidateVerdict.BLOCKED_NO_HISTORICAL_DATA.value
+        for c in payload["candidates"]
+    )
     assert "BLOCKED is not REJECTED" in result.stdout
 
 
 def test_the_cli_records_the_control_it_ran_against(tmp_path):
     subprocess.run(
         [
-            sys.executable,
-            str(REPO_ROOT / "scripts" / "research_preseason_prior.py"),
-            "--json-out",
-            str(tmp_path / "out.json"),
+            sys.executable, str(REPO_ROOT / "scripts" / "research_preseason_prior.py"),
+            "--json-out", str(tmp_path / "out.json"),
         ],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        check=True,
+        capture_output=True, text=True, cwd=REPO_ROOT, check=True,
     )
     payload = json.loads((tmp_path / "out.json").read_text())
     assert payload["control"]["content_sha256"] == CONTROL_BASELINE_SHA256

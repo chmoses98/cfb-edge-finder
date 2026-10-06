@@ -103,14 +103,12 @@ def winner_metrics(predictions: list[GamePrediction]) -> WinnerMetrics:
         bucket = [p for p in predictions if low <= p.home_win_probability < high]
         if not bucket:
             continue
-        bins.append(
-            (
-                f"[{low:.1f},{high:.1f})",
-                len(bucket),
-                statistics.fmean(p.home_win_probability for p in bucket),
-                statistics.fmean(1.0 if p.home_won else 0.0 for p in bucket),
-            )
-        )
+        bins.append((
+            f"[{low:.1f},{high:.1f})",
+            len(bucket),
+            statistics.fmean(p.home_win_probability for p in bucket),
+            statistics.fmean(1.0 if p.home_won else 0.0 for p in bucket),
+        ))
     return WinnerMetrics(n, ll / n, brier / n, tuple(bins))
 
 
@@ -144,7 +142,9 @@ def total_metrics(predictions: list[GamePrediction]) -> TotalMetrics:
     )
 
 
-def interval_coverage(predictions: list[GamePrediction], lower: list[float], upper: list[float]) -> float:
+def interval_coverage(
+    predictions: list[GamePrediction], lower: list[float], upper: list[float]
+) -> float:
     """Share of realised margins inside the model's stated interval.
 
     A model whose point estimate is mediocre but whose interval is honest
@@ -152,7 +152,10 @@ def interval_coverage(predictions: list[GamePrediction], lower: list[float], upp
     contribution in Week 1 is uncertainty widening."""
     if not predictions:
         return float("nan")
-    inside = sum(1 for p, lo, hi in zip(predictions, lower, upper, strict=True) if lo <= p.actual_home_margin <= hi)
+    inside = sum(
+        1 for p, lo, hi in zip(predictions, lower, upper, strict=True)
+        if lo <= p.actual_home_margin <= hi
+    )
     return inside / len(predictions)
 
 
@@ -182,7 +185,9 @@ class PairedComparison:
         return self.ci_low is not None and self.ci_low > 0
 
 
-def paired_comparison(*, metric: str, control_errors: list[float], candidate_errors: list[float]) -> PairedComparison:
+def paired_comparison(
+    *, metric: str, control_errors: list[float], candidate_errors: list[float]
+) -> PairedComparison:
     """Paired per-game difference with a normal-approximation interval.
 
     Requires identical length and ordering: the pairing is the whole
@@ -200,14 +205,8 @@ def paired_comparison(*, metric: str, control_errors: list[float], candidate_err
     mean_diff = statistics.fmean(diffs)
     if n < 2:
         return PairedComparison(
-            n,
-            metric,
-            statistics.fmean(control_errors),
-            statistics.fmean(candidate_errors),
-            mean_diff,
-            None,
-            None,
-            None,
+            n, metric, statistics.fmean(control_errors), statistics.fmean(candidate_errors),
+            mean_diff, None, None, None,
         )
     se = statistics.stdev(diffs) / math.sqrt(n)
     return PairedComparison(

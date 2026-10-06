@@ -54,7 +54,11 @@ class EquivalenceCluster:
         if canonical is None:
             return []
         floor = canonical.fee_adjusted_break_even_probability
-        return [c for c in self.priceable if c is not canonical and c.fee_adjusted_break_even_probability > floor]
+        return [
+            c
+            for c in self.priceable
+            if c is not canonical and c.fee_adjusted_break_even_probability > floor
+        ]
 
 
 @dataclass

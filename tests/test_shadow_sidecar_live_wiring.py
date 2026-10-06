@@ -74,7 +74,9 @@ def test_scanner_has_no_function_local_third_party_imports() -> None:
         if not isinstance(node, ast.FunctionDef):
             continue
         for inner in ast.walk(node):
-            if isinstance(inner, ast.ImportFrom) and (inner.module or "").startswith("cfb_edge_finder"):
+            if isinstance(inner, ast.ImportFrom) and (inner.module or "").startswith(
+                "cfb_edge_finder"
+            ):
                 offenders.append(f"{node.name}: from {inner.module}")
             elif isinstance(inner, ast.Import):
                 for alias in inner.names:
@@ -154,7 +156,7 @@ _TALENT_FIXTURE = [
     {"team": "Rice", "talent": 512.40, "year": 2026},
 ]
 
-_PROBE = """
+_PROBE = '''
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -180,7 +182,7 @@ sidecar, state = out if isinstance(out, tuple) else (out, "LEGACY_NO_STATE")
 print(f"SIDECAR={'BUILT' if sidecar else 'NONE'} STATE={state}")
 if sidecar is not None:
     print(f"TEAMS={len(sidecar.talent_by_team)} BETA={sidecar.beta}")
-"""
+'''
 
 
 def _git(args: list[str], cwd) -> None:
@@ -210,7 +212,9 @@ def test_sidecar_builds_after_a_real_data_branch_checkout(tmp_path) -> None:
     # Branch 1: the code, exactly as it stands in this checkout.
     _git(["init", "-q", "-b", "codemain", "."], work)
     for name in ("src", "scripts"):
-        shutil.copytree(repo_root / name, work / name, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(
+            repo_root / name, work / name, ignore=shutil.ignore_patterns("__pycache__")
+        )
     _git(["add", "-A"], work)
     _git(["commit", "-qm", "code"], work)
 
@@ -246,9 +250,12 @@ def test_sidecar_builds_after_a_real_data_branch_checkout(tmp_path) -> None:
         env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": ""},
         timeout=300,
     )
-    assert result.returncode == 0, f"probe failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr[-3000:]}"
+    assert result.returncode == 0, (
+        f"probe failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr[-3000:]}"
+    )
     assert "SIDECAR=BUILT" in result.stdout, (
-        f"the sidecar did not survive the data-branch checkout -- this is the live defect, reproduced:\n{result.stdout}"
+        "the sidecar did not survive the data-branch checkout -- this is the "
+        f"live defect, reproduced:\n{result.stdout}"
     )
     assert "STATE=ACTIVE" in result.stdout, result.stdout
     assert "BETA=0.018993" in result.stdout, result.stdout

@@ -56,7 +56,9 @@ class TriggerType(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-DECLARABLE_TRIGGER_SOURCES: frozenset[str] = frozenset({TriggerType.EXTERNAL_SCHEDULE.value, TriggerType.MANUAL.value})
+DECLARABLE_TRIGGER_SOURCES: frozenset[str] = frozenset(
+    {TriggerType.EXTERNAL_SCHEDULE.value, TriggerType.MANUAL.value}
+)
 """The only trigger types a CALLER may assert about itself.
 
 Deliberately excludes GITHUB_SCHEDULE: cron provenance is something only
@@ -66,7 +68,9 @@ from "something claimed cron was alive", and the staleness signal that
 exists to catch a dead scheduler would become unfalsifiable."""
 
 
-def classify_trigger(event_name: str | None, actor: str | None, declared_source: str | None = None) -> TriggerType:
+def classify_trigger(
+    event_name: str | None, actor: str | None, declared_source: str | None = None
+) -> TriggerType:
     """Map a GitHub event + actor (+ an optional self-declared source)
     onto a trigger type.
 
@@ -223,7 +227,8 @@ def assess_trigger_health(
         return (
             TriggerHealth.MISSED,
             f"{worst.label} for {worst.game_id} closed at {worst.closes_at.isoformat()} "
-            f"with no collector run inside its window" + ("" if worst.recoverable else " -- unrecoverable"),
+            f"with no collector run inside its window"
+            + ("" if worst.recoverable else " -- unrecoverable"),
         )
 
     # Worst case for one more capture to land: we have just missed a

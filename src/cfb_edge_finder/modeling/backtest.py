@@ -243,7 +243,9 @@ def run_walk_forward_backtest(
         # accumulated from strictly-prior weeks -- `outcomes` at this
         # point in the loop contains exactly that (see module docstring).
         history_raw = np.array([o.model_prob_home_win for o in outcomes])
-        history_y = np.array([1.0 if o.actual_home_points > o.actual_away_points else 0.0 for o in outcomes])
+        history_y = np.array(
+            [1.0 if o.actual_home_points > o.actual_away_points else 0.0 for o in outcomes]
+        )
 
         # Milestone C.2 Part 3: margin-correction history, FBS-vs-FBS
         # outcomes only (see margin_calibration.py's "WHY FBS-vs-FBS
@@ -251,14 +253,18 @@ def run_walk_forward_backtest(
         # far as the probability-calibration history above.
         fbs_history = [o for o in outcomes if o.is_fbs_vs_fbs]
         history_margin_projected = np.array([o.model_margin_mean for o in fbs_history])
-        history_margin_actual = np.array([o.actual_home_points - o.actual_away_points for o in fbs_history])
+        history_margin_actual = np.array(
+            [o.actual_home_points - o.actual_away_points for o in fbs_history]
+        )
 
         # Milestone C.2 Part 3: total-correction history, FBS-vs-FBS only,
         # same strictly-prior `fbs_history` as the margin correction above.
         # Both predictor histories are precomputed here so either
         # candidate can be applied below without recomputation.
         history_total_projected = np.array([o.model_total_mean for o in fbs_history])
-        history_total_actual = np.array([o.actual_home_points + o.actual_away_points for o in fbs_history])
+        history_total_actual = np.array(
+            [o.actual_home_points + o.actual_away_points for o in fbs_history]
+        )
         history_margin_magnitude = np.abs(history_margin_projected)
         history_total_residual = history_total_actual - history_total_projected
 
@@ -323,7 +329,10 @@ def run_walk_forward_backtest(
                     "naive_prob_home_win": naive_prob_home_win,
                     "naive_margin": naive_margin,
                     "naive_total": naive_home_pts + naive_away_pts,
-                    "model_expected_plays": (ratings.team_pace(home.team_id) + ratings.team_pace(home.opponent_id)) / 2,
+                    "model_expected_plays": (
+                        ratings.team_pace(home.team_id) + ratings.team_pace(home.opponent_id)
+                    )
+                    / 2,
                     "home_offense_rating": ratings.offense_rating(home.team_id),
                     "away_offense_rating": ratings.offense_rating(home.opponent_id),
                     "home_defense_rating": ratings.defense_rating(home.team_id),

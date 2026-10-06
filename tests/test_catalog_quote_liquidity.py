@@ -119,7 +119,8 @@ def test_an_empty_0_100_book_publishes_no_midpoint_and_no_mid_probability():
     assert mech["yes_mid"] is None, "an empty book published a midpoint"
     assert mech["no_mid"] is None
     assert mech["implied_probability_yes_mid"] is None, (
-        "an empty book published a 50% implied probability -- a RUN CFB session would take that as a market prior"
+        "an empty book published a 50% implied probability -- a RUN CFB session "
+        "would take that as a market prior"
     )
     assert mech["mid_is_published"] is False
     # And there is no 0.5 left anywhere in the block to be misread.
@@ -228,7 +229,8 @@ def test_a_one_sided_book_publishes_no_mid_either():
 
 
 def test_a_contract_with_no_quoted_prices_at_all_says_no_quote():
-    market = {k: v for k, v in LIVE_LIQUID_BOOK.items() if k not in ("yes_bid_dollars", "yes_ask_dollars")}
+    market = {k: v for k, v in LIVE_LIQUID_BOOK.items()
+              if k not in ("yes_bid_dollars", "yes_ask_dollars")}
     mech = _publish(market)["mechanics"]
     assert mech["book_state"] == "no_quote"
     assert mech["yes_mid"] is None

@@ -164,7 +164,9 @@ def stubbed_client_live_clock(monkeypatch) -> tuple[KalshiClient, StubTransport]
 def test_discovery_runs_end_to_end_through_the_real_client(stubbed_client):
     """The exact call the production entrypoint makes."""
     client, transport = stubbed_client
-    run = MarketDiscovery(client.get_json).run(as_of=datetime(2026, 9, 17, 22, 0, tzinfo=UTC), horizon_days=10.0)
+    run = MarketDiscovery(client.get_json).run(
+        as_of=datetime(2026, 9, 17, 22, 0, tzinfo=UTC), horizon_days=10.0
+    )
     assert list(run.games) == [GAME]
     assert run.games[GAME].completeness.markets_discovered == 1
     assert run.games[GAME].completeness.native_game_markets_complete is True
@@ -303,7 +305,9 @@ def _reporter():
 def test_status_reporter_annotates_an_incomplete_capture(tmp_path, capsys):
     status = tmp_path / "s.json"
     status.write_text(
-        json.dumps({"physical_games": 40, "markets": 900, "capture_complete": False, "games_incomplete_count": 2})
+        json.dumps(
+            {"physical_games": 40, "markets": 900, "capture_complete": False, "games_incomplete_count": 2}
+        )
     )
     assert _reporter().main(["--status-file", str(status)]) == 0
     out = capsys.readouterr().out

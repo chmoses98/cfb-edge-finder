@@ -162,7 +162,9 @@ def classify(
     ticker = str(contract.get("market_ticker") or "")
 
     if not ticker:
-        return Disposition(MechanicalStatus.MAPPING_FAILURE.value, "contract carries no market ticker")
+        return Disposition(
+            MechanicalStatus.MAPPING_FAILURE.value, "contract carries no market ticker"
+        )
     if ticker in seen_tickers:
         return Disposition(
             MechanicalStatus.DUPLICATE.value,
@@ -205,11 +207,15 @@ def classify(
     if status in UNOPENED_MARKET_STATUSES:
         return Disposition(MechanicalStatus.MARKET_UNOPENED.value, f"market status {status!r}")
     if status not in TRADEABLE_MARKET_STATUSES:
-        return Disposition(MechanicalStatus.MARKET_CLOSED.value, f"market status {status!r} is not tradeable")
+        return Disposition(
+            MechanicalStatus.MARKET_CLOSED.value, f"market status {status!r} is not tradeable"
+        )
 
     close_time = parse_timestamp(contract.get("close_time"))
     if close_time is not None and close_time <= config.as_of:
-        return Disposition(MechanicalStatus.MARKET_CLOSED.value, f"close_time {close_time.isoformat()} has passed")
+        return Disposition(
+            MechanicalStatus.MARKET_CLOSED.value, f"close_time {close_time.isoformat()} has passed"
+        )
 
     if config.capture_is_stale:
         age = config.capture_age_seconds
@@ -225,7 +231,9 @@ def classify(
     if config.max_quote_age_minutes is not None:
         updated = parse_timestamp(contract.get("updated_time"))
         if updated is None:
-            return Disposition(MechanicalStatus.STALE_QUOTE.value, "contract carries no quote timestamp")
+            return Disposition(
+                MechanicalStatus.STALE_QUOTE.value, "contract carries no quote timestamp"
+            )
         quote_age = (config.as_of - updated).total_seconds()
         if quote_age > config.max_quote_age_minutes * 60.0:
             return Disposition(

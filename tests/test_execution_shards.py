@@ -13,7 +13,9 @@ from tests.test_execution_disposition import config
 
 def slate_with_games(tmp_path, kickoffs: dict[str, str]):
     extra = [
-        (key, "LSU at Ole Miss", kickoff, standard_markets(key)) for key, kickoff in kickoffs.items() if key != GAME_KEY
+        (key, "LSU at Ole Miss", kickoff, standard_markets(key))
+        for key, kickoff in kickoffs.items()
+        if key != GAME_KEY
     ]
     directory = catalog_dir(
         tmp_path,
@@ -27,7 +29,7 @@ def test_shards_cover_every_window_a_kickoff_falls_in(tmp_path):
     slate = slate_with_games(
         tmp_path,
         {
-            GAME_KEY: "2026-09-19T16:00:00Z",  # 12:00 ET -> early
+            GAME_KEY: "2026-09-19T16:00:00Z",   # 12:00 ET -> early
             "26SEP19AAABBB": "2026-09-19T20:00:00Z",  # 16:00 ET -> afternoon
             "26SEP19CCCDDD": "2026-09-19T23:30:00Z",  # 19:30 ET -> evening
             "26SEP20EEEFFF": "2026-09-20T03:00:00Z",  # 23:00 ET -> late
@@ -97,9 +99,13 @@ def test_shard_totals_reconcile_to_the_global_universe(tmp_path):
     assert manifest["reconciles"] is True
     assert manifest["games_in_multiple_shards"] == []
     assert manifest["totals"]["games"] == slate["reconciliation"]["games_published"]
-    assert manifest["totals"]["contracts_eligible"] == slate["reconciliation"]["contracts_eligible"]
     assert (
-        manifest["totals"]["contracts_discovered"] == manifest["slate_totals"]["contracts_discovered_published_games"]
+        manifest["totals"]["contracts_eligible"]
+        == slate["reconciliation"]["contracts_eligible"]
+    )
+    assert (
+        manifest["totals"]["contracts_discovered"]
+        == manifest["slate_totals"]["contracts_discovered_published_games"]
     )
 
 
@@ -146,7 +152,10 @@ def test_the_manifest_refuses_to_reconcile_if_the_artifact_is_short(tmp_path):
     slate = slate_with_games(tmp_path, {GAME_KEY: "2026-09-19T16:00:00Z"})
     manifest = write_shards(slate, build_shards(slate), tmp_path / "out")
     assert manifest["reconciles"] is True
-    assert manifest["totals"]["contracts_in_analysis_artifacts"] == manifest["totals"]["contracts_eligible"]
+    assert (
+        manifest["totals"]["contracts_in_analysis_artifacts"]
+        == manifest["totals"]["contracts_eligible"]
+    )
     assert manifest["totals"]["unaccounted_contracts"] == 0
 
 

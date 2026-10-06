@@ -178,7 +178,9 @@ def transform(
     )
 
 
-def historical_equivalent_shadow_probability(corrected_margin_samples: np.ndarray, delta: float) -> float:
+def historical_equivalent_shadow_probability(
+    corrected_margin_samples: np.ndarray, delta: float
+) -> float:
     """Exactly what `candidates.apply_candidate` computed.
 
     Kept as a separate one-line function purely so the parity test can

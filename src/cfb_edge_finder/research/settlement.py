@@ -125,69 +125,50 @@ def settle_market(
     if observation.family == MarketFamily.MONEYLINE:
         if observation.team not in (Side.HOME, Side.AWAY):
             return MarketSettlement(
-                **base,
-                **common,
-                status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
+                **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
                 detail="moneyline observation missing resolved team side",
             )
         if actual_winner is None:
             return MarketSettlement(
-                **base,
-                **common,
-                status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
+                **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
                 detail="game declared final at a tied score -- no observed Kalshi rule for a moneyline tie, "
                 "never guessed",
             )
         contract_settlement = Side.YES if observation.team == actual_winner else Side.NO
         return MarketSettlement(
-            **base,
-            **common,
-            status=MarketSettlementStatus.SETTLED,
-            derived_contract_settlement=contract_settlement,
+            **base, **common, status=MarketSettlementStatus.SETTLED, derived_contract_settlement=contract_settlement,
             detail=f"winner settled: actual={actual_winner.value}, contract team={observation.team.value}",
         )
 
     if observation.family == MarketFamily.SPREAD:
         if observation.team not in (Side.HOME, Side.AWAY) or observation.threshold is None:
             return MarketSettlement(
-                **base,
-                **common,
-                status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
+                **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
                 detail="spread observation missing team/threshold",
             )
         team_margin = home_margin if observation.team == Side.HOME else -home_margin
         covered = team_margin > observation.threshold
         contract_settlement = Side.YES if covered else Side.NO
         return MarketSettlement(
-            **base,
-            **common,
-            status=MarketSettlementStatus.SETTLED,
-            derived_contract_settlement=contract_settlement,
+            **base, **common, status=MarketSettlementStatus.SETTLED, derived_contract_settlement=contract_settlement,
             detail=f"spread settled: team_margin={team_margin:+.1f} vs threshold={observation.threshold:+.1f}",
         )
 
     if observation.family == MarketFamily.TOTAL:
         if observation.threshold is None or observation.side != Side.OVER:
             return MarketSettlement(
-                **base,
-                **common,
-                status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
+                **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_MISSING_FIELDS,
                 detail="total observation missing threshold or unexpected side",
             )
         over_hit = total_points > observation.threshold
         contract_settlement = Side.YES if over_hit else Side.NO
         return MarketSettlement(
-            **base,
-            **common,
-            status=MarketSettlementStatus.SETTLED,
-            derived_contract_settlement=contract_settlement,
+            **base, **common, status=MarketSettlementStatus.SETTLED, derived_contract_settlement=contract_settlement,
             detail=f"total settled: total_points={total_points:.1f} vs threshold={observation.threshold:.1f}",
         )
 
     return MarketSettlement(
-        **base,
-        **common,
-        status=MarketSettlementStatus.UNSETTLEABLE_UNKNOWN_OPERATOR,
+        **base, **common, status=MarketSettlementStatus.UNSETTLEABLE_UNKNOWN_OPERATOR,
         detail=f"no settlement rule implemented for family {observation.family!r}",
     )
 

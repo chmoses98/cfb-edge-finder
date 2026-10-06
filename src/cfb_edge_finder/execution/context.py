@@ -176,7 +176,13 @@ class GameContext:
 
     @property
     def missing_domains(self) -> tuple[str, ...]:
-        return tuple(sorted(domain for domain, one in self.fields.items() if one.quality == FieldQuality.MISSING.value))
+        return tuple(
+            sorted(
+                domain
+                for domain, one in self.fields.items()
+                if one.quality == FieldQuality.MISSING.value
+            )
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -225,7 +231,9 @@ class GameContext:
         the forgotten branch treats absent facts as adequate ones."""
         return cls(
             game_key=game_key,
-            fields={domain: ContextField.missing(domain, reason) for domain in CONTEXT_DOMAINS},
+            fields={
+                domain: ContextField.missing(domain, reason) for domain in CONTEXT_DOMAINS
+            },
             collected_at=as_of.isoformat(),
             notes=(reason,),
         )
@@ -240,12 +248,8 @@ def refresh_quality(context: GameContext, *, as_of: datetime) -> GameContext:
     """
     aged: dict[str, ContextField] = {}
     for domain, one in context.fields.items():
-        if one.quality in (
-            FieldQuality.MISSING.value,
-            FieldQuality.CONFLICTING.value,
-            FieldQuality.LOW_COVERAGE.value,
-            FieldQuality.PARTIAL.value,
-        ):
+        if one.quality in (FieldQuality.MISSING.value, FieldQuality.CONFLICTING.value,
+                           FieldQuality.LOW_COVERAGE.value, FieldQuality.PARTIAL.value):
             aged[domain] = one
             continue
         quality, age = freshness_of(domain, one.observed_at, as_of=as_of)
@@ -300,7 +304,9 @@ def confidence_ceiling(context: GameContext) -> tuple[str, tuple[str, ...]]:
     reasons: list[str] = []
     quality = context.quality_map()
 
-    load_bearing_missing = [d for d in LOAD_BEARING_DOMAINS if quality.get(d) == FieldQuality.MISSING.value]
+    load_bearing_missing = [
+        d for d in LOAD_BEARING_DOMAINS if quality.get(d) == FieldQuality.MISSING.value
+    ]
     if load_bearing_missing:
         return (
             ConfidenceCeiling.INSUFFICIENT.value,
@@ -313,9 +319,12 @@ def confidence_ceiling(context: GameContext) -> tuple[str, tuple[str, ...]]:
     load_bearing_weak = [
         d
         for d in LOAD_BEARING_DOMAINS
-        if quality.get(d) in (FieldQuality.STALE.value, FieldQuality.LOW_COVERAGE.value, FieldQuality.PARTIAL.value)
+        if quality.get(d) in (FieldQuality.STALE.value, FieldQuality.LOW_COVERAGE.value,
+                              FieldQuality.PARTIAL.value)
     ]
-    hazards_unknown = [d for d in HAZARD_DOMAINS if quality.get(d) == FieldQuality.MISSING.value]
+    hazards_unknown = [
+        d for d in HAZARD_DOMAINS if quality.get(d) == FieldQuality.MISSING.value
+    ]
     if load_bearing_weak:
         reasons.extend(f"{d} is {quality.get(d)}" for d in load_bearing_weak)
     if len(hazards_unknown) == len(HAZARD_DOMAINS):
@@ -326,7 +335,9 @@ def confidence_ceiling(context: GameContext) -> tuple[str, tuple[str, ...]]:
     if load_bearing_weak or len(hazards_unknown) == len(HAZARD_DOMAINS):
         return ConfidenceCeiling.LOW.value, tuple(reasons)
 
-    unfresh = sorted(d for d, q in quality.items() if q != FieldQuality.FRESH.value)
+    unfresh = sorted(
+        d for d, q in quality.items() if q != FieldQuality.FRESH.value
+    )
     if unfresh:
         return (
             ConfidenceCeiling.MEDIUM.value,
@@ -418,14 +429,20 @@ def material_fingerprint(context: GameContext) -> str:
     yards-per-play a reason to re-handicap sixty games, and an invalidation
     that fires on everything is one nobody reads.
     """
-    payload = {domain: context.fields[domain].values for domain in MATERIAL_DOMAINS if domain in context.fields}
+    payload = {
+        domain: context.fields[domain].values
+        for domain in MATERIAL_DOMAINS
+        if domain in context.fields
+    }
     encoded = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
 def context_fingerprint(context: GameContext) -> str:
     """A hash over every domain's values, for change detection generally."""
-    payload = {domain: one.values for domain, one in sorted(context.fields.items())}
+    payload = {
+        domain: one.values for domain, one in sorted(context.fields.items())
+    }
     encoded = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
 

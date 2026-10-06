@@ -27,9 +27,12 @@ def test_ambiguous_reasons_are_ticker_unresolved():
 
 
 def test_unsupported_reasons_are_unsupported_market():
-    assert to_coverage_outcome(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY) == CoverageOutcome.UNSUPPORTED_MARKET
     assert (
-        to_coverage_outcome(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION) == CoverageOutcome.UNSUPPORTED_MARKET
+        to_coverage_outcome(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_FAMILY) == CoverageOutcome.UNSUPPORTED_MARKET
+    )
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.MAPPED_UNSUPPORTED_POPULATION)
+        == CoverageOutcome.UNSUPPORTED_MARKET
     )
     assert to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS) == CoverageOutcome.UNSUPPORTED_MARKET
     assert to_coverage_outcome(KalshiCfbCoverageReason.NON_GAME_FUTURES) == CoverageOutcome.UNSUPPORTED_MARKET
@@ -39,11 +42,13 @@ def test_fcs_vs_fcs_is_distinct_from_ambiguous_and_parse_unresolved():
     # Mission hardening: FCS-vs-FCS must be a real, understood
     # UNSUPPORTED_MARKET outcome, never collapsed into TICKER_UNRESOLVED
     # alongside genuinely unresolvable markets.
-    assert to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS) != to_coverage_outcome(
-        KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS)
+        != to_coverage_outcome(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING)
     )
-    assert to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS) != to_coverage_outcome(
-        KalshiCfbCoverageReason.PARSE_UNRESOLVED
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.FCS_VS_FCS)
+        != to_coverage_outcome(KalshiCfbCoverageReason.PARSE_UNRESOLVED)
     )
 
 
@@ -64,6 +69,7 @@ def test_non_fbs_participant_is_unsupported_market_not_ticker_unresolved():
     # 2026-09-01 forensic audit: a deterministically identified non-FBS
     # participant is a declined population, never a mapping failure.
     assert to_coverage_outcome(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) == CoverageOutcome.UNSUPPORTED_MARKET
-    assert to_coverage_outcome(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) != to_coverage_outcome(
-        KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
+    assert (
+        to_coverage_outcome(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT)
+        != to_coverage_outcome(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING)
     )

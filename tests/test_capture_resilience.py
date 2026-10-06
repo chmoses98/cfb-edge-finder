@@ -116,7 +116,9 @@ class FakeEspn:
     def fetch_scoreboard(self, date_param: str) -> ScoreboardFetch:
         self.requested.append(date_param)
         if self.fail_all:
-            return ScoreboardFetch(host=self.host, url="", date_param=date_param, http_status=403, error="HTTP 403")
+            return ScoreboardFetch(
+                host=self.host, url="", date_param=date_param, http_status=403, error="HTTP 403"
+            )
         return ScoreboardFetch(
             host=self.host,
             url="",
@@ -237,7 +239,9 @@ def test_espn_refresh_matches_a_game_and_resets_its_freshness(tmp_path):
     bucket = kickoff.date().strftime("%Y%m%d")
     espn = FakeEspn({bucket: [_espn_event(home_name, away_name, kickoff)]})
 
-    outcome = schedule_state.refresh_schedule_state(tmp_path, [game], season=SEASON, now=NOW, client=espn)
+    outcome = schedule_state.refresh_schedule_state(
+        tmp_path, [game], season=SEASON, now=NOW, client=espn
+    )
     assert outcome.verdict == schedule_state.SCHEDULE_STATE_FRESH
     assert outcome.refreshed_games == 1
     fact = outcome.state.facts[game.game_id]
@@ -298,7 +302,9 @@ def test_ambiguous_and_flipped_events_fail_closed(tmp_path):
     assert "ambiguous" in ambiguous.rejections[game.game_id]
 
     flipped = FakeEspn({bucket: [_espn_event(away_name, home_name, kickoff)]})
-    flipped_outcome = schedule_state.refresh_schedule_state(tmp_path, [game], season=SEASON, now=NOW, client=flipped)
+    flipped_outcome = schedule_state.refresh_schedule_state(
+        tmp_path, [game], season=SEASON, now=NOW, client=flipped
+    )
     assert "orientation mismatch" in flipped_outcome.rejections[game.game_id]
 
 
@@ -408,7 +414,9 @@ def test_reschedule_is_recorded_with_both_kickoffs(tmp_path, shift_hours):
         moved.date().strftime("%Y%m%d"): [_espn_event(home_name, away_name, moved)],
     }
 
-    outcome = schedule_state.refresh_schedule_state(tmp_path, [game], season=SEASON, now=NOW, client=FakeEspn(buckets))
+    outcome = schedule_state.refresh_schedule_state(
+        tmp_path, [game], season=SEASON, now=NOW, client=FakeEspn(buckets)
+    )
     assert len(outcome.changes) == 1
     change = outcome.changes[0]
     assert change.previous_kickoff_utc == original
@@ -431,16 +439,20 @@ def test_moved_earlier_past_kickoff_stops_pregame_capture(tmp_path):
     real_kickoff = NOW - timedelta(minutes=20)  # already started
     game = _game(home_id, away_id, home_name, away_name, stale_kickoff)
 
-    assert timing.resolve_due_labels(kickoff_utc=stale_kickoff, now=NOW, already_captured_labels=set()), (
-        "precondition: the stale kickoff would schedule pregame labels"
-    )
+    assert timing.resolve_due_labels(
+        kickoff_utc=stale_kickoff, now=NOW, already_captured_labels=set()
+    ), "precondition: the stale kickoff would schedule pregame labels"
 
     buckets = {
         stale_kickoff.date().strftime("%Y%m%d"): [_espn_event(home_name, away_name, real_kickoff)],
         real_kickoff.date().strftime("%Y%m%d"): [_espn_event(home_name, away_name, real_kickoff)],
-        (real_kickoff - timedelta(days=1)).date().strftime("%Y%m%d"): [_espn_event(home_name, away_name, real_kickoff)],
+        (real_kickoff - timedelta(days=1)).date().strftime("%Y%m%d"): [
+            _espn_event(home_name, away_name, real_kickoff)
+        ],
     }
-    outcome = schedule_state.refresh_schedule_state(tmp_path, [game], season=SEASON, now=NOW, client=FakeEspn(buckets))
+    outcome = schedule_state.refresh_schedule_state(
+        tmp_path, [game], season=SEASON, now=NOW, client=FakeEspn(buckets)
+    )
     applied = schedule_state.apply_schedule_state(
         [game],
         outcome.state,
@@ -690,7 +702,9 @@ def test_repeated_known_quota_state_stops_being_red():
 def test_a_materially_changed_blocker_re_alerts():
     """Test matrix 23: the fallback dying is a NEW condition even though
     the state name is unchanged."""
-    recorded = operational_state.record_state(_classify(blocker="CFBD_QUOTA_EXHAUSTED"), {}, now=NOW)
+    recorded = operational_state.record_state(
+        _classify(blocker="CFBD_QUOTA_EXHAUSTED"), {}, now=NOW
+    )
     worse = operational_state.classify_run(
         diagnostics=[],
         fail_closed=False,
@@ -953,7 +967,9 @@ def test_fbs_vs_fcs_game_now_matches_end_to_end(tmp_path):
         [game],
         season=SEASON,
         now=NOW,
-        client=FakeEspn({kickoff.date().strftime("%Y%m%d"): [_espn_event(home_name, "Arkansas-Pine Bluff", kickoff)]}),
+        client=FakeEspn(
+            {kickoff.date().strftime("%Y%m%d"): [_espn_event(home_name, "Arkansas-Pine Bluff", kickoff)]}
+        ),
     )
     assert outcome.rejections == {}
     assert outcome.state.facts[game.game_id].kickoff_utc == kickoff

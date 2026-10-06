@@ -76,7 +76,8 @@ def test_repeated_dedup_lookup_scales_reasonably_not_quadratically(tmp_path: Pat
 
         def _append_batch(n: int) -> float:
             rows = [
-                make_corpus_row(observation=make_observation(kalshi_market_ticker=f"BATCH-{n}-{i}")) for i in range(n)
+                make_corpus_row(observation=make_observation(kalshi_market_ticker=f"BATCH-{n}-{i}"))
+                for i in range(n)
             ]
             start = time.perf_counter()
             persistence.append_observation_rows(path.base, path.season, rows)
@@ -99,7 +100,10 @@ def test_repeated_dedup_lookup_scales_reasonably_not_quadratically(tmp_path: Pat
 
 def test_file_size_estimate_stays_compact(tmp_path: Path):
     path = corpus_helpers.ref(tmp_path, persistence.OBSERVATIONS_SUBDIR, 2026)
-    rows = [make_corpus_row(observation=make_observation(kalshi_market_ticker=f"MKT-{i}")) for i in range(1000)]
+    rows = [
+        make_corpus_row(observation=make_observation(kalshi_market_ticker=f"MKT-{i}"))
+        for i in range(1000)
+    ]
     persistence.append_observation_rows(path.base, path.season, rows)
     bytes_per_row = path.total_bytes() / len(rows)
     # Measured (not assumed): a full row -- KalshiResearchObservation plus

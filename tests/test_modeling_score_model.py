@@ -82,18 +82,9 @@ def test_unknown_and_new_starter_get_at_least_as_much_uncertainty_as_returning()
 def test_probabilities_are_valid_and_home_away_sum_to_one(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=10000,
-        seed=1,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=10000, seed=1,
     )
     p_home = proj.prob_home_win()
     p_away = proj.prob_away_win()
@@ -105,18 +96,9 @@ def test_probabilities_are_valid_and_home_away_sum_to_one(fitted_ratings_and_poo
 def test_margin_probability_is_monotonically_decreasing_in_threshold(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=10000,
-        seed=2,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=10000, seed=2,
     )
     thresholds = [-21, -14, -7, -3.5, 0, 3.5, 7, 14, 21]
     probs = [proj.prob_margin_greater_than(t) for t in thresholds]
@@ -126,18 +108,9 @@ def test_margin_probability_is_monotonically_decreasing_in_threshold(fitted_rati
 def test_total_probability_is_monotonically_decreasing_in_threshold(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=10000,
-        seed=3,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=10000, seed=3,
     )
     thresholds = [20, 30, 40, 50, 60, 70, 80]
     probs = [proj.prob_total_greater_than(t) for t in thresholds]
@@ -147,18 +120,9 @@ def test_total_probability_is_monotonically_decreasing_in_threshold(fitted_ratin
 def test_simulated_scores_are_discrete_nonnegative_integers(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=4,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=4,
     )
     assert np.all(proj.home_scores >= 0)
     assert np.all(proj.away_scores >= 0)
@@ -169,18 +133,9 @@ def test_simulated_scores_are_discrete_nonnegative_integers(fitted_ratings_and_p
 def test_reproducible_simulation_with_same_seed(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=99,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=99,
     )
     p1 = project_game(**kwargs)
     p2 = project_game(**kwargs)
@@ -192,17 +147,9 @@ def test_reproducible_simulation_with_same_seed(fitted_ratings_and_pool):
 def test_different_seeds_produce_different_but_similar_results(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=8000,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=8000,
     )
     p1 = project_game(seed=1, **kwargs)
     p2 = project_game(seed=2, **kwargs)
@@ -216,18 +163,9 @@ def test_different_seeds_produce_different_but_similar_results(fitted_ratings_an
 def test_neutral_site_projection_has_no_home_field_edge(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj_neutral = project_game(
-        home_id="t0",
-        away_id="t0",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=True,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=10000,
-        seed=5,
+        home_id="t0", away_id="t0", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=True, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=10000, seed=5,
     )
     # Same team on both sides at a neutral site must be a true toss-up.
     assert proj_neutral.expected_home_points == pytest.approx(proj_neutral.expected_away_points, abs=1e-6)
@@ -236,18 +174,9 @@ def test_neutral_site_projection_has_no_home_field_edge(fitted_ratings_and_pool)
 def test_home_field_gives_a_real_edge_for_an_otherwise_even_matchup(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj_home = project_game(
-        home_id="t0",
-        away_id="t0",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=10000,
-        seed=6,
+        home_id="t0", away_id="t0", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=10000, seed=6,
     )
     if abs(ratings.hfa) > 1e-6:
         assert proj_home.expected_home_points != pytest.approx(proj_home.expected_away_points, abs=1e-6)
@@ -259,18 +188,10 @@ def test_home_field_gives_a_real_edge_for_an_otherwise_even_matchup(fitted_ratin
 def test_fbs_vs_fcs_projection_uses_pseudo_rating_not_individual_fcs_rating(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="some_fcs_team_never_seen_before",
-        home_classification="fbs",
-        away_classification="fcs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=7,
+        home_id="t0", away_id="some_fcs_team_never_seen_before", home_classification="fbs",
+        away_classification="fcs", is_neutral_site=False, ratings=ratings, prior_season_ratings=None,
+        residual_pool=pool, home_percent_passing_ppa=None, away_percent_passing_ppa=None,
+        n_simulations=5000, seed=7,
     )
     assert proj.expected_home_points > 0
     assert 0.0 <= proj.prob_home_win() <= 1.0
@@ -279,18 +200,14 @@ def test_fbs_vs_fcs_projection_uses_pseudo_rating_not_individual_fcs_rating(fitt
 def test_fbs_vs_fcs_game_gets_inflated_uncertainty_vs_fbs_vs_fbs(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=20000,
-        seed=42,
+        home_id="t0", is_neutral_site=False, ratings=ratings, prior_season_ratings=None,
+        residual_pool=pool, home_percent_passing_ppa=None, away_percent_passing_ppa=None,
+        n_simulations=20000, seed=42,
     )
     proj_fbs = project_game(away_id="t1", home_classification="fbs", away_classification="fbs", **kwargs)
-    proj_fcs = project_game(away_id="some_fcs_team", home_classification="fbs", away_classification="fcs", **kwargs)
+    proj_fcs = project_game(
+        away_id="some_fcs_team", home_classification="fbs", away_classification="fcs", **kwargs
+    )
     assert np.std(proj_fcs.home_scores) > np.std(proj_fbs.home_scores)
 
 
@@ -343,18 +260,9 @@ def test_expanding_residual_pool_falls_back_when_too_thin():
 def test_projection_record_carries_full_provenance(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     proj = project_game(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=8,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=8,
     )
     record = proj.to_projection_record(
         projection_id="test-id",
@@ -372,14 +280,8 @@ def test_projection_record_carries_full_provenance(fitted_ratings_and_pool):
 def test_unknown_qb_state_widens_uncertainty_vs_returning_starter(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
         n_simulations=20000,
     )
     proj_unknown = project_game(home_percent_passing_ppa=None, away_percent_passing_ppa=None, seed=10, **kwargs)
@@ -397,18 +299,9 @@ def test_residual_scale_default_is_now_085(fitted_ratings_and_pool):
     must reproduce the same draws as passing 0.85 explicitly."""
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=3,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=3,
     )
     proj_default = project_game(**kwargs)
     proj_explicit_085 = project_game(residual_scale=0.85, **kwargs)
@@ -423,18 +316,9 @@ def test_residual_scale_one_remains_available_as_explicit_opt_out(fitted_ratings
     simulation rather than comparing against the (now-scaled) default."""
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=5000,
-        seed=3,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=5000, seed=3,
     )
     proj_explicit_one_a = project_game(residual_scale=1.0, **kwargs)
     proj_explicit_one_b = project_game(residual_scale=1.0, **kwargs)
@@ -446,18 +330,9 @@ def test_residual_scale_one_remains_available_as_explicit_opt_out(fitted_ratings
 def test_residual_scale_below_one_narrows_the_simulated_spread(fitted_ratings_and_pool):
     ratings, pool = fitted_ratings_and_pool
     kwargs = dict(
-        home_id="t0",
-        away_id="t1",
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        ratings=ratings,
-        prior_season_ratings=None,
-        residual_pool=pool,
-        home_percent_passing_ppa=None,
-        away_percent_passing_ppa=None,
-        n_simulations=20000,
-        seed=5,
+        home_id="t0", away_id="t1", home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, ratings=ratings, prior_season_ratings=None, residual_pool=pool,
+        home_percent_passing_ppa=None, away_percent_passing_ppa=None, n_simulations=20000, seed=5,
     )
     proj_full = project_game(residual_scale=1.0, **kwargs)
     proj_narrow = project_game(residual_scale=0.85, **kwargs)

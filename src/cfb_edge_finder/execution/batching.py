@@ -231,7 +231,9 @@ def split_into_batches(
     """
     if not packets:
         return []
-    ordered = sorted(packets, key=lambda p: (str(p.get("kickoff") or "9999"), str(p["game_key"])))
+    ordered = sorted(
+        packets, key=lambda p: (str(p.get("kickoff") or "9999"), str(p["game_key"]))
+    )
     costs = {str(p["game_key"]): game_cost(p) for p in ordered}
 
     groups: list[list[dict[str, Any]]] = []
@@ -241,7 +243,9 @@ def split_into_batches(
 
     for packet in ordered:
         cost = costs[str(packet["game_key"])].total
-        size = len(json.dumps(context_block(packet), sort_keys=False, default=str).encode("utf-8"))
+        size = len(
+            json.dumps(context_block(packet), sort_keys=False, default=str).encode("utf-8")
+        )
         over_cost = current and (current_cost + cost > budget)
         over_bytes = current and (current_bytes + size > max_bytes)
         over_count = len(current) >= MAX_GAMES_PER_BATCH
@@ -287,9 +291,13 @@ def build_batches(
 
     batches: list[HandicapBatch] = []
     for window in window_order:
-        batches.extend(split_into_batches(window, by_window.get(window, []), budget=budget, max_bytes=max_bytes))
+        batches.extend(
+            split_into_batches(window, by_window.get(window, []), budget=budget, max_bytes=max_bytes)
+        )
     for window in sorted(set(by_window) - set(window_order)):
-        batches.extend(split_into_batches(window, by_window[window], budget=budget, max_bytes=max_bytes))
+        batches.extend(
+            split_into_batches(window, by_window[window], budget=budget, max_bytes=max_bytes)
+        )
     return batches
 
 
@@ -329,7 +337,11 @@ def _readable_context(context: dict[str, Any]) -> dict[str, Any]:
     The information is the same and the file is a third of the size, which is
     the point of the artifact.
     """
-    domains = {domain: block for domain, block in (context.get("domains") or {}).items() if (block or {}).get("values")}
+    domains = {
+        domain: block
+        for domain, block in (context.get("domains") or {}).items()
+        if (block or {}).get("values")
+    }
     quality = dict(context.get("data_quality") or {})
     # `coverage` is already on the parent; repeating it inside data_quality is
     # two copies of one fact that a future edit can make disagree.

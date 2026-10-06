@@ -232,7 +232,9 @@ def build_decision_record(
         "shard": artifact.get("shard"),
         "generated_at": artifact.get("generated_at"),
         "packet_hashes": {k: v.get("packet_hash") for k, v in sorted(games.items())},
-        "selected": [(c["market_ticker"], c["side"], c["observed_price"], c["bet_up_to"]) for c in candidates],
+        "selected": [
+            (c["market_ticker"], c["side"], c["observed_price"], c["bet_up_to"]) for c in candidates
+        ],
     }
 
     record = {
@@ -251,7 +253,8 @@ def build_decision_record(
         "reconciliation": dict(artifact.get("reconciliation") or {}),
         "reduction": {
             key: (artifact.get("reduction") or {}).get(key)
-            for key in ("candidate_rows_before_reduction", "surviving_candidates", "removed", "removed_by_reason")
+            for key in ("candidate_rows_before_reduction", "surviving_candidates", "removed",
+                        "removed_by_reason")
         },
         # Never emitted by the live workflow today. Kept as explicit nulls so a
         # future handicapper that states them has somewhere to put them, and a
@@ -320,7 +323,9 @@ def validate_decision_record(record: dict[str, Any]) -> list[str]:
         return ["record is not an object"]
     version = record.get("schema_version")
     if version not in SUPPORTED_SCHEMA_VERSIONS:
-        problems.append(f"schema_version {version!r} is not one of {list(SUPPORTED_SCHEMA_VERSIONS)}")
+        problems.append(
+            f"schema_version {version!r} is not one of {list(SUPPORTED_SCHEMA_VERSIONS)}"
+        )
     for name in ("record_id", "created_at", "producer"):
         if not isinstance(record.get(name), str) or not record[name].strip():
             problems.append(f"{name} is required and must be a non-empty string")

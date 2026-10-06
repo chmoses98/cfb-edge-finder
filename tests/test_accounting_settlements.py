@@ -21,7 +21,9 @@ from cfb_edge_finder.accounting.import_settlements import (
     mint_settlement_id,
 )
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
+)
 
 KEY = "kalshi:v1:3a1f7c5d2e8b49a0c6f1d84b7e2905cfa3b6d17e"
 TICKER = "KXNCAAFGAME-26SEP12ALAUGA-ALA"
@@ -30,19 +32,12 @@ SEASON = 2026
 
 def wager_row(**overrides):
     row = {
-        "wager_id": "routed-abc",
-        "schema_version": "cfb_accounted_wager.v1",
-        "source_bet_key": KEY,
-        "import_batch_id": "batch",
-        "entry_method": "IMPORTED_RECEIPT",
-        "game_date": "2026-09-12",
-        "market_ticker": TICKER,
-        "side": "YES",
-        "executed_at": "2026-09-12T20:40:11Z",
-        "contracts": 25.0,
-        "execution_price": 0.47,
-        "stake": 11.94,
-        "fees_paid": 0.19,
+        "wager_id": "routed-abc", "schema_version": "cfb_accounted_wager.v1",
+        "source_bet_key": KEY, "import_batch_id": "batch",
+        "entry_method": "IMPORTED_RECEIPT", "game_date": "2026-09-12",
+        "market_ticker": TICKER, "side": "YES",
+        "executed_at": "2026-09-12T20:40:11Z", "contracts": 25.0,
+        "execution_price": 0.47, "stake": 11.94, "fees_paid": 0.19,
     }
     row.update(overrides)
     return row
@@ -68,7 +63,6 @@ def seeded(tmp_path, **overrides):
 
 
 # ------------------------------------------------------------- the record
-
 
 def test_the_exact_exchange_numbers_survive():
     record = build_record(ROUTER_ROW)
@@ -116,9 +110,10 @@ def test_a_missing_figure_must_carry_its_reason():
 
 
 def test_a_settled_row_with_a_refused_figure_is_written():
-    """ "The market settled and the return could not be established" is a
+    """"The market settled and the return could not be established" is a
     durable fact with a durable cause, and worth recording."""
-    record = build_record(dict(ROUTER_ROW, net_profit_loss=None, refusals=["shared_position_fee"]))
+    record = build_record(dict(ROUTER_ROW, net_profit_loss=None,
+                               refusals=["shared_position_fee"]))
 
     assert record.gross_return == 25.0
     assert record.net_profit_loss is None
@@ -139,7 +134,6 @@ def test_a_field_this_ledger_does_not_model_is_refused():
 
 # -------------------------------------------------------------- the import
 
-
 def test_a_settlement_for_a_known_wager_is_written(tmp_path):
     result = import_rows(seeded(tmp_path), [ROUTER_ROW], season=SEASON)
 
@@ -152,8 +146,7 @@ def test_a_settlement_for_a_wager_this_ledger_never_saw_is_refused(tmp_path):
     """THE test. A payout attributed to a bet this repository has no record of
     would count in every total while belonging to nothing."""
     result = import_rows(
-        seeded(tmp_path),
-        [dict(ROUTER_ROW, source_bet_key="kalshi:v1:ghost")],
+        seeded(tmp_path), [dict(ROUTER_ROW, source_bet_key="kalshi:v1:ghost")],
         season=SEASON,
     )
 
@@ -176,22 +169,13 @@ def test_running_the_settlement_pass_twice_writes_one_row(tmp_path):
 
 def test_one_refused_settlement_does_not_stop_the_others(tmp_path):
     root = tmp_path
-    store.append_wagers(
-        root,
-        SEASON,
-        [
-            wager_row(),
-            wager_row(wager_id="routed-b", source_bet_key="kalshi:v1:b"),
-        ],
-    )
-    result = import_rows(
-        root,
-        [
-            dict(ROUTER_ROW, source_bet_key="kalshi:v1:ghost"),
-            dict(ROUTER_ROW, source_bet_key="kalshi:v1:b"),
-        ],
-        season=SEASON,
-    )
+    store.append_wagers(root, SEASON, [
+        wager_row(), wager_row(wager_id="routed-b", source_bet_key="kalshi:v1:b"),
+    ])
+    result = import_rows(root, [
+        dict(ROUTER_ROW, source_bet_key="kalshi:v1:ghost"),
+        dict(ROUTER_ROW, source_bet_key="kalshi:v1:b"),
+    ], season=SEASON)
 
     assert (result["written"], result["refused"]) == (1, 1)
 
@@ -208,14 +192,12 @@ def test_the_wager_ledger_itself_is_never_touched(tmp_path):
 
 # -------------------------------------------------------------- the report
 
-
 def test_the_report_joins_settlements_to_wagers(tmp_path):
     root = seeded(tmp_path)
     import_rows(root, [ROUTER_ROW], season=SEASON)
 
     summary = report.summarize(
-        store.read_rows(store.ledger_path(root, SEASON)),
-        SEASON,
+        store.read_rows(store.ledger_path(root, SEASON)), SEASON,
         settlements=store.read_rows(store.settlement_ledger_path(root, SEASON)),
     )
 
@@ -230,9 +212,7 @@ def test_a_wager_with_no_settlement_row_is_unsettled(tmp_path):
     root = seeded(tmp_path)
 
     summary = report.summarize(
-        store.read_rows(store.ledger_path(root, SEASON)),
-        SEASON,
-        settlements=[],
+        store.read_rows(store.ledger_path(root, SEASON)), SEASON, settlements=[],
     )
 
     assert (summary.settled, summary.unsettled) == (0, 1)
@@ -242,11 +222,11 @@ def test_a_wager_with_no_settlement_row_is_unsettled(tmp_path):
 def test_a_settled_wager_whose_pl_was_refused_is_settled_but_unestablished(tmp_path):
     """Both facts at once, and the report must not collapse them."""
     root = seeded(tmp_path)
-    import_rows(root, [dict(ROUTER_ROW, net_profit_loss=None, refusals=["shared_position_fee"])], season=SEASON)
+    import_rows(root, [dict(ROUTER_ROW, net_profit_loss=None,
+                            refusals=["shared_position_fee"])], season=SEASON)
 
     summary = report.summarize(
-        store.read_rows(store.ledger_path(root, SEASON)),
-        SEASON,
+        store.read_rows(store.ledger_path(root, SEASON)), SEASON,
         settlements=store.read_rows(store.settlement_ledger_path(root, SEASON)),
     )
 
@@ -258,7 +238,6 @@ def test_a_settled_wager_whose_pl_was_refused_is_settled_but_unestablished(tmp_p
 
 # -------------------------------------------------------------- the script
 
-
 def test_the_script_prints_no_payout(tmp_path, capsys):
     import import_routed_settlements as script
 
@@ -266,19 +245,9 @@ def test_the_script_prints_no_payout(tmp_path, capsys):
     payload = tmp_path / "CFB-settlements.json"
     payload.write_text(json.dumps({"settlements": [ROUTER_ROW]}), encoding="utf-8")
 
-    assert (
-        script.main(
-            [
-                "--payload",
-                str(payload),
-                "--base-dir",
-                str(root),
-                "--season",
-                str(SEASON),
-            ]
-        )
-        == script.EXIT_OK
-    )
+    assert script.main([
+        "--payload", str(payload), "--base-dir", str(root), "--season", str(SEASON),
+    ]) == script.EXIT_OK
 
     printed = capsys.readouterr().out
     assert "written:         1" in printed
@@ -296,19 +265,9 @@ def test_the_script_fails_when_a_settlement_is_refused(tmp_path):
         encoding="utf-8",
     )
 
-    assert (
-        script.main(
-            [
-                "--payload",
-                str(payload),
-                "--base-dir",
-                str(root),
-                "--season",
-                str(SEASON),
-            ]
-        )
-        == script.EXIT_REFUSED
-    )
+    assert script.main([
+        "--payload", str(payload), "--base-dir", str(root), "--season", str(SEASON),
+    ]) == script.EXIT_REFUSED
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -324,7 +283,6 @@ def test_the_script_fails_when_a_settlement_is_refused(tmp_path):
 # fix was in the gate. These tests pin this side of the contract so a later
 # "just add the batch id" cannot quietly move the problem here.
 # ─────────────────────────────────────────────────────────────────────
-
 
 def test_the_settlement_schema_models_no_import_batch_id():
     """The wager schema requires one. This one has no such field at all."""
@@ -351,23 +309,15 @@ def test_the_canonical_identity_of_a_settlement_row_is_exactly_these_fields():
     # `economics_version` is written only on a v2 row (see the test below), so
     # the rows already on disk keep the shape they were filed with.
     assert set(record) == {
-        "settlement_id",
-        "schema_version",
-        "source_bet_key",
-        "market_ticker",
-        "side",
-        "settlement_status",
-        "settled_at",
-        "result",
-        "gross_return",
-        "net_profit_loss",
-        "refusals",
-        "venue",
+        "settlement_id", "schema_version", "source_bet_key", "market_ticker",
+        "side", "settlement_status", "settled_at", "result",
+        "gross_return", "net_profit_loss", "refusals", "venue",
     }
     v2 = build_record({**ROUTER_ROW, "economics_version": "router-settlement-economics.v2"}).to_dict()
     assert set(v2) == set(record) | {"economics_version"}
     # Required, and each one is refused when absent -- see validate().
-    for name in ("settlement_id", "source_bet_key", "market_ticker", "side", "settlement_status", "settled_at"):
+    for name in ("settlement_id", "source_bet_key", "market_ticker", "side",
+                 "settlement_status", "settled_at"):
         assert record[name]
 
 
@@ -384,8 +334,7 @@ def test_settlement_identity_is_deterministic_across_reruns(tmp_path):
         store.append_wagers(base, SEASON, [wager_row()])
         import_rows(base, [dict(ROUTER_ROW)], season=SEASON)
     assert (one / "settlements" / f"{SEASON}.jsonl").read_text() == (
-        two / "settlements" / f"{SEASON}.jsonl"
-    ).read_text()
+        two / "settlements" / f"{SEASON}.jsonl").read_text()
 
 
 def test_the_real_pr_53_row_shape_imports(tmp_path):
@@ -395,48 +344,32 @@ def test_the_real_pr_53_row_shape_imports(tmp_path):
     rows = [
         {
             "source_bet_key": "kalshi:v1:03a8210bb09c533faadd20f5229a471408888089adf7f48c4bc412026468eb45",
-            "market_ticker": "KXNCAAF1QTOTAL-26SEP19UGAARK-11",
-            "side": "YES",
-            "settlement_status": "SETTLED",
-            "settled_at": "2026-09-19T16:45:34.509166Z",
-            "result": "LOST",
-            "gross_return": 0.0,
-            "net_profit_loss": -51.5253,
-            "refusals": [],
-            "venue": "kalshi",
+            "market_ticker": "KXNCAAF1QTOTAL-26SEP19UGAARK-11", "side": "YES",
+            "settlement_status": "SETTLED", "settled_at": "2026-09-19T16:45:34.509166Z",
+            "result": "LOST", "gross_return": 0.0, "net_profit_loss": -51.5253,
+            "refusals": [], "venue": "kalshi",
         },
         {
             "source_bet_key": "kalshi:v1:41b8a143560f919459f5bde7bf2e608e1f0a70b6b64909c68042cdf33ee815ef",
-            "market_ticker": "KXNCAAFSPREAD-26SEP19PREWCU-WCU34",
-            "side": "NO",
-            "settlement_status": "SETTLED",
-            "settled_at": "2026-09-20T00:34:34.521071Z",
-            "result": "LOST",
-            "gross_return": 0.0,
-            "net_profit_loss": None,
-            "refusals": ["shared_position_fee"],
-            "venue": "kalshi",
+            "market_ticker": "KXNCAAFSPREAD-26SEP19PREWCU-WCU34", "side": "NO",
+            "settlement_status": "SETTLED", "settled_at": "2026-09-20T00:34:34.521071Z",
+            "result": "LOST", "gross_return": 0.0, "net_profit_loss": None,
+            "refusals": ["shared_position_fee"], "venue": "kalshi",
         },
     ]
     for row in rows:
-        store.append_wagers(
-            tmp_path,
-            SEASON,
-            [
-                wager_row(
-                    wager_id=f"w-{row['source_bet_key'][-6:]}",
-                    source_bet_key=row["source_bet_key"],
-                    market_ticker=row["market_ticker"],
-                    side=row["side"],
-                )
-            ],
-        )
+        store.append_wagers(tmp_path, SEASON, [wager_row(
+            wager_id=f"w-{row['source_bet_key'][-6:]}",
+            source_bet_key=row["source_bet_key"],
+            market_ticker=row["market_ticker"], side=row["side"])])
 
     result = import_rows(tmp_path, rows, season=SEASON)
     assert (result["written"], result["refused"]) == (2, 0)
 
-    written = [json.loads(line) for line in (tmp_path / "settlements" / f"{SEASON}.jsonl").read_text().splitlines()]
-    assert [r["settlement_id"] for r in written] == ["stl-23dbe2a8dea558d7bc7ab8e1", "stl-9a9ca35b56a3a72ab142ee58"]
+    written = [json.loads(line) for line in
+               (tmp_path / "settlements" / f"{SEASON}.jsonl").read_text().splitlines()]
+    assert [r["settlement_id"] for r in written] == [
+        "stl-23dbe2a8dea558d7bc7ab8e1", "stl-9a9ca35b56a3a72ab142ee58"]
     assert all("import_batch_id" not in r for r in written)
 
     # and a second identical pass writes nothing
@@ -447,7 +380,6 @@ def test_the_real_pr_53_row_shape_imports(tmp_path):
 # ─────────────────────────────────────────────────────────────────────
 # A RESTATED PAYOUT IS A PERSON'S DECISION
 # ─────────────────────────────────────────────────────────────────────
-
 
 def test_a_second_settlement_contradicting_the_recorded_one_is_refused(tmp_path):
     """Dropping it quietly would leave the ledger holding one figure while the
@@ -469,17 +401,14 @@ def test_a_second_settlement_contradicting_the_recorded_one_is_refused(tmp_path)
 def test_a_contradicting_settlement_does_not_stop_the_others(tmp_path):
     other_key = "kalshi:v1:0000000000000000000000000000000000000000"
     base = seeded(tmp_path)
-    store.append_wagers(base, SEASON, [wager_row(wager_id="routed-xyz", source_bet_key=other_key)])
+    store.append_wagers(base, SEASON, [wager_row(
+        wager_id="routed-xyz", source_bet_key=other_key)])
     import_rows(base, [dict(ROUTER_ROW)], season=SEASON)
 
-    result = import_rows(
-        base,
-        [
-            {**ROUTER_ROW, "result": "LOST", "gross_return": 0.0, "net_profit_loss": -11.94},
-            {**ROUTER_ROW, "source_bet_key": other_key},
-        ],
-        season=SEASON,
-    )
+    result = import_rows(base, [
+        {**ROUTER_ROW, "result": "LOST", "gross_return": 0.0, "net_profit_loss": -11.94},
+        {**ROUTER_ROW, "source_bet_key": other_key},
+    ], season=SEASON)
     assert (result["written"], result["refused"]) == (1, 1)
 
 
@@ -489,7 +418,8 @@ def test_the_store_itself_refuses_a_contradicting_settlement(tmp_path):
     first = build_record(ROUTER_ROW).to_dict()
     store.append_settlements(base, SEASON, [first])
     with pytest.raises(ValueError, match="CONTRADICTS"):
-        store.append_settlements(base, SEASON, [{**first, "gross_return": 0.0, "result": "LOST"}])
+        store.append_settlements(
+            base, SEASON, [{**first, "gross_return": 0.0, "result": "LOST"}])
 
 
 def test_an_identical_repeat_is_still_a_silent_noop(tmp_path):
@@ -503,14 +433,10 @@ def test_an_identical_repeat_is_still_a_silent_noop(tmp_path):
 
 def test_two_contradicting_settlements_inside_one_batch_are_refused(tmp_path):
     base = seeded(tmp_path)
-    result = import_rows(
-        base,
-        [
-            dict(ROUTER_ROW),
-            {**ROUTER_ROW, "net_profit_loss": 1.0},
-        ],
-        season=SEASON,
-    )
+    result = import_rows(base, [
+        dict(ROUTER_ROW),
+        {**ROUTER_ROW, "net_profit_loss": 1.0},
+    ], season=SEASON)
     # The first is written; the second reaches the store, which refuses to
     # append a contradiction of a row this very batch is writing.
     assert result["written"] == 1
@@ -520,7 +446,6 @@ def test_two_contradicting_settlements_inside_one_batch_are_refused(tmp_path):
 # ─────────────────────────────────────────────────────────────────────
 # THE WRONG LEDGER IS AS BAD AS NO LEDGER
 # ─────────────────────────────────────────────────────────────────────
-
 
 def test_a_settlement_for_a_wager_in_a_different_season_is_refused(tmp_path):
     """The wager is real and this repository holds it -- in 2026. Filing its
@@ -550,13 +475,9 @@ def test_an_orphan_is_refused_before_anything_is_written(tmp_path):
     """Refused BEFORE the write, not cleaned up after one."""
     base = seeded(tmp_path)
     ledger = base / "settlements" / f"{SEASON}.jsonl"
-    result = import_rows(
-        base,
-        [
-            {**ROUTER_ROW, "source_bet_key": "kalshi:v1:" + "a" * 40},
-            {**ROUTER_ROW, "source_bet_key": "kalshi:v1:" + "b" * 40},
-        ],
-        season=SEASON,
-    )
+    result = import_rows(base, [
+        {**ROUTER_ROW, "source_bet_key": "kalshi:v1:" + "a" * 40},
+        {**ROUTER_ROW, "source_bet_key": "kalshi:v1:" + "b" * 40},
+    ], season=SEASON)
     assert (result["written"], result["refused"]) == (0, 2)
     assert not ledger.exists()

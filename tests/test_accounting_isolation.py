@@ -98,7 +98,10 @@ def _forbidden_token(name: str):
     for forbidden in FORBIDDEN_IN_ACCOUNTING:
         wanted = forbidden.split("_")
         for start in range(len(tokens) - len(wanted) + 1):
-            if all(tokens[start + offset].startswith(part) for offset, part in enumerate(wanted)):
+            if all(
+                tokens[start + offset].startswith(part)
+                for offset, part in enumerate(wanted)
+            ):
                 return forbidden
     return None
 
@@ -204,7 +207,9 @@ def test_accounting_does_not_import_any_predictive_package():
             for package in PREDICTIVE_PACKAGES:
                 if f"cfb_edge_finder.{package}" in module:
                     offenders.append(f"{path.relative_to(SRC)} imports {module}")
-    assert offenders == [], f"accounting reaches into predictive code; keep the edge empty both ways: {offenders}"
+    assert offenders == [], (
+        f"accounting reaches into predictive code; keep the edge empty both ways: {offenders}"
+    )
 
 
 #: Modules that READ a recommendation in order to ATTRIBUTE a realised result
@@ -304,7 +309,9 @@ def test_the_attribution_modules_cannot_reach_the_ledger_write_path():
         assert path.exists(), f"{module_name} is gone; this test no longer guards it"
         for imported in _imported_modules(path):
             if imported in ATTRIBUTION_MODULES:
-                offenders.append(f"{module_name} imports the attribution module {imported}")
+                offenders.append(
+                    f"{module_name} imports the attribution module {imported}"
+                )
         source = path.read_text(encoding="utf-8")
         for attribution in ATTRIBUTION_MODULES:
             leaf = attribution.rsplit(".", 1)[-1]
@@ -335,7 +342,9 @@ def test_the_attribution_modules_really_do_exist_and_are_scanned():
     for module_name in sorted(ATTRIBUTION_MODULES):
         module = importlib.import_module(module_name)
         assert module is not None
-        assert any(_forbidden_token(name) for name in dir(module) if not name.startswith("_")), (
+        assert any(
+            _forbidden_token(name) for name in dir(module) if not name.startswith("_")
+        ), (
             f"{module_name} carries no name the scan would have caught, so its exemption "
             "is doing nothing and should be removed"
         )
@@ -350,7 +359,9 @@ def test_the_surface_detector_can_actually_find_a_forbidden_name():
     fake.kelly_fraction = lambda: None  # noqa: E731
     fake.ledger_path = lambda: None  # noqa: E731
     hits = sorted(n for n in dir(fake) if not n.startswith("_") and _forbidden_token(n))
-    assert hits == ["kelly_fraction", "recommend_stake"], f"the surface detector is broken: {hits}"
+    assert hits == ["kelly_fraction", "recommend_stake"], (
+        f"the surface detector is broken: {hits}"
+    )
     # ...and the same call must NOT fire on the legitimate name that shares
     # letters with a forbidden one. A detector nobody trusts gets deleted.
     assert _forbidden_token("ledger_path") is None

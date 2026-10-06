@@ -44,20 +44,8 @@ from tests.test_execution_candidates import handicap, packet
 TRIPLE_QUOTE = chr(34) * 3
 
 
-def row(
-    ticker,
-    *,
-    game="G",
-    kind="spread",
-    team="home",
-    side="yes",
-    line=None,
-    edge=0.05,
-    period="full_game",
-    comparator="greater",
-    cap=None,
-    fee=0.01,
-):
+def row(ticker, *, game="G", kind="spread", team="home", side="yes", line=None, edge=0.05,
+        period="full_game", comparator="greater", cap=None, fee=0.01):
     return {
         "ticker": ticker,
         "game_key": game,
@@ -96,18 +84,14 @@ def underdog_pair():
 
 
 def saturday():
-    return (
-        nested_favourite()
-        + underdog_pair()
-        + [
-            # A half ladder: two rungs of the first-half margin.
-            row("H1-11", game="HALFGAME", period="first_half", line=10.5, edge=0.06),
-            row("H1-21", game="HALFGAME", period="first_half", line=20.5, edge=0.03),
-            # Two rungs of one full-game ladder.
-            row("F-14", game="LADDER", line=13.5, edge=0.06),
-            row("F-18", game="LADDER", line=17.5, edge=0.04),
-        ]
-    )
+    return nested_favourite() + underdog_pair() + [
+        # A half ladder: two rungs of the first-half margin.
+        row("H1-11", game="HALFGAME", period="first_half", line=10.5, edge=0.06),
+        row("H1-21", game="HALFGAME", period="first_half", line=20.5, edge=0.03),
+        # Two rungs of one full-game ladder.
+        row("F-14", game="LADDER", line=13.5, edge=0.06),
+        row("F-18", game="LADDER", line=17.5, edge=0.04),
+    ]
 
 
 def alternatives_of(reduction, core):
@@ -152,7 +136,9 @@ def test_a_nested_margin_ladder_has_one_core_and_every_other_rung_is_incremental
 
 def test_a_with_the_moneyline_as_core_both_margin_rungs_are_deeper_tails():
     reduction = reduce_candidates(nested_favourite("ml"))
-    tails = build_card_review(reduction)["games"]["FAVGAME"]["theses"]["side:away"]["nested_tail_extensions"]
+    tails = build_card_review(reduction)["games"]["FAVGAME"]["theses"]["side:away"][
+        "nested_tail_extensions"
+    ]
     assert [(t["ticker"], t["extension_points"]) for t in tails] == [("FAV-8", 7), ("FAV-21", 20)]
 
 
@@ -254,7 +240,9 @@ def test_two_views_in_one_thesis_are_two_cores_and_funding_both_is_incremental()
     """A first-half and a full-game margin on the same side: the same thesis
     by a different mechanism. Each is the core of its own view, and only one
     carries the thesis without a justification."""
-    reduction = reduce_candidates([row("FG", line=6.5), row("H1", period="first_half", line=3.5)])
+    reduction = reduce_candidates(
+        [row("FG", line=6.5), row("H1", period="first_half", line=3.5)]
+    )
     thesis = build_card_review(reduction)["games"]["G"]["theses"]["side:home"]
     assert thesis["multiple_core_expressions"] is True
     assert thesis["core_expression_relations"][0]["relation"] == (
@@ -491,14 +479,8 @@ def test_the_artifact_states_the_contract_machine_readably(tmp_path):
     }
     assert [step["step"] for step in review["final_review_checklist"]] == list(range(1, 12))
     assert set(review["incremental_justification_template"]) == {
-        "shared_thesis",
-        "shared_failure_mode",
-        "independent_cash_path",
-        "incremental_edge_case",
-        "why_not_redundant",
-        "tail_extension",
-        "concentration_effect",
-        "decision",
+        "shared_thesis", "shared_failure_mode", "independent_cash_path", "incremental_edge_case",
+        "why_not_redundant", "tail_extension", "concentration_effect", "decision",
     }
     assert all(v is None for v in review["incremental_justification_template"].values())
     assert set(review["decisions"]) == {d.value for d in CardDecision}
@@ -605,13 +587,8 @@ def test_i_a_record_from_a_1_0_0_artifact_has_a_null_card_review(tmp_path):
         for key in [k for k in candidate if k.startswith("card_") or k.startswith("thesis_")]:
             del candidate[key]
     record = build_decision_record(
-        artifact=legacy,
-        reduction_ledger=None,
-        handicaps={},
-        packets={GAME_KEY: game},
-        slate={},
-        batch_entry=None,
-        source_files={},
+        artifact=legacy, reduction_ledger=None, handicaps={}, packets={GAME_KEY: game},
+        slate={}, batch_entry=None, source_files={},
     )
     assert validate_decision_record(record) == []
     assert record["card_review"] is None

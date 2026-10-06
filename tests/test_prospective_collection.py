@@ -116,9 +116,8 @@ def test_closing_is_captured_as_its_own_row_not_inferred_from_t30(tmp_path, monk
     closing_rows = [r for r in rows if r["observation"]["snapshot_timing"]["label"] == timing.CLOSING]
     t30_rows = [r for r in rows if r["observation"]["snapshot_timing"]["label"] == "T_30"]
     assert closing_rows and t30_rows
-    assert (
-        closing_rows[0]["observation"]["snapshot_timing"]["hours_before_kickoff"]
-        < (t30_rows[0]["observation"]["snapshot_timing"]["hours_before_kickoff"])
+    assert closing_rows[0]["observation"]["snapshot_timing"]["hours_before_kickoff"] < (
+        t30_rows[0]["observation"]["snapshot_timing"]["hours_before_kickoff"]
     )
 
 
@@ -193,7 +192,9 @@ def test_reschedule_leaves_prior_snapshots_immutable(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _scan(repo, monkeypatch, hours_ahead=6.0, run_id="before")
-    before_bytes = corpus_helpers.ref(repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON).bytes()
+    before_bytes = corpus_helpers.ref(
+        repo / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON
+    ).bytes()
     assert len(before_bytes) > 0
 
     # Game moves 24h later: new labels resolve against the NEW kickoff,
@@ -317,7 +318,9 @@ def test_price_only_change_does_not_rerun_the_football_model(tmp_path, monkeypat
             builds_after_first = cache.projection_builds
             assert builds_after_first > 0
 
-    assert cache.projection_builds == builds_after_first, "a price-only change rebuilt the football model"
+    assert cache.projection_builds == builds_after_first, (
+        "a price-only change rebuilt the football model"
+    )
 
 
 def test_changed_game_inputs_do_invalidate_the_cache():
@@ -329,16 +332,9 @@ def test_changed_game_inputs_do_invalidate_the_cache():
 
     def _req(game, **over):
         base = dict(
-            game_id=game.game_id,
-            home_id=game.home_team_id,
-            away_id=game.away_team_id,
-            home_classification="fbs",
-            away_classification="fbs",
-            is_neutral_site=False,
-            as_of_season=game.season,
-            as_of_week=game.week_number or 1,
-            n_simulations=200,
-            seed=0,
+            game_id=game.game_id, home_id=game.home_team_id, away_id=game.away_team_id,
+            home_classification="fbs", away_classification="fbs", is_neutral_site=False,
+            as_of_season=game.season, as_of_week=game.week_number or 1, n_simulations=200, seed=0,
         )
         base.update(over)
         return GameProjectionRequest(**base)
@@ -367,16 +363,9 @@ def test_history_is_fetched_lazily_and_at_most_once():
     from cfb_edge_finder.kalshi.game_projection_cache import GameProjectionRequest
 
     req = GameProjectionRequest(
-        game_id=games[0].game_id,
-        home_id=games[0].home_team_id,
-        away_id=games[0].away_team_id,
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        as_of_season=games[0].season,
-        as_of_week=games[0].week_number or 1,
-        n_simulations=200,
-        seed=0,
+        game_id=games[0].game_id, home_id=games[0].home_team_id, away_id=games[0].away_team_id,
+        home_classification="fbs", away_classification="fbs", is_neutral_site=False,
+        as_of_season=games[0].season, as_of_week=games[0].week_number or 1, n_simulations=200, seed=0,
     )
     cache.get_or_build(req)
     cache.get_or_build(req)
@@ -538,7 +527,9 @@ def test_downgrading_api_failures_does_not_weaken_the_guards_it_backed_up():
     blackout = health.CaptureHealthReport(markets_scanned=0, games_scanned=5, api_failures=3)
     assert health.should_fail_run(health.evaluate_collapse(blackout, None)) is True
 
-    collapse = health.CaptureHealthReport(markets_scanned=500, games_scanned=5, supported_markets=1, api_failures=1)
+    collapse = health.CaptureHealthReport(
+        markets_scanned=500, games_scanned=5, supported_markets=1, api_failures=1
+    )
     assert health.should_fail_run(health.evaluate_collapse(collapse, baseline_supported_markets=400)) is True
 
     lost_closing = health.CaptureHealthReport(

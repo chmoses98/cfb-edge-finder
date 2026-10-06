@@ -127,15 +127,17 @@ def test_unavailable_sources_are_recorded_as_gaps_not_guessed():
 def test_qb_identity_is_declared_unavailable_not_proxied():
     """The continuity proxy must never be relabelled as QB identity."""
     record = build_context_record(game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF)
-    assert record.field_named("expected_starting_qb").availability is (ContextAvailability.SOURCE_UNAVAILABLE)
-    assert record.field_named("qb_new_starter_flag").availability is (ContextAvailability.SOURCE_UNAVAILABLE)
+    assert record.field_named("expected_starting_qb").availability is (
+        ContextAvailability.SOURCE_UNAVAILABLE
+    )
+    assert record.field_named("qb_new_starter_flag").availability is (
+        ContextAvailability.SOURCE_UNAVAILABLE
+    )
 
 
 def test_the_continuity_proxy_stays_a_proxy_even_when_observed():
     record = build_context_record(
-        game_id="g1",
-        captured_at=CAPTURED,
-        kickoff_utc=KICKOFF,
+        game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF,
         observed={"qb_continuity_proxy": 0.82},
     )
     field = record.field_named("qb_continuity_proxy")
@@ -145,7 +147,9 @@ def test_the_continuity_proxy_stays_a_proxy_even_when_observed():
 
 
 def test_a_null_value_is_not_an_observation():
-    record = build_context_record(game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF, observed={"venue": None})
+    record = build_context_record(
+        game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF, observed={"venue": None}
+    )
     assert record.field_named("venue").availability is ContextAvailability.NOT_YET_CAPTURED
 
 
@@ -163,8 +167,12 @@ def test_wired_but_uncaptured_is_distinct_from_unavailable():
     """The same distinction market_status draws between a legacy row and
     a current defect."""
     record = build_context_record(game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF)
-    assert record.field_named("weather_snapshot").availability is (ContextAvailability.NOT_YET_CAPTURED)
-    assert record.field_named("material_injury_status").availability is (ContextAvailability.SOURCE_UNAVAILABLE)
+    assert record.field_named("weather_snapshot").availability is (
+        ContextAvailability.NOT_YET_CAPTURED
+    )
+    assert record.field_named("material_injury_status").availability is (
+        ContextAvailability.SOURCE_UNAVAILABLE
+    )
 
 
 def test_every_planned_field_appears_in_every_record():
@@ -182,19 +190,21 @@ def test_records_are_deterministic():
 
 
 def test_a_record_captured_before_kickoff_is_prospective():
-    assert build_context_record(game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF).is_prospective
+    assert build_context_record(
+        game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF
+    ).is_prospective
 
 
 def test_a_record_captured_after_kickoff_is_not_prospective():
-    late = build_context_record(game_id="g1", captured_at=KICKOFF + timedelta(minutes=1), kickoff_utc=KICKOFF)
+    late = build_context_record(
+        game_id="g1", captured_at=KICKOFF + timedelta(minutes=1), kickoff_utc=KICKOFF
+    )
     assert not late.is_prospective
 
 
 def test_a_backfilled_record_is_never_prospective():
     backfilled = build_context_record(
-        game_id="g1",
-        captured_at=CAPTURED,
-        kickoff_utc=KICKOFF,
+        game_id="g1", captured_at=CAPTURED, kickoff_utc=KICKOFF,
         capture_mode="RETROSPECTIVE_BACKFILL",
     )
     assert not backfilled.is_prospective
@@ -204,9 +214,7 @@ def test_coverage_reports_what_an_ablation_could_actually_use():
     report = ContextCoverageReport(
         [
             build_context_record(
-                game_id=f"g{i}",
-                captured_at=CAPTURED,
-                kickoff_utc=KICKOFF,
+                game_id=f"g{i}", captured_at=CAPTURED, kickoff_utc=KICKOFF,
                 observed={"venue": "V", "neutral_site_flag": False},
             )
             for i in range(3)
@@ -281,21 +289,14 @@ def test_pricing_status_decides_pricedness_not_the_scan_snapshot_id():
 @pytest.mark.parametrize("field_name", REQUIRED_FIELDS)
 def test_every_universally_required_field_is_detected_when_absent(field_name):
     m = CheckpointManifest(
-        game_id="g",
-        captured_at="t",
-        timing_label="T_24H",
-        observation_schema_version="v2",
-        trigger_source="run",
+        game_id="g", captured_at="t", timing_label="T_24H",
+        observation_schema_version="v2", trigger_source="run",
     )
     assert m.is_complete
     stripped = CheckpointManifest(
-        **{
-            **{
-                k: getattr(m, k)
-                for k in ("game_id", "captured_at", "timing_label", "observation_schema_version", "trigger_source")
-            },
-            field_name: "",
-        }
+        **{**{k: getattr(m, k) for k in ("game_id", "captured_at", "timing_label",
+                                          "observation_schema_version", "trigger_source")},
+           field_name: ""}
     )
     assert field_name in stripped.missing_fields
 

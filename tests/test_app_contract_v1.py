@@ -50,273 +50,119 @@ app_export = _load_exporter()
 # ------------------------------------------------------------------ fixtures from real record shapes
 
 
-def _market(
-    ticker: str,
-    series: str,
-    family: str,
-    period: str,
-    *,
-    title: str,
-    yes_sub: str,
-    no_sub: str,
-    status: str = "active",
-    strike_type: str = "greater",
-    floor: float | None = None,
-    team_uuid: str | None = None,
-    custom: dict | None = None,
-    yes_bid=0.46,
-    yes_ask=0.48,
-    no_bid=0.52,
-    no_ask=0.54,
-    book_state: str = "two_sided",
-    sentinel: bool = False,
-) -> dict:
+def _market(ticker: str, series: str, family: str, period: str, *, title: str, yes_sub: str, no_sub: str,
+            status: str = "active", strike_type: str = "greater", floor: float | None = None,
+            team_uuid: str | None = None, custom: dict | None = None, yes_bid=0.46, yes_ask=0.48,
+            no_bid=0.52, no_ask=0.54, book_state: str = "two_sided", sentinel: bool = False) -> dict:
     return {
-        "market_ticker": ticker,
-        "event_ticker": ticker.rsplit("-", 1)[0],
-        "series_ticker": series,
-        "family": family,
-        "period": period,
-        "market_type": "binary",
-        "strike_type": strike_type,
-        "floor_strike": floor,
-        "cap_strike": None,
+        "market_ticker": ticker, "event_ticker": ticker.rsplit("-", 1)[0], "series_ticker": series,
+        "family": family, "period": period, "market_type": "binary", "strike_type": strike_type,
+        "floor_strike": floor, "cap_strike": None,
         "custom_strike": custom if custom is not None else ({"football_team": team_uuid} if team_uuid else None),
-        "title": title,
-        "yes_sub_title": yes_sub,
-        "no_sub_title": no_sub,
-        "status": status,
-        "yes_bid": yes_bid,
-        "yes_ask": yes_ask,
-        "no_bid": no_bid,
-        "no_ask": no_ask,
-        "last_price": 0.47,
-        "volume": 120.5,
-        "open_interest": 80.0,
-        "close_time": "2026-10-04T23:00:00Z",
-        "occurrence_datetime": "2026-10-03T19:00:00Z",
+        "title": title, "yes_sub_title": yes_sub, "no_sub_title": no_sub, "status": status,
+        "yes_bid": yes_bid, "yes_ask": yes_ask, "no_bid": no_bid, "no_ask": no_ask,
+        "last_price": 0.47, "volume": 120.5, "open_interest": 80.0,
+        "close_time": "2026-10-04T23:00:00Z", "occurrence_datetime": "2026-10-03T19:00:00Z",
         "updated_time": "2026-10-03T11:21:00.510475Z",
-        "mechanics": {
-            "book_state": book_state,
-            "is_sentinel_full_width_book": sentinel,
-            "two_sided_quote": book_state == "two_sided",
-        },
+        "mechanics": {"book_state": book_state, "is_sentinel_full_width_book": sentinel,
+                      "two_sided_quote": book_state == "two_sided"},
         "fee": {"model": "quadratic", "model_trade_fee_at_yes_ask": 0.017472, "model_trade_fee_at_no_ask": 0.0174},
-        "classification_confidence": "structural",
-        "rules_primary": "",
+        "classification_confidence": "structural", "rules_primary": "",
     }
 
 
 def fixture_markets() -> list[dict]:
     return [
-        _market(
-            f"KXNCAAF1H-{GAME_KEY}-NMSU",
-            "KXNCAAF1H",
-            "first_half_moneyline",
-            "first_half",
-            title="New Mexico St. wins the 1st half",
-            yes_sub="New Mexico St.",
-            no_sub="New Mexico St. wins 1st Half",
-            strike_type="structured",
-            team_uuid=UUID_HOME,
-        ),
-        _market(
-            f"KXNCAAFSPREAD-{GAME_KEY}-WKU10",
-            "KXNCAAFSPREAD",
-            "game_spread",
-            "full_game",
-            title="Western Kentucky wins by over 9.5 points",
-            yes_sub="Western Kentucky wins by over 9.5 points",
-            no_sub="Western Kentucky wins by over 9.5 points",
-            floor=9.5,
-            team_uuid=UUID_AWAY,
-        ),
-        _market(
-            ON_BOARD_TICKER,
-            "KXNCAAFTOTAL",
-            "game_total",
-            "full_game",
-            title="Full Game: Over 35.5 points scored",
-            yes_sub="Over 35.5 points",
-            no_sub="Over 35.5 points",
-            floor=35.5,
-        ),
-        _market(
-            f"KXNCAAF1HFT-{GAME_KEY}-NMSUNMSU",
-            "KXNCAAF1HFT",
-            "unknown",
-            "unknown",
-            title="New Mexico St. wins 1st Half / New Mexico St. wins game",
-            yes_sub="NMSU wins 1H / NMSU wins game",
-            no_sub="NMSU wins 1H / NMSU wins game",
-            strike_type="custom",
-            custom={"1st Half Result": "NMSU wins 1st Half"},
-        ),
-        _market(
-            f"KXNCAAF1Q-{GAME_KEY}-WKU",
-            "KXNCAAF1Q",
-            "quarter_moneyline",
-            "first_quarter",
-            title="Western Kentucky wins the 1st quarter",
-            yes_sub="Western Kentucky",
-            no_sub="Western Kentucky",
-            status="finalized",
-            strike_type="structured",
-            team_uuid=UUID_AWAY,
-            yes_bid=0.0,
-            yes_ask=1.0,
-            no_bid=0.0,
-            no_ask=1.0,
-            book_state="empty_book",
-            sentinel=True,
-        ),
+        _market(f"KXNCAAF1H-{GAME_KEY}-NMSU", "KXNCAAF1H", "first_half_moneyline", "first_half",
+                title="New Mexico St. wins the 1st half", yes_sub="New Mexico St.",
+                no_sub="New Mexico St. wins 1st Half",
+                strike_type="structured", team_uuid=UUID_HOME),
+        _market(f"KXNCAAFSPREAD-{GAME_KEY}-WKU10", "KXNCAAFSPREAD", "game_spread", "full_game",
+                title="Western Kentucky wins by over 9.5 points", yes_sub="Western Kentucky wins by over 9.5 points",
+                no_sub="Western Kentucky wins by over 9.5 points", floor=9.5, team_uuid=UUID_AWAY),
+        _market(ON_BOARD_TICKER, "KXNCAAFTOTAL", "game_total", "full_game",
+                title="Full Game: Over 35.5 points scored", yes_sub="Over 35.5 points", no_sub="Over 35.5 points",
+                floor=35.5),
+        _market(f"KXNCAAF1HFT-{GAME_KEY}-NMSUNMSU", "KXNCAAF1HFT", "unknown", "unknown",
+                title="New Mexico St. wins 1st Half / New Mexico St. wins game",
+                yes_sub="NMSU wins 1H / NMSU wins game", no_sub="NMSU wins 1H / NMSU wins game",
+                strike_type="custom", custom={"1st Half Result": "NMSU wins 1st Half"}),
+        _market(f"KXNCAAF1Q-{GAME_KEY}-WKU", "KXNCAAF1Q", "quarter_moneyline", "first_quarter",
+                title="Western Kentucky wins the 1st quarter", yes_sub="Western Kentucky", no_sub="Western Kentucky",
+                status="finalized", strike_type="structured", team_uuid=UUID_AWAY,
+                yes_bid=0.0, yes_ask=1.0, no_bid=0.0, no_ask=1.0, book_state="empty_book", sentinel=True),
     ]
 
 
 def fixture_game(kickoff: str = "2026-10-03T19:00:00Z", milestone: bool = True) -> dict:
-    identity = (
-        {
-            "conference": "CONFERENCE-USA",
-            "division": "FBS",
-            "league": "NCAAFB",
-            "main_game_event_ticker": EVENT_TICKER,
-            "milestone_id": "027cd803-662b-46d2-a7b6-c2a47614c1f3",
-            "milestone_status": "scheduled",
-            "season_type": "REG",
-            "season_week": 6,
-            "season_year": 2026,
-            "source": "kalshi_milestone",
-            "tier": "C",
-        }
-        if milestone
-        else {
-            "conference": None,
-            "division": None,
-            "league": None,
-            "main_game_event_ticker": None,
-            "milestone_id": None,
-            "milestone_status": None,
-            "season_type": None,
-            "season_week": None,
-            "season_year": None,
-            "source": "kalshi_event_ticker",
-            "tier": None,
-        }
-    )
+    identity = {
+        "conference": "CONFERENCE-USA", "division": "FBS", "league": "NCAAFB",
+        "main_game_event_ticker": EVENT_TICKER, "milestone_id": "027cd803-662b-46d2-a7b6-c2a47614c1f3",
+        "milestone_status": "scheduled", "season_type": "REG", "season_week": 6, "season_year": 2026,
+        "source": "kalshi_milestone", "tier": "C",
+    } if milestone else {
+        "conference": None, "division": None, "league": None, "main_game_event_ticker": None, "milestone_id": None,
+        "milestone_status": None, "season_type": None, "season_week": None, "season_year": None,
+        "source": "kalshi_event_ticker", "tier": None,
+    }
     return {
-        "game_key": GAME_KEY,
-        "title": "Western Kentucky at New Mexico St.",
-        "kickoff": kickoff,
-        "market_count": 5,
-        "markets_file": f"games/{GAME_KEY}.json",
-        "identity": identity,
+        "game_key": GAME_KEY, "title": "Western Kentucky at New Mexico St.", "kickoff": kickoff,
+        "market_count": 5, "markets_file": f"games/{GAME_KEY}.json", "identity": identity,
         "completeness": {"api_failures": 0, "events_fetched": 5, "failed_event_tickers": [], "markets_discovered": 5},
-        "family_distribution": {
-            "first_half_moneyline": 1,
-            "game_spread": 1,
-            "game_total": 1,
-            "unknown": 1,
-            "quarter_moneyline": 1,
-        },
+        "family_distribution": {"first_half_moneyline": 1, "game_spread": 1, "game_total": 1, "unknown": 1,
+                                "quarter_moneyline": 1},
         "events": [{"event_ticker": EVENT_TICKER, "series_ticker": "KXNCAAFGAME", "title": "WKU vs NMSU"}],
     }
 
 
-def write_data_root(
-    root: Path, *, kickoff: str = "2026-10-03T19:00:00Z", milestone: bool = True, captured_at: str = CAPTURED_AT
-) -> Path:
+def write_data_root(root: Path, *, kickoff: str = "2026-10-03T19:00:00Z", milestone: bool = True,
+                    captured_at: str = CAPTURED_AT) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     (root / "games").mkdir(exist_ok=True)
     game = fixture_game(kickoff, milestone)
     index = {
         "artifact_layout": "slate index; each game's full contract inventory is in its own file",
-        "capture": {
-            "authenticated": False,
-            "captured_at": captured_at,
-            "contains_model_projections": False,
-            "content_fingerprint": FINGERPRINT,
-            "source": "kalshi_public_rest_v2",
-        },
+        "capture": {"authenticated": False, "captured_at": captured_at, "contains_model_projections": False,
+                    "content_fingerprint": FINGERPRINT, "source": "kalshi_public_rest_v2"},
         "completeness": {"capture_complete": True, "games_incomplete": [], "games_incomplete_count": 0},
         "games": [game],
     }
     (root / "cfb_market_catalog.json").write_text(json.dumps(index, indent=1), encoding="utf-8")
     (root / "games" / f"{GAME_KEY}.json").write_text(
-        json.dumps({"game_key": GAME_KEY, "title": game["title"], "markets": fixture_markets()}), encoding="utf-8"
-    )
+        json.dumps({"game_key": GAME_KEY, "title": game["title"], "markets": fixture_markets()}), encoding="utf-8")
     return root
 
 
 def ledger_rows() -> tuple[list[dict], list[dict], list[dict]]:
     def wager(key: str, ticker: str, side: str, executed_at: str, wid: str) -> dict:
-        return {
-            "contracts": 10.0,
-            "entry_method": "IMPORTED_RECEIPT",
-            "event_refs": {},
-            "executed_at": executed_at,
-            "execution_price": 0.44,
-            "fees_are_estimated": False,
-            "fees_paid": 0.1727,
-            "game_date": executed_at[:10],
-            "gross_return": None,
-            "import_batch_id": "test-batch",
-            "market_ticker": ticker,
-            "net_profit_loss": None,
-            "notes": "",
-            "result": None,
-            "schema_version": "cfb_accounted_wager.v1",
-            "season": 2026,
-            "settlement_status": None,
-            "side": side,
-            "source_bet_key": key,
-            "stake": 4.5727,
-            "venue": "kalshi",
-            "wager_id": wid,
-            "week": None,
-        }
-
+        return {"contracts": 10.0, "entry_method": "IMPORTED_RECEIPT", "event_refs": {}, "executed_at": executed_at,
+                "execution_price": 0.44, "fees_are_estimated": False, "fees_paid": 0.1727,
+                "game_date": executed_at[:10],
+                "gross_return": None, "import_batch_id": "test-batch", "market_ticker": ticker, "net_profit_loss": None,
+                "notes": "", "result": None, "schema_version": "cfb_accounted_wager.v1", "season": 2026,
+                "settlement_status": None, "side": side, "source_bet_key": key, "stake": 4.5727, "venue": "kalshi",
+                "wager_id": wid, "week": None}
     wagers = [
         wager(KEY_OFF, OFF_BOARD_TICKER, "YES", "2026-09-12T20:52:29Z", "routed-0000000000000000000000off"),
         wager(KEY_ON, ON_BOARD_TICKER, "NO", "2026-10-03T11:50:00Z", "routed-00000000000000000000000on"),
     ]
-    settlements = [
-        {
-            "gross_return": 10.0,
-            "market_ticker": OFF_BOARD_TICKER,
-            "net_profit_loss": 5.2546,
-            "refusals": [],
-            "result": "WON",
-            "schema_version": "cfb_wager_settlement.v1",
-            "settled_at": "2026-09-13T02:28:48.44776Z",
-            "settlement_id": "stl-0000000000000000000000off",
-            "settlement_status": "SETTLED",
-            "side": "YES",
-            "source_bet_key": KEY_OFF,
-            "venue": "kalshi",
-        }
-    ]
-    amendments = [
-        {
-            "amended_at": "2026-09-28T12:46:46.456150+00:00",
-            "amendment_id": "amd-00000000000000000000000a",
-            "amends_settlement_id": "stl-0000000000000000000000off",
-            "derivation": "net_profit_loss = gross_return - stake",
-            "economics_version": "router-settlement-economics.v2",
-            "evidence": {"entry_fees": 0.1727, "implied_fee_cost": 0.1727},
-            "gross_return": 10.0,
-            "market_ticker": OFF_BOARD_TICKER,
-            "net_profit_loss": 5.4273,
-            "original_gross_return": 10.0,
-            "original_net_profit_loss": 5.2546,
-            "original_refusals": [],
-            "provenance": "test",
-            "result": "WON",
-            "schema_version": "cfb_settlement_amendment.v1",
-            "side": "YES",
-            "source_bet_key": KEY_OFF,
-            "supersedes_economics_version": "router-settlement-economics.v1",
-        }
-    ]
+    settlements = [{
+        "gross_return": 10.0, "market_ticker": OFF_BOARD_TICKER, "net_profit_loss": 5.2546, "refusals": [],
+        "result": "WON", "schema_version": "cfb_wager_settlement.v1", "settled_at": "2026-09-13T02:28:48.44776Z",
+        "settlement_id": "stl-0000000000000000000000off", "settlement_status": "SETTLED", "side": "YES",
+        "source_bet_key": KEY_OFF, "venue": "kalshi",
+    }]
+    amendments = [{
+        "amended_at": "2026-09-28T12:46:46.456150+00:00", "amendment_id": "amd-00000000000000000000000a",
+        "amends_settlement_id": "stl-0000000000000000000000off",
+        "derivation": "net_profit_loss = gross_return - stake",
+        "economics_version": "router-settlement-economics.v2",
+        "evidence": {"entry_fees": 0.1727, "implied_fee_cost": 0.1727},
+        "gross_return": 10.0, "market_ticker": OFF_BOARD_TICKER, "net_profit_loss": 5.4273,
+        "original_gross_return": 10.0, "original_net_profit_loss": 5.2546, "original_refusals": [],
+        "provenance": "test", "result": "WON", "schema_version": "cfb_settlement_amendment.v1", "side": "YES",
+        "source_bet_key": KEY_OFF, "supersedes_economics_version": "router-settlement-economics.v1",
+    }]
     return wagers, settlements, amendments
 
 
@@ -369,29 +215,10 @@ def test_export_publishes_a_consistent_bundle(synthetic):
     assert publish.verify_published(out) == []
     manifest = _read(out, "manifest")
     assert manifest["status"] == "SUCCESS"
-    assert manifest["counts"] == {
-        "board": 1,
-        "events": 1,
-        "markets": 6,
-        "model_prices": 0,
-        "recommendations": 0,
-        "runs": 1,
-        "settlements": 1,
-        "theses": 0,
-        "wagers": 2,
-    }
-    assert set(manifest["files"]) >= {
-        "events",
-        "markets",
-        "model_prices",
-        "recommendations",
-        "theses",
-        "wagers",
-        "settlements",
-        "runs",
-        "board",
-        "performance",
-    }
+    assert manifest["counts"] == {"board": 1, "events": 1, "markets": 6, "model_prices": 0, "recommendations": 0,
+                                  "runs": 1, "settlements": 1, "theses": 0, "wagers": 2}
+    assert set(manifest["files"]) >= {"events", "markets", "model_prices", "recommendations", "theses", "wagers",
+                                      "settlements", "runs", "board", "performance"}
     assert any(name.startswith("event_detail/") for name in manifest["files"])
 
     events = _read(out, "events")["items"]
@@ -402,10 +229,8 @@ def test_export_publishes_a_consistent_bundle(synthetic):
     names = {p["participant_id"]: p for p in event["participants"]}
     assert names[event["home_participant"]]["display_name"] == "New Mexico St."
     assert names[event["away_participant"]]["display_name"] == "Western Kentucky"
-    assert names[event["home_participant"]]["source_ids"] == {
-        "kalshi_team_code": "NMSU",
-        "kalshi_football_team": UUID_HOME,
-    }
+    assert names[event["home_participant"]]["source_ids"] == {"kalshi_team_code": "NMSU",
+                                                              "kalshi_football_team": UUID_HOME}
 
     markets = {m["kalshi_ticker"]: m for m in _read(out, "markets")["items"]}
     assert markets[f"KXNCAAF1H-{GAME_KEY}-NMSU"]["side"] == "HOME"
@@ -420,12 +245,8 @@ def test_export_publishes_a_consistent_bundle(synthetic):
     assert sentinel["market_status"] == "SETTLED" and sentinel["yes_bid"] is None
     assert sentinel["market_probability"] is None
     assert sentinel["extensions"]["sentinel_full_width_book"] is True
-    assert set(markets[ON_BOARD_TICKER]["extensions"]) == {
-        "book_state",
-        "fee_at_yes_ask",
-        "strike_type",
-        "sentinel_full_width_book",
-    }
+    assert set(markets[ON_BOARD_TICKER]["extensions"]) == {"book_state", "fee_at_yes_ask", "strike_type",
+                                                           "sentinel_full_width_book"}
     stub = markets[OFF_BOARD_TICKER]
     assert stub["source"] == "cfb_accounting_ledger" and stub["yes_ask"] is None and stub["event_id"] is None
     assert stub["market_family"] == "game_spread" and stub["market_status"] == "SETTLED"
@@ -464,11 +285,8 @@ def test_export_publishes_a_consistent_bundle(synthetic):
     assert len(detail["markets"]) == 5 and len(detail["wagers"]) == 1 and detail["context"]["teams"]["home_name"]
     performance = _read(out, "performance")
     assert performance["notes"][0].startswith("ACCOUNTING ONLY")
-    assert performance["recommended_vs_wagered"] == {
-        "recommendations": 0,
-        "wagers_linked_to_recommendation": 0,
-        "wagers_unlinked": 2,
-    }
+    assert performance["recommended_vs_wagered"] == {"recommendations": 0, "wagers_linked_to_recommendation": 0,
+                                                     "wagers_unlinked": 2}
 
 
 def test_absent_ledger_exports_empty_wagers_and_warns(tmp_path):
@@ -508,39 +326,15 @@ def test_two_runs_are_byte_identical(synthetic, tmp_path):
 
 def test_skip_unchanged_publishes_nothing_on_a_quiet_rerun(synthetic):
     before = _tree_bytes(synthetic["out"])
-    rc = app_export.main(
-        [
-            "--out",
-            str(synthetic["out"]),
-            "--data-root",
-            str(synthetic["data_root"]),
-            "--accounting-dir",
-            str(synthetic["accounting"]),
-            "--now",
-            "2026-10-03T12:10:00Z",
-            "--commit-sha",
-            "abc123",
-            "--skip-unchanged",
-        ]
-    )
+    rc = app_export.main(["--out", str(synthetic["out"]), "--data-root", str(synthetic["data_root"]),
+                          "--accounting-dir", str(synthetic["accounting"]), "--now", "2026-10-03T12:10:00Z",
+                          "--commit-sha", "abc123", "--skip-unchanged"])
     assert rc == 0
     assert _tree_bytes(synthetic["out"]) == before
     # a freshness flip IS a change worth publishing
-    rc = app_export.main(
-        [
-            "--out",
-            str(synthetic["out"]),
-            "--data-root",
-            str(synthetic["data_root"]),
-            "--accounting-dir",
-            str(synthetic["accounting"]),
-            "--now",
-            "2026-10-04T12:10:00Z",
-            "--commit-sha",
-            "abc123",
-            "--skip-unchanged",
-        ]
-    )
+    rc = app_export.main(["--out", str(synthetic["out"]), "--data-root", str(synthetic["data_root"]),
+                          "--accounting-dir", str(synthetic["accounting"]), "--now", "2026-10-04T12:10:00Z",
+                          "--commit-sha", "abc123", "--skip-unchanged"])
     assert rc == 0 and _tree_bytes(synthetic["out"]) != before
     assert _read(synthetic["out"], "health")["overall_status"] == "STALE"
 
@@ -555,9 +349,8 @@ def test_a_broken_input_leaves_the_payload_alone_and_marks_health(synthetic):
     index.write_text("{not json", encoding="utf-8")
     assert run_export(out, synthetic["data_root"], synthetic["accounting"], now="2026-10-03T12:30:00Z") == 1
     after = _tree_bytes(out)
-    assert {k: v for k, v in after.items() if k != "health.json"} == {
-        k: v for k, v in before.items() if k != "health.json"
-    }
+    assert {k: v for k, v in after.items() if k != "health.json"} == \
+        {k: v for k, v in before.items() if k != "health.json"}
     health = _read(out, "health")
     assert health["overall_status"] == "DEGRADED"
     assert health["components"]["export"]["status"] == "DEGRADED"
@@ -636,7 +429,6 @@ def _ledger_summary(accounting: Path):
         if not path.exists():
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-
     canonical = economics.apply_amendments(rows("settlements"), rows("settlement_amendments"))
     return report.summarize(rows("wagers"), 2026, canonical)
 
@@ -667,10 +459,8 @@ def test_performance_totals_equal_the_ledger_report(synthetic):
 # ------------------------------------------------------------------ 7. the real committed data
 
 
-@pytest.mark.skipif(
-    not (REAL_DATA_ROOT / "cfb_market_catalog.json").exists(),
-    reason="no committed catalog at data/live (nothing real to export)",
-)
+@pytest.mark.skipif(not (REAL_DATA_ROOT / "cfb_market_catalog.json").exists(),
+                    reason="no committed catalog at data/live (nothing real to export)")
 def test_real_committed_catalog_exports_cleanly(tmp_path):
     """The production proof. The ledger lives on the accounting-data branch, which is not checked
     out here; set CFB_ACCOUNTING_DIR to a `git archive` of it to cover wagers too."""

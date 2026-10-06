@@ -16,7 +16,9 @@ import sys
 
 from cfb_edge_finder.accounting import report
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
+)
 
 
 def wager(**overrides):
@@ -89,7 +91,8 @@ def test_a_complete_profit_and_loss_is_stated():
     happily against a renderer that never prints a total at all."""
     rows = [
         wager(settlement_status="SETTLED", result="WON", net_profit_loss=5.00),
-        wager(source_bet_key="kalshi:v1:b", settlement_status="SETTLED", result="LOST", net_profit_loss=-11.94),
+        wager(source_bet_key="kalshi:v1:b", settlement_status="SETTLED",
+              result="LOST", net_profit_loss=-11.94),
     ]
     summary = report.summarize(rows, 2026)
 
@@ -128,7 +131,10 @@ def test_the_report_exposes_no_decision_surface():
     summarizes, it does not size, rank, price or recommend."""
     from tests.test_accounting_isolation import _forbidden_token
 
-    violations = [name for name in dir(report) if not name.startswith("_") and _forbidden_token(name) is not None]
+    violations = [
+        name for name in dir(report)
+        if not name.startswith("_") and _forbidden_token(name) is not None
+    ]
     assert violations == [], violations
 
 
@@ -145,27 +151,14 @@ def test_the_script_prints_the_disclaimer_before_any_number(tmp_path, capsys):
 
     from cfb_edge_finder.accounting import store
 
-    store.append_wagers(
-        tmp_path,
-        2026,
-        [
-            {
-                "wager_id": "routed-abc",
-                "schema_version": "cfb_accounted_wager.v1",
-                "source_bet_key": "kalshi:v1:a",
-                "import_batch_id": "batch",
-                "entry_method": "IMPORTED_RECEIPT",
-                "game_date": "2026-09-12",
-                "market_ticker": "KXNCAAFGAME-26SEP12ALAUGA-ALA",
-                "side": "YES",
-                "executed_at": "2026-09-12T20:40:11Z",
-                "contracts": 25.0,
-                "execution_price": 0.47,
-                "stake": 11.94,
-                "fees_paid": 0.19,
-            }
-        ],
-    )
+    store.append_wagers(tmp_path, 2026, [{
+        "wager_id": "routed-abc", "schema_version": "cfb_accounted_wager.v1",
+        "source_bet_key": "kalshi:v1:a", "import_batch_id": "batch",
+        "entry_method": "IMPORTED_RECEIPT", "game_date": "2026-09-12",
+        "market_ticker": "KXNCAAFGAME-26SEP12ALAUGA-ALA", "side": "YES",
+        "executed_at": "2026-09-12T20:40:11Z", "contracts": 25.0,
+        "execution_price": 0.47, "stake": 11.94, "fees_paid": 0.19,
+    }])
 
     assert script.main(["--base-dir", str(tmp_path), "--season", "2026"]) == 0
     printed = capsys.readouterr().out

@@ -150,10 +150,14 @@ def correct_total_via_margin_residual(
     negated_target_x = -np.asarray(target_margin_magnitude, dtype=float)
     if method == "linear":
         params = fit_linear_margin(negated_history_x, history_total_residual)
-        residual = np.zeros_like(negated_target_x) if params.is_identity_fallback else params.apply(negated_target_x)
+        residual = (
+            np.zeros_like(negated_target_x) if params.is_identity_fallback else params.apply(negated_target_x)
+        )
     elif method == "isotonic":
         model = fit_isotonic_margin(negated_history_x, history_total_residual)
-        residual = np.zeros_like(negated_target_x) if model.is_identity_fallback else model.apply(negated_target_x)
+        residual = (
+            np.zeros_like(negated_target_x) if model.is_identity_fallback else model.apply(negated_target_x)
+        )
     else:
         raise ValueError(f"unknown total correction method: {method!r}")
     return target_projected_total + residual

@@ -131,7 +131,9 @@ class CFBDClient:
         homeClassification, awayId, awayTeam, awayConference,
         awayClassification, and score/status fields once played.
         """
-        return self._get("/games", {"year": season, "seasonType": season_type, "division": division, "week": week})
+        return self._get(
+            "/games", {"year": season, "seasonType": season_type, "division": division, "week": week}
+        )
 
     def fetch_teams(self, season: int | None = None) -> list[dict]:
         """Raw CFBD /teams/fbs response (FBS ONLY): id, school, mascot,

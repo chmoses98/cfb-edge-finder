@@ -98,7 +98,10 @@ def summarize(rows: list, season: int, settlements: list = ()) -> WagerSummary:
     dropping one.
     """
     summary = WagerSummary(season=season)
-    by_key = {s.get("source_bet_key"): s for s in settlements if isinstance(s, dict) and s.get("source_bet_key")}
+    by_key = {
+        s.get("source_bet_key"): s for s in settlements
+        if isinstance(s, dict) and s.get("source_bet_key")
+    }
 
     for row in rows:
         settlement = by_key.get(row.get("source_bet_key")) or row
@@ -162,7 +165,8 @@ def render(summary: WagerSummary) -> str:
         # A number that covers some of the wagers, printed beside the wager
         # count, will be read as covering all of them.
         lines += [
-            f"    UNESTABLISHED for {summary.profit_loss_unestablished} of {summary.wagers} wagers",
+            f"    UNESTABLISHED for {summary.profit_loss_unestablished} of "
+            f"{summary.wagers} wagers",
             "    no season total is stated: a total assembled from some of the "
             "wagers is not the season's profit and loss",
         ]

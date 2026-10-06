@@ -116,7 +116,9 @@ def test_text_fallback_when_ticker_is_unrecognized():
 
 
 def test_text_fallback_reads_the_period_too():
-    result = classify_market("SOMENEWPREFIX", title="Will the 1st half of Georgia vs Arkansas have over 24.5 points?")
+    result = classify_market(
+        "SOMENEWPREFIX", title="Will the 1st half of Georgia vs Arkansas have over 24.5 points?"
+    )
     assert result.family == MarketFamilyLabel.FIRST_HALF_TOTAL
     assert result.period == GamePeriod.FIRST_HALF
 
@@ -138,7 +140,7 @@ def test_futures_are_not_misread_as_game_markets():
 
 
 def test_overtime_is_not_matched_as_a_substring():
-    """ "OT" sits inside "TOTALFG" at index 1. A substring test therefore
+    """"OT" sits inside "TOTALFG" at index 1. A substring test therefore
     published a real total-field-goals contract as an overtime market --
     caught here, fixed by matching overtime suffixes on equality."""
     assert classify_market("KXNCAAFTOTALFG").family == MarketFamilyLabel.GAME_STAT_PROP
@@ -148,7 +150,7 @@ def test_overtime_is_not_matched_as_a_substring():
 
 
 def test_conference_code_alone_is_futures_but_not_as_a_substring():
-    """ "CS" alone means the FCS-champion market, but as a SUBSTRING it
+    """"CS" alone means the FCS-champion market, but as a SUBSTRING it
     appears inside KXNCAAFCSGAME -- the FCS *game* series. Treating it as
     a substring would bury every FCS game's market menu under season
     futures."""
@@ -158,7 +160,7 @@ def test_conference_code_alone_is_futures_but_not_as_a_substring():
 
 
 def test_spread_text_beats_total_text_when_both_appear():
-    """ "Arkansas wins 1H by over 4.5 points" (a real live title) contains
+    """"Arkansas wins 1H by over 4.5 points" (a real live title) contains
     both an over/under and a win-by. It is a spread, and checking total
     first published it as a total."""
     result = classify_market("NEWPREFIX", title="Arkansas wins 1H by over 4.5 points")

@@ -132,7 +132,9 @@ def _write_corpus(tmp_path: Path, rows: list[dict], shadow_rows: list[dict] | No
     base = tmp_path / "data" / "research"
     for kind in ("observations", "settlements", "attributions", "heartbeats", "shadow"):
         (base / kind).mkdir(parents=True, exist_ok=True)
-    (base / "observations" / "2026.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    (base / "observations" / "2026.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
     (base / "shadow" / "2026.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in (shadow_rows or [])), encoding="utf-8"
     )
@@ -175,17 +177,17 @@ def test_default_run_cfb_never_prints_paper_positions(empty_repo):
 
 def test_paper_card_must_be_explicitly_requested(empty_repo):
     default = _run_cli("--data-repo-dir", str(empty_repo), "--now", "2026-08-29T12:00:00+00:00")
-    flagged = _run_cli("--data-repo-dir", str(empty_repo), "--now", "2026-08-29T12:00:00+00:00", "--paper-card")
+    flagged = _run_cli(
+        "--data-repo-dir", str(empty_repo), "--now", "2026-08-29T12:00:00+00:00", "--paper-card"
+    )
     assert "PAPER CARD" not in default.stdout
     assert "PAPER CARD" in flagged.stdout
 
 
 def test_paper_card_json_requires_the_flag(empty_repo, tmp_path):
     result = _run_cli(
-        "--data-repo-dir",
-        str(empty_repo),
-        "--paper-card-json",
-        str(tmp_path / "card.json"),
+        "--data-repo-dir", str(empty_repo),
+        "--paper-card-json", str(tmp_path / "card.json"),
     )
     assert result.returncode != 0
     assert "--paper-card" in result.stderr
@@ -235,8 +237,7 @@ def test_qualification_remains_disabled_regardless_of_paper_card():
     build = next(
         getattr(qualification, name)
         for name in dir(qualification)
-        if callable(getattr(qualification, name))
-        and not name.startswith("_")
+        if callable(getattr(qualification, name)) and not name.startswith("_")
         and getattr(getattr(qualification, name), "__module__", "") == qualification.__name__
     )
     assert build().status is QualificationStatus.QUALIFICATION_DISABLED
@@ -429,9 +430,8 @@ def test_card_can_hold_winner_spread_and_total_families(tmp_path):
 def test_shadow_probability_is_oriented_to_the_selected_side(tmp_path):
     key = "obs-key-1"
     rows = [
-        _row(
-            "KXNCAAFGAME-26AUG29MEMUNLV-MEM", model_probability=0.20, yes_price=0.78, no_price=0.55, observation_key=key
-        )
+        _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", model_probability=0.20, yes_price=0.78, no_price=0.55,
+             observation_key=key)
     ]
     card = _card(tmp_path, rows, [_shadow_row(key, shadow_probability=0.30)])
     [p] = card.positions
@@ -444,7 +444,9 @@ def test_shadow_probability_is_oriented_to_the_selected_side(tmp_path):
 def test_v1_probability_semantics_rows_are_structurally_excluded(tmp_path):
     key = "obs-key-2"
     rows = [_row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", observation_key=key)]
-    card = _card(tmp_path, rows, [_shadow_row(key, semantics_version="shadow_observation_v1")])
+    card = _card(
+        tmp_path, rows, [_shadow_row(key, semantics_version="shadow_observation_v1")]
+    )
     [p] = card.positions
     assert p.shadow_probability is None
     assert "unavailable" in p.shadow_status
@@ -454,7 +456,9 @@ def test_v1_probability_semantics_rows_are_structurally_excluded(tmp_path):
 def test_shadow_unavailable_row_is_reported_gracefully(tmp_path):
     key = "obs-key-3"
     rows = [_row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", observation_key=key)]
-    card = _card(tmp_path, rows, [_shadow_row(key, shadow_probability=None, available=False)])
+    card = _card(
+        tmp_path, rows, [_shadow_row(key, shadow_probability=None, available=False)]
+    )
     [p] = card.positions
     assert p.shadow_probability is None
     assert "CONTROL_NOT_PRICED" in p.shadow_status
@@ -484,16 +488,9 @@ def test_directional_agreement_is_descriptive_when_both_read_the_same_way(tmp_pa
 
 def test_malformed_semantics_cannot_become_a_ranked_position(tmp_path):
     rows = [
-        _row(
-            "KXNCAAFSPREAD-26AUG29MEMUNLV-MEM3",
-            family="spread",
-            team=None,
-            threshold=None,
-            operator=None,
-            parse_status="unresolved",
-            pricing_status="not_priced",
-            model_probability=None,
-        ),
+        _row("KXNCAAFSPREAD-26AUG29MEMUNLV-MEM3", family="spread", team=None, threshold=None,
+             operator=None, parse_status="unresolved", pricing_status="not_priced",
+             model_probability=None),
     ]
     card = _card(tmp_path, rows)
     assert card.positions == ()
@@ -508,9 +505,8 @@ def test_non_executable_market_status_is_excluded(tmp_path):
 def test_started_or_unknown_kickoff_games_are_excluded_fail_closed(tmp_path):
     rows = [
         _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", kickoff="2026-08-29T11:00:00Z"),  # already kicked
-        _row(
-            "KXNCAAFGAME-26SEP05LIBJMU-LIB", game_id="cfb-2026-wk01-liberty-at-james-madison", kickoff=None
-        ),  # unknown kickoff
+        _row("KXNCAAFGAME-26SEP05LIBJMU-LIB", game_id="cfb-2026-wk01-liberty-at-james-madison",
+             kickoff=None),  # unknown kickoff
     ]
     card = _card(tmp_path, rows)
     assert card.positions == ()
@@ -518,7 +514,9 @@ def test_started_or_unknown_kickoff_games_are_excluded_fail_closed(tmp_path):
 
 
 def test_non_prospective_capture_mode_is_excluded(tmp_path):
-    card = _card(tmp_path, [_row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", capture_mode="RETROSPECTIVE_BACKFILL")])
+    card = _card(
+        tmp_path, [_row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", capture_mode="RETROSPECTIVE_BACKFILL")]
+    )
     assert card.positions == ()
     assert card.excluded_not_prospective == 1
 
@@ -533,7 +531,8 @@ def test_closing_label_appears_only_when_genuinely_captured(tmp_path):
 
 def test_latest_snapshot_wins_and_nothing_is_backfilled(tmp_path):
     rows = [
-        _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", label="T_24H", captured_at="2026-08-28T22:00:00Z", yes_price=0.30),
+        _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", label="T_24H", captured_at="2026-08-28T22:00:00Z",
+             yes_price=0.30),
         _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", label="T_6H", captured_at=CAPTURED, yes_price=0.44),
     ]
     card = _card(tmp_path, rows)
@@ -550,13 +549,8 @@ def test_ranking_and_tie_breaking_are_deterministic(tmp_path):
     rows = [
         # Two different games engineered to identical surplus.
         _row("KXNCAAFGAME-26AUG29MEMUNLV-MEM", model_probability=0.60, yes_price=0.44, no_price=0.60),
-        _row(
-            "KXNCAAFGAME-26AUG29SACEMU-SAC",
-            game_id="cfb-2026-wk01-sacramento-state-at-eastern-michigan",
-            model_probability=0.60,
-            yes_price=0.44,
-            no_price=0.60,
-        ),
+        _row("KXNCAAFGAME-26AUG29SACEMU-SAC", game_id="cfb-2026-wk01-sacramento-state-at-eastern-michigan",
+             model_probability=0.60, yes_price=0.44, no_price=0.60),
     ]
     first = _card(tmp_path / "a", rows)
     second = _card(tmp_path / "b", list(reversed(rows)))
@@ -567,7 +561,8 @@ def test_ranking_and_tie_breaking_are_deterministic(tmp_path):
 
 def test_limit_is_a_display_parameter_only(tmp_path):
     rows = [
-        _row(f"KXNCAAFGAME-26AUG29G{i}-H{i}", game_id=f"cfb-2026-wk01-game-{i}", model_probability=0.5 + i * 0.01)
+        _row(f"KXNCAAFGAME-26AUG29G{i}-H{i}", game_id=f"cfb-2026-wk01-game-{i}",
+             model_probability=0.5 + i * 0.01)
         for i in range(5)
     ]
     card = _card(tmp_path, rows, limit=2)
@@ -586,15 +581,8 @@ def test_cli_paper_card_renders_and_writes_json(tmp_path):
     )
     json_path = tmp_path / "out" / "card.json"
     result = _run_cli(
-        "--data-repo-dir",
-        str(repo),
-        "--now",
-        "2026-08-29T12:00:00+00:00",
-        "--paper-card",
-        "--paper-card-limit",
-        "5",
-        "--paper-card-json",
-        str(json_path),
+        "--data-repo-dir", str(repo), "--now", "2026-08-29T12:00:00+00:00",
+        "--paper-card", "--paper-card-limit", "5", "--paper-card-json", str(json_path),
     )
     assert result.returncode == 0, result.stderr
     assert "PAPER CARD" in result.stdout
@@ -610,7 +598,9 @@ def test_cli_paper_card_never_emits_banned_betting_framing(tmp_path):
     from cfb_edge_finder.decision.report import BANNED_OUTPUT_VOCABULARY
 
     repo = _write_corpus(tmp_path, [_row("KXNCAAFGAME-26AUG29MEMUNLV-MEM")])
-    result = _run_cli("--data-repo-dir", str(repo), "--now", "2026-08-29T12:00:00+00:00", "--paper-card")
+    result = _run_cli(
+        "--data-repo-dir", str(repo), "--now", "2026-08-29T12:00:00+00:00", "--paper-card"
+    )
     lowered = result.stdout.lower()
     for phrase in BANNED_OUTPUT_VOCABULARY:
         assert phrase not in lowered

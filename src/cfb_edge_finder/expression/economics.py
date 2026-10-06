@@ -123,7 +123,9 @@ def build_expression_economics(
     # the expression look cheaper than it can actually be transacted.
     all_in = None if fee is None else executable_price + fee
     surplus = (
-        None if all_in is None or model_probability_for_this_side is None else model_probability_for_this_side - all_in
+        None
+        if all_in is None or model_probability_for_this_side is None
+        else model_probability_for_this_side - all_in
     )
     return ExpressionEconomics(
         market_ticker=market_ticker,

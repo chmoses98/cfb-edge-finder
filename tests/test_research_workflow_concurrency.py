@@ -35,7 +35,9 @@ def _concurrency_group(text: str) -> str | None:
 
 
 def _cancel_in_progress(text: str) -> str | None:
-    match = re.search(r"^\s*concurrency:\s*\n(?:\s+\S.*\n)*?\s+cancel-in-progress:\s*(\S+)", text, re.MULTILINE)
+    match = re.search(
+        r"^\s*concurrency:\s*\n(?:\s+\S.*\n)*?\s+cancel-in-progress:\s*(\S+)", text, re.MULTILINE
+    )
     return match.group(1) if match else None
 
 
@@ -225,4 +227,6 @@ def test_no_other_workflow_pushes_to_research_data_with_raw_git():
             continue
         if "research_maintenance_window.py --status" not in text:
             offenders.append(path.name)
-    assert not offenders, f"{offenders} push research-data with raw git and never check the maintenance window"
+    assert not offenders, (
+        f"{offenders} push research-data with raw git and never check the maintenance window"
+    )

@@ -54,16 +54,9 @@ def imports_of(path: pathlib.Path) -> set[str]:
 
 def game(**kw) -> HistoricalGame:
     base = dict(
-        game_id="g1",
-        season=2024,
-        week=1,
-        home_team="alabama",
-        away_team="georgia",
-        home_points=28,
-        away_points=21,
-        neutral_site=False,
-        home_classification="fbs",
-        away_classification="fbs",
+        game_id="g1", season=2024, week=1, home_team="alabama", away_team="georgia",
+        home_points=28, away_points=21, neutral_site=False,
+        home_classification="fbs", away_classification="fbs",
     )
     base.update(kw)
     return HistoricalGame(**base)
@@ -71,14 +64,9 @@ def game(**kw) -> HistoricalGame:
 
 def prediction(**kw) -> GamePrediction:
     base = dict(
-        game_id="g1",
-        season=2022,
-        week=1,
-        home_win_probability=0.6,
-        projected_margin=3.0,
-        projected_total=50.0,
-        actual_home_margin=10,
-        actual_total=48,
+        game_id="g1", season=2022, week=1, home_win_probability=0.6,
+        projected_margin=3.0, projected_total=50.0,
+        actual_home_margin=10, actual_total=48,
     )
     base.update(kw)
     return GamePrediction(**base)
@@ -100,22 +88,12 @@ def test_historical_games_carry_resolved_team_ids_not_display_names():
 
     payload = {
         "season": 2024,
-        "games": [
-            {
-                "id": 1,
-                "week": 1,
-                "homeTeam": "Georgia Tech",
-                "awayTeam": "Florida State",
-                "homePoints": 24,
-                "awayPoints": 21,
-                "neutralSite": True,
-                "homeClassification": "fbs",
-                "awayClassification": "fbs",
-            }
-        ],
-        "returning_production": [],
-        "talent": [],
-        "coaches": [],
+        "games": [{
+            "id": 1, "week": 1, "homeTeam": "Georgia Tech", "awayTeam": "Florida State",
+            "homePoints": 24, "awayPoints": 21, "neutralSite": True,
+            "homeClassification": "fbs", "awayClassification": "fbs",
+        }],
+        "returning_production": [], "talent": [], "coaches": [],
     }
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
         fh.write(json.dumps(payload))
@@ -141,22 +119,12 @@ def test_ambiguous_team_names_are_skipped_not_guessed():
 
     payload = {
         "season": 2024,
-        "games": [
-            {
-                "id": 1,
-                "week": 1,
-                "homeTeam": "Miami",
-                "awayTeam": "Florida State",
-                "homePoints": 24,
-                "awayPoints": 21,
-                "neutralSite": False,
-                "homeClassification": "fbs",
-                "awayClassification": "fbs",
-            }
-        ],
-        "returning_production": [],
-        "talent": [],
-        "coaches": [],
+        "games": [{
+            "id": 1, "week": 1, "homeTeam": "Miami", "awayTeam": "Florida State",
+            "homePoints": 24, "awayPoints": 21, "neutralSite": False,
+            "homeClassification": "fbs", "awayClassification": "fbs",
+        }],
+        "returning_production": [], "talent": [], "coaches": [],
     }
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
         fh.write(json.dumps(payload))
@@ -197,8 +165,7 @@ def test_returning_and_talent_are_dated_to_the_prior_season():
 
     seasons = {
         2024: SeasonCache(
-            season=2024,
-            games=[],
+            season=2024, games=[],
             returning_rows=[{"team": "Alabama", "percentPPA": 0.5}],
             talent_rows=[{"team": "Alabama", "talent": 980.0}],
             coach_rows=[],
@@ -261,10 +228,8 @@ def test_a_missing_differential_leaves_the_control_untouched():
     """Imputing zero would assert the two teams are equal on the feature,
     which is a claim rather than an absence."""
     spec = CANDIDATES[0]
-    rows = [
-        (prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
-        for d in [x / 10 for x in range(-20, 21)] * 2
-    ]
+    rows = [(prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
+            for d in [x / 10 for x in range(-20, 21)] * 2]
     fitted = fit_beta(spec, rows, development_seasons=(2022,))
     base = prediction()
     out = apply_candidate(base, None, fitted, np.zeros(10))
@@ -275,10 +240,8 @@ def test_the_candidate_shifts_margin_and_probability_together():
     """Moving the margin while leaving the win probability alone would
     produce an arm that contradicts itself."""
     spec = CANDIDATES[0]
-    rows = [
-        (prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
-        for d in [x / 10 for x in range(-20, 21)] * 2
-    ]
+    rows = [(prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
+            for d in [x / 10 for x in range(-20, 21)] * 2]
     fitted = fit_beta(spec, rows, development_seasons=(2022,))
     samples = np.array([-5.0, -1.0, 1.0, 5.0])
     base = prediction(projected_margin=0.0, home_win_probability=0.5)
@@ -289,10 +252,8 @@ def test_the_candidate_shifts_margin_and_probability_together():
 
 def test_the_candidate_never_alters_the_realised_outcome():
     spec = CANDIDATES[0]
-    rows = [
-        (prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
-        for d in [x / 10 for x in range(-20, 21)] * 2
-    ]
+    rows = [(prediction(season=2022, projected_margin=0.0, actual_home_margin=int(10 * d)), float(d))
+            for d in [x / 10 for x in range(-20, 21)] * 2]
     fitted = fit_beta(spec, rows, development_seasons=(2022,))
     base = prediction(actual_home_margin=17, actual_total=55)
     out = apply_candidate(base, 0.5, fitted, np.zeros(10))
@@ -358,7 +319,9 @@ def test_the_shadow_output_declares_it_is_not_production():
 # ----------------------------- production is untouched
 
 
-@pytest.mark.parametrize("package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"])
+@pytest.mark.parametrize(
+    "package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"]
+)
 def test_no_production_package_imports_the_preseason_research(package):
     root = SRC / package
     if not root.exists():
@@ -378,18 +341,16 @@ def test_no_production_package_imports_the_shadow_model():
     for package in ("modeling", "projections", "ratings", "recommendation", "kalshi", "decision"):
         root = SRC / package
         if root.exists():
-            offenders += [str(p) for p in root.rglob("*.py") if shadow in imports_of(p)]
+            offenders += [
+                str(p) for p in root.rglob("*.py") if shadow in imports_of(p)
+            ]
     assert offenders == []
 
 
 def test_the_research_never_assigns_a_production_parameter():
     protected = {
-        "model_probability",
-        "projected_margin",
-        "projected_total",
-        "DEFAULT_RIDGE_LAMBDA",
-        "DEFAULT_SEASON_SHRINKAGE_K",
-        "hfa",
+        "model_probability", "projected_margin", "projected_total",
+        "DEFAULT_RIDGE_LAMBDA", "DEFAULT_SEASON_SHRINKAGE_K", "hfa",
     }
     for path in sorted((SRC / "research" / "preseason").rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text())):
@@ -409,7 +370,7 @@ def test_the_experiment_module_uses_the_production_projection_entry_point():
 def test_the_fetch_script_never_writes_the_api_key():
     src = (REPO_ROOT / "scripts" / "fetch_preseason_research_cache.py").read_text()
     assert "api_key_present" in src
-    assert '"api_key":' not in src
+    assert "\"api_key\":" not in src
     assert "cfbd_api_key" in src  # read, never emitted
     for leak in ("print(key", "print(api_key", "json.dumps(key"):
         assert leak not in src

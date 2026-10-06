@@ -58,7 +58,9 @@ def data_dir(tmp_path: Path) -> Path:
 
 
 def run(script: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True, cwd=REPO_ROOT)
+    return subprocess.run(
+        [sys.executable, str(script), *args], capture_output=True, text=True, cwd=REPO_ROOT
+    )
 
 
 # ------------------------------------------------------ ops health
@@ -79,7 +81,9 @@ def test_ops_health_blocks_when_nothing_has_ever_run(data_dir):
     `--assume-active` because the collector is HIBERNATED today, and a
     hibernated collector that never runs is the intended state (next
     test). The alarm for an ACTIVE collector is what this pins."""
-    result = run(OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00", "--assume-active")
+    result = run(
+        OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00", "--assume-active"
+    )
     assert result.returncode == 1
     assert "OVERALL: BLOCKED" in result.stdout
 
@@ -98,7 +102,10 @@ def test_ops_health_reports_zero_settled_games_for_pending_settlements(data_dir)
     games that have not kicked off. Only `status == settled` counts."""
     settlements = data_dir / "data" / "research" / "settlements" / "2026.jsonl"
     settlements.write_text(
-        "\n".join(json.dumps({"game_id": f"g{i}", "status": "pending_not_final"}) for i in range(50)) + "\n",
+        "\n".join(
+            json.dumps({"game_id": f"g{i}", "status": "pending_not_final"}) for i in range(50)
+        )
+        + "\n",
         encoding="utf-8",
     )
     result = run(OPS, "--data-repo-dir", str(data_dir), "--now", "2026-09-06T09:00:00+00:00")

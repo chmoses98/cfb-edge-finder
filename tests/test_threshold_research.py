@@ -68,7 +68,10 @@ def absurdly_profitable(n_games: int = 60) -> list[SettledResearchObservation]:
     """Every contract bought at 2c and settling YES: a ~50x return that
     could never occur. If anything can self-approve, this is what would
     do it."""
-    return [obs(game=f"g{i}", price=0.01, fee=0.01, probability=0.99, settled_yes=True) for i in range(n_games)]
+    return [
+        obs(game=f"g{i}", price=0.01, fee=0.01, probability=0.99, settled_yes=True)
+        for i in range(n_games)
+    ]
 
 
 # ------------------------------------------------- the protocol
@@ -143,7 +146,9 @@ def test_a_single_game_cluster_yields_no_interval_and_no_finding():
 
 
 def test_retrospective_observations_are_excluded():
-    rows = absurdly_profitable(60) + [obs(game="backfilled", capture_mode="RETROSPECTIVE_BACKFILL")]
+    rows = absurdly_profitable(60) + [
+        obs(game="backfilled", capture_mode="RETROSPECTIVE_BACKFILL")
+    ]
     report = discover_threshold_candidates(rows, minimum_settled_games=10)
     assert DiscoveryRefusal.NOT_PROSPECTIVE.value in report.refusals
     assert "backfilled" not in report.discovery_game_ids
@@ -161,7 +166,7 @@ def test_an_absurdly_profitable_sample_produces_only_a_draft_finding():
     for finding in report.findings:
         assert finding.status == DRAFT_RESEARCH_FINDING
         assert finding.mean_research_unit_pl > 0.9  # genuinely spectacular
-        assert finding.interval_excludes_zero  # and statistically clean
+        assert finding.interval_excludes_zero      # and statistically clean
     # ...and yet:
     payload = json.dumps(report.to_payload())
     for forbidden in ("APPROVED", "VALIDATED", "SHADOW_QUALIFIED", "approval_state"):
@@ -174,7 +179,9 @@ def test_the_discovery_module_cannot_construct_a_threshold_artifact():
     import ast
     import pathlib
 
-    tree = ast.parse(pathlib.Path("src/cfb_edge_finder/research/threshold_discovery.py").read_text())
+    tree = ast.parse(
+        pathlib.Path("src/cfb_edge_finder/research/threshold_discovery.py").read_text()
+    )
     imported = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
@@ -256,7 +263,10 @@ def rule(**overrides) -> FrozenCandidateRule:
 
 
 def validation_rows(n: int = 30, prefix: str = "v") -> list[SettledResearchObservation]:
-    return [obs(game=f"{prefix}{i}", price=0.50, fee=0.02, probability=0.60, settled_yes=True) for i in range(n)]
+    return [
+        obs(game=f"{prefix}{i}", price=0.50, fee=0.02, probability=0.60, settled_yes=True)
+        for i in range(n)
+    ]
 
 
 def test_a_leaked_discovery_game_refuses_the_run():
@@ -322,7 +332,10 @@ def test_insufficient_validation_sample_is_reported():
 
 def test_a_negative_result_is_reported_as_such():
     r = rule()
-    losing = [obs(game=f"v{i}", price=0.50, fee=0.02, probability=0.60, settled_yes=False) for i in range(30)]
+    losing = [
+        obs(game=f"v{i}", price=0.50, fee=0.02, probability=0.60, settled_yes=False)
+        for i in range(30)
+    ]
     report = validate_candidate(
         r, frozen_hash=r.content_hash(), validation_observations=losing, minimum_validation_games=5
     )
@@ -349,7 +362,10 @@ def test_even_a_perfect_validation_approves_nothing():
     r = rule()
     # Inside the rule's declared price domain (0.05-0.95) so the run
     # actually reaches a verdict; still a ~9x return over 80 games.
-    perfect = [obs(game=f"v{i}", price=0.10, fee=0.01, probability=0.99, settled_yes=True) for i in range(80)]
+    perfect = [
+        obs(game=f"v{i}", price=0.10, fee=0.01, probability=0.99, settled_yes=True)
+        for i in range(80)
+    ]
     report = validate_candidate(
         r, frozen_hash=r.content_hash(), validation_observations=perfect, minimum_validation_games=5
     )

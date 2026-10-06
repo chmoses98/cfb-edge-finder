@@ -139,8 +139,7 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
     # Identical repeats are not looked at here at all -- they are the no-op
     # that makes re-running safe, and the store reports them as duplicates.
     settled_rows = {
-        key: row
-        for row in read_rows(settlement_ledger_path(base_dir, season))
+        key: row for row in read_rows(settlement_ledger_path(base_dir, season))
         if (key := source_bet_key_of(row)) is not None
     }
     # And the corrections already filed, keyed by amendment id, so a repeat of
@@ -175,7 +174,9 @@ def import_rows(base_dir: Path, rows: list, *, season: int) -> dict:
             # Without the second, two contradicting rows in one batch reach the
             # store together and abort all 41 with a ValueError instead of
             # refusing the one row that is wrong.
-            recorded = settled_rows.get(record.source_bet_key) or built_by_key.get(record.source_bet_key)
+            recorded = settled_rows.get(record.source_bet_key) or built_by_key.get(
+                record.source_bet_key
+            )
             if recorded is not None:
                 # FIELD NAMES, NEVER VALUES. This reason is printed, and this
                 # repository's Actions logs are public.

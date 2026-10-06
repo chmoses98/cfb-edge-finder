@@ -196,7 +196,9 @@ def test_changing_a_weeks_own_outcome_does_not_leak_into_that_weeks_own_predicti
     for gid in week3_a:
         assert week3_a[gid].model_margin_mean == pytest.approx(week3_b[gid].model_margin_mean, abs=1e-9)
         assert week3_a[gid].model_prob_home_win == pytest.approx(week3_b[gid].model_prob_home_win, abs=1e-9)
-        assert week3_a[gid].calibrated_prob_home_win == pytest.approx(week3_b[gid].calibrated_prob_home_win, abs=1e-9)
+        assert week3_a[gid].calibrated_prob_home_win == pytest.approx(
+            week3_b[gid].calibrated_prob_home_win, abs=1e-9
+        )
 
     week5_a = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_a if o.week == 5)
     week5_b = sorted((o.source_game_id, o.model_margin_mean) for o in outcomes_b if o.week == 5)
@@ -232,7 +234,9 @@ def test_development_only_backtest_matches_full_corpus_for_the_shared_seasons():
     dev_only_lines = [ln for ln in full_lines if ln.season in (2022, 2023, 2024)]
 
     full_outcomes = run_walk_forward_backtest(full_lines, min_week_for_first_prediction=2, n_simulations=500, seed=3)
-    dev_outcomes = run_walk_forward_backtest(dev_only_lines, min_week_for_first_prediction=2, n_simulations=500, seed=3)
+    dev_outcomes = run_walk_forward_backtest(
+        dev_only_lines, min_week_for_first_prediction=2, n_simulations=500, seed=3
+    )
 
     full_dev_seasons = {o.source_game_id: o for o in full_outcomes if o.season in (2022, 2023, 2024)}
     dev_only = {o.source_game_id: o for o in dev_outcomes}
@@ -240,8 +244,12 @@ def test_development_only_backtest_matches_full_corpus_for_the_shared_seasons():
     assert len(dev_only) > 0  # sanity: the development seasons actually produced predictions
 
     for gid in dev_only:
-        assert full_dev_seasons[gid].model_margin_mean == pytest.approx(dev_only[gid].model_margin_mean, abs=1e-9)
-        assert full_dev_seasons[gid].model_prob_home_win == pytest.approx(dev_only[gid].model_prob_home_win, abs=1e-9)
+        assert full_dev_seasons[gid].model_margin_mean == pytest.approx(
+            dev_only[gid].model_margin_mean, abs=1e-9
+        )
+        assert full_dev_seasons[gid].model_prob_home_win == pytest.approx(
+            dev_only[gid].model_prob_home_win, abs=1e-9
+        )
         assert full_dev_seasons[gid].calibrated_prob_home_win == pytest.approx(
             dev_only[gid].calibrated_prob_home_win, abs=1e-9
         )
@@ -317,7 +325,9 @@ def test_margin_correction_never_touches_fbs_vs_fcs_games():
     fcs_lines = []
     for season in (2022, 2023, 2024):
         for week in range(2, 13):
-            fcs_lines.append(_line("team0", "fcs-visitor", 35, 10, 68, True, week=week, season=season, opp_class="fcs"))
+            fcs_lines.append(
+                _line("team0", "fcs-visitor", 35, 10, 68, True, week=week, season=season, opp_class="fcs")
+            )
             fcs_lines.append(
                 _line("fcs-visitor", "team0", 10, 35, 55, False, week=week, season=season, team_class="fcs")
             )
@@ -475,7 +485,9 @@ def test_total_correction_never_touches_fbs_vs_fcs_games():
     fcs_lines = []
     for season in (2022, 2023, 2024):
         for week in range(2, 13):
-            fcs_lines.append(_line("team0", "fcs-visitor", 35, 10, 68, True, week=week, season=season, opp_class="fcs"))
+            fcs_lines.append(
+                _line("team0", "fcs-visitor", 35, 10, 68, True, week=week, season=season, opp_class="fcs")
+            )
             fcs_lines.append(
                 _line("fcs-visitor", "team0", 10, 35, 55, False, week=week, season=season, team_class="fcs")
             )

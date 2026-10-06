@@ -137,7 +137,11 @@ def _observation_keys(repo_dir: Path) -> set[str]:
     path = corpus_helpers.ref(repo_dir / "data" / "research", persistence.OBSERVATIONS_SUBDIR, SEASON)
     if not path.exists():
         return set()
-    return {json.loads(line)["observation_key"] for line in path.text().splitlines() if line.strip()}
+    return {
+        json.loads(line)["observation_key"]
+        for line in path.text().splitlines()
+        if line.strip()
+    }
 
 
 def test_week1_like_universe_accounts_unsupported_populations_without_false_alarm(tmp_path, monkeypatch):

@@ -108,7 +108,9 @@ def test_rows_land_in_their_own_date_shard(tmp_path):
         _obs_row("b", "2026-09-13T10:00:00+00:00"),
         _obs_row("c", "2026-09-12T22:00:00+00:00"),
     ]
-    persistence.append_sharded_json_rows(base, shards.OBSERVATIONS_SUBDIR, SEASON, rows, persistence.observation_key_of)
+    persistence.append_sharded_json_rows(
+        base, shards.OBSERVATIONS_SUBDIR, SEASON, rows, persistence.observation_key_of
+    )
     names = [p.name for p in shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)]
     assert names == ["2026-09-12.part001.jsonl", "2026-09-13.part001.jsonl"]
     assert len(corpus_helpers.rows(base, shards.OBSERVATIONS_SUBDIR, SEASON)) == 3
@@ -124,18 +126,12 @@ def test_capture_state_dedup_also_spans_shards(tmp_path):
 
     base = tmp_path / "data" / "research"
     monday = CaptureStateRecord(
-        game_id="g1",
-        kalshi_market_ticker="MKT-1",
-        timing_label="T_60",
-        state=CaptureState.CAPTURED,
-        observed_at=datetime(2026, 9, 12, 12, tzinfo=UTC),
+        game_id="g1", kalshi_market_ticker="MKT-1", timing_label="T_60",
+        state=CaptureState.CAPTURED, observed_at=datetime(2026, 9, 12, 12, tzinfo=UTC),
     )
     tuesday = CaptureStateRecord(
-        game_id="g1",
-        kalshi_market_ticker="MKT-1",
-        timing_label="T_60",
-        state=CaptureState.CAPTURED,
-        observed_at=datetime(2026, 9, 13, 12, tzinfo=UTC),
+        game_id="g1", kalshi_market_ticker="MKT-1", timing_label="T_60",
+        state=CaptureState.CAPTURED, observed_at=datetime(2026, 9, 13, 12, tzinfo=UTC),
     )
     assert persistence.append_capture_state_rows(base, SEASON, [monday]).written == 1
     second = persistence.append_capture_state_rows(base, SEASON, [tuesday])
@@ -145,7 +141,9 @@ def test_capture_state_dedup_also_spans_shards(tmp_path):
 def test_the_index_sees_rows_from_every_shard(tmp_path):
     base = tmp_path / "data" / "research"
     rows = [_obs_row(f"k{i}", f"2026-09-{10 + i:02d}T10:00:00+00:00") for i in range(4)]
-    persistence.append_sharded_json_rows(base, shards.OBSERVATIONS_SUBDIR, SEASON, rows, persistence.observation_key_of)
+    persistence.append_sharded_json_rows(
+        base, shards.OBSERVATIONS_SUBDIR, SEASON, rows, persistence.observation_key_of
+    )
     index = persistence.load_observation_index_for(base, SEASON)
     assert index.row_count == 4
     assert index.keys == {"k0", "k1", "k2", "k3"}
@@ -180,11 +178,15 @@ def test_rollover_never_reopens_an_earlier_part(tmp_path):
     base = tmp_path / "data" / "research"
     target = 4096
     for _ in range(12):
-        shards.append_lines(base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", "x" * 1000)], target_bytes=target)
+        shards.append_lines(
+            base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", "x" * 1000)], target_bytes=target
+        )
     parts = shards.shard_paths(base, shards.OBSERVATIONS_SUBDIR, SEASON)
     first_part = parts[0]
     before = first_part.read_bytes()
-    shards.append_lines(base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", "x" * 1000)], target_bytes=target)
+    shards.append_lines(
+        base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", "x" * 1000)], target_bytes=target
+    )
     assert first_part.read_bytes() == before
 
 
@@ -193,7 +195,9 @@ def test_a_single_oversize_row_is_written_rather_than_dropped(tmp_path):
     oversize shard -- the guard reports it instead."""
     base = tmp_path / "data" / "research"
     huge = "y" * 5000
-    shards.append_lines(base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", huge)], target_bytes=1000)
+    shards.append_lines(
+        base, shards.OBSERVATIONS_SUBDIR, SEASON, [("2026-09-12", huge)], target_bytes=1000
+    )
     assert corpus_helpers.lines(base, shards.OBSERVATIONS_SUBDIR, SEASON) == [huge]
 
 
@@ -257,17 +261,8 @@ def test_the_guard_distinguishes_an_unmigrated_corpus_from_a_regression(tmp_path
     legacy.write_bytes(b"x" * 5000)
 
     script = Path(__file__).resolve().parents[1] / "scripts" / "check_research_blob_sizes.py"
-    base = [
-        sys.executable,
-        str(script),
-        "--data-repo-dir",
-        str(tmp_path),
-        "--target",
-        "1000",
-        "--limit",
-        "2000",
-        "--strict",
-    ]
+    base = [sys.executable, str(script), "--data-repo-dir", str(tmp_path),
+            "--target", "1000", "--limit", "2000", "--strict"]
 
     strict = subprocess.run(base, capture_output=True, text=True)
     assert strict.returncode == 1, "an oversize blob must fail by default"

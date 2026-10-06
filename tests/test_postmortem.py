@@ -33,16 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/cfb_postmortem.py"
 
 
-def wager(
-    key,
-    *,
-    ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU10",
-    side="YES",
-    price=0.53,
-    stake=10.6,
-    fees=0.14,
-    executed="2026-09-19T15:30:00Z",
-):
+def wager(key, *, ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU10", side="YES",
+          price=0.53, stake=10.6, fees=0.14, executed="2026-09-19T15:30:00Z"):
     return {
         "source_bet_key": key,
         "wager_id": f"routed-{key}",
@@ -78,20 +70,10 @@ def settlement(key, *, result="WON", gross=20.0, net=9.26):
     }
 
 
-def recommendation(
-    key="r1",
-    *,
-    ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU10",
-    side="YES",
-    entry=0.53,
-    bet_up_to=0.57,
-    quoted="2026-09-19T12:00:00Z",
-    robustness="robust_positive_ev",
-    confidence="medium",
-    ceiling="high",
-    edge=0.06,
-    stake=None,
-):
+def recommendation(key="r1", *, ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU10",
+                   side="YES", entry=0.53, bet_up_to=0.57,
+                   quoted="2026-09-19T12:00:00Z", robustness="robust_positive_ev",
+                   confidence="medium", ceiling="high", edge=0.06, stake=None):
     return Recommendation(
         recommendation_id=key,
         game_key="26SEP19LSUMISS",
@@ -133,15 +115,8 @@ def test_every_monetary_figure_is_identical_with_and_without_recommendations():
     )
 
     for field in (
-        "wagers",
-        "settled",
-        "won",
-        "lost",
-        "staked",
-        "fees_paid",
-        "gross_return",
-        "net_profit_loss",
-        "roi",
+        "wagers", "settled", "won", "lost", "staked", "fees_paid",
+        "gross_return", "net_profit_loss", "roi",
     ):
         assert bare.overall.as_dict()[field] == attributed.overall.as_dict()[field], field
 
@@ -208,7 +183,9 @@ def test_a_different_side_of_the_same_market_is_not_the_same_bet():
 
 
 def test_a_fill_above_the_bet_up_to_price_is_named_as_such():
-    result = match_executions([wager("a", price=0.62)], [recommendation("r1", entry=0.53, bet_up_to=0.57)])
+    result = match_executions(
+        [wager("a", price=0.62)], [recommendation("r1", entry=0.53, bet_up_to=0.57)]
+    )
     assert result.counts == {MatchState.EXECUTED_ABOVE_BET_UP_TO.value: 1}
     assert "said to stop at" in result.matches[0].reason
 
@@ -224,7 +201,9 @@ def test_a_fill_outside_the_price_tolerance_is_named_too():
 
 
 def test_a_stake_far_from_the_recommended_one_is_a_sizing_difference():
-    result = match_executions([wager("a", stake=100.0)], [recommendation("r1", stake=10.0)])
+    result = match_executions(
+        [wager("a", stake=100.0)], [recommendation("r1", stake=10.0)]
+    )
     assert result.counts == {MatchState.EXECUTED_DIFFERENT_SIZE.value: 1}
 
 
@@ -305,7 +284,9 @@ def test_a_complete_report_states_its_totals_and_its_denominators():
     document = report.as_dict()
     assert report.is_final
     assert document["overall"]["net_profit_loss"] == pytest.approx(9.26 - 10.74, abs=1e-6)
-    assert document["overall"]["roi"] == pytest.approx((9.26 - 10.74) / (10.6 * 2), abs=1e-6)
+    assert document["overall"]["roi"] == pytest.approx(
+        (9.26 - 10.74) / (10.6 * 2), abs=1e-6
+    )
     assert document["unit_result"] == pytest.approx((9.26 - 10.74) / 10.0, abs=1e-6)
     assert "divided by" in document["denominators"]["roi"]
 
@@ -428,15 +409,19 @@ def test_a_losing_robust_bet_is_not_called_a_handicap_error():
     recs = [recommendation(f"r{i}") for i in range(4)]
     # Each recommendation must match a distinct wager, so give them distinct
     # markets rather than four identical ones (which would be ambiguous).
-    wagers = [wager(f"w{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(4)]
-    settlements = [settlement(f"w{i}", result="LOST", gross=0.0, net=-10.74) for i in range(4)]
-    recs = [recommendation(f"r{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(4)]
+    wagers = [
+        wager(f"w{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(4)
+    ]
+    settlements = [
+        settlement(f"w{i}", result="LOST", gross=0.0, net=-10.74) for i in range(4)
+    ]
+    recs = [
+        recommendation(f"r{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}")
+        for i in range(4)
+    ]
     report = pm.build(
-        wagers,
-        settlements,
-        2026,
-        matches=match_executions(wagers, recs),
-        recommendations=recs,
+        wagers, settlements, 2026,
+        matches=match_executions(wagers, recs), recommendations=recs,
     )
     categories = report.as_dict()["issue_categories"]
     # Four losing robust bets is below the tier-reading bar, so not even a
@@ -449,15 +434,19 @@ def test_a_losing_robust_bet_is_not_called_a_handicap_error():
 
 
 def test_a_losing_tier_raises_a_prompt_and_says_it_is_not_a_verdict():
-    wagers = [wager(f"w{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(10)]
-    settlements = [settlement(f"w{i}", result="LOST", gross=0.0, net=-10.74) for i in range(10)]
-    recs = [recommendation(f"r{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(10)]
+    wagers = [
+        wager(f"w{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}") for i in range(10)
+    ]
+    settlements = [
+        settlement(f"w{i}", result="LOST", gross=0.0, net=-10.74) for i in range(10)
+    ]
+    recs = [
+        recommendation(f"r{i}", ticker=f"KXNCAAFSPREAD-26SEP19LSUMISS-LSU{i}")
+        for i in range(10)
+    ]
     report = pm.build(
-        wagers,
-        settlements,
-        2026,
-        matches=match_executions(wagers, recs),
-        recommendations=recs,
+        wagers, settlements, 2026,
+        matches=match_executions(wagers, recs), recommendations=recs,
     )
     prompts = report.as_dict()["issue_categories"]["HANDICAP_ERROR_PROMPTS"]
     assert prompts
@@ -469,7 +458,9 @@ def test_an_execution_above_the_ceiling_is_an_execution_error_without_the_outcom
     wagers = [wager("a", price=0.70)]
     recs = [recommendation("r1", entry=0.53, bet_up_to=0.57)]
     # NO settlement at all: the categorisation must not need one.
-    report = pm.build(wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs)
+    report = pm.build(
+        wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs
+    )
     issues = report.as_dict()["issue_categories"]["EXECUTION_ERROR"]
     assert len(issues) == 1
     assert "visible WITHOUT the outcome" in issues[0]["note"]
@@ -478,7 +469,9 @@ def test_an_execution_above_the_ceiling_is_an_execution_error_without_the_outcom
 def test_a_bet_on_a_thin_data_game_is_a_process_note_not_a_verdict():
     wagers = [wager("a")]
     recs = [recommendation("r1", ceiling="insufficient")]
-    report = pm.build(wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs)
+    report = pm.build(
+        wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs
+    )
     issues = report.as_dict()["issue_categories"]["DATA_PROCESS_ERROR"]
     assert len(issues) == 1
     assert "not a claim that the bet was wrong" in issues[0]["note"]
@@ -493,7 +486,9 @@ def test_price_against_the_recommendation_is_reported_both_ways():
         recommendation("r1", ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU1", entry=0.53),
         recommendation("r2", ticker="KXNCAAFSPREAD-26SEP19LSUMISS-LSU2", entry=0.53),
     ]
-    report = pm.build(wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs)
+    report = pm.build(
+        wagers, [], 2026, matches=match_executions(wagers, recs), recommendations=recs
+    )
     price = report.as_dict()["price_vs_recommended"]
     assert price["matched_bets"] == 2
     assert price["mean_price_delta"] == pytest.approx(0.005, abs=1e-6)
@@ -512,7 +507,9 @@ def test_the_report_carries_its_own_disclaimer_as_data():
 def ledger_dir(tmp_path, wagers, settlements):
     (tmp_path / "wagers").mkdir(parents=True)
     (tmp_path / "settlements").mkdir(parents=True)
-    (tmp_path / "wagers" / "2026.jsonl").write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in wagers))
+    (tmp_path / "wagers" / "2026.jsonl").write_text(
+        "".join(json.dumps(row, sort_keys=True) + "\n" for row in wagers)
+    )
     (tmp_path / "settlements" / "2026.jsonl").write_text(
         "".join(json.dumps(row, sort_keys=True) + "\n" for row in settlements)
     )
@@ -520,7 +517,9 @@ def ledger_dir(tmp_path, wagers, settlements):
 
 
 def run_cli(*args):
-    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False)
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False
+    )
 
 
 def test_the_cli_reports_from_the_ledger_alone(tmp_path):
@@ -543,14 +542,8 @@ def test_the_cli_reports_one_slate_by_game_date(tmp_path):
     base = ledger_dir(tmp_path, [friday, saturday], [settlement("f"), settlement("s")])
     out = tmp_path / "saturday.json"
     result = run_cli(
-        "--base-dir",
-        str(base),
-        "--season",
-        "2026",
-        "--game-date",
-        "2026-09-26",
-        "--json",
-        str(out),
+        "--base-dir", str(base), "--season", "2026",
+        "--game-date", "2026-09-26", "--json", str(out),
     )
     assert result.returncode == 0, result.stderr
     assert "slate filter" in result.stdout
@@ -584,7 +577,9 @@ def test_the_cli_refuses_a_missing_ledger(tmp_path):
 def test_the_cli_writes_the_same_report_as_json(tmp_path):
     base = ledger_dir(tmp_path, [wager("a")], [settlement("a")])
     out = tmp_path / "report.json"
-    result = run_cli("--base-dir", str(base), "--season", "2026", "--json", str(out))
+    result = run_cli(
+        "--base-dir", str(base), "--season", "2026", "--json", str(out)
+    )
     assert result.returncode == 0
     document = json.loads(out.read_text())
     assert document["season"] == 2026
@@ -628,14 +623,8 @@ def test_the_cli_adds_cuts_from_candidate_artifacts_without_moving_money(tmp_pat
     cut_json = tmp_path / "cut.json"
     run_cli("--base-dir", str(base), "--season", "2026", "--json", str(bare_json))
     run_cli(
-        "--base-dir",
-        str(base),
-        "--season",
-        "2026",
-        "--candidates",
-        str(candidates),
-        "--json",
-        str(cut_json),
+        "--base-dir", str(base), "--season", "2026",
+        "--candidates", str(candidates), "--json", str(cut_json),
     )
     bare = json.loads(bare_json.read_text())
     cut = json.loads(cut_json.read_text())

@@ -65,16 +65,8 @@ def test_a_leading_saint_is_never_rewritten_to_state():
 
 def test_dropping_the_qualifier_is_refused_when_the_stem_is_another_school():
     """The false-match generator this guard exists to stop."""
-    for name in (
-        "Ohio St.",
-        "Michigan St.",
-        "Washington St.",
-        "Oregon St.",
-        "Florida St.",
-        "Mississippi St.",
-        "Arizona St.",
-        "Kansas St.",
-    ):
+    for name in ("Ohio St.", "Michigan St.", "Washington St.", "Oregon St.",
+                 "Florida St.", "Mississippi St.", "Arizona St.", "Kansas St."):
         assert collector._stem_is_safe(name) is False, name
 
 
@@ -112,7 +104,7 @@ def test_the_names_that_failed_the_live_run_now_match():
 
 
 def test_an_abbreviation_is_left_unmatched_rather_than_guessed():
-    """ "App State" is Appalachian State, and that is a fact about a school --
+    """"App State" is Appalachian State, and that is a fact about a school --
     not a punctuation rule. This function has no way to know it, so the game
     stays honestly unenriched instead of being paired on a hunch."""
     assert not (_keys("Appalachian St.") & _espn("App State Mountaineers", "App State"))

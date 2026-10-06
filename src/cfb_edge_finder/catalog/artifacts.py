@@ -164,7 +164,8 @@ def build_catalog(run: CatalogRun, include_raw: bool = False, include_markets: b
     return {
         "schema_version": CATALOG_SCHEMA_VERSION,
         "artifact_layout": (
-            "slate index; each game's full contract inventory is in its own file named by games[].markets_file"
+            "slate index; each game's full contract inventory is in its own file named by "
+            "games[].markets_file"
         )
         if not include_markets
         else "monolithic; every contract inlined under games[].markets",
@@ -225,8 +226,12 @@ def build_catalog(run: CatalogRun, include_raw: bool = False, include_markets: b
                 "note": MULTIVARIATE_COVERAGE_NOTE,
             },
         },
-        "games": [game_to_dict(g, include_raw=include_raw, include_markets=include_markets) for g in games],
-        "season_level_events": [_event_summary(t, e) for t, e in sorted(run.season_level_events.items())],
+        "games": [
+            game_to_dict(g, include_raw=include_raw, include_markets=include_markets) for g in games
+        ],
+        "season_level_events": [
+            _event_summary(t, e) for t, e in sorted(run.season_level_events.items())
+        ],
     }
 
 
@@ -314,7 +319,6 @@ def _write_text(path: Path, encoded: str) -> int:
 def write_json(path: Path, payload: dict[str, Any]) -> int:
     """Write one artifact deterministically and atomically."""
     return _write_text(path, _encode(payload))
-
 
 @dataclass(frozen=True)
 class WrittenArtifacts:

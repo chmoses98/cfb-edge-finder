@@ -212,8 +212,11 @@ def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendati
                 fair_probability=_number(candidate.get("fair_probability")),
                 fee_adjusted_edge=_number(candidate.get("fee_adjusted_edge")),
                 robustness=candidate.get("robustness"),
-                confidence=game.get("handicap_confidence_effective") or game.get("handicap_confidence"),
-                data_quality_ceiling=((game.get("factual_data_quality") or {}).get("confidence_ceiling")),
+                confidence=game.get("handicap_confidence_effective")
+                or game.get("handicap_confidence"),
+                data_quality_ceiling=(
+                    (game.get("factual_data_quality") or {}).get("confidence_ceiling")
+                ),
                 correlation_group=candidate.get("correlation_group"),
                 recommended_stake=_number(candidate.get("stake_placeholder")),
             )
@@ -298,7 +301,9 @@ def match_executions(
 
     by_market: dict[tuple[str, str], list[Recommendation]] = {}
     for recommendation in recommendations:
-        by_market.setdefault((recommendation.ticker, recommendation.side), []).append(recommendation)
+        by_market.setdefault((recommendation.ticker, recommendation.side), []).append(
+            recommendation
+        )
 
     for wager in wagers:
         ticker = str(wager.get("market_ticker") or "")
@@ -376,7 +381,11 @@ def match_executions(
 
         state = MatchState.RECOMMENDED_AND_EXECUTED.value
         reason = "the market, side, ordering and price all agree"
-        if recommendation.bet_up_to is not None and price is not None and price > recommendation.bet_up_to + 1e-9:
+        if (
+            recommendation.bet_up_to is not None
+            and price is not None
+            and price > recommendation.bet_up_to + 1e-9
+        ):
             state = MatchState.EXECUTED_ABOVE_BET_UP_TO.value
             reason = (
                 f"filled at {price:.4f}, above the {recommendation.bet_up_to:.4f} the "
@@ -384,15 +393,22 @@ def match_executions(
             )
         elif delta is not None and abs(delta) > price_tolerance:
             state = MatchState.EXECUTED_ABOVE_BET_UP_TO.value
-            reason = f"filled {delta:+.4f} from the quoted entry, outside the {price_tolerance:.4f} tolerance"
+            reason = (
+                f"filled {delta:+.4f} from the quoted entry, outside the "
+                f"{price_tolerance:.4f} tolerance"
+            )
         elif (
             recommendation.recommended_stake is not None
             and stake is not None
             and recommendation.recommended_stake > 0
-            and abs(stake - recommendation.recommended_stake) / recommendation.recommended_stake > stake_tolerance
+            and abs(stake - recommendation.recommended_stake)
+            / recommendation.recommended_stake
+            > stake_tolerance
         ):
             state = MatchState.EXECUTED_DIFFERENT_SIZE.value
-            reason = f"staked {stake:.2f} against a recommended {recommendation.recommended_stake:.2f}"
+            reason = (
+                f"staked {stake:.2f} against a recommended {recommendation.recommended_stake:.2f}"
+            )
 
         result.matches.append(
             Match(

@@ -54,13 +54,10 @@ def _by_family(family: MarketFamily) -> list[ResearchCorpusRow]:
 
 def _result(home: int, away: int, *, status=GameFinalStatus.FINAL, game_id="g", ot=None) -> GameResult:
     return GameResult(
-        game_id=game_id,
-        season=2026,
+        game_id=game_id, season=2026,
         home_points=home if status is GameFinalStatus.FINAL else None,
         away_points=away if status is GameFinalStatus.FINAL else None,
-        status=status,
-        went_to_overtime=ot,
-        captured_at=NOW,
+        status=status, went_to_overtime=ot, captured_at=NOW,
     )
 
 
@@ -329,9 +326,9 @@ def test_zero_entry_price_return_is_undefined_not_infinite():
 
 
 def test_missing_entry_price_yields_no_economics():
-    assert (
-        research_unit_economics(side=Side.YES, entry_price=None, event_true=True, series_ticker="KXNCAAFGAME") is None
-    )
+    assert research_unit_economics(
+        side=Side.YES, entry_price=None, event_true=True, series_ticker="KXNCAAFGAME"
+    ) is None
 
 
 def test_research_unit_is_fixed_at_one_contract():
@@ -344,8 +341,7 @@ def test_research_unit_is_fixed_at_one_contract():
 
 def test_settled_observation_gets_both_sides_when_both_prices_exist():
     row = next(
-        r
-        for r in _by_family(MarketFamily.MONEYLINE)
+        r for r in _by_family(MarketFamily.MONEYLINE)
         if r.observation.executable_yes_price is not None and r.observation.executable_no_price is not None
     )
     s = settle_market(row.observation, _result(31, 17), settled_at=NOW)
@@ -365,20 +361,9 @@ def test_attribution_carries_full_provenance():
     a = attribute_observation(row, s, settled_at=NOW, result_fetched_at=NOW, run_id="run-1")
     assert a.observation_key == row.observation_key
     assert a.attribution_key.startswith(row.observation_key)
-    for field in (
-        "game_id",
-        "kalshi_market_ticker",
-        "family",
-        "timing_label",
-        "season",
-        "captured_at",
-        "entry_yes_price",
-        "entry_model_probability",
-        "fee_schedule_version",
-        "model_version",
-        "settlement_code_version",
-        "settled_at",
-    ):
+    for field in ("game_id", "kalshi_market_ticker", "family", "timing_label", "season",
+                  "captured_at", "entry_yes_price", "entry_model_probability",
+                  "fee_schedule_version", "model_version", "settlement_code_version", "settled_at"):
         assert getattr(a, field) is not None, f"provenance field {field} missing"
     assert a.result_source == "cfbd"
     assert a.run_id == "run-1"
@@ -397,13 +382,9 @@ def test_extract_game_result_requires_authoritative_final_state():
     """Mission section 3: a game is not final merely because kickoff
     passed. Only an explicit status or completed+scores qualifies."""
     assert extract_game_result({}, game_id="g", season=2026, captured_at=NOW).status is GameFinalStatus.NOT_YET_FINAL
-    assert (
-        extract_game_result({"completed": True}, game_id="g", season=2026, captured_at=NOW).status
-        is GameFinalStatus.NOT_YET_FINAL
-    ), "completed without scores must not be final"
-    assert (
-        extract_game_result(
-            {"completed": True, "homePoints": 30, "awayPoints": 20}, game_id="g", season=2026, captured_at=NOW
-        ).status
-        is GameFinalStatus.FINAL
-    )
+    assert extract_game_result(
+        {"completed": True}, game_id="g", season=2026, captured_at=NOW
+    ).status is GameFinalStatus.NOT_YET_FINAL, "completed without scores must not be final"
+    assert extract_game_result(
+        {"completed": True, "homePoints": 30, "awayPoints": 20}, game_id="g", season=2026, captured_at=NOW
+    ).status is GameFinalStatus.FINAL

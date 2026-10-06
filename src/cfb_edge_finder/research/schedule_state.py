@@ -485,7 +485,9 @@ def match_schedule_event(
     two candidates and are therefore refused, which is the intended
     conservative answer."""
     candidates = [
-        e for e in events if e.event_date is not None and (e.season_year is None or e.season_year == game.season)
+        e
+        for e in events
+        if e.event_date is not None and (e.season_year is None or e.season_year == game.season)
     ]
     exact = [
         e

@@ -137,7 +137,8 @@ PRICE_CONVENTIONS = {
     ),
     "expected_value": "EV per contract = fair_probability - entry - fee",
     "bid_vs_ask": (
-        "bids are included so you can see the spread and judge whether a fill is realistic; you cannot buy at the bid"
+        "bids are included so you can see the spread and judge whether a fill is realistic; you "
+        "cannot buy at the bid"
     ),
 }
 
@@ -216,7 +217,9 @@ def _common_prefix(values: list[str]) -> str:
     return prefix
 
 
-def _drop_empty_column(columns: list[str], rows: list[list[Any]], name: str) -> tuple[list[str], list[list[Any]]]:
+def _drop_empty_column(
+    columns: list[str], rows: list[list[Any]], name: str
+) -> tuple[list[str], list[list[Any]]]:
     if name not in columns:
         return columns, rows
     index = columns.index(name)
@@ -333,7 +336,9 @@ def game_block(packet: dict[str, Any], tz_name: str) -> dict[str, Any]:
     def order(name: str) -> tuple[int, str]:
         return (FAMILY_ORDER.index(name), "") if name in FAMILY_ORDER else (len(FAMILY_ORDER), name)
 
-    markets = {family: family_block(by_family[family]) for family in sorted(by_family, key=order)}
+    markets = {
+        family: family_block(by_family[family]) for family in sorted(by_family, key=order)
+    }
 
     # `market_scopes_offered` used to sit here; it restated the keys of
     # `markets` in Kalshi's own wording, ~600 bytes per game for nothing
@@ -393,7 +398,8 @@ HOW_TO_USE = [
     "were applied, and they are counted in `reconciliation`.",
     "This file contains NO model projection, fair value, win probability, projected score, rating or "
     "recommendation. There is nothing here to defer to. The handicap is entirely yours.",
-    "Nothing is written back anywhere. Answer in the conversation; do not attempt to save, commit or return a file.",
+    "Nothing is written back anywhere. Answer in the conversation; do not attempt to save, commit or "
+    "return a file.",
     "For each bet you return, state: game, ticker, side (YES/NO), what that side means, the "
     "executable entry price, its breakeven, your fair probability, the fee-adjusted edge, your "
     "confidence, and the strongest case against the bet.",
@@ -427,15 +433,23 @@ def analysis_document(
     games = [game_block(packet, tz_name) for packet in packets]
 
     eligible = sum(int(p["counts"]["eligible"]) for p in packets)
-    in_artifact = sum(len(block["rows"]) for game in games for block in game["markets"].values())
+    in_artifact = sum(
+        len(block["rows"]) for game in games for block in game["markets"].values()
+    )
     if in_artifact != eligible:
         raise AnalysisCoverageError(
             f"{shard_name}: {in_artifact} contracts written but {eligible} are eligible "
             f"({eligible - in_artifact} unaccounted). The artifact is invalid."
         )
 
-    discovered_total = discovered if discovered is not None else sum(int(p["counts"]["discovered"]) for p in packets)
-    excluded_total = excluded if excluded is not None else sum(int(p["counts"]["excluded"]) for p in packets)
+    discovered_total = (
+        discovered
+        if discovered is not None
+        else sum(int(p["counts"]["discovered"]) for p in packets)
+    )
+    excluded_total = (
+        excluded if excluded is not None else sum(int(p["counts"]["excluded"]) for p in packets)
+    )
 
     source = slate.get("source") or {}
     config = slate.get("config") or {}
@@ -506,7 +520,8 @@ READING_THIS_FILE = {
     ),
     "markets[family].columns": "names the positions in every row of that family.",
     "markets[family].quote_age_s": (
-        "present when every contract in the family shares one quote age; otherwise quote_age_s is a column in the rows."
+        "present when every contract in the family shares one quote age; otherwise quote_age_s is a "
+        "column in the rows."
     ),
     "exchange_tier": (
         "Kalshi's own listing tier (A is a marquee matchup, D a minor one). An exchange attention "

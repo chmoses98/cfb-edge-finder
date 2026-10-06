@@ -283,7 +283,9 @@ def test_one_known_fcs_side_and_one_real_fbs_side_is_not_fcs_vs_fcs():
     # branch at all, and is instead handled downstream by
     # classify_mapped_market's MAPPED_UNSUPPORTED_POPULATION.
     game = make_game()
-    result = map_kalshi_event_to_game(make_evidence("Cornell at Ohio State"), [game], fcs_school_names=FCS_SCHOOL_NAMES)
+    result = map_kalshi_event_to_game(
+        make_evidence("Cornell at Ohio State"), [game], fcs_school_names=FCS_SCHOOL_NAMES
+    )
     assert result.reason == KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING
 
 
@@ -346,7 +348,9 @@ def test_classify_mapped_market_passes_through_a_failed_mapping():
 def test_classify_mapped_market_none_family_is_parse_unresolved():
     game = make_game()
     mapping = map_kalshi_event_to_game(make_evidence("Texas at Ohio State"), [game])
-    reason = classify_mapped_market(mapping, market_family=None, home_classification="fbs", away_classification="fbs")
+    reason = classify_mapped_market(
+        mapping, market_family=None, home_classification="fbs", away_classification="fbs"
+    )
     assert reason == KalshiCfbCoverageReason.PARSE_UNRESOLVED
 
 

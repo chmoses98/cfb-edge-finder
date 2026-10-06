@@ -137,11 +137,13 @@ class FakeCFBD:
         return self.history.get(season, {}).get("advanced", [])
 
 
-def _make_state(
-    tmp_repo: Path, *, kickoff_hours_ahead: float = 24.0, n_games: int = 2, fetched_at: datetime | None = None
-) -> football_state.FootballState:
+def _make_state(tmp_repo: Path, *, kickoff_hours_ahead: float = 24.0, n_games: int = 2,
+                fetched_at: datetime | None = None) -> football_state.FootballState:
     kickoff = NOW + timedelta(hours=kickoff_hours_ahead)
-    schedule = [_schedule_row(i, FBS_TEAMS[2 * i][1], FBS_TEAMS[2 * i + 1][1], kickoff) for i in range(n_games)]
+    schedule = [
+        _schedule_row(i, FBS_TEAMS[2 * i][1], FBS_TEAMS[2 * i + 1][1], kickoff)
+        for i in range(n_games)
+    ]
     hist_games, hist_adv = _history_rows()
     client = FakeCFBD(schedule=schedule, history={2025: {"games": hist_games, "advanced": hist_adv}})
     state = football_state.build_football_state(
@@ -151,9 +153,8 @@ def _make_state(
     return state
 
 
-def _run_scan_from_state(
-    repo_dir: Path, state, monkeypatch, *, now=NOW, run_id="run-1", markets=None, schedule_ts=None
-):
+def _run_scan_from_state(repo_dir: Path, state, monkeypatch, *, now=NOW, run_id="run-1",
+                         markets=None, schedule_ts=None):
     inputs = state.to_scan_inputs(now)
     games = [g for g in inputs.games if g.status == "scheduled"]
     markets = markets if markets is not None else make_markets(games)
@@ -225,12 +226,8 @@ def test_due_checkpoint_captures_while_cfbd_returns_429(tmp_path, monkeypatch, h
     # winner cross-check correctly refuses (pre-existing harness
     # artifact); every SPREAD/TOTAL contract must model-price, proving
     # the projection path ran entirely from the artifact.
-    priced = [
-        r
-        for r in rows
-        if r["observation"]["snapshot_timing"]["label"] == label
-        and r["observation"].get("family") in ("spread", "total")
-    ]
+    priced = [r for r in rows if r["observation"]["snapshot_timing"]["label"] == label
+              and r["observation"].get("family") in ("spread", "total")]
     assert priced and all(r["observation"]["pricing_status"] == "model_priced" for r in priced)
     assert dead_client.calls == 0  # the entire capture never touched CFBD
 
@@ -272,7 +269,9 @@ def test_missing_state_fails_closed_when_build_fails(tmp_path):
 
 def test_stale_schedule_timestamp_blocks_rows_via_existing_guard(tmp_path, monkeypatch):
     state = _make_state(tmp_path, kickoff_hours_ahead=0.5)
-    result, _t, report, _g = _run_scan_from_state(tmp_path, state, monkeypatch, schedule_ts=NOW - timedelta(hours=7))
+    result, _t, report, _g = _run_scan_from_state(
+        tmp_path, state, monkeypatch, schedule_ts=NOW - timedelta(hours=7)
+    )
     assert result.written == 0
     assert report.stale_schedule_failures > 0
 
@@ -298,22 +297,14 @@ def test_unknown_kickoff_captures_nothing(tmp_path, monkeypatch):
     telemetry = ScanTelemetry()
     report = health.CaptureHealthReport()
     result = scanner._apply_scan(
-        tmp_path,
-        season=SEASON,
-        games=broken,
+        tmp_path, season=SEASON, games=broken,
         classification_by_game_id=inputs.classification_by_game_id,
         fcs_school_names=inputs.fcs_school_names,
         cache=GameProjectionCache(lines_provider=inputs.lines_loader),
-        kalshi_client=None,
-        model_version=MODEL_VERSION,
-        training_cutoff_fn=lambda r: "cutoff",
-        n_simulations=200,
-        seed=0,
-        now=NOW,
-        schedule_source_timestamp=state.schedule_fetched_at,
-        run_id="r",
-        report=report,
-        telemetry=telemetry,
+        kalshi_client=None, model_version=MODEL_VERSION,
+        training_cutoff_fn=lambda r: "cutoff", n_simulations=200, seed=0,
+        now=NOW, schedule_source_timestamp=state.schedule_fetched_at,
+        run_id="r", report=report, telemetry=telemetry,
     )
     assert result.written == 0
 
@@ -329,7 +320,9 @@ def test_close_time_earlier_than_kickoff_marks_kickoff_uncertain_and_captures_no
     for series_markets in markets.values():
         for market in series_markets:
             market["close_time"] = drifted
-    result, telemetry, report, _g = _run_scan_from_state(tmp_path, state, monkeypatch, markets=markets)
+    result, telemetry, report, _g = _run_scan_from_state(
+        tmp_path, state, monkeypatch, markets=markets
+    )
     assert result.written == 0
     assert telemetry.kickoff_uncertain_games >= 1
     assert report.kickoff_uncertain_events >= 1
@@ -414,16 +407,10 @@ def test_projection_from_artifact_is_bit_identical_to_live_inputs(tmp_path):
 
     game = inputs.games[0]
     request = GameProjectionRequest(
-        game_id=game.game_id,
-        home_id=game.home_team_id,
-        away_id=game.away_team_id,
-        home_classification="fbs",
-        away_classification="fbs",
-        is_neutral_site=False,
-        as_of_season=SEASON,
-        as_of_week=1,
-        n_simulations=500,
-        seed=0,
+        game_id=game.game_id, home_id=game.home_team_id, away_id=game.away_team_id,
+        home_classification="fbs", away_classification="fbs",
+        is_neutral_site=False, as_of_season=SEASON, as_of_week=1,
+        n_simulations=500, seed=0,
     )
     from_artifact = GameProjectionCache(artifact_lines).get_or_build(request).projection
     from_live = GameProjectionCache(live_lines).get_or_build(request).projection
@@ -452,24 +439,19 @@ def _seed_started_game_rows(repo_dir: Path, *, kickoff: datetime, captured_label
     path = _obs_path(repo_dir)
     with path.seed_writer(replace=False) as handle:
         for i, label in enumerate(captured_labels):
-            handle.write(
-                json.dumps(
-                    {
-                        "schema_version": "research_corpus_v2",
-                        "capture_mode": "PROSPECTIVE",
-                        "season": SEASON,
-                        "observation_key": f"seed-{label}-{i}",
-                        "kickoff_utc_at_capture": kickoff.isoformat(),
-                        "observation": {
-                            "kalshi_market_ticker": "KXNCAAFGAME-26SEP01TEST-AAA",
-                            "game_id": "cfb-2026-wk01-test-game",
-                            "captured_at": (kickoff - timedelta(hours=20)).isoformat(),
-                            "snapshot_timing": {"label": label, "hours_before_kickoff": 20.0},
-                        },
-                    }
-                )
-                + "\n"
-            )
+            handle.write(json.dumps({
+                "schema_version": "research_corpus_v2",
+                "capture_mode": "PROSPECTIVE",
+                "season": SEASON,
+                "observation_key": f"seed-{label}-{i}",
+                "kickoff_utc_at_capture": kickoff.isoformat(),
+                "observation": {
+                    "kalshi_market_ticker": "KXNCAAFGAME-26SEP01TEST-AAA",
+                    "game_id": "cfb-2026-wk01-test-game",
+                    "captured_at": (kickoff - timedelta(hours=20)).isoformat(),
+                    "snapshot_timing": {"label": label, "hours_before_kickoff": 20.0},
+                },
+            }) + "\n")
 
 
 def test_reconciliation_writes_terminal_missed_reasons_after_hard_down_window(tmp_path):
@@ -477,7 +459,9 @@ def test_reconciliation_writes_terminal_missed_reasons_after_hard_down_window(tm
     _seed_started_game_rows(tmp_path, kickoff=kickoff, captured_labels=["EARLY_OPEN", "T_24H"])
     obs_before = _obs_path(tmp_path).text()
 
-    written = checkpoint_reconciliation.reconcile(tmp_path / "data" / "research", SEASON, now=NOW, run_id="reconciler")
+    written = checkpoint_reconciliation.reconcile(
+        tmp_path / "data" / "research", SEASON, now=NOW, run_id="reconciler"
+    )
     assert written > 0
     rows = [json.loads(line) for line in _state_path(tmp_path).text().splitlines() if line.strip()]
     by_label = {r["timing_label"]: r for r in rows}
@@ -492,18 +476,17 @@ def test_reconciliation_writes_terminal_missed_reasons_after_hard_down_window(tm
     assert _obs_path(tmp_path).text() == obs_before
 
     # Idempotent: a second reconciliation writes nothing new.
-    assert (
-        checkpoint_reconciliation.reconcile(
-            tmp_path / "data" / "research", SEASON, now=NOW + timedelta(minutes=5), run_id="again"
-        )
-        == 0
-    )
+    assert checkpoint_reconciliation.reconcile(
+        tmp_path / "data" / "research", SEASON, now=NOW + timedelta(minutes=5), run_id="again"
+    ) == 0
 
 
 def test_reconciliation_leaves_open_windows_and_unknown_kickoffs_alone(tmp_path):
     future_kick = NOW + timedelta(hours=30)
     _seed_started_game_rows(tmp_path, kickoff=future_kick, captured_labels=["EARLY_OPEN"])
-    written = checkpoint_reconciliation.reconcile(tmp_path / "data" / "research", SEASON, now=NOW, run_id="r")
+    written = checkpoint_reconciliation.reconcile(
+        tmp_path / "data" / "research", SEASON, now=NOW, run_id="r"
+    )
     # Nothing has provably passed for a game 30h away except nothing:
     # T_7D may legitimately be already-missed depending on discovery age,
     # but CLOSING/T_30/T_60/T_90/T_6H must NOT be.
@@ -563,9 +546,7 @@ def test_real_branch_swap_checkout_load_scan_capture(tmp_path, monkeypatch):
     # and is data-only (no src/ tree was ever staged by this path).
     show = subprocess.run(
         ["git", "show", f"origin/research-data:data/research/football_state/{SEASON}.manifest.json"],
-        cwd=work,
-        capture_output=True,
-        text=True,
+        cwd=work, capture_output=True, text=True,
     )
     assert show.returncode == 0
     manifest = json.loads(show.stdout)
@@ -577,19 +558,16 @@ def test_real_branch_swap_checkout_load_scan_capture(tmp_path, monkeypatch):
     # The observations corpus is SHARDED by UTC date, so name the tracked
     # shard files rather than a single `{SEASON}.jsonl` blob.
     obs_ls = subprocess.run(
-        ["git", "ls-tree", "-r", "--name-only", "origin/research-data", "--", f"data/research/observations/{SEASON}"],
-        cwd=work,
-        capture_output=True,
-        text=True,
+        ["git", "ls-tree", "-r", "--name-only", "origin/research-data",
+         "--", f"data/research/observations/{SEASON}"],
+        cwd=work, capture_output=True, text=True,
     )
     assert obs_ls.returncode == 0
     obs_files = [f for f in obs_ls.stdout.split() if f.endswith(".jsonl")]
     assert obs_files, "no observation shard reached the durable branch"
     obs_show = subprocess.run(
         ["git", "show", f"origin/research-data:{obs_files[0]}"],
-        cwd=work,
-        capture_output=True,
-        text=True,
+        cwd=work, capture_output=True, text=True,
     )
     assert obs_show.returncode == 0 and obs_show.stdout.strip()
     assert state.schema_version == football_state.FOOTBALL_STATE_SCHEMA_VERSION

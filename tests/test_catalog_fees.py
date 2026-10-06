@@ -62,7 +62,7 @@ from cfb_edge_finder.catalog.fees import (
 
 
 def test_fees_are_six_decimal_dollar_amounts_not_whole_cents():
-    """ "Fees are six-decimal dollar amounts ($0.000001 granularity)"."""
+    """"Fees are six-decimal dollar amounts ($0.000001 granularity)"."""
     assert FEE_GRANULARITY_DOLLARS == 0.000001
     assert ceil_to_granularity(0.00363825) == pytest.approx(0.003639, abs=1e-12)
     # A value already on the grid must not be pushed up a tick.
@@ -84,18 +84,22 @@ def test_the_quadratic_model_fee_reproduces_the_official_example_exactly():
 
         0.07 * 1 * 0.055 * (1 - 0.055) = 0.00363825
     """
-    assert quadratic_model_fee(0.055, contracts=1, fee_multiplier=1) == pytest.approx(0.00363825, abs=1e-11)
-    assert model_trade_fee(0.055, contracts=1, fee_multiplier=1) == pytest.approx(0.003639, abs=1e-12)
+    assert quadratic_model_fee(0.055, contracts=1, fee_multiplier=1) == pytest.approx(
+        0.00363825, abs=1e-11
+    )
+    assert model_trade_fee(0.055, contracts=1, fee_multiplier=1) == pytest.approx(
+        0.003639, abs=1e-12
+    )
 
 
 def test_the_fcm_cleared_fill_example_reproduces_component_by_component():
     """Verbatim from the docs, for a NON-DIRECT member ($0.01 precision):
 
-    signed revenue -$0.055000, model fee $0.00363825
-    trade fee     = ceil_6dp($0.00363825)        = $0.003639
-    aligned change= floor_cent(-0.055 - 0.003639) = -$0.060000
-    rounding fee  = (-0.055 - 0.003639) - (-0.06) = $0.001361
-    "the trade fee plus rounding fee is exactly $0.005"
+        signed revenue -$0.055000, model fee $0.00363825
+        trade fee     = ceil_6dp($0.00363825)        = $0.003639
+        aligned change= floor_cent(-0.055 - 0.003639) = -$0.060000
+        rounding fee  = (-0.055 - 0.003639) - (-0.06) = $0.001361
+        "the trade fee plus rounding fee is exactly $0.005"
     """
     components = rounding_fee_components(
         signed_revenue=-0.055,
@@ -111,12 +115,14 @@ def test_the_fcm_cleared_fill_example_reproduces_component_by_component():
 def test_the_accumulator_example_reproduces_row_for_row():
     """Verbatim from the docs, non-direct member ($0.01 precision):
 
-    Fill  Added   Before Rebate   Rebate   Carried Forward
-    1     $0.004  $0.004          -        $0.004
-    2     $0.004  $0.008          -        $0.008
-    3     $0.004  $0.012          $0.010   $0.002
+        Fill  Added   Before Rebate   Rebate   Carried Forward
+        1     $0.004  $0.004          -        $0.004
+        2     $0.004  $0.008          -        $0.008
+        3     $0.004  $0.012          $0.010   $0.002
     """
-    rows = rebate_schedule([0.004, 0.004, 0.004], target_precision=NON_DIRECT_MEMBER_PRECISION_DOLLARS)
+    rows = rebate_schedule(
+        [0.004, 0.004, 0.004], target_precision=NON_DIRECT_MEMBER_PRECISION_DOLLARS
+    )
     expected = [(0.004, 0.0, 0.004), (0.008, 0.0, 0.008), (0.012, 0.010, 0.002)]
     assert len(rows) == len(expected)
     for got, want in zip(rows, expected, strict=True):
@@ -126,14 +132,18 @@ def test_the_accumulator_example_reproduces_row_for_row():
 
 
 def test_direct_and_non_direct_balance_precisions_are_both_carried():
-    """ "Direct member balances are aligned to $0.0001 (0.01c); non-direct
+    """"Direct member balances are aligned to $0.0001 (0.01c); non-direct
     member balances are aligned to $0.01 (1c)." A direct member's rebate
     follows the same mechanics in $0.0001 increments."""
     assert DIRECT_MEMBER_PRECISION_DOLLARS == 0.0001
     assert NON_DIRECT_MEMBER_PRECISION_DOLLARS == 0.01
-    assert floor_to_precision(-0.058639, NON_DIRECT_MEMBER_PRECISION_DOLLARS) == pytest.approx(-0.06, abs=1e-9)
+    assert floor_to_precision(-0.058639, NON_DIRECT_MEMBER_PRECISION_DOLLARS) == pytest.approx(
+        -0.06, abs=1e-9
+    )
     # The same fill on a direct member's grid rounds far less far.
-    assert floor_to_precision(-0.058639, DIRECT_MEMBER_PRECISION_DOLLARS) == pytest.approx(-0.0587, abs=1e-9)
+    assert floor_to_precision(-0.058639, DIRECT_MEMBER_PRECISION_DOLLARS) == pytest.approx(
+        -0.0587, abs=1e-9
+    )
     # "Direct-member rebates follow the same mechanics in $0.0001
     # increments." Same mechanics, finer grid: scale the official
     # accumulator example down by 100 and it reproduces row for row.
@@ -319,8 +329,12 @@ def test_the_published_headline_is_the_executable_price_not_the_mid():
     block = fee_block(resolve_effective_fee({}, SERIES), yes_ask=0.51, yes_mid=0.50)
     assert block["basis_yes_ask"] == pytest.approx(0.51)
     assert block["basis_yes_mid"] == pytest.approx(0.50)
-    assert block["model_trade_fee_at_yes_ask"] == pytest.approx(model_trade_fee(0.51, 1, 1), abs=1e-12)
-    assert block["model_trade_fee_at_yes_mid"] == pytest.approx(model_trade_fee(0.50, 1, 1), abs=1e-12)
+    assert block["model_trade_fee_at_yes_ask"] == pytest.approx(
+        model_trade_fee(0.51, 1, 1), abs=1e-12
+    )
+    assert block["model_trade_fee_at_yes_mid"] == pytest.approx(
+        model_trade_fee(0.50, 1, 1), abs=1e-12
+    )
     # Neither key is named in a way that could pass for a net fee.
     assert all("net" not in key for key in block if key != "is_net_fee")
 
@@ -353,7 +367,9 @@ def test_the_fee_is_quoted_per_a_stated_number_of_contracts():
     ten = fee_block(resolve_effective_fee({}, SERIES), yes_ask=0.51, yes_mid=0.50, contracts=10)
     one = fee_block(resolve_effective_fee({}, SERIES), yes_ask=0.51, yes_mid=0.50, contracts=1)
     assert ten["per_contracts"] == pytest.approx(10.0)
-    assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(10 * one["model_trade_fee_at_yes_ask"], rel=1e-4)
+    assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(
+        10 * one["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
 
 
 # =========================================================================
@@ -426,15 +442,17 @@ def test_the_two_supported_models_still_price_normally():
         fee = resolve_effective_fee({}, {"fee_type": model, "fee_multiplier": 1})
         assert fee.support is FeeModelSupport.SUPPORTED, model
         assert fee.is_supported_model is True
-        assert fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)["model_trade_fee_at_yes_ask"] == pytest.approx(
-            model_trade_fee(0.51, 1, 1), abs=1e-12
-        )
+        assert fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)[
+            "model_trade_fee_at_yes_ask"
+        ] == pytest.approx(model_trade_fee(0.51, 1, 1), abs=1e-12)
 
 
 def test_an_event_override_onto_a_future_model_is_also_refused():
     """The allowlist applies to the EFFECTIVE model, wherever it came
     from -- an override must not be a way around it."""
-    fee = resolve_effective_fee({"fee_type_override": "quadratic_v2"}, {"fee_type": "quadratic", "fee_multiplier": 1})
+    fee = resolve_effective_fee(
+        {"fee_type_override": "quadratic_v2"}, {"fee_type": "quadratic", "fee_multiplier": 1}
+    )
     assert fee.source is FeeSource.EVENT_OVERRIDE
     assert fee.support is FeeModelSupport.UNSUPPORTED_MODEL
     assert fee_block(fee, yes_ask=0.51, yes_mid=0.50, no_ask=0.51)["model_trade_fee_at_yes_ask"] is None
@@ -465,7 +483,9 @@ def test_each_side_is_priced_from_its_own_quoted_ask():
     assert block["model_trade_fee_at_yes_ask"] == pytest.approx(model_trade_fee(0.60, 1, 1), abs=1e-12)
     assert block["model_trade_fee_at_no_ask"] == pytest.approx(model_trade_fee(0.55, 1, 1), abs=1e-12)
     # It is NOT the complement of the YES ask.
-    assert block["model_trade_fee_at_no_ask"] != pytest.approx(model_trade_fee(1 - 0.60, 1, 1), abs=1e-12)
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        model_trade_fee(1 - 0.60, 1, 1), abs=1e-12
+    )
 
 
 def test_the_two_side_fees_differ_when_the_spread_is_wide():
@@ -473,13 +493,17 @@ def test_the_two_side_fees_differ_when_the_spread_is_wide():
     the two nearly equal, which is exactly why a consumer might assume one
     stands for the other. On a wide book it does not."""
     wide = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.90, yes_mid=0.50, no_ask=0.30)
-    assert wide["model_trade_fee_at_yes_ask"] != pytest.approx(wide["model_trade_fee_at_no_ask"], rel=1e-6)
+    assert wide["model_trade_fee_at_yes_ask"] != pytest.approx(
+        wide["model_trade_fee_at_no_ask"], rel=1e-6
+    )
     # A 90c YES sits far from the middle, so its fee is much smaller than
     # a 30c NO's -- a consumer reading one for the other is out by ~2.3x.
     assert wide["model_trade_fee_at_no_ask"] > 2 * wide["model_trade_fee_at_yes_ask"]
 
     tight = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.51, yes_mid=0.50, no_ask=0.49)
-    assert tight["model_trade_fee_at_yes_ask"] == pytest.approx(tight["model_trade_fee_at_no_ask"], rel=1e-6)
+    assert tight["model_trade_fee_at_yes_ask"] == pytest.approx(
+        tight["model_trade_fee_at_no_ask"], rel=1e-6
+    )
 
 
 def test_the_complement_of_the_yes_ask_is_the_NO_BID_not_the_no_ask():
@@ -501,8 +525,12 @@ def test_the_complement_of_the_yes_ask_is_the_NO_BID_not_the_no_ask():
     block = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=yes_ask, yes_mid=0.87, no_ask=no_ask)
     assert block["basis_no_ask"] == pytest.approx(no_ask)
     # Had we derived it, we would have priced 0.12 -- the NO BID.
-    assert block["model_trade_fee_at_no_ask"] == pytest.approx(model_trade_fee(no_ask, 1, 1), abs=1e-12)
-    assert block["model_trade_fee_at_no_ask"] != pytest.approx(model_trade_fee(1 - yes_ask, 1, 1), abs=1e-12)
+    assert block["model_trade_fee_at_no_ask"] == pytest.approx(
+        model_trade_fee(no_ask, 1, 1), abs=1e-12
+    )
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        model_trade_fee(1 - yes_ask, 1, 1), abs=1e-12
+    )
 
 
 def test_a_missing_no_ask_yields_a_null_no_fee_not_an_invented_complement():
@@ -535,6 +563,12 @@ def test_the_block_labels_which_bases_are_executable():
 
 def test_both_side_fees_scale_with_contracts_together():
     one = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.45)
-    ten = fee_block(resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.45, contracts=10)
-    assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(10 * one["model_trade_fee_at_yes_ask"], rel=1e-4)
-    assert ten["model_trade_fee_at_no_ask"] == pytest.approx(10 * one["model_trade_fee_at_no_ask"], rel=1e-4)
+    ten = fee_block(
+        resolve_effective_fee({}, TIGHT), yes_ask=0.60, yes_mid=0.50, no_ask=0.45, contracts=10
+    )
+    assert ten["model_trade_fee_at_yes_ask"] == pytest.approx(
+        10 * one["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
+    assert ten["model_trade_fee_at_no_ask"] == pytest.approx(
+        10 * one["model_trade_fee_at_no_ask"], rel=1e-4
+    )

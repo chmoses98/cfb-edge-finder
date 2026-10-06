@@ -87,8 +87,12 @@ class GameDisagreement:
         return {
             "game_key": self.game_key,
             "priced_contracts": self.contracts,
-            "mean_absolute_disagreement": (None if self.mean_absolute is None else round(self.mean_absolute, 6)),
-            "mean_signed_disagreement": (None if self.mean_signed is None else round(self.mean_signed, 6)),
+            "mean_absolute_disagreement": (
+                None if self.mean_absolute is None else round(self.mean_absolute, 6)
+            ),
+            "mean_signed_disagreement": (
+                None if self.mean_signed is None else round(self.mean_signed, 6)
+            ),
             "level": self.level,
             "reason": self.reason,
             "note": (

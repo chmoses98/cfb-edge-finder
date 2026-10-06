@@ -272,16 +272,12 @@ def build_dataset(observations_source, attributions_source) -> AnalysisDataset:
                 executable_no_price=entry_no,
             ),
             yes_clv=closing_line_value(
-                side=Side.YES,
-                entry_price=entry_yes,
-                closing_price=closing.get("closing_yes_price"),
-                closing_status=closing_status,
+                side=Side.YES, entry_price=entry_yes,
+                closing_price=closing.get("closing_yes_price"), closing_status=closing_status,
             ),
             no_clv=closing_line_value(
-                side=Side.NO,
-                entry_price=entry_no,
-                closing_price=closing.get("closing_no_price"),
-                closing_status=closing_status,
+                side=Side.NO, entry_price=entry_no,
+                closing_price=closing.get("closing_no_price"), closing_status=closing_status,
             ),
             closing_status=closing_status,
             yes_research_unit_pnl=yes_econ.get("research_unit_pnl"),
@@ -305,9 +301,13 @@ def build_dataset(observations_source, attributions_source) -> AnalysisDataset:
     dataset.ledger_load_count += 1
 
     dataset.supported_observations = sum(
-        1 for o in observations.values() if (o.get("observation") or {}).get("pricing_status") == "model_priced"
+        1
+        for o in observations.values()
+        if (o.get("observation") or {}).get("pricing_status") == "model_priced"
     )
     # Belt-and-braces: nothing unsupported may have reached the primary set.
-    dataset.health.unsupported_leaked_into_primary = sum(1 for r in dataset.rows if r.family not in SUPPORTED_FAMILIES)
+    dataset.health.unsupported_leaked_into_primary = sum(
+        1 for r in dataset.rows if r.family not in SUPPORTED_FAMILIES
+    )
     dataset.load_seconds = time.perf_counter() - started
     return dataset

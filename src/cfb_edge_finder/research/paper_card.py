@@ -559,10 +559,8 @@ def render_paper_card(card: PaperCard) -> str:
                 control_m = "-" if p.control_projected_margin is None else f"{p.control_projected_margin:+.2f}"
                 shadow_m = "-" if p.shadow_projected_margin is None else f"{p.shadow_projected_margin:+.2f}"
                 lines.append(f"      projected home margin: CONTROL {control_m} / SHADOW {shadow_m}")
-            lines.append(
-                f"      model version: {p.model_version or 'unknown'}  fee schedule: "
-                f"{p.fee_schedule_version or 'unknown'}"
-            )
+            lines.append(f"      model version: {p.model_version or 'unknown'}  fee schedule: "
+                         f"{p.fee_schedule_version or 'unknown'}")
             for note in p.notes:
                 lines.append(f"      note: {note}")
             lines.append("")

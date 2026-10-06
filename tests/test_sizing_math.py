@@ -102,7 +102,9 @@ def test_effective_cost_per_contract_falls_as_the_order_grows():
     """The fee ceiling is amortised, so a bigger order is cheaper per
     contract. Sizing that assumes a fixed per-contract fee is wrong at
     exactly the small counts where it matters."""
-    costs = [effective_cost_per_contract(contract_count=n, price_cents=50) for n in (1, 2, 10, 100, 10_000)]
+    costs = [
+        effective_cost_per_contract(contract_count=n, price_cents=50) for n in (1, 2, 10, 100, 10_000)
+    ]
     assert costs == sorted(costs, reverse=True)
     assert costs[0] == Decimal(52)
     assert costs[-1] < Decimal("51.76")
@@ -220,14 +222,18 @@ def test_scaled_kelly_requires_an_explicit_multiplier():
 
 def test_scaled_kelly_scales_linearly():
     full = full_kelly_fraction(probability=Decimal("0.7"), all_in_cost_cents=52)
-    half = scaled_kelly_fraction(probability=Decimal("0.7"), all_in_cost_cents=52, kelly_multiplier=Decimal("0.5"))
+    half = scaled_kelly_fraction(
+        probability=Decimal("0.7"), all_in_cost_cents=52, kelly_multiplier=Decimal("0.5")
+    )
     assert half == full / 2
 
 
 @pytest.mark.parametrize("bad", ["-0.1", "1.5"])
 def test_kelly_multiplier_outside_zero_to_one_raises(bad):
     with pytest.raises(SizingDomainError):
-        scaled_kelly_fraction(probability=Decimal("0.7"), all_in_cost_cents=52, kelly_multiplier=Decimal(bad))
+        scaled_kelly_fraction(
+            probability=Decimal("0.7"), all_in_cost_cents=52, kelly_multiplier=Decimal(bad)
+        )
 
 
 # ------------------------------------------------------------- EV
@@ -245,7 +251,9 @@ def test_expected_value_zero_contracts_is_zero():
 def test_expected_value_sign_flips_exactly_at_break_even():
     be = fee_adjusted_break_even(contract_count=100, price_cents=50)
     assert expected_value_cents(probability=be, contract_count=100, price_cents=50) == 0
-    assert expected_value_cents(probability=be + Decimal("0.001"), contract_count=100, price_cents=50) > 0
+    assert expected_value_cents(
+        probability=be + Decimal("0.001"), contract_count=100, price_cents=50
+    ) > 0
 
 
 # --------------------------------------------------------- sizing
@@ -374,4 +382,6 @@ def test_sizing_holds_across_every_tradeable_price():
         )
         if result.contract_count:
             assert result.order_cost_cents <= result.target_stake_cents
-            assert result.fee_cents == taker_fee_cents(contract_count=result.contract_count, price_cents=price)
+            assert result.fee_cents == taker_fee_cents(
+                contract_count=result.contract_count, price_cents=price
+            )

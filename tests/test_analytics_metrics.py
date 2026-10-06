@@ -81,8 +81,8 @@ def test_no_price_falls_is_unfavorable_for_no():
 
 def test_opposite_sides_of_the_same_move_disagree():
     """One market move; the two sides must reach opposite verdicts."""
-    yes = _clv(Side.YES, 0.40, 0.55)  # YES got dearer
-    no = _clv(Side.NO, 0.60, 0.45)  # ...so NO got cheaper
+    yes = _clv(Side.YES, 0.40, 0.55)   # YES got dearer
+    no = _clv(Side.NO, 0.60, 0.45)     # ...so NO got cheaper
     assert yes.favorable is True and no.favorable is False
 
 
@@ -101,14 +101,9 @@ def test_identical_close_is_neither_favorable_nor_unfavorable():
 
 @pytest.mark.parametrize(
     "status",
-    [
-        "CLOSING_MISSING_MARKET_CLOSED",
-        "CLOSING_MISSING_API_FAILURE",
-        "CLOSING_MISSING_NO_EXECUTABLE_QUOTE",
-        "CLOSING_MISSING_MAPPING_FAILURE",
-        "CLOSING_MISSING_NO_SCAN_IN_WINDOW",
-        "CLOSING_NOT_APPLICABLE",
-    ],
+    ["CLOSING_MISSING_MARKET_CLOSED", "CLOSING_MISSING_API_FAILURE",
+     "CLOSING_MISSING_NO_EXECUTABLE_QUOTE", "CLOSING_MISSING_MAPPING_FAILURE",
+     "CLOSING_MISSING_NO_SCAN_IN_WINDOW", "CLOSING_NOT_APPLICABLE"],
 )
 def test_missing_close_is_unavailable_never_zero(status):
     """Mission section 6: a missing close must never enter an aggregate
@@ -196,7 +191,9 @@ def test_price_of_one_has_no_upside():
 
 
 def test_missing_entry_price_yields_no_economics():
-    assert research_unit_economics(side=Side.YES, entry_price=None, event_true=True, series_ticker=SERIES) is None
+    assert research_unit_economics(
+        side=Side.YES, entry_price=None, event_true=True, series_ticker=SERIES
+    ) is None
 
 
 def test_economics_is_defined_for_yes_and_no_only():

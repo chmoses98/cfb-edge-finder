@@ -93,7 +93,9 @@ def _ticker_facts_from_ledger(observations: persistence.PathSource) -> dict[str,
             continue
         label = (observation.get("snapshot_timing") or {}).get("label")
         captured_at = str(observation.get("captured_at") or "")
-        entry = facts.setdefault(ticker, {"game_id": game_id, "kickoff": None, "kick_seen_at": "", "labels": set()})
+        entry = facts.setdefault(
+            ticker, {"game_id": game_id, "kickoff": None, "kick_seen_at": "", "labels": set()}
+        )
         if isinstance(label, str):
             entry["labels"].add(label)
         kickoff = _parse_iso(row.get("kickoff_utc_at_capture"))
@@ -143,7 +145,9 @@ def build_reconciliation_rows(
     facts = (
         _ticker_facts_from_index(index)
         if index is not None
-        else _ticker_facts_from_ledger(persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season))
+        else _ticker_facts_from_ledger(
+            persistence.corpus_sources(base_dir, persistence.OBSERVATIONS_SUBDIR, season)
+        )
     )
     if not facts:
         return []
@@ -152,7 +156,9 @@ def build_reconciliation_rows(
         persistence.corpus_sources(base_dir, persistence.CAPTURE_STATE_SUBDIR, season)
     )
     terminal: set[tuple[str, str]] = {
-        (row.kalshi_market_ticker, row.timing_label) for row in existing if row.state in TERMINAL_CAPTURE_STATES
+        (row.kalshi_market_ticker, row.timing_label)
+        for row in existing
+        if row.state in TERMINAL_CAPTURE_STATES
     }
 
     rows: list[CaptureStateRecord] = []

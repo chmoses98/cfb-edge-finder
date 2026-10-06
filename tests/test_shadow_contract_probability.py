@@ -44,7 +44,9 @@ from cfb_edge_finder.schemas.projection import GameDistribution
 # A frozen, deliberately lopsided game: home clearly better, so every
 # orientation has a genuinely different answer and a test cannot pass by
 # coincidence on a coin-flip matchup.
-CONTROL = GameDistribution(home_mean=31.0, away_mean=17.0, home_sd=10.0, away_sd=9.0, correlation=0.1)
+CONTROL = GameDistribution(
+    home_mean=31.0, away_mean=17.0, home_sd=10.0, away_sd=9.0, correlation=0.1
+)
 TALENT_DIFFERENTIAL = 200.0
 DELTA = TALENT_BETA * TALENT_DIFFERENTIAL  # ~3.8 points toward home
 
@@ -147,14 +149,18 @@ def test_spread_home_side_is_home_winning_by_strictly_more_than_threshold(thresh
     # price_parsed_contract converts a named-team threshold T to
     # home_line = -T for the home side (see market_pricing's derivation).
     assert result.basis == pytest.approx(prob_home_covers(CONTROL, -threshold))
-    assert result.shadow == pytest.approx(prob_home_covers(shadow_game_distribution(CONTROL, DELTA), -threshold))
+    assert result.shadow == pytest.approx(
+        prob_home_covers(shadow_game_distribution(CONTROL, DELTA), -threshold)
+    )
 
 
 @pytest.mark.parametrize("threshold", [3.5, 7.5, 14.5])
 def test_spread_away_side_is_away_winning_by_strictly_more_than_threshold(threshold) -> None:
     result = price(MarketFamily.SPREAD, threshold=threshold, team=Side.AWAY)
     assert result.basis == pytest.approx(prob_away_covers(CONTROL, threshold))
-    assert result.shadow == pytest.approx(prob_away_covers(shadow_game_distribution(CONTROL, DELTA), threshold))
+    assert result.shadow == pytest.approx(
+        prob_away_covers(shadow_game_distribution(CONTROL, DELTA), threshold)
+    )
 
 
 def test_the_two_spread_sides_are_not_accidentally_identical() -> None:
@@ -226,8 +232,12 @@ ALL_ORIENTATIONS = [
 ]
 
 
-@pytest.mark.parametrize("label,family,side,threshold,team", ALL_ORIENTATIONS, ids=[c[0] for c in ALL_ORIENTATIONS])
-def test_zero_talent_differential_makes_the_arms_identical(label, family, side, threshold, team) -> None:
+@pytest.mark.parametrize(
+    "label,family,side,threshold,team", ALL_ORIENTATIONS, ids=[c[0] for c in ALL_ORIENTATIONS]
+)
+def test_zero_talent_differential_makes_the_arms_identical(
+    label, family, side, threshold, team
+) -> None:
     """THE regression test for this repair.
 
     With no talent differential the shadow IS the control. If any
@@ -239,8 +249,12 @@ def test_zero_talent_differential_makes_the_arms_identical(label, family, side, 
     assert result.shadow_minus_basis == 0.0
 
 
-@pytest.mark.parametrize("label,family,side,threshold,team", ALL_ORIENTATIONS, ids=[c[0] for c in ALL_ORIENTATIONS])
-def test_every_orientation_prices_both_arms_or_neither(label, family, side, threshold, team) -> None:
+@pytest.mark.parametrize(
+    "label,family,side,threshold,team", ALL_ORIENTATIONS, ids=[c[0] for c in ALL_ORIENTATIONS]
+)
+def test_every_orientation_prices_both_arms_or_neither(
+    label, family, side, threshold, team
+) -> None:
     """One armed pricing would produce a delta against a missing
     counterfactual."""
     result = price(family, side=side, threshold=threshold, team=team)

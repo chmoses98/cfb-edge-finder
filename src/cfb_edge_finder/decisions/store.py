@@ -68,10 +68,7 @@ def _git_toplevel(path: Path) -> Path | None:
     try:
         result = subprocess.run(
             ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=30,
+            capture_output=True, text=True, check=False, timeout=30,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -84,10 +81,7 @@ def _git_remote(path: Path) -> str:
     try:
         result = subprocess.run(
             ["git", "-C", str(path), "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=30,
+            capture_output=True, text=True, check=False, timeout=30,
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -154,10 +148,8 @@ class DecisionStore:
                 f"({repo_top}), which is PUBLIC; refusing to write a decision record there"
             )
         remote = _git_remote(root).lower() if store_top is not None else ""
-        if any(
-            f"/{name}" in remote or remote.endswith(name) or remote.endswith(name + ".git")
-            for name in PUBLIC_REPOSITORY_MARKERS
-        ):
+        if any(f"/{name}" in remote or remote.endswith(name) or remote.endswith(name + ".git")
+               for name in PUBLIC_REPOSITORY_MARKERS):
             raise DecisionStoreUnavailable(
                 f"the decision store {root} is a checkout of a PUBLIC repository ({remote}); "
                 "refusing to write a decision record there"
@@ -207,7 +199,9 @@ class DecisionStore:
         raises AFTER the file exists locally, and the message says both."""
         problems = validate_decision_record(record)
         if problems:
-            raise DecisionStoreUnavailable("refusing to write an invalid decision record: " + "; ".join(problems))
+            raise DecisionStoreUnavailable(
+                "refusing to write an invalid decision record: " + "; ".join(problems)
+            )
         target = self.path_for(record)
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
@@ -217,7 +211,8 @@ class DecisionStore:
             if existing.get("record_id") == record.get("record_id"):
                 return target
             raise DecisionStoreUnavailable(
-                f"a different decision record already exists at {target}; refusing to overwrite decision-time evidence"
+                f"a different decision record already exists at {target}; refusing to overwrite "
+                "decision-time evidence"
             )
         encoded = json.dumps(record, indent=1, sort_keys=True, default=str) + "\n"
         fd, temp_name = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=str(target.parent))
@@ -233,9 +228,8 @@ class DecisionStore:
             except OSError:
                 pass
             raise
-        sync = (
-            os.environ.get(ENV_GIT_SYNC, "").strip().lower() in ("1", "true", "yes") if git_sync is None else git_sync
-        )
+        sync = (os.environ.get(ENV_GIT_SYNC, "").strip().lower() in ("1", "true", "yes")
+                if git_sync is None else git_sync)
         if sync:
             self._git_sync(target)
         return target
@@ -249,7 +243,8 @@ class DecisionStore:
         relative = target.relative_to(_git_toplevel(self.root))  # type: ignore[arg-type]
         for argv in (
             ["git", "-C", str(self.root), "add", "--", str(relative)],
-            ["git", "-C", str(self.root), "commit", "-q", "-m", f"decision record {target.stem}", "--", str(relative)],
+            ["git", "-C", str(self.root), "commit", "-q", "-m",
+             f"decision record {target.stem}", "--", str(relative)],
             ["git", "-C", str(self.root), "push", "-q"],
         ):
             result = subprocess.run(argv, capture_output=True, text=True, check=False, timeout=300)

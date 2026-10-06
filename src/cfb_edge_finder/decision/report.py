@@ -228,7 +228,9 @@ def render_report(
         lines.append(f"  {'market_ticker':<34} {'side':<4} {'timing':<12} state")
         for decision in sorted(run.decisions, key=lambda d: (d.market_ticker, d.side)):
             timing = decision.timing_label or "-"
-            lines.append(f"  {decision.market_ticker:<34} {decision.side:<4} {timing:<12} {decision.state.value}")
+            lines.append(
+                f"  {decision.market_ticker:<34} {decision.side:<4} {timing:<12} {decision.state.value}"
+            )
 
     lines += _bar("END")
     lines.append("No ranking, no sizing, and no instruction is produced by this report.")

@@ -46,7 +46,9 @@ def snap(
             parse_status=parse_status,
         ),
         timing_label="T_24H",
-        captured_at=((NOW - timedelta(seconds=30)).isoformat() if captured_at == "__default__" else captured_at),
+        captured_at=(
+            (NOW - timedelta(seconds=30)).isoformat() if captured_at == "__default__" else captured_at
+        ),
         model_probability=0.6,
         executable_yes_price=yes,
         executable_no_price=no,
@@ -167,7 +169,9 @@ def test_selection_ranks_on_all_in_cost_not_displayed_price():
     cheap_display = build_option(
         snap("A", yes=0.50), Side.YES, now=NOW, max_quote_age_seconds=300
     )  # 0.50 + 0.02 = 0.52
-    cheap_all_in = build_option(snap("B", yes=0.51), Side.YES, now=NOW, max_quote_age_seconds=300)  # 0.51 + 0.02 = 0.53
+    cheap_all_in = build_option(
+        snap("B", yes=0.51), Side.YES, now=NOW, max_quote_age_seconds=300
+    )  # 0.51 + 0.02 = 0.53
     assert cheap_display.all_in_cost < cheap_all_in.all_in_cost
     assert select_expression("k", [cheap_all_in, cheap_display]).selected is cheap_display
 

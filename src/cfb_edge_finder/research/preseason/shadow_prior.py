@@ -115,7 +115,9 @@ class ShadowAdjustment:
         }
 
 
-def shadow_margin(*, control_margin: float, home_talent: float | None, away_talent: float | None) -> ShadowAdjustment:
+def shadow_margin(
+    *, control_margin: float, home_talent: float | None, away_talent: float | None
+) -> ShadowAdjustment:
     """Compute the shadow candidate's margin beside the control's.
 
     A missing talent value on either side yields NO adjustment: the

@@ -64,9 +64,7 @@ def _seed_sharded_corpus(repo_dir: Path, *, days: tuple[int, ...] = (12, 13)) ->
         persistence.append_observation_rows(base, SEASON, [make_corpus_row(observation=observation)])
         result = extract_game_result(
             {"status": "final", "homePoints": 31, "awayPoints": 24},
-            game_id=GAME_ID,
-            season=SEASON,
-            captured_at=when,
+            game_id=GAME_ID, season=SEASON, captured_at=when,
         )
         persistence.append_settlement_rows(base, SEASON, [settle_market(observation, result, settled_at=when)])
     return base
@@ -106,7 +104,9 @@ def test_season_report_reads_rows_from_every_shard(tmp_path):
 
     research_season_report._apply_report(tmp_path, season=SEASON, now=NOW)
 
-    payload = json.loads((base / "reports" / "season" / f"{SEASON}-v1.json").read_text(encoding="utf-8"))
+    payload = json.loads(
+        (base / "reports" / "season" / f"{SEASON}-v1.json").read_text(encoding="utf-8")
+    )
     total = json.dumps(payload)
     assert "wk02" in total, "the week derived from sharded rows is missing from the report"
     index = persistence.load_observation_index_for(base, SEASON)
@@ -117,7 +117,9 @@ def test_season_report_on_an_empty_corpus_needs_no_exists_guard(tmp_path):
     """An absent corpus must read back as empty rather than needing a
     `.exists()` check that a source LIST cannot answer."""
     (tmp_path / "data" / "research").mkdir(parents=True)
-    assert persistence.corpus_sources(tmp_path / "data" / "research", shards.OBSERVATIONS_SUBDIR, SEASON) == []
+    assert persistence.corpus_sources(
+        tmp_path / "data" / "research", shards.OBSERVATIONS_SUBDIR, SEASON
+    ) == []
 
     result = research_season_report._apply_report(tmp_path, season=SEASON, now=NOW)
 
@@ -159,7 +161,9 @@ def test_weekly_report_runs_against_a_sharded_corpus(tmp_path):
     base = _seed_sharded_corpus(tmp_path)
     _assert_multi_shard(base)
 
-    result = research_weekly_report._apply_report(tmp_path, season=SEASON, week_label="wk02", now=NOW)
+    result = research_weekly_report._apply_report(
+        tmp_path, season=SEASON, week_label="wk02", now=NOW
+    )
 
     assert result.written == 1
     report_path = base / "reports" / "weekly" / f"{SEASON}-wk02.json"
@@ -171,7 +175,9 @@ def test_weekly_report_runs_against_a_sharded_corpus(tmp_path):
 
 def test_weekly_report_on_an_empty_corpus(tmp_path):
     (tmp_path / "data" / "research").mkdir(parents=True)
-    result = research_weekly_report._apply_report(tmp_path, season=SEASON, week_label="wk02", now=NOW)
+    result = research_weekly_report._apply_report(
+        tmp_path, season=SEASON, week_label="wk02", now=NOW
+    )
     assert result.written == 1
 
 

@@ -131,7 +131,9 @@ def shadow_game_distribution(control: GameDistribution, delta: float) -> GameDis
     )
 
 
-def _parsed_for(*, family: MarketFamily, side: Side | None, threshold: float | None) -> ParsedContract:
+def _parsed_for(
+    *, family: MarketFamily, side: Side | None, threshold: float | None
+) -> ParsedContract:
     """Rebuild the contract spec the canonical pricer consumes.
 
     Fields come from what the canonical observation itself recorded, so
@@ -161,13 +163,19 @@ def price_contract_both_arms(
     Returns both probabilities or both None -- never one arm priced and
     the other not, which would produce a delta against nothing."""
     if family is None:
-        return ContractProbabilities(basis=None, shadow=None, detail="no market family on the canonical observation")
+        return ContractProbabilities(
+            basis=None, shadow=None, detail="no market family on the canonical observation"
+        )
 
     parsed = _parsed_for(family=family, side=side, threshold=threshold)
     shadow_distribution = shadow_game_distribution(control_distribution, delta)
 
-    basis_result = price_parsed_contract(parsed, control_distribution, named_team_side=named_team_side)
-    shadow_result = price_parsed_contract(parsed, shadow_distribution, named_team_side=named_team_side)
+    basis_result = price_parsed_contract(
+        parsed, control_distribution, named_team_side=named_team_side
+    )
+    shadow_result = price_parsed_contract(
+        parsed, shadow_distribution, named_team_side=named_team_side
+    )
 
     if basis_result.model_probability is None or shadow_result.model_probability is None:
         # One-armed pricing is worse than none: it invites a delta

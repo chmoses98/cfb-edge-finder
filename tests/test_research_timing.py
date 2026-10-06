@@ -41,7 +41,9 @@ def test_t_7d_not_due_far_outside_window():
 
 def test_numeric_bucket_missed_window_after_it_closes():
     # T_60 window is 45-75 minutes before kickoff; 10 minutes before kickoff is well past it.
-    state = timing.classify_bucket_state(label="T_60", kickoff_utc=KICKOFF, now=_hours_before(1 / 6), captured=False)
+    state = timing.classify_bucket_state(
+        label="T_60", kickoff_utc=KICKOFF, now=_hours_before(1 / 6), captured=False
+    )
     assert state == CaptureState.MISSED_WINDOW
 
 
@@ -64,7 +66,9 @@ def test_no_due_labels_when_kickoff_unknown():
 
 def test_overlapping_windows_both_due_if_neither_captured():
     # 70 minutes before kickoff is inside BOTH T_90 (60-120min) and T_60 (45-75min).
-    due = timing.resolve_due_labels(kickoff_utc=KICKOFF, now=_hours_before(70 / 60), already_captured_labels=set())
+    due = timing.resolve_due_labels(
+        kickoff_utc=KICKOFF, now=_hours_before(70 / 60), already_captured_labels=set()
+    )
     numeric_due = [label for label in due if label != timing.EARLY_OPEN]
     assert set(numeric_due) == {"T_90", "T_60"}
 
@@ -139,22 +143,24 @@ def test_closing_window_is_disjoint_from_every_numeric_bucket():
 @pytest.mark.parametrize(
     "minutes_out,expected_due",
     [
-        (60.0, False),  # far outside
-        (20.0, False),  # T_30 territory, not CLOSING
-        (15.0, False),  # T_30's exact near edge -- still not CLOSING
-        (14.0, True),  # window upper edge, inclusive
+        (60.0, False),   # far outside
+        (20.0, False),   # T_30 territory, not CLOSING
+        (15.0, False),   # T_30's exact near edge -- still not CLOSING
+        (14.0, True),    # window upper edge, inclusive
         (13.9, True),
         (5.0, True),
         (0.1, True),
-        (0.0, False),  # exactly kickoff -- never
-        (-1.0, False),  # after kickoff -- never backfilled
+        (0.0, False),    # exactly kickoff -- never
+        (-1.0, False),   # after kickoff -- never backfilled
         (-600.0, False),
     ],
 )
 def test_closing_due_boundaries(minutes_out, expected_due):
     kickoff = KICKOFF
     now = kickoff - timedelta(minutes=minutes_out)
-    assert timing.is_closing_due(kickoff_utc=kickoff, now=now, already_captured_labels=set()) is expected_due
+    assert (
+        timing.is_closing_due(kickoff_utc=kickoff, now=now, already_captured_labels=set()) is expected_due
+    )
 
 
 def test_closing_is_never_due_twice():
@@ -166,7 +172,8 @@ def test_closing_is_never_due_twice():
 def test_closing_is_never_due_for_a_started_game():
     now = KICKOFF - timedelta(minutes=5)
     assert (
-        timing.is_closing_due(kickoff_utc=KICKOFF, now=now, already_captured_labels=set(), game_started=True) is False
+        timing.is_closing_due(kickoff_utc=KICKOFF, now=now, already_captured_labels=set(), game_started=True)
+        is False
     )
 
 
@@ -185,5 +192,7 @@ def test_closing_becomes_missed_window_once_kickoff_passes():
 
 def test_captured_closing_stays_captured_after_kickoff():
     after = KICKOFF + timedelta(hours=3)
-    states = timing.resolve_all_bucket_states(kickoff_utc=KICKOFF, now=after, already_captured_labels={timing.CLOSING})
+    states = timing.resolve_all_bucket_states(
+        kickoff_utc=KICKOFF, now=after, already_captured_labels={timing.CLOSING}
+    )
     assert states[timing.CLOSING] == CaptureState.CAPTURED

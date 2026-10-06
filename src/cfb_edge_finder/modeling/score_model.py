@@ -657,7 +657,9 @@ def project_game(
     # sides since the whole game's context is atypical, not just the FCS
     # side's own score.
     fcs_involved_scale = (
-        1 + FCS_OPPONENT_UNCERTAINTY_SCALE if home_classification != "fbs" or away_classification != "fbs" else 1.0
+        1 + FCS_OPPONENT_UNCERTAINTY_SCALE
+        if home_classification != "fbs" or away_classification != "fbs"
+        else 1.0
     )
     home_scale = (
         uncertainty_multiplier(home_qb_state)

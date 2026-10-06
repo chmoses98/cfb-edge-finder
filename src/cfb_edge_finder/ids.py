@@ -40,7 +40,9 @@ from collections import Counter
 from collections.abc import Iterable
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
-_WEEK_LABEL_RE = re.compile(r"^(wk\d{2}|bowl-[a-z0-9-]+|cfp-[a-z0-9-]+|conf-champ-[a-z0-9-]+|allstar-[a-z0-9-]+)$")
+_WEEK_LABEL_RE = re.compile(
+    r"^(wk\d{2}|bowl-[a-z0-9-]+|cfp-[a-z0-9-]+|conf-champ-[a-z0-9-]+|allstar-[a-z0-9-]+)$"
+)
 
 
 def slugify_team(name: str) -> str:

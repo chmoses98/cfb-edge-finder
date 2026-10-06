@@ -398,7 +398,9 @@ been published as a total."""
 _TEXT_WINNER = re.compile(r"\bwho will win\b|\bwin the game\b|\bto win\b|\bwinner\b", re.I)
 _TEXT_FIRST_HALF = re.compile(r"\b(1st|first) half\b|\b1H\b", re.I)
 _TEXT_SECOND_HALF = re.compile(r"\b(2nd|second) half\b|\b2H\b", re.I)
-_TEXT_QUARTER = re.compile(r"\b(1st|2nd|3rd|4th|first|second|third|fourth) quarter\b|\b(?P<abbrev>[1-4])Q\b", re.I)
+_TEXT_QUARTER = re.compile(
+    r"\b(1st|2nd|3rd|4th|first|second|third|fourth) quarter\b|\b(?P<abbrev>[1-4])Q\b", re.I
+)
 """Kalshi's own market titles abbreviate the period -- the live title is
 "Arkansas wins 1H by over 4.5 points", not "...1st half...". Matching only
 the spelled-out form classified every abbreviated half/quarter contract as

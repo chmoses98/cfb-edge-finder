@@ -126,7 +126,12 @@ def talent_features(rows: list[dict], *, applies_to_season: int) -> list[Preseas
         # versions. Try each rather than guess one: an unmatched key
         # yields a row with no join target, which is how the first fetch
         # produced 231 rows of orphaned talent values per season.
-        team = row.get("school") or row.get("team") or row.get("teamName") or row.get("team_name")
+        team = (
+            row.get("school")
+            or row.get("team")
+            or row.get("teamName")
+            or row.get("team_name")
+        )
         if not team:
             continue
         raw = row.get("talent")

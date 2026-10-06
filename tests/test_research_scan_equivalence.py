@@ -175,33 +175,11 @@ def test_every_mission_section_9_field_matches(tmp_path, monkeypatch):
 
     row_fields = ("observation_key", "season", "game_status_at_capture", "kickoff_utc_at_capture", "schema_version")
     obs_fields = (
-        "game_id",
-        "kalshi_market_ticker",
-        "kalshi_event_ticker",
-        "coverage_outcome",
-        "coverage_reason",
-        "parse_status",
-        "pricing_status",
-        "model_probability",
-        "executable_yes_price",
-        "executable_no_price",
-        "research_probability_gap",
-        "gross_probability_gap",
-        "fee_adjusted_research_gap",
-        "estimated_taker_fee",
-        "fee_schedule_version",
-        "fee_status",
-        "fee_verification_status",
-        "model_version",
-        "training_cutoff",
-        "snapshot_timing",
-        "provenance",
-        "family",
-        "side",
-        "team",
-        "threshold",
-        "market_midpoint",
-        "uncertainty",
+        "game_id", "kalshi_market_ticker", "kalshi_event_ticker", "coverage_outcome", "coverage_reason",
+        "parse_status", "pricing_status", "model_probability", "executable_yes_price", "executable_no_price",
+        "research_probability_gap", "gross_probability_gap", "fee_adjusted_research_gap", "estimated_taker_fee",
+        "fee_schedule_version", "fee_status", "fee_verification_status", "model_version", "training_cutoff",
+        "snapshot_timing", "provenance", "family", "side", "team", "threshold", "market_midpoint", "uncertainty",
     )
     for i, (lrow, orow) in enumerate(zip(legacy, opt, strict=True)):
         for field in row_fields:
@@ -227,14 +205,8 @@ def test_append_result_counters_are_identical(tmp_path, monkeypatch):
 
     lr, orr = out["legacy"]["report"], out["optimized"]["report"]
     for field in (
-        "markets_scanned",
-        "supported_markets",
-        "captures_due",
-        "captures_written",
-        "captures_skipped_already_present",
-        "missed_windows",
-        "mapping_failures",
-        "stale_schedule_failures",
+        "markets_scanned", "supported_markets", "captures_due", "captures_written",
+        "captures_skipped_already_present", "missed_windows", "mapping_failures", "stale_schedule_failures",
     ):
         assert getattr(lr, field) == getattr(orr, field), f"health report field {field!r} diverged"
 

@@ -110,10 +110,14 @@ def test_is_conference_game_prefers_cfbd_flag_over_conference_strings():
     # the two conference-name strings alone would suggest the opposite
     # (e.g. a genuine cross-conference "championship" edge case CFBD
     # itself classifies differently than a naive string comparison would).
-    flag_says_conference = _outcome(home_conference="Big Ten", away_conference="SEC", is_conference_game_flag=True)
+    flag_says_conference = _outcome(
+        home_conference="Big Ten", away_conference="SEC", is_conference_game_flag=True
+    )
     assert is_conference_game(flag_says_conference) is True
 
-    flag_says_not = _outcome(home_conference="Big Ten", away_conference="Big Ten", is_conference_game_flag=False)
+    flag_says_not = _outcome(
+        home_conference="Big Ten", away_conference="Big Ten", is_conference_game_flag=False
+    )
     assert is_conference_game(flag_says_not) is False
 
 
@@ -168,7 +172,9 @@ def test_diagnostics_conference_realignment_safety():
 
 def test_full_diagnostic_report_returns_nonempty_segments_with_positive_n():
     outcomes = [
-        _outcome(week=w, season=s, model_margin_mean=(-5 if w % 2 else 12)) for s in (2024, 2025) for w in range(2, 6)
+        _outcome(week=w, season=s, model_margin_mean=(-5 if w % 2 else 12))
+        for s in (2024, 2025)
+        for w in range(2, 6)
     ]
     reports = full_diagnostic_report(outcomes)
     assert reports
@@ -236,7 +242,8 @@ def test_full_diagnostic_report_includes_tempo_and_offense_defense_segments():
 
 def test_source_of_total_bias_summary_has_all_expected_keys():
     outcomes = [
-        _outcome(week=w, actual_home_points=30, actual_away_points=20 + w, model_total_mean=48.0) for w in range(2, 8)
+        _outcome(week=w, actual_home_points=30, actual_away_points=20 + w, model_total_mean=48.0)
+        for w in range(2, 8)
     ]
     summary = source_of_total_bias_summary(outcomes)
     expected_keys = {

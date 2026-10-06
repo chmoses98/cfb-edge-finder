@@ -35,7 +35,9 @@ def observation_key(
     distinct research observation, never an in-place correction of the
     original), while identical inputs always collapse to the identical
     key regardless of when/how many times they're computed."""
-    canonical = "|".join([str(season), game_id, market_ticker, timing_label, model_version, capture_window_version])
+    canonical = "|".join(
+        [str(season), game_id, market_ticker, timing_label, model_version, capture_window_version]
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 

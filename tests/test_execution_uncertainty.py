@@ -107,12 +107,20 @@ def test_margin_and_total_move_orthogonally():
     axes would be impossible to read apart in the output."""
     base = PeriodDistribution(27.0, 24.0, 10.5, 10.0, 0.1)
     margin_only = base.perturbed(margin_shift=6.0)
-    assert margin_only.home_mean + margin_only.away_mean == pytest.approx(base.home_mean + base.away_mean)
-    assert margin_only.home_mean - margin_only.away_mean == pytest.approx(base.home_mean - base.away_mean + 6.0)
+    assert margin_only.home_mean + margin_only.away_mean == pytest.approx(
+        base.home_mean + base.away_mean
+    )
+    assert margin_only.home_mean - margin_only.away_mean == pytest.approx(
+        base.home_mean - base.away_mean + 6.0
+    )
 
     total_only = base.perturbed(total_shift=8.0)
-    assert total_only.home_mean - total_only.away_mean == pytest.approx(base.home_mean - base.away_mean)
-    assert total_only.home_mean + total_only.away_mean == pytest.approx(base.home_mean + base.away_mean + 8.0)
+    assert total_only.home_mean - total_only.away_mean == pytest.approx(
+        base.home_mean - base.away_mean
+    )
+    assert total_only.home_mean + total_only.away_mean == pytest.approx(
+        base.home_mean + base.away_mean + 8.0
+    )
 
 
 def test_a_region_wider_than_the_ceiling_is_refused_rather_than_clamped():
@@ -242,12 +250,9 @@ def test_an_uncertain_handicap_produces_robust_and_sensitive_rows(tmp_path):
     evaluation = evaluate_game(game, payload(uncertainty=STATED), min_net_edge=0.02)
     statuses = evaluation.status_counts
     assert evaluation.unaccounted == 0
-    assert (
-        statuses.get(EvaluationStatus.ROBUST_POSITIVE_EV.value, 0)
-        + statuses.get(EvaluationStatus.SENSITIVE_POSITIVE_EV.value, 0)
-        + statuses.get(EvaluationStatus.NOT_ROBUST.value, 0)
-        > 0
-    )
+    assert statuses.get(EvaluationStatus.ROBUST_POSITIVE_EV.value, 0) + statuses.get(
+        EvaluationStatus.SENSITIVE_POSITIVE_EV.value, 0
+    ) + statuses.get(EvaluationStatus.NOT_ROBUST.value, 0) > 0
     for row in evaluation.rows:
         if row["status"] in CANDIDATE_STATUSES:
             assert row["sensitivity"]["scenarios_tested"] > 1
@@ -293,7 +298,9 @@ def test_every_recommendation_carries_its_sensitivity_evidence(tmp_path):
 def test_an_explicit_probability_without_a_range_cannot_be_robust(tmp_path):
     game = packet(tmp_path)
     tie = next(
-        r["ticker"] for r in game["contracts"] if (r.get("semantics") or {}).get("requires") != "period_distribution"
+        r["ticker"]
+        for r in game["contracts"]
+        if (r.get("semantics") or {}).get("requires") != "period_distribution"
     )
     handicap = payload(
         uncertainty=STATED,
@@ -308,7 +315,9 @@ def test_an_explicit_probability_without_a_range_cannot_be_robust(tmp_path):
 def test_an_explicit_probability_with_a_range_is_tested_against_it(tmp_path):
     game = packet(tmp_path)
     tie = next(
-        r["ticker"] for r in game["contracts"] if (r.get("semantics") or {}).get("requires") != "period_distribution"
+        r["ticker"]
+        for r in game["contracts"]
+        if (r.get("semantics") or {}).get("requires") != "period_distribution"
     )
     handicap = payload(
         uncertainty=STATED,
@@ -372,7 +381,9 @@ def test_being_wrong_about_the_margin_moves_the_fair_value_measurably(tmp_path, 
     """Part of the adversarial set: show the system does not keep treating a
     sharp-looking probability as robust when the handicap moves under it."""
     game = packet(tmp_path)
-    spread = next(r for r in game["contracts"] if (r.get("semantics") or {}).get("kind") == "spread")
+    spread = next(
+        r for r in game["contracts"] if (r.get("semantics") or {}).get("kind") == "spread"
+    )
     base = PeriodDistribution(27.0, 24.0, 10.5, 10.0, 0.1)
     moved = base.perturbed(margin_shift=-shift)
     before = fair_from_distribution(spread["semantics"], base).value

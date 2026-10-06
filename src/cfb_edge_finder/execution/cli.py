@@ -273,7 +273,9 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         max_bytes=args.max_context_bytes,
         window_order=WINDOW_ORDER,
     )
-    shard_for_game = {str(packet["game_key"]): shard.name for shard in shards for packet in shard.packets}
+    shard_for_game = {
+        str(packet["game_key"]): shard.name for shard in shards for packet in shard.packets
+    }
     batch_dir = out_dir / "batches"
     batch_dir.mkdir(parents=True, exist_ok=True)
     for stale in batch_dir.glob("*.context.json"):
@@ -348,15 +350,14 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         print(f"    games:                    {entry['game_count']}")
         print(f"    eligible contracts:       {entry['contracts_eligible']}")
         print(f"    in analysis artifact:     {entry['contracts_in_analysis_artifact']}")
-        print(f"    analysis artifact size:   {entry['analysis_bytes'] / 1e3:.0f} KB  ({entry['analysis_file']})")
+        print(f"    analysis artifact size:   {entry['analysis_bytes'] / 1e3:.0f} KB  "
+              f"({entry['analysis_file']})")
         print(f"    freshest quote:           {_age(entry['freshest_quote_age_seconds'])}")
         print(f"    oldest allowed quote:     {oldest_allowed}")
         print(f"    mechanical exclusions:    {entry['contracts_excluded']}")
         print(f"    unaccounted:              {entry['unaccounted_contracts']}")
-        print(
-            f"    kickoffs:                 {str(entry['earliest_kickoff'])[:16]} -> "
-            f"{str(entry['latest_kickoff'])[:16]}"
-        )
+        print(f"    kickoffs:                 {str(entry['earliest_kickoff'])[:16]} -> "
+              f"{str(entry['latest_kickoff'])[:16]}")
     coverage = slate.get("factual_context_coverage") or {}
     print(
         f"\n  factual context: {coverage.get('games', 0) - coverage.get('games_with_no_context', 0)}"
@@ -364,7 +365,10 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     )
     for ceiling, count in (coverage.get("confidence_ceilings") or {}).items():
         print(f"    confidence ceiling {ceiling:14} {count:5}")
-    print(f"\n  handicap batches ({batch_manifest['totals']['batches']}), reconciles={batch_manifest['reconciles']}")
+    print(
+        f"\n  handicap batches ({batch_manifest['totals']['batches']}), "
+        f"reconciles={batch_manifest['reconciles']}"
+    )
     for entry in batch_entries:
         print(
             f"    {entry['batch']:16} games={entry['games']:2} cost={entry['reasoning_cost']:5.2f} "
@@ -379,7 +383,9 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     )
     structural_failure: str | None = None
     if not batch_manifest["reconciles"]:
-        structural_failure = f"handicap batches cover {batched_games} games but the slate has {len(slate['games'])}"
+        structural_failure = (
+            f"handicap batches cover {batched_games} games but the slate has {len(slate['games'])}"
+        )
         print(
             f"FATAL: handicap batches cover {batched_games} games but the slate has "
             f"{len(slate['games'])}; refusing to report this slate as usable",
@@ -393,7 +399,9 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
     # the exit code derived from it (see execution/slate_health.py). The
     # slate is rewritten only to carry that verdict; its contents are the
     # ones written above.
-    context_expected, context_run = read_context_run(Path(args.context_dir) if args.context_dir else None)
+    context_expected, context_run = read_context_run(
+        Path(args.context_dir) if args.context_dir else None
+    )
     health = classify_slate_health(
         slate,
         index,
@@ -431,7 +439,10 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
             f"THEN:                    python -m cfb_edge_finder.execution evaluate "
             f"--batch {first_batch['batch']} --handicaps <file>"
         )
-        print(f"AND:                     python -m cfb_edge_finder.execution candidates --batch {first_batch['batch']}")
+        print(
+            f"AND:                     python -m cfb_edge_finder.execution candidates "
+            f"--batch {first_batch['batch']}"
+        )
     first = manifest["shards"][0] if manifest["shards"] else None
     if first:
         print(
@@ -543,7 +554,8 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     unknown = sorted(set(supplied) - set(packets))
     if unknown:
         print(
-            f"FATAL: handicaps supplied for games that are not in {label!r}: {', '.join(unknown)}",
+            f"FATAL: handicaps supplied for games that are not in {label!r}: "
+            f"{', '.join(unknown)}",
             file=sys.stderr,
         )
         return 2
@@ -659,9 +671,9 @@ def _teams_match(expected: dict[str, Any], supplied: dict[str, str]) -> bool:
     def norm(value: Any) -> str:
         return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
 
-    return norm(expected.get("home")) == norm(supplied.get("home")) and norm(expected.get("away")) == norm(
-        supplied.get("away")
-    )
+    return norm(expected.get("home")) == norm(supplied.get("home")) and norm(
+        expected.get("away")
+    ) == norm(supplied.get("away"))
 
 
 # ------------------------------------------------------------- status
@@ -870,9 +882,14 @@ def cmd_candidates(args: argparse.Namespace) -> int:
     # flag: it lands beside the artifact on every run, and the artifact names
     # it.
     rows_again = [
-        row for evaluation in evaluations for row in evaluation.rows if row.get("status") in CANDIDATE_STATUSES
+        row
+        for evaluation in evaluations
+        for row in evaluation.rows
+        if row.get("status") in CANDIDATE_STATUSES
     ]
-    reduction_ledger = build_reduction_ledger(_shard_doc.get("shard"), label, reduce_candidates(rows_again))
+    reduction_ledger = build_reduction_ledger(
+        _shard_doc.get("shard"), label, reduce_candidates(rows_again)
+    )
     ledger_size = _write(
         out_dir / "candidates" / artifact["reduction_ledger_file"],
         reduction_ledger,
@@ -915,7 +932,8 @@ def cmd_candidates(args: argparse.Namespace) -> int:
 
     reconciliation = artifact["reconciliation"]
     reduction = artifact["reduction"]
-    print(f"{label}: {reconciliation['games']} games, {reconciliation['eligible_contracts']} eligible contracts")
+    print(f"{label}: {reconciliation['games']} games, "
+          f"{reconciliation['eligible_contracts']} eligible contracts")
     print(f"  evaluated              {reconciliation['evaluated_contracts']}")
     print(f"  explicitly unpriceable {reconciliation['explicitly_unpriceable_contracts']}")
     print(f"  unaccounted            {reconciliation['unaccounted_contracts']}")
@@ -936,7 +954,9 @@ def cmd_candidates(args: argparse.Namespace) -> int:
         "    correlation is not a veto, it is an exposure fact: one core expression per funded "
         "thesis, and every extra correlated position must earn incremental exposure"
     )
-    extreme = [row for row in artifact["market_disagreement_by_game"] if row["level"] == "extreme"]
+    extreme = [
+        row for row in artifact["market_disagreement_by_game"] if row["level"] == "extreme"
+    ]
     if extreme:
         print(f"\n  MARKET DISAGREEMENT EXTREME on {len(extreme)} game(s):")
         for row in extreme:
@@ -968,7 +988,9 @@ def cmd_batches(args: argparse.Namespace) -> int:
         print("no batch manifest; run prepare-live first", file=sys.stderr)
         return 2
     store = StateStore(out_dir / "state")
-    slate_games = {str(p["game_key"]): p for p in _read(out_dir / "cfb_execution_slate.json")["games"]}
+    slate_games = {
+        str(p["game_key"]): p for p in _read(out_dir / "cfb_execution_slate.json")["games"]
+    }
 
     print(
         f"{manifest['totals']['batches']} batches / {manifest['totals']['games']} games / "
@@ -976,7 +998,11 @@ def cmd_batches(args: argparse.Namespace) -> int:
         f"(reconciles={manifest['reconciles']})"
     )
     for entry in entries:
-        states = [store.reconcile_with_packet(slate_games[key]) for key in entry["game_keys"] if key in slate_games]
+        states = [
+            store.reconcile_with_packet(slate_games[key])
+            for key in entry["game_keys"]
+            if key in slate_games
+        ]
         done = sum(1 for state in states if state.is_complete)
         review = sum(1 for state in states if state.handicap_status == "complete_needs_review")
         print(
@@ -1007,7 +1033,9 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m cfb_edge_finder.execution", description=__doc__)
+    parser = argparse.ArgumentParser(
+        prog="python -m cfb_edge_finder.execution", description=__doc__
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     def common(p: argparse.ArgumentParser) -> None:

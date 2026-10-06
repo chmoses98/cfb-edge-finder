@@ -17,7 +17,8 @@ from cfb_edge_finder.schemas.common import CFPRound, SeasonType
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
 
 LIVE_FIXTURE_PATH = (
-    Path(__file__).resolve().parents[1] / "src/cfb_edge_finder/data/fixtures/cfbd_live_verified_2026_sample.json"
+    Path(__file__).resolve().parents[1]
+    / "src/cfb_edge_finder/data/fixtures/cfbd_live_verified_2026_sample.json"
 )
 
 
@@ -91,12 +92,8 @@ def test_neutral_site_game_id_invariant_to_vendor_home_away_reversal():
 def test_normalize_postseason_game_with_descriptor(descriptor, expected_round):
     game = normalize_cfbd_game(
         base_raw(
-            week=None,
-            seasonType="postseason",
-            neutralSite=True,
-            notes=descriptor,
-            homeTeam="Alabama",
-            awayTeam="Oregon",
+            week=None, seasonType="postseason", neutralSite=True, notes=descriptor,
+            homeTeam="Alabama", awayTeam="Oregon",
         ),
         observed_at=NOW,
     )
@@ -178,7 +175,9 @@ def test_unresolved_fbs_team_still_fails_loud_even_with_classification_present()
     # silently slugged -- that's exactly the "unrecognized FBS program"
     # case this project wants surfaced.
     with pytest.raises(GameNormalizationError) as exc_info:
-        normalize_cfbd_game(base_raw(homeTeam="Some Newly Formed Program", homeClassification="fbs"), observed_at=NOW)
+        normalize_cfbd_game(
+            base_raw(homeTeam="Some Newly Formed Program", homeClassification="fbs"), observed_at=NOW
+        )
     assert isinstance(exc_info.value.cause, TeamResolutionError)
 
 
@@ -246,11 +245,7 @@ def test_structured_playoff_object_preferred_over_notes_heuristic():
 def test_structured_playoff_championship_maps_to_national_championship():
     game = normalize_cfbd_game(
         base_raw(
-            week=None,
-            seasonType="postseason",
-            neutralSite=True,
-            homeTeam="Alabama",
-            awayTeam="Oregon",
+            week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
             playoff={"competition": "cfp", "round": "championship"},
         ),
         observed_at=NOW,
@@ -261,11 +256,7 @@ def test_structured_playoff_championship_maps_to_national_championship():
 def test_playoff_object_absent_falls_back_to_notes_heuristic():
     game = normalize_cfbd_game(
         base_raw(
-            week=None,
-            seasonType="postseason",
-            neutralSite=True,
-            homeTeam="Alabama",
-            awayTeam="Oregon",
+            week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
             notes="CFP Quarterfinal - Orange Bowl",
         ),
         observed_at=NOW,
@@ -277,11 +268,7 @@ def test_playoff_object_with_unrecognized_round_fails_loud():
     with pytest.raises(GameNormalizationError):
         normalize_cfbd_game(
             base_raw(
-                week=None,
-                seasonType="postseason",
-                neutralSite=True,
-                homeTeam="Alabama",
-                awayTeam="Oregon",
+                week=None, seasonType="postseason", neutralSite=True, homeTeam="Alabama", awayTeam="Oregon",
                 playoff={"competition": "cfp", "round": "some_future_round_format"},
             ),
             observed_at=NOW,

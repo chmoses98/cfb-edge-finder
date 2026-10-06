@@ -68,7 +68,9 @@ def _encode(payload: dict[str, Any], *, compact: bool = True, sort_keys: bool = 
     `game_context` BEFORE `markets`), and alphabetising it would put the
     prices in front of the facts on every game."""
     if compact:
-        return json.dumps(payload, sort_keys=sort_keys, separators=(",", ":"), default=str) + "\n"
+        return json.dumps(
+            payload, sort_keys=sort_keys, separators=(",", ":"), default=str
+        ) + "\n"
     return json.dumps(payload, indent=1, sort_keys=sort_keys, default=str) + "\n"
 
 
@@ -112,6 +114,8 @@ class Shard:
         return sorted(str(p["kickoff"]) for p in self.packets if p.get("kickoff"))
 
 
+
+
 def split_window(
     window: str,
     packets: list[dict[str, Any]],
@@ -131,7 +135,9 @@ def split_window(
     for packet in ordered:
         size = _analysis_bytes(packet)
         contracts = int(packet["counts"]["eligible"])
-        would_overflow = current and (current_bytes + size > max_bytes or current_contracts + contracts > max_contracts)
+        would_overflow = current and (
+            current_bytes + size > max_bytes or current_contracts + contracts > max_contracts
+        )
         if would_overflow:
             groups.append(current)
             current, current_bytes, current_contracts = [], 0, 0
@@ -143,7 +149,10 @@ def split_window(
 
     if len(groups) == 1:
         return [Shard(name=window, window=window, packets=groups[0])]
-    return [Shard(name=f"{window}_{i + 1}", window=window, packets=group) for i, group in enumerate(groups)]
+    return [
+        Shard(name=f"{window}_{i + 1}", window=window, packets=group)
+        for i, group in enumerate(groups)
+    ]
 
 
 def build_shards(
@@ -184,7 +193,9 @@ def shard_document(slate: dict[str, Any], shard: Shard) -> dict[str, Any]:
     }
 
 
-def shard_analysis_document(slate: dict[str, Any], shard: Shard, tz_name: str = DEFAULT_TIMEZONE) -> dict[str, Any]:
+def shard_analysis_document(
+    slate: dict[str, Any], shard: Shard, tz_name: str = DEFAULT_TIMEZONE
+) -> dict[str, Any]:
     """The file that goes to ChatGPT. Raises rather than publish an
     artifact that does not contain every eligible contract."""
     return analysis_document(
@@ -239,7 +250,9 @@ def write_shards(
                 "contracts_excluded": shard.excluded,
                 "bytes": len(encoded.encode("utf-8")),
                 "analysis_bytes": len(analysis_encoded.encode("utf-8")),
-                "contracts_in_analysis_artifact": analysis["reconciliation"]["contracts_in_analysis_artifact"],
+                "contracts_in_analysis_artifact": analysis["reconciliation"][
+                    "contracts_in_analysis_artifact"
+                ],
                 "unaccounted_contracts": analysis["reconciliation"]["unaccounted_contracts"],
                 "freshest_quote_age_seconds": analysis["freshness"]["freshest_quote_age_seconds"],
                 "oldest_quote_age_seconds": analysis["freshness"]["oldest_quote_age_seconds"],
@@ -260,7 +273,9 @@ def write_shards(
         "contracts_discovered": sum(e["contracts_discovered"] for e in entries),
         "contracts_eligible": sum(e["contracts_eligible"] for e in entries),
         "contracts_excluded": sum(e["contracts_excluded"] for e in entries),
-        "contracts_in_analysis_artifacts": sum(e["contracts_in_analysis_artifact"] for e in entries),
+        "contracts_in_analysis_artifacts": sum(
+            e["contracts_in_analysis_artifact"] for e in entries
+        ),
         "unaccounted_contracts": sum(e["unaccounted_contracts"] for e in entries),
     }
     manifest = {
@@ -300,12 +315,15 @@ def write_shards(
     manifest["reconciles"] = bool(
         manifest["reconciles"]
         and not duplicated
-        and totals["contracts_discovered"] == manifest["slate_totals"]["contracts_discovered_published_games"]
+        and totals["contracts_discovered"]
+        == manifest["slate_totals"]["contracts_discovered_published_games"]
         # The deliverable's own invariant: every eligible contract is in a
         # file a reader will actually open.
         and totals["contracts_in_analysis_artifacts"] == totals["contracts_eligible"]
         and totals["unaccounted_contracts"] == 0
     )
 
-    (out_dir / "shard_manifest.json").write_text(_encode(manifest, compact=False), encoding="utf-8")
+    (out_dir / "shard_manifest.json").write_text(
+        _encode(manifest, compact=False), encoding="utf-8"
+    )
     return manifest

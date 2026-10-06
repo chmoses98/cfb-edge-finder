@@ -95,7 +95,9 @@ def change_availability(packet):
         material_fingerprint,
     )
 
-    rebuilt = GameContext.from_dict({"game_key": clone["game_key"], "domains": context["domains"], "collected_at": "x"})
+    rebuilt = GameContext.from_dict(
+        {"game_key": clone["game_key"], "domains": context["domains"], "collected_at": "x"}
+    )
     context["material_context_hash"] = material_fingerprint(rebuilt)
     context["context_hash"] = context_fingerprint(rebuilt)
     return rehash(clone)
@@ -117,7 +119,9 @@ def change_efficiency(packet):
         material_fingerprint,
     )
 
-    rebuilt = GameContext.from_dict({"game_key": clone["game_key"], "domains": context["domains"], "collected_at": "x"})
+    rebuilt = GameContext.from_dict(
+        {"game_key": clone["game_key"], "domains": context["domains"], "collected_at": "x"}
+    )
     context["material_context_hash"] = material_fingerprint(rebuilt)
     context["context_hash"] = context_fingerprint(rebuilt)
     return rehash(clone)

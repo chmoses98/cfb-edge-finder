@@ -55,7 +55,9 @@ class CandidateSpec:
     feature_name: str
     description: str
 
-    def differential(self, game: HistoricalGame, table: FeatureTable, target: AsOf) -> float | None:
+    def differential(
+        self, game: HistoricalGame, table: FeatureTable, target: AsOf
+    ) -> float | None:
         """home feature minus away feature, or None if either is missing.
 
         Missing is NOT imputed to zero: a zero differential asserts the

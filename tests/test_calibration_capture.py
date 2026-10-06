@@ -31,12 +31,9 @@ def _artifact(min_net_edge: float = 0.0, batch: str | None = "early_b1"):
     game = fixtures.packet(tmp)
     evaluation = fixtures.evaluate_game(game, fixtures.handicap(), min_net_edge=min_net_edge)
     return fixtures.build_candidate_artifact(
-        "early",
-        [evaluation],
-        {fixtures.GAME_KEY: game},
+        "early", [evaluation], {fixtures.GAME_KEY: game},
         {fixtures.GAME_KEY: fixtures.handicap()},
-        min_net_edge=min_net_edge,
-        batch=batch,
+        min_net_edge=min_net_edge, batch=batch,
     )
 
 
@@ -107,12 +104,16 @@ def test_the_same_recommendation_regenerates_the_same_id():
 
 def test_a_different_opinion_is_a_different_recommendation():
     base = dict(batch="b", shard="s", game_key="G", ticker="T", side="YES", packet_hash="p")
-    assert recommendation_id(**base, handicap_hash="h1") != recommendation_id(**base, handicap_hash="h2")
+    assert recommendation_id(**base, handicap_hash="h1") != recommendation_id(
+        **base, handicap_hash="h2"
+    )
 
 
 def test_a_different_quote_universe_is_a_different_recommendation():
     base = dict(batch="b", shard="s", game_key="G", ticker="T", side="YES", handicap_hash="h")
-    assert recommendation_id(**base, packet_hash="p1") != recommendation_id(**base, packet_hash="p2")
+    assert recommendation_id(**base, packet_hash="p1") != recommendation_id(
+        **base, packet_hash="p2"
+    )
 
 
 def test_the_two_sides_of_one_contract_are_different_recommendations():

@@ -133,7 +133,9 @@ def build_contract_record(
             "no_ask": contract.get("no_ask"),
             "quote_timestamp": contract.get("updated_time"),
             "quote_age_seconds": (
-                round((as_of - quote_timestamp).total_seconds()) if quote_timestamp is not None else None
+                round((as_of - quote_timestamp).total_seconds())
+                if quote_timestamp is not None
+                else None
             ),
         },
         "fee": {
@@ -273,7 +275,9 @@ def build_packet(
         "coverage": resolved.quality_map(),
         "missing_domains": list(resolved.missing_domains),
         "data_quality": quality.as_dict(),
-        "domains": {domain: one.as_dict() for domain, one in sorted(resolved.fields.items())},
+        "domains": {
+            domain: one.as_dict() for domain, one in sorted(resolved.fields.items())
+        },
         "events": _event_context(detail),
         "catalog_completeness": {
             "markets_discovered": completeness.get("markets_discovered"),
@@ -332,14 +336,18 @@ def build_packet(
             for c in contracts
         )
     )
-    packet["packet_hash"] = canonical_hash({k: v for k, v in packet.items() if k != "packet_hash"})
+    packet["packet_hash"] = canonical_hash(
+        {k: v for k, v in packet.items() if k != "packet_hash"}
+    )
     return packet
 
 
 def load_catalog(catalog_dir: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     index_path = catalog_dir / "cfb_market_catalog.json"
     if not index_path.exists():
-        raise FileNotFoundError(f"no catalog index at {index_path}. Run scripts/build_kalshi_cfb_catalog.py first.")
+        raise FileNotFoundError(
+            f"no catalog index at {index_path}. Run scripts/build_kalshi_cfb_catalog.py first."
+        )
     index = json.loads(index_path.read_text(encoding="utf-8"))
     details: dict[str, dict[str, Any]] = {}
     for entry in index.get("games") or []:
@@ -427,7 +435,9 @@ def build_slate(
             if window_date != slate_date:
                 continue
 
-        packet = build_packet(entry, detail, config, seen_tickers, tz_name, contexts.get(game_key))
+        packet = build_packet(
+            entry, detail, config, seen_tickers, tz_name, contexts.get(game_key)
+        )
         contracts_discovered += packet["counts"]["discovered"]
         contracts_eligible += packet["counts"]["eligible"]
         for status, count in packet["exclusions"].items():

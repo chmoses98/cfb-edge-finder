@@ -173,7 +173,7 @@ def check_structural_integrity(ladder: Ladder) -> list[LadderFinding]:
                     dimension=ladder.dimension,
                     ladder_key=ladder.ladder_key,
                     detail=f"threshold {rung.threshold} appears on both {seen[rung.threshold]} and "
-                    f"{rung.market_ticker}",
+                           f"{rung.market_ticker}",
                     lower_ticker=seen[rung.threshold],
                     upper_ticker=rung.market_ticker,
                     lower_threshold=rung.threshold,
@@ -198,7 +198,9 @@ def check_structural_integrity(ladder: Ladder) -> list[LadderFinding]:
     for rung in ladder.rungs:
         # A total can never be negative; a margin threshold beyond any
         # plausible football result signals a parser problem, not a market.
-        impossible = (ladder.dimension is MarketDimension.TOTAL and rung.threshold < 0) or abs(rung.threshold) > 200
+        impossible = (ladder.dimension is MarketDimension.TOTAL and rung.threshold < 0) or abs(
+            rung.threshold
+        ) > 200
         if impossible:
             findings.append(
                 LadderFinding(
@@ -207,7 +209,7 @@ def check_structural_integrity(ladder: Ladder) -> list[LadderFinding]:
                     dimension=ladder.dimension,
                     ladder_key=ladder.ladder_key,
                     detail=f"threshold {rung.threshold} on {rung.market_ticker} is outside any plausible "
-                    f"football result and indicates a parse problem",
+                           f"football result and indicates a parse problem",
                     lower_ticker=rung.market_ticker,
                     lower_threshold=rung.threshold,
                 )
@@ -216,7 +218,11 @@ def check_structural_integrity(ladder: Ladder) -> list[LadderFinding]:
 
 
 def analyze_ladder(ladder: Ladder) -> list[LadderFinding]:
-    return check_structural_integrity(ladder) + check_model_monotonicity(ladder) + check_market_coherence(ladder)
+    return (
+        check_structural_integrity(ladder)
+        + check_model_monotonicity(ladder)
+        + check_market_coherence(ladder)
+    )
 
 
 MODEL_TIE_MASS_EPSILON = 1e-4

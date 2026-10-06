@@ -33,7 +33,9 @@ def analysis_rows(document: dict[str, Any]) -> list[dict[str, Any]]:
             prefix = block.get("ticker_prefix")
             for row in block["rows"]:
                 record = dict(zip(columns, row, strict=True))
-                record["ticker"] = (prefix or "") + str(record["t"]) if prefix is not None else record["ticker"]
+                record["ticker"] = (
+                    (prefix or "") + str(record["t"]) if prefix is not None else record["ticker"]
+                )
                 record["family"] = family
                 record["game_key"] = game["game_key"]
                 if "quote_age_s" not in record and "quote_age_s" in block:

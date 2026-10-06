@@ -106,7 +106,9 @@ def _fastest_full_week(n_games: int, n_markets_per_game: int) -> float:
     trials of one commit, and 14.0x once in CI, on a ledger that never
     changed. Best-of-three gave 3.6x-4.5x over the same work.
     """
-    return min(_run_full_week(n_games, n_markets_per_game)[2] for _ in range(TIMING_REPEATS))
+    return min(
+        _run_full_week(n_games, n_markets_per_game)[2] for _ in range(TIMING_REPEATS)
+    )
 
 
 def test_coverage_ledger_operations_scale_roughly_linearly_not_quadratically():

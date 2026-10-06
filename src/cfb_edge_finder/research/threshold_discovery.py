@@ -247,7 +247,9 @@ def discover_threshold_candidates(
     report.discovery_game_ids = tuple(sorted({o.game_id for o in prospective}))
 
     if not prospective:
-        report.refusals[DiscoveryRefusal.NO_SETTLED_OBSERVATIONS.value] = "no settled prospective observations exist"
+        report.refusals[DiscoveryRefusal.NO_SETTLED_OBSERVATIONS.value] = (
+            "no settled prospective observations exist"
+        )
         report.status = BLOCKED_ON_SAMPLE
         return report
 
@@ -269,7 +271,8 @@ def discover_threshold_candidates(
             continue
         if len(games) < minimum_settled_games:
             report.refusals[label] = (
-                f"{DiscoveryRefusal.BELOW_DECLARED_MINIMUM_GAMES.value}: {len(games)} < {minimum_settled_games}"
+                f"{DiscoveryRefusal.BELOW_DECLARED_MINIMUM_GAMES.value}: "
+                f"{len(games)} < {minimum_settled_games}"
             )
             continue
         if len(games) < 2:

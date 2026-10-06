@@ -90,7 +90,9 @@ probability instead."""
 _MONEYLINE_FAMILIES = frozenset(
     {"game_moneyline", "first_half_moneyline", "second_half_moneyline", "quarter_moneyline"}
 )
-_SPREAD_FAMILIES = frozenset({"game_spread", "first_half_spread", "second_half_spread", "quarter_spread"})
+_SPREAD_FAMILIES = frozenset(
+    {"game_spread", "first_half_spread", "second_half_spread", "quarter_spread"}
+)
 _TOTAL_FAMILIES = frozenset({"game_total", "first_half_total", "second_half_total", "quarter_total"})
 _TEAM_TOTAL_FAMILIES = frozenset(
     {"team_total", "first_half_team_total", "second_half_team_total", "quarter_team_total"}
@@ -146,7 +148,9 @@ class GameTeams:
         if not text:
             return None
         lowered = str(text).lower()
-        for name, slot in sorted(((n, s) for n, s in self.raw_names.items()), key=lambda kv: -len(kv[0])):
+        for name, slot in sorted(
+            ((n, s) for n, s in self.raw_names.items()), key=lambda kv: -len(kv[0])
+        ):
             if lowered.startswith(name.lower()):
                 return slot
         return None
@@ -196,7 +200,7 @@ def _ticker_suffix(market_ticker: str | None, event_ticker: str | None) -> str |
 
 
 def _suffix_code(suffix: str | None) -> str | None:
-    """ "LSU10" -> "LSU"; "MISS" -> "MISS"; "17" -> None."""
+    """"LSU10" -> "LSU"; "MISS" -> "MISS"; "17" -> None."""
     if not suffix:
         return None
     code = _TRAILING_DIGITS.sub("", suffix)
@@ -207,7 +211,9 @@ def build_game_teams(game_title: str | None, markets: list[dict[str, Any]]) -> G
     """Learn the game's two teams, and the code/uuid aliases Kalshi uses
     for them, from the contracts themselves."""
     away, home, source, confidence = _split_matchup(game_title)
-    teams = GameTeams(home_name=home, away_name=away, home_away_source=source, home_away_confidence=confidence)
+    teams = GameTeams(
+        home_name=home, away_name=away, home_away_source=source, home_away_confidence=confidence
+    )
     name_to_slot: dict[str, str] = {}
     if away:
         name_to_slot[_norm(away)] = TeamSlot.AWAY.value
@@ -315,7 +321,8 @@ def _resolve_team(market: dict[str, Any], teams: GameTeams) -> tuple[str, str]:
             return teams.uuid_to_slot[str(uuid)], f"custom_strike football_team {uuid!r} maps to a game team"
 
     return TeamSlot.UNRESOLVED.value, (
-        f"no route resolved a team: suffix={suffix!r} subtitle={label!r} custom_strike={custom!r}"
+        f"no route resolved a team: suffix={suffix!r} subtitle={label!r} "
+        f"custom_strike={custom!r}"
     )
 
 
@@ -501,7 +508,9 @@ def derive_semantics(market: dict[str, Any], teams: GameTeams) -> ContractSemant
             cap=cap,
             requires=PricingRequirement.PERIOD_DISTRIBUTION.value,
             yes_meaning=stated,
-            no_meaning=(f"{_team_label(slot, teams)} does NOT win the {period} by more than {threshold}"),
+            no_meaning=(
+                f"{_team_label(slot, teams)} does NOT win the {period} by more than {threshold}"
+            ),
             status=SemanticsStatus.RESOLVED.value,
             rationale=f"{team_rationale}; rung {threshold} ({comparator})",
         )

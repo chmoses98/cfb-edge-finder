@@ -91,7 +91,8 @@ def test_the_sweep_covers_the_whole_resolved_horizon():
     horizon = datetime(2026, 10, 4, 7, tzinfo=UTC)  # the real catalog's last kickoff
     offset = collector._horizon_offset_days(AS_OF, horizon)
     swept = {
-        (AS_OF + timedelta(days=d)).strftime("%Y%m%d") for d in range(-collector.DEFAULT_LOOKBACK_DAYS, offset + 2)
+        (AS_OF + timedelta(days=d)).strftime("%Y%m%d")
+        for d in range(-collector.DEFAULT_LOOKBACK_DAYS, offset + 2)
     }
     assert horizon.strftime("%Y%m%d") in swept
     # and the day after, since a late kickoff crosses UTC midnight
@@ -209,7 +210,9 @@ def test_an_unparseable_kickoff_is_skipped_not_fatal():
 
 
 def test_a_z_suffixed_kickoff_parses_as_utc():
-    assert collector._kickoff_of({"kickoff": "2026-09-26T16:00:00Z"}) == datetime(2026, 9, 26, 16, tzinfo=UTC)
+    assert collector._kickoff_of({"kickoff": "2026-09-26T16:00:00Z"}) == datetime(
+        2026, 9, 26, 16, tzinfo=UTC
+    )
 
 
 # ------------------------------------------------- the budget and the breaker
@@ -355,7 +358,9 @@ def test_both_divisions_are_requested(monkeypatch):
 def test_an_event_listed_under_both_groups_appears_once(monkeypatch):
     """A team that moved divisions mid-season could be listed twice, and a
     duplicated event would double-count in a team's game history."""
-    monkeypatch.setattr(collector, "_get", _Recorder({80: (_envelope(1, 2), None), 81: (_envelope(2, 3), None)}))
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1, 2), None), 81: (_envelope(2, 3), None)})
+    )
     events, error = collector.fetch_scoreboard("20260926")
     assert error is None
     assert sorted(e["id"] for e in events) == ["1", "2", "3"]
@@ -364,7 +369,9 @@ def test_an_event_listed_under_both_groups_appears_once(monkeypatch):
 def test_one_empty_group_is_not_a_failure(monkeypatch):
     """Out of season, or on a date one division does not play, empty is the
     correct answer -- not an outage."""
-    monkeypatch.setattr(collector, "_get", _Recorder({80: (_envelope(1), None), 81: ({"events": []}, None)}))
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1), None), 81: ({"events": []}, None)})
+    )
     events, error = collector.fetch_scoreboard("20260926")
     assert error is None
     assert [e["id"] for e in events] == ["1"]
@@ -372,14 +379,18 @@ def test_one_empty_group_is_not_a_failure(monkeypatch):
 
 def test_one_failing_group_still_yields_the_other(monkeypatch):
     """Losing FCS must not cost FBS. Partial context beats none."""
-    monkeypatch.setattr(collector, "_get", _Recorder({80: (_envelope(1), None), 81: (None, "HTTP 500")}))
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (_envelope(1), None), 81: (None, "HTTP 500")})
+    )
     events, error = collector.fetch_scoreboard("20260926")
     assert error is None
     assert [e["id"] for e in events] == ["1"]
 
 
 def test_the_date_fails_only_when_no_group_answers(monkeypatch):
-    monkeypatch.setattr(collector, "_get", _Recorder({80: (None, "HTTP 403"), 81: (None, "HTTP 403")}))
+    monkeypatch.setattr(
+        collector, "_get", _Recorder({80: (None, "HTTP 403"), 81: (None, "HTTP 403")})
+    )
     events, error = collector.fetch_scoreboard("20260926")
     assert events == []
     assert error == "HTTP 403"
@@ -440,7 +451,9 @@ def test_a_title_with_no_teams_is_named_as_such():
 
 
 def test_no_espn_event_at_all_is_a_provider_gap_not_a_naming_problem():
-    reason, detail = collector.classify_match_failure(_packet("Towson", "Morgan St."), [_espn("Alabama", "Auburn")])
+    reason, detail = collector.classify_match_failure(
+        _packet("Towson", "Morgan St."), [_espn("Alabama", "Auburn")]
+    )
     assert reason == collector.UNMATCHED_NO_EVENT_IN_WINDOW
     assert "Morgan St. at Towson" in detail
 
@@ -463,20 +476,10 @@ def test_one_side_matching_points_at_an_alias_for_the_other():
 def test_neither_side_matching_is_distinguished_from_one_side():
     reason, _ = collector.classify_match_failure(
         _packet("Ole Miss", "LSU"),
-        [
-            {
-                "id": "e",
-                "date": "2026-09-26T20:00:00Z",
-                "competitions": [
-                    {
-                        "competitors": [
-                            {"homeAway": "home", "team": {"displayName": "Ole Miss"}},
-                            {"homeAway": "away", "team": {"displayName": "Mississippi"}},
-                        ]
-                    }
-                ],
-            }
-        ],
+        [{"id": "e", "date": "2026-09-26T20:00:00Z",
+          "competitions": [{"competitors": [
+              {"homeAway": "home", "team": {"displayName": "Ole Miss"}},
+              {"homeAway": "away", "team": {"displayName": "Mississippi"}}]}]}],
     )
     # home matched, away did not -> one-team, not neither
     assert reason == collector.UNMATCHED_ONE_TEAM

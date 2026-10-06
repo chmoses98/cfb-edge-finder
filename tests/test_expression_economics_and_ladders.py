@@ -32,11 +32,8 @@ GAME = "g1"
 
 def econ(ticker, side, price, model_p=None):
     return build_expression_economics(
-        market_ticker=ticker,
-        executable_side=side,
-        executable_price=price,
-        model_probability_for_this_side=model_p,
-        series_ticker=SERIES,
+        market_ticker=ticker, executable_side=side, executable_price=price,
+        model_probability_for_this_side=model_p, series_ticker=SERIES,
     )
 
 
@@ -120,7 +117,7 @@ def test_unpriceable_expressions_are_skipped_not_assumed_expensive():
 
 def test_dominance_uses_all_in_cost_not_raw_price():
     """Two prices close enough that the fee decides the ordering."""
-    a = econ("A", Side.YES, 0.50)  # max fee at 0.50
+    a = econ("A", Side.YES, 0.50)   # max fee at 0.50
     b = econ("B", Side.NO, 0.505)
     findings = find_dominated_expressions("k", [a, b])
     for f in findings:
@@ -134,10 +131,7 @@ def test_complementary_pair_below_one_dollar_is_flagged():
     """E and NOT-E jointly pay exactly $1 in every world, so a combined
     cost under $1 is a guaranteed shortfall."""
     finding = detect_static_inconsistency(
-        game_id=GAME,
-        dimension="MARGIN",
-        event_key="e",
-        complement_key="c",
+        game_id=GAME, dimension="MARGIN", event_key="e", complement_key="c",
         event_expressions=[econ("A", Side.YES, 0.30)],
         complement_expressions=[econ("B", Side.YES, 0.30)],
     )
@@ -150,17 +144,11 @@ def test_complementary_pair_below_one_dollar_is_flagged():
 def test_normal_wide_book_is_not_flagged():
     """The real corpus has yes+no summing to ~1.24; that is a spread, not
     an inconsistency."""
-    assert (
-        detect_static_inconsistency(
-            game_id=GAME,
-            dimension="MARGIN",
-            event_key="e",
-            complement_key="c",
-            event_expressions=[econ("A", Side.YES, 0.70)],
-            complement_expressions=[econ("B", Side.YES, 0.54)],
-        )
-        is None
-    )
+    assert detect_static_inconsistency(
+        game_id=GAME, dimension="MARGIN", event_key="e", complement_key="c",
+        event_expressions=[econ("A", Side.YES, 0.70)],
+        complement_expressions=[econ("B", Side.YES, 0.54)],
+    ) is None
 
 
 def test_fees_are_included_so_a_marginal_pair_does_not_false_positive():
@@ -169,10 +157,7 @@ def test_fees_are_included_so_a_marginal_pair_does_not_false_positive():
     raw_sum = 0.49 + 0.49
     assert raw_sum < 1.0
     finding = detect_static_inconsistency(
-        game_id=GAME,
-        dimension="MARGIN",
-        event_key="e",
-        complement_key="c",
+        game_id=GAME, dimension="MARGIN", event_key="e", complement_key="c",
         event_expressions=[econ("A", Side.YES, 0.49)],
         complement_expressions=[econ("B", Side.YES, 0.49)],
     )
@@ -180,17 +165,11 @@ def test_fees_are_included_so_a_marginal_pair_does_not_false_positive():
 
 
 def test_unpriceable_leg_makes_the_claim_unprovable():
-    assert (
-        detect_static_inconsistency(
-            game_id=GAME,
-            dimension="MARGIN",
-            event_key="e",
-            complement_key="c",
-            event_expressions=[econ("A", Side.YES, 0.30)],
-            complement_expressions=[econ("B", Side.YES, None)],
-        )
-        is None
-    )
+    assert detect_static_inconsistency(
+        game_id=GAME, dimension="MARGIN", event_key="e", complement_key="c",
+        event_expressions=[econ("A", Side.YES, 0.30)],
+        complement_expressions=[econ("B", Side.YES, None)],
+    ) is None
 
 
 # --- Ladders (sections 6, 7, 18) -----------------------------------------
@@ -233,7 +212,9 @@ def test_harder_rung_quoted_more_expensively_is_incoherent():
 
 
 def test_total_ladder_uses_the_same_ordering_rule():
-    ladder = _ladder([("a", 38.5, 0.80, 0.86, 0.30), ("b", 41.5, 0.75, 0.92, 0.40)], dimension=MarketDimension.TOTAL)
+    ladder = _ladder(
+        [("a", 38.5, 0.80, 0.86, 0.30), ("b", 41.5, 0.75, 0.92, 0.40)], dimension=MarketDimension.TOTAL
+    )
     assert len(check_market_coherence(ladder)) == 1
 
 

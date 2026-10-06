@@ -22,7 +22,9 @@ def _expected_shard(date: str, season: int = 2026, part: int = 1) -> str:
     """The tracked path one day's observations land in. Derived from
     `research.shards`, never hand-spelled, so a layout change updates the
     expectation instead of silently breaking the assertion's meaning."""
-    return str(shards.shard_path(Path("data/research"), shards.OBSERVATIONS_SUBDIR, season, date, part))
+    return str(
+        shards.shard_path(Path("data/research"), shards.OBSERVATIONS_SUBDIR, season, date, part)
+    )
 
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:

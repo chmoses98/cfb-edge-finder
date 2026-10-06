@@ -197,7 +197,9 @@ def test_guard_lead_covers_the_whole_closing_window_plus_a_cycle():
 
 def test_seconds_until_guard_needed():
     now = KICKOFF - timedelta(hours=2)
-    assert seconds_until_guard_needed(now, [KICKOFF]) == pytest.approx((120 - CLOSING_GUARD_LEAD_MINUTES) * 60)
+    assert seconds_until_guard_needed(now, [KICKOFF]) == pytest.approx(
+        (120 - CLOSING_GUARD_LEAD_MINUTES) * 60
+    )
     assert seconds_until_guard_needed(now, []) is None
     assert seconds_until_guard_needed(KICKOFF + timedelta(hours=1), [KICKOFF]) is None
 
@@ -216,13 +218,9 @@ def test_overlapping_kickoffs_collapse_into_one_band():
 
 def _beat(trigger, finished, succeeded=True):
     return hb.Heartbeat(
-        schema_version=hb.HEARTBEAT_SCHEMA_VERSION,
-        run_id="r1",
-        trigger_type=trigger,
-        invoked_at=finished.isoformat(),
-        started_at=finished.isoformat(),
-        finished_at=finished.isoformat(),
-        succeeded=succeeded,
+        schema_version=hb.HEARTBEAT_SCHEMA_VERSION, run_id="r1", trigger_type=trigger,
+        invoked_at=finished.isoformat(), started_at=finished.isoformat(),
+        finished_at=finished.isoformat(), succeeded=succeeded,
     )
 
 
@@ -259,7 +257,9 @@ def test_heartbeat_write_failure_is_swallowed(tmp_path):
 
 
 def test_malformed_heartbeat_lines_are_skipped(tmp_path):
-    shard = shards.shard_path(tmp_path / "data" / "research", shards.HEARTBEATS_SUBDIR, 2026, "2026-09-06", 1)
+    shard = shards.shard_path(
+        tmp_path / "data" / "research", shards.HEARTBEATS_SUBDIR, 2026, "2026-09-06", 1
+    )
     shard.parent.mkdir(parents=True)
     shard.write_text('{"broken\n' + _beat("GITHUB_SCHEDULE", NOW).to_json() + "\n", encoding="utf-8")
     assert len(hb.load_heartbeats(hb.heartbeat_sources(tmp_path, 2026))) == 1
@@ -286,9 +286,7 @@ def test_heartbeat_carries_no_market_prices():
 def _conductor(*args):
     return subprocess.run(
         [sys.executable, str(REPO_ROOT / "scripts" / "collection_conductor.py"), *args],
-        capture_output=True,
-        text=True,
-        timeout=600,
+        capture_output=True, text=True, timeout=600,
         env={"PATH": "/usr/bin:/bin", "HOME": "/tmp"},
     )
 
@@ -505,7 +503,9 @@ def test_cfbd_credential_actually_reaches_the_client(monkeypatch):
     # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
     # environment dependence the artifact stub below was already added to
     # kill, applied to the quota gate that was introduced later.
-    monkeypatch.setattr("cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {})
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
+    )
 
     conductor.supported_upcoming_kickoffs(2026, NOW)
 
@@ -698,17 +698,10 @@ def _sched(**over):
 
 
 def test_fetch_failure_is_its_own_state():
-    health = _sched(
-        fetch_success=False,
-        total_games=0,
-        upcoming_games=0,
-        supported_upcoming_games=0,
-        supported_inside_horizon=0,
-        next_upcoming_kickoff=None,
-        next_supported_kickoff=None,
-        next_supported_kickoff_inside_horizon=None,
-        kickoffs_inside_horizon=(),
-    )
+    health = _sched(fetch_success=False, total_games=0, upcoming_games=0,
+                     supported_upcoming_games=0, supported_inside_horizon=0,
+                     next_upcoming_kickoff=None, next_supported_kickoff=None,
+                     next_supported_kickoff_inside_horizon=None, kickoffs_inside_horizon=())
     assert health.state is SchedulePlanningState.FETCH_FAILED
     assert health.state.fetch_succeeded is False
     assert health.state.is_operationally_suspicious
@@ -718,22 +711,16 @@ def test_successful_but_empty_schedule_is_suspicious_not_quiet():
     """A season always has games. Zero records from a SUCCESSFUL request
     means the source or query is wrong, and must not read as 'nothing on
     tonight'."""
-    health = _sched(
-        total_games=0,
-        upcoming_games=0,
-        supported_upcoming_games=0,
-        supported_inside_horizon=0,
-        kickoffs_inside_horizon=(),
-    )
+    health = _sched(total_games=0, upcoming_games=0, supported_upcoming_games=0,
+                     supported_inside_horizon=0, kickoffs_inside_horizon=())
     assert health.state is SchedulePlanningState.FETCH_SUCCESS_EMPTY_SCHEDULE
     assert health.state.fetch_succeeded is True
     assert health.state.is_operationally_suspicious
 
 
 def test_no_upcoming_games():
-    health = _sched(
-        upcoming_games=0, supported_upcoming_games=0, supported_inside_horizon=0, kickoffs_inside_horizon=()
-    )
+    health = _sched(upcoming_games=0, supported_upcoming_games=0, supported_inside_horizon=0,
+                     kickoffs_inside_horizon=())
     assert health.state is SchedulePlanningState.FETCH_SUCCESS_NO_UPCOMING_GAMES
     assert not health.state.is_operationally_suspicious
 
@@ -750,16 +737,10 @@ def test_guardable_game_present():
 def test_states_are_mutually_exclusive_and_ordered_most_severe_first():
     """A failed fetch that also has zero games must report FETCH_FAILED,
     not a benign empty state."""
-    assert (
-        classify_schedule(
-            fetch_success=False,
-            total_games=0,
-            upcoming_games=0,
-            supported_upcoming_games=0,
-            supported_inside_horizon=0,
-        )
-        is SchedulePlanningState.FETCH_FAILED
-    )
+    assert classify_schedule(
+        fetch_success=False, total_games=0, upcoming_games=0,
+        supported_upcoming_games=0, supported_inside_horizon=0,
+    ) is SchedulePlanningState.FETCH_FAILED
 
 
 # --- THE incident regression fixture --------------------------------------
@@ -804,20 +785,12 @@ def test_incident_pattern_supported_kickoff_outside_horizon():
 def test_broken_settings_style_failure_is_now_detectable():
     """The credential bug produced total_games=0 with fetch_success=False.
     That is now a named, warned state rather than an unremarkable zero."""
-    broken = _sched(
-        fetch_success=False,
-        total_games=0,
-        upcoming_games=0,
-        supported_upcoming_games=0,
-        supported_inside_horizon=0,
-        next_upcoming_kickoff=None,
-        next_supported_kickoff=None,
-        next_supported_kickoff_inside_horizon=None,
-        kickoffs_inside_horizon=(),
-    )
-    healthy_but_quiet = _sched(
-        supported_inside_horizon=0, kickoffs_inside_horizon=(), next_supported_kickoff_inside_horizon=None
-    )
+    broken = _sched(fetch_success=False, total_games=0, upcoming_games=0,
+                     supported_upcoming_games=0, supported_inside_horizon=0,
+                     next_upcoming_kickoff=None, next_supported_kickoff=None,
+                     next_supported_kickoff_inside_horizon=None, kickoffs_inside_horizon=())
+    healthy_but_quiet = _sched(supported_inside_horizon=0, kickoffs_inside_horizon=(),
+                                next_supported_kickoff_inside_horizon=None)
     assert broken.state is not healthy_but_quiet.state
     assert broken.as_telemetry()["schedule_fetch_success"] is False
     assert healthy_but_quiet.as_telemetry()["schedule_fetch_success"] is True
@@ -839,9 +812,8 @@ def test_fetch_schedule_health_reports_counts_not_just_kickoffs(monkeypatch):
 
     monkeypatch.setenv("CFBD_API_KEY", "k")
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
-    monkeypatch.setattr(
-        "capture_kalshi_cfb_snapshot._fetch_candidate_games", lambda season, client, now: (games, classification)
-    )
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (games, classification))
     # HERMETIC: the conductor consults the durable CFBD access state on
     # origin/research-data before it will attempt a live fetch, so without
     # this stub the test's outcome depends on what production's quota
@@ -851,7 +823,9 @@ def test_fetch_schedule_health_reports_counts_not_just_kickoffs(monkeypatch):
     # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
     # environment dependence the artifact stub below was already added to
     # kill, applied to the quota gate that was introduced later.
-    monkeypatch.setattr("cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {})
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
+    )
 
     health = conductor.fetch_schedule_health(2026, NOW)
     assert health.fetch_success is True
@@ -871,10 +845,8 @@ def test_fetch_schedule_health_returns_failure_as_data(monkeypatch):
     football-state artifact at run time (from 2026-09-01 it did, and the
     fallback legitimately succeeded)."""
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
-    monkeypatch.setattr(
-        "capture_kalshi_cfb_snapshot._fetch_candidate_games",
-        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")),
-    )
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
     monkeypatch.setattr(
         "cfb_edge_finder.research.football_state.load_football_state_from_git",
         lambda repo_dir, branch, season: (None, football_state_mod.FOOTBALL_STATE_MISSING),
@@ -888,7 +860,9 @@ def test_fetch_schedule_health_returns_failure_as_data(monkeypatch):
     # real state said CFBD_QUOTA_EXHAUSTED) -- the same class of
     # environment dependence the artifact stub below was already added to
     # kill, applied to the quota gate that was introduced later.
-    monkeypatch.setattr("cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {})
+    monkeypatch.setattr(
+        "cfb_edge_finder.research.cfbd_access.read_state_from_git", lambda repo_dir, branch: {}
+    )
     health = conductor.fetch_schedule_health(2026, NOW)
     assert health.fetch_success is False
     assert health.state is SchedulePlanningState.FETCH_FAILED
@@ -901,10 +875,8 @@ def test_fetch_schedule_health_plans_from_fresh_durable_artifact(monkeypatch):
     exact lane that kept the conductor alive through the 2026-08-29
     CFBD-429 storm, pinned here hermetically."""
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
-    monkeypatch.setattr(
-        "capture_kalshi_cfb_snapshot._fetch_candidate_games",
-        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")),
-    )
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
     fresh_state = football_state_mod.FootballState(
         season=2026,
         history_seasons=(),
@@ -929,10 +901,8 @@ def test_fetch_schedule_health_refuses_a_stale_durable_artifact(monkeypatch):
     the fallback must stay a failure: the conductor never plans coverage
     from a schedule the collector itself would refuse."""
     monkeypatch.setattr("cfb_edge_finder.data.cfbd_client.CFBDClient", lambda **kw: object())
-    monkeypatch.setattr(
-        "capture_kalshi_cfb_snapshot._fetch_candidate_games",
-        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")),
-    )
+    monkeypatch.setattr("capture_kalshi_cfb_snapshot._fetch_candidate_games",
+                        lambda season, client, now: (_ for _ in ()).throw(RuntimeError("cfbd down")))
     stale_state = football_state_mod.FootballState(
         season=2026,
         history_seasons=(),
@@ -964,17 +934,11 @@ def test_render_states_fetch_result_explicitly():
 
 def test_heartbeat_carries_positive_schedule_telemetry(tmp_path):
     beat = hb.Heartbeat(
-        schema_version=hb.HEARTBEAT_SCHEMA_VERSION,
-        run_id="r",
-        trigger_type="GITHUB_SCHEDULE",
-        invoked_at=NOW.isoformat(),
-        started_at=NOW.isoformat(),
-        finished_at=NOW.isoformat(),
-        succeeded=True,
-        schedule_fetch_success=True,
+        schema_version=hb.HEARTBEAT_SCHEMA_VERSION, run_id="r", trigger_type="GITHUB_SCHEDULE",
+        invoked_at=NOW.isoformat(), started_at=NOW.isoformat(), finished_at=NOW.isoformat(),
+        succeeded=True, schedule_fetch_success=True,
         schedule_state=SchedulePlanningState.FETCH_SUCCESS_SUPPORTED_OUTSIDE_HORIZON.value,
-        total_schedule_games=3550,
-        supported_upcoming_games=102,
+        total_schedule_games=3550, supported_upcoming_games=102,
         next_supported_kickoff="2026-08-29T16:00:00+00:00",
     )
     hb.append_heartbeat(tmp_path, 2026, beat)
@@ -990,12 +954,8 @@ def test_heartbeat_absent_schedule_field_is_not_a_failure():
     failed' -- the same legacy-vs-defect distinction the corpus schema
     already makes."""
     beat = hb.Heartbeat(
-        schema_version=hb.HEARTBEAT_SCHEMA_VERSION,
-        run_id="r",
-        trigger_type="MANUAL",
-        invoked_at=NOW.isoformat(),
-        started_at=NOW.isoformat(),
-        finished_at=NOW.isoformat(),
+        schema_version=hb.HEARTBEAT_SCHEMA_VERSION, run_id="r", trigger_type="MANUAL",
+        invoked_at=NOW.isoformat(), started_at=NOW.isoformat(), finished_at=NOW.isoformat(),
         succeeded=True,
     )
     assert beat.schedule_fetch_success is None
@@ -1023,7 +983,10 @@ def test_external_scheduler_dispatch_is_labelled_external_not_manual():
     a PAT owned by the repo owner reads as MANUAL, so a DEAD external
     scheduler would look alive every time a human dispatched once."""
     assert classify_trigger("workflow_dispatch", "chmoses98") is TriggerType.MANUAL
-    assert classify_trigger("workflow_dispatch", "chmoses98", "EXTERNAL_SCHEDULE") is TriggerType.EXTERNAL_SCHEDULE
+    assert (
+        classify_trigger("workflow_dispatch", "chmoses98", "EXTERNAL_SCHEDULE")
+        is TriggerType.EXTERNAL_SCHEDULE
+    )
 
 
 def test_a_caller_cannot_claim_to_be_githubs_own_scheduler():

@@ -168,7 +168,8 @@ CONTEXT_FIELD_PLAN: dict[str, tuple[ContextSource, ContextAvailability, str]] = 
     "expected_starting_qb": (
         ContextSource.NONE_AVAILABLE,
         ContextAvailability.SOURCE_UNAVAILABLE,
-        "No reproducible depth-chart feed is wired. Recorded as a gap rather than scraped from beat reporting.",
+        "No reproducible depth-chart feed is wired. Recorded as a gap rather than "
+        "scraped from beat reporting.",
     ),
     "qb_new_starter_flag": (
         ContextSource.NONE_AVAILABLE,
@@ -185,7 +186,8 @@ CONTEXT_FIELD_PLAN: dict[str, tuple[ContextSource, ContextAvailability, str]] = 
     "head_coach_change": (
         ContextSource.CFBD_COACHES,
         ContextAvailability.NOT_YET_CAPTURED,
-        "CFBD /coaches can answer this season-over-season. Wired as a plan; not captured in this mission.",
+        "CFBD /coaches can answer this season-over-season. Wired as a plan; not captured "
+        "in this mission.",
     ),
     "weather_snapshot": (
         ContextSource.NWS_NOAA,
@@ -230,7 +232,9 @@ def build_context_record(
                 if planned is ContextAvailability.DERIVED_PROXY
                 else ContextAvailability.OBSERVED
             )
-            fields.append(ContextField(name, values[name], availability, source, captured_at, detail))
+            fields.append(
+                ContextField(name, values[name], availability, source, captured_at, detail)
+            )
         else:
             availability = (
                 planned

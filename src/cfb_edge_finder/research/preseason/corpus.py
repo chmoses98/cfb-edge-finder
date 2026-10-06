@@ -139,8 +139,12 @@ def load_season(path: Path) -> SeasonCache:
         # "Miami") is skipped, never guessed -- matching how those games
         # are already excluded from the ratings fit itself.
         try:
-            home_id = resolve_team_id_for_game(str(home), CFBD_SOURCE, row.get("homeClassification"))
-            away_id = resolve_team_id_for_game(str(away), CFBD_SOURCE, row.get("awayClassification"))
+            home_id = resolve_team_id_for_game(
+                str(home), CFBD_SOURCE, row.get("homeClassification")
+            )
+            away_id = resolve_team_id_for_game(
+                str(away), CFBD_SOURCE, row.get("awayClassification")
+            )
         except Exception:
             continue
         games.append(
@@ -226,7 +230,11 @@ def build_feature_tables(seasons: dict[int, SeasonCache]) -> dict[int, FeatureTa
     None for a team with no prior record, and a wholly missing prior
     season simply produces no comparison."""
     coaches_by_season = {
-        s: {str(r["team"]): str(r.get("coach")) for r in _rekey(cache.coach_rows, "school", "team") if r.get("coach")}
+        s: {
+            str(r["team"]): str(r.get("coach"))
+            for r in _rekey(cache.coach_rows, "school", "team")
+            if r.get("coach")
+        }
         for s, cache in seasons.items()
     }
 
@@ -240,8 +248,12 @@ def build_feature_tables(seasons: dict[int, SeasonCache]) -> dict[int, FeatureTa
                 splits=RETURNING_SPLITS,
             )
         )
-        features.extend(talent_features(_rekey(cache.talent_rows, "school", "team"), applies_to_season=season))
-        features.extend(coaching_change_features(coaches_by_season, applies_to_season=season))
+        features.extend(
+            talent_features(_rekey(cache.talent_rows, "school", "team"), applies_to_season=season)
+        )
+        features.extend(
+            coaching_change_features(coaches_by_season, applies_to_season=season)
+        )
         tables[season] = FeatureTable.build(features, applies_to_season=season)
     return tables
 

@@ -132,10 +132,14 @@ def order_cost_cents(*, contract_count: int, price_cents: int, series_ticker: st
     """Total cash out the door: contracts plus the whole-order fee."""
     count = validate_contract_count(contract_count)
     price = validate_price_cents(price_cents)
-    return count * price + taker_fee_cents(contract_count=count, price_cents=price, series_ticker=series_ticker)
+    return count * price + taker_fee_cents(
+        contract_count=count, price_cents=price, series_ticker=series_ticker
+    )
 
 
-def effective_cost_per_contract(*, contract_count: int, price_cents: int, series_ticker: str | None = None) -> Decimal:
+def effective_cost_per_contract(
+    *, contract_count: int, price_cents: int, series_ticker: str | None = None
+) -> Decimal:
     """All-in cost of one contract at this order size, in cents.
 
     Strictly decreasing in `contract_count` because the fee ceiling is
@@ -148,7 +152,9 @@ def effective_cost_per_contract(*, contract_count: int, price_cents: int, series
     return Decimal(total) / Decimal(count)
 
 
-def fee_adjusted_break_even(*, contract_count: int, price_cents: int, series_ticker: str | None = None) -> Decimal:
+def fee_adjusted_break_even(
+    *, contract_count: int, price_cents: int, series_ticker: str | None = None
+) -> Decimal:
     """The win probability at which this ORDER breaks even.
 
     Equals all-in cost divided by the $1 payout. Above 1 when fees make
@@ -161,7 +167,9 @@ def fee_adjusted_break_even(*, contract_count: int, price_cents: int, series_tic
     return cost / Decimal(PAYOUT_CENTS)
 
 
-def expected_value_cents(*, probability: Decimal | int | str, contract_count: int, price_cents: int) -> Decimal:
+def expected_value_cents(
+    *, probability: Decimal | int | str, contract_count: int, price_cents: int
+) -> Decimal:
     """Expected profit of the whole order in cents. Negative is a loss.
 
     `probability` is the caller's probability that the contract settles
@@ -256,7 +264,11 @@ def size_position(
     price = validate_price_cents(price_cents)
     if isinstance(bankroll_cents, bool) or not isinstance(bankroll_cents, int) or bankroll_cents < 0:
         raise SizingDomainError(f"bankroll_cents must be a non-negative int, got {bankroll_cents!r}")
-    if isinstance(max_position_cents, bool) or not isinstance(max_position_cents, int) or max_position_cents < 0:
+    if (
+        isinstance(max_position_cents, bool)
+        or not isinstance(max_position_cents, int)
+        or max_position_cents < 0
+    ):
         raise SizingDomainError(f"max_position_cents must be a non-negative int, got {max_position_cents!r}")
 
     # Cost per contract at a nominal single contract, used only to get a
@@ -314,6 +326,8 @@ def size_position(
         fee_cents=taker_fee_cents(contract_count=count, price_cents=price),
         target_stake_cents=budget,
         kelly_fraction=fraction,
-        expected_value_cents=expected_value_cents(probability=probability, contract_count=count, price_cents=price),
+        expected_value_cents=expected_value_cents(
+            probability=probability, contract_count=count, price_cents=price
+        ),
         binding_constraint=binding,
     )

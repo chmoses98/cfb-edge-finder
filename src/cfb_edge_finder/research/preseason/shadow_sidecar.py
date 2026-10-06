@@ -211,24 +211,18 @@ class ShadowSidecar:
                 or control_expected_away is None
             ):
                 record = build_shadow_record(
-                    observation_key=observation_key,
-                    game_id=game_id,
-                    timing_label=timing_label,
-                    captured_at=captured_at,
-                    kickoff_utc=kickoff_utc,
-                    market_ticker=market_ticker,
+                    observation_key=observation_key, game_id=game_id,
+                    timing_label=timing_label, captured_at=captured_at,
+                    kickoff_utc=kickoff_utc, market_ticker=market_ticker,
                     market_family=market_family,
                     executable_yes_price=executable_yes_price,
                     executable_no_price=executable_no_price,
                     control_model_version=control_model_version,
-                    control_probability=None,
-                    control_projected_margin=None,
+                    control_probability=None, control_projected_margin=None,
                     control_margin_samples=None,
-                    talent_home=None,
-                    talent_away=None,
+                    talent_home=None, talent_away=None,
                     talent_source_version=self.talent_source_version,
-                    both_fbs=both_fbs,
-                    capture_mode=capture_mode,
+                    both_fbs=both_fbs, capture_mode=capture_mode,
                     code_sha=self.code_sha,
                 )
                 self.telemetry.note_unavailable(record.unavailable_reason or "UNKNOWN")
@@ -242,10 +236,8 @@ class ShadowSidecar:
             # transform and the persisted record fails loudly rather than
             # producing two subtly different shadows.
             cached_transform = self.transform_for_game(
-                game_id=game_id,
-                timing_label=timing_label,
-                home_team_id=home_team_id,
-                away_team_id=away_team_id,
+                game_id=game_id, timing_label=timing_label,
+                home_team_id=home_team_id, away_team_id=away_team_id,
                 corrected_margin_samples=corrected_margin_samples,
                 control_margin_corrected=control_margin_corrected,
                 control_probability_canonical=control_probability,
@@ -255,12 +247,9 @@ class ShadowSidecar:
             )
 
             record = build_shadow_record(
-                observation_key=observation_key,
-                game_id=game_id,
-                timing_label=timing_label,
-                captured_at=captured_at,
-                kickoff_utc=kickoff_utc,
-                market_ticker=market_ticker,
+                observation_key=observation_key, game_id=game_id,
+                timing_label=timing_label, captured_at=captured_at,
+                kickoff_utc=kickoff_utc, market_ticker=market_ticker,
                 market_family=market_family,
                 executable_yes_price=executable_yes_price,
                 executable_no_price=executable_no_price,
@@ -275,8 +264,7 @@ class ShadowSidecar:
                 talent_home=self.talent_by_team.get(home_team_id),
                 talent_away=self.talent_by_team.get(away_team_id),
                 talent_source_version=self.talent_source_version,
-                both_fbs=both_fbs,
-                capture_mode=capture_mode,
+                both_fbs=both_fbs, capture_mode=capture_mode,
                 # The contract's own proposition, taken from what the
                 # CANONICAL observation recorded, so the shadow prices
                 # what the control priced rather than a re-derivation
@@ -299,7 +287,9 @@ class ShadowSidecar:
                         )
                 self.telemetry.shadow_contracts_priced += 1
             else:
-                reason = record.unavailable_reason or self._reasons.get((game_id, timing_label), "UNKNOWN")
+                reason = record.unavailable_reason or self._reasons.get(
+                    (game_id, timing_label), "UNKNOWN"
+                )
                 self.telemetry.note_unavailable(reason)
             return record
         except Exception as exc:  # noqa: BLE001

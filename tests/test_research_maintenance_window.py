@@ -55,7 +55,6 @@ def _apply(key: str = "k1"):
             [{"observation_key": key, "observation": {"captured_at": "2026-09-12T10:00:00+00:00"}}],
             persistence.observation_key_of,
         )
-
     return apply_fn
 
 
@@ -98,10 +97,7 @@ def _close_window(clone: Path) -> None:
 def _remote_rows(clone: Path) -> list[str]:
     listing = subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", f"origin/{BRANCH}", "--", "data/research"],
-        cwd=clone,
-        capture_output=True,
-        text=True,
-        check=True,
+        cwd=clone, capture_output=True, text=True, check=True,
     )
     return [p for p in listing.stdout.split() if p.endswith(".jsonl")]
 
@@ -177,10 +173,7 @@ def test_closing_the_window_restores_writes(tmp_path):
     subprocess.run(["git", "fetch", "-q", "origin", BRANCH], cwd=clone, check=True)
     body = subprocess.run(
         ["git", "show", f"origin/{BRANCH}:{_remote_rows(clone)[0]}"],
-        cwd=clone,
-        capture_output=True,
-        text=True,
-        check=True,
+        cwd=clone, capture_output=True, text=True, check=True,
     ).stdout
     assert "after" in body
 
@@ -227,8 +220,7 @@ def test_an_unreachable_remote_refuses_rather_than_assuming_open(tmp_path):
 
     subprocess.run(
         ["git", "remote", "set-url", "origin", str(tmp_path / "does-not-exist.git")],
-        cwd=clone,
-        check=True,
+        cwd=clone, check=True,
     )
     subprocess.run(["git", "update-ref", "-d", f"refs/remotes/origin/{BRANCH}"], cwd=clone, check=True)
 
@@ -258,7 +250,10 @@ def test_no_window_means_writes_are_allowed(tmp_path):
 def test_the_flag_lives_under_a_path_the_durable_store_already_stages():
     """Otherwise opening a window would need a new staging rule, and the
     one that got forgotten would be the one that mattered."""
-    assert any(maintenance.MAINTENANCE_FLAG_PATH.startswith(p) for p in store.DURABLE_STORE_PATHS)
+    assert any(
+        maintenance.MAINTENANCE_FLAG_PATH.startswith(p)
+        for p in store.DURABLE_STORE_PATHS
+    )
 
 
 def test_the_flag_payload_records_who_why_and_when():

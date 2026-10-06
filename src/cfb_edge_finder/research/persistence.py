@@ -424,7 +424,9 @@ def append_shadow_rows(base_dir: Path, season: int, rows: list[dict]) -> AppendR
     """The talent-shadow sidecar, sharded on the same rule as everything
     else. Keyed on `shadow_key` (observation_key|shadow_model_version),
     so a push retry still writes zero duplicates."""
-    return append_sharded_json_rows(base_dir, SHADOW_SUBDIR, season, rows, key_fn=shadow_key_of)
+    return append_sharded_json_rows(
+        base_dir, SHADOW_SUBDIR, season, rows, key_fn=shadow_key_of
+    )
 
 
 def read_shadow_rows(base_dir: Path, season: int) -> list[dict]:
@@ -456,9 +458,13 @@ def settlement_fact_key(obj: dict) -> str | None:
     return "|".join(parts)
 
 
-def append_settlement_rows(base_dir: Path, season: int, rows: Iterable[MarketSettlement]) -> AppendResult:
+def append_settlement_rows(
+    base_dir: Path, season: int, rows: Iterable[MarketSettlement]
+) -> AppendResult:
     dicts = [r.model_dump(mode="json") for r in rows]
-    return append_sharded_json_rows(base_dir, SETTLEMENTS_SUBDIR, season, dicts, key_fn=settlement_fact_key)
+    return append_sharded_json_rows(
+        base_dir, SETTLEMENTS_SUBDIR, season, dicts, key_fn=settlement_fact_key
+    )
 
 
 def read_settlement_rows(source: PathSource) -> list[MarketSettlement]:
@@ -583,7 +589,9 @@ def capture_state_fact_key(obj: dict) -> str | None:
     return "|".join(str(obj[f]) for f in required)
 
 
-def append_capture_state_rows(base_dir: Path, season: int, rows: Iterable[CaptureStateRecord]) -> AppendResult:
+def append_capture_state_rows(
+    base_dir: Path, season: int, rows: Iterable[CaptureStateRecord]
+) -> AppendResult:
     """Dedup key deliberately excludes `observed_at`/`run_id`: once a
     checkpoint reaches CAPTURED (or MISSED_WINDOW) for a given
     (game, market, label), re-observing the SAME state on a later scan is
@@ -593,7 +601,9 @@ def append_capture_state_rows(base_dir: Path, season: int, rows: Iterable[Captur
     CAPTURED last week must not re-append today just because today is a
     different shard."""
     dicts = [r.model_dump(mode="json") for r in rows]
-    return append_sharded_json_rows(base_dir, CAPTURE_STATE_SUBDIR, season, dicts, key_fn=capture_state_fact_key)
+    return append_sharded_json_rows(
+        base_dir, CAPTURE_STATE_SUBDIR, season, dicts, key_fn=capture_state_fact_key
+    )
 
 
 def read_capture_state_rows(source: PathSource) -> list[CaptureStateRecord]:

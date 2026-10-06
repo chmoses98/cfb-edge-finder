@@ -449,7 +449,9 @@ def fit_fbs_efficiency_ratings(
     )
 
 
-def _estimate_pace(training_rows: list[TeamGameLine], team_ids: list[str], *, shrinkage_k: float) -> dict[str, float]:
+def _estimate_pace(
+    training_rows: list[TeamGameLine], team_ids: list[str], *, shrinkage_k: float
+) -> dict[str, float]:
     """Trailing average plays/game per team, shrunk toward the league
     average in proportion to games played (same shrinkage FORM used for
     the season-carryover prior in priors.py, applied here within-season).

@@ -178,9 +178,13 @@ def records_field(event: dict[str, Any], *, observed_at: str) -> ContextField:
         "away_conference_id": ((away or {}).get("team") or {}).get("conferenceId"),
     }
     if not values["home_record"] and not values["away_record"]:
-        return ContextField.missing("records", "the scoreboard event carried no team records", ESPN_SCOREBOARD)
+        return ContextField.missing(
+            "records", "the scoreboard event carried no team records", ESPN_SCOREBOARD
+        )
     quality = (
-        FieldQuality.FRESH.value if values["home_record"] and values["away_record"] else FieldQuality.PARTIAL.value
+        FieldQuality.FRESH.value
+        if values["home_record"] and values["away_record"]
+        else FieldQuality.PARTIAL.value
     )
     return ContextField(
         domain="records",
@@ -231,7 +235,9 @@ def environment_field(event: dict[str, Any], *, observed_at: str) -> ContextFiel
     )
 
 
-def open_meteo_environment(payload: dict[str, Any], *, kickoff: datetime | None, observed_at: str) -> ContextField:
+def open_meteo_environment(
+    payload: dict[str, Any], *, kickoff: datetime | None, observed_at: str
+) -> ContextField:
     """The hourly forecast for the kickoff hour, keyless.
 
     The forecast's own hour is matched to the kickoff rather than the first
@@ -287,11 +293,13 @@ def completed_games_for(team_names_wanted: set[str], events: list[dict[str, Any]
     """
     out: list[dict[str, Any]] = []
     for event in events:
-        status = (event.get("status") or {}).get("type") or {}
+        status = ((event.get("status") or {}).get("type") or {})
         if not status.get("completed"):
             continue
         competitors = competitors_of(event)
-        mine = next((c for c in competitors if set(team_names(c)) & team_names_wanted), None)
+        mine = next(
+            (c for c in competitors if set(team_names(c)) & team_names_wanted), None
+        )
         if mine is None:
             continue
         theirs = next((c for c in competitors if c is not mine), None)
@@ -340,7 +348,9 @@ def scoring_field(
         scored = [row for row in history if row.get("points_for") is not None]
         return {
             "games_observed": len(scored),
-            "points_for_per_game": per_game(sum(float(r["points_for"]) for r in scored) or 0.0, len(scored)),
+            "points_for_per_game": per_game(
+                sum(float(r["points_for"]) for r in scored) or 0.0, len(scored)
+            ),
             "points_against_per_game": per_game(
                 sum(float(r["points_against"] or 0.0) for r in scored) or 0.0, len(scored)
             ),
@@ -368,7 +378,11 @@ def scoring_field(
             "no completed games found for at least one team in the observed window",
             ESPN_SCOREBOARD,
         )
-    quality = FieldQuality.FRESH.value if thin >= MIN_GAMES_FOR_SCORING_COVERAGE else FieldQuality.LOW_COVERAGE.value
+    quality = (
+        FieldQuality.FRESH.value
+        if thin >= MIN_GAMES_FOR_SCORING_COVERAGE
+        else FieldQuality.LOW_COVERAGE.value
+    )
     return ContextField(
         domain="scoring",
         values=values,
@@ -402,7 +416,11 @@ def recent_results_field(
         },
         source=ESPN_SCOREBOARD,
         observed_at=observed_at,
-        quality=(FieldQuality.FRESH.value if home_history and away_history else FieldQuality.PARTIAL.value),
+        quality=(
+            FieldQuality.FRESH.value
+            if home_history and away_history
+            else FieldQuality.PARTIAL.value
+        ),
         detail=None if home_history and away_history else "one side has no prior game in the window",
     )
 
@@ -509,7 +527,11 @@ def availability_field(
             "the injury endpoint answered but carried no readable items list",
             ESPN_CORE_INJURIES,
         )
-    quality = FieldQuality.FRESH.value if home is not None and away is not None else FieldQuality.PARTIAL.value
+    quality = (
+        FieldQuality.FRESH.value
+        if home is not None and away is not None
+        else FieldQuality.PARTIAL.value
+    )
     return ContextField(
         domain="availability",
         values={
@@ -542,7 +564,9 @@ def market_reference_field(payload: dict[str, Any] | None, *, observed_at: str) 
     from the repository's own side.
     """
     if payload is None:
-        return ContextField.missing("market_reference", "no odds endpoint response", ESPN_CORE_ODDS)
+        return ContextField.missing(
+            "market_reference", "no odds endpoint response", ESPN_CORE_ODDS
+        )
     items = payload.get("items") or []
     rows = []
     for item in items:
@@ -623,7 +647,9 @@ def cfbd_efficiency_field(
     home_block = _team_block(rows, home) if home else None
     away_block = _team_block(rows, away) if away else None
     if home_block is None and away_block is None:
-        return ContextField.missing("efficiency", "neither team appears in the CFBD response", CFBD_ADVANCED)
+        return ContextField.missing(
+            "efficiency", "neither team appears in the CFBD response", CFBD_ADVANCED
+        )
 
     def pick(block: dict[str, Any] | None, keys: tuple[str, ...]) -> dict[str, Any] | None:
         if block is None:
@@ -636,7 +662,9 @@ def cfbd_efficiency_field(
         }
 
     quality = (
-        FieldQuality.FRESH.value if home_block is not None and away_block is not None else FieldQuality.PARTIAL.value
+        FieldQuality.FRESH.value
+        if home_block is not None and away_block is not None
+        else FieldQuality.PARTIAL.value
     )
     return ContextField(
         domain="efficiency",
@@ -668,7 +696,9 @@ def cfbd_situational_field(
     home_block = _team_block(rows, home) if home else None
     away_block = _team_block(rows, away) if away else None
     if home_block is None and away_block is None:
-        return ContextField.missing("situational", "neither team appears in the CFBD response", CFBD_ADVANCED)
+        return ContextField.missing(
+            "situational", "neither team appears in the CFBD response", CFBD_ADVANCED
+        )
 
     def pick(block: dict[str, Any] | None) -> dict[str, Any] | None:
         if block is None:
@@ -705,7 +735,9 @@ def cfbd_turnovers_field(
     home_block = _team_block(rows, home) if home else None
     away_block = _team_block(rows, away) if away else None
     if home_block is None and away_block is None:
-        return ContextField.missing("turnovers_and_pace", "neither team appears in the CFBD response", CFBD_ADVANCED)
+        return ContextField.missing(
+            "turnovers_and_pace", "neither team appears in the CFBD response", CFBD_ADVANCED
+        )
 
     def pick(block: dict[str, Any] | None) -> dict[str, Any] | None:
         if block is None:
@@ -748,7 +780,9 @@ def coaching_field(
     stays out of. Tenure and name are registry facts.
     """
     if rows is None:
-        return ContextField.missing("coaching", "CFBD was not consulted (no API key)", "cfbd.coaches")
+        return ContextField.missing(
+            "coaching", "CFBD was not consulted (no API key)", "cfbd.coaches"
+        )
 
     def find(team: str | None) -> dict[str, Any] | None:
         if not team:
@@ -767,7 +801,9 @@ def coaching_field(
     home_coach = find(home)
     away_coach = find(away)
     if home_coach is None and away_coach is None:
-        return ContextField.missing("coaching", "neither team appears in the CFBD coaches response", "cfbd.coaches")
+        return ContextField.missing(
+            "coaching", "neither team appears in the CFBD coaches response", "cfbd.coaches"
+        )
     return ContextField(
         domain="coaching",
         values={
@@ -781,5 +817,9 @@ def coaching_field(
         },
         source="cfbd.coaches",
         observed_at=observed_at,
-        quality=(FieldQuality.FRESH.value if home_coach and away_coach else FieldQuality.PARTIAL.value),
+        quality=(
+            FieldQuality.FRESH.value
+            if home_coach and away_coach
+            else FieldQuality.PARTIAL.value
+        ),
     )

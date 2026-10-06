@@ -19,71 +19,35 @@ from cfb_edge_finder.analytics.report import INSUFFICIENT_DATA_MESSAGE, build_re
 NOW = "2026-09-20T12:00:00+00:00"
 
 
-def _obs(
-    key,
-    *,
-    family="moneyline",
-    label="T_24H",
-    model_p=0.6,
-    yes=0.55,
-    no=0.50,
-    capture_mode="PROSPECTIVE",
-    pricing="model_priced",
-    game="g1",
-    ticker="KXNCAAFGAME-A-B",
-):
+def _obs(key, *, family="moneyline", label="T_24H", model_p=0.6, yes=0.55, no=0.50,
+         capture_mode="PROSPECTIVE", pricing="model_priced", game="g1", ticker="KXNCAAFGAME-A-B"):
     return {
         "observation_key": key,
         "capture_mode": capture_mode,
         "season": 2026,
         "observation": {
-            "game_id": game,
-            "kalshi_market_ticker": ticker,
-            "family": family,
-            "model_probability": model_p,
-            "executable_yes_price": yes,
-            "executable_no_price": no,
-            "market_midpoint": 0.52,
-            "pricing_status": pricing,
-            "captured_at": NOW,
+            "game_id": game, "kalshi_market_ticker": ticker, "family": family,
+            "model_probability": model_p, "executable_yes_price": yes, "executable_no_price": no,
+            "market_midpoint": 0.52, "pricing_status": pricing, "captured_at": NOW,
             "snapshot_timing": {"label": label, "hours_before_kickoff": 24.0},
         },
     }
 
 
-def _attr(
-    key,
-    *,
-    state="SETTLED_YES",
-    event_true=True,
-    family="moneyline",
-    label="T_24H",
-    game="g1",
-    ticker="KXNCAAFGAME-A-B",
-    closing_status="CLOSING_CAPTURED",
-    closing_yes=0.62,
-    closing_no=0.40,
-):
+def _attr(key, *, state="SETTLED_YES", event_true=True, family="moneyline", label="T_24H",
+          game="g1", ticker="KXNCAAFGAME-A-B", closing_status="CLOSING_CAPTURED",
+          closing_yes=0.62, closing_no=0.40):
     return {
         "attribution_key": f"{key}|attribution_v1",
         "observation_key": key,
-        "game_id": game,
-        "kalshi_market_ticker": ticker,
-        "family": family,
-        "timing_label": label,
-        "season": 2026,
-        "state": state,
-        "event_true": event_true,
-        "captured_at": NOW,
-        "settled_at": NOW,
-        "model_version": "m1",
-        "fee_status": "VERIFIED_CURRENT",
-        "fee_schedule_version": "kalshi_fee_schedule_2026_07_07_taker",
+        "game_id": game, "kalshi_market_ticker": ticker, "family": family,
+        "timing_label": label, "season": 2026, "state": state, "event_true": event_true,
+        "captured_at": NOW, "settled_at": NOW, "model_version": "m1",
+        "fee_status": "VERIFIED_CURRENT", "fee_schedule_version": "kalshi_fee_schedule_2026_07_07_taker",
         "closing": {
             "closing_captured": closing_status == "CLOSING_CAPTURED",
             "closing_status": closing_status,
-            "closing_yes_price": closing_yes,
-            "closing_no_price": closing_no,
+            "closing_yes_price": closing_yes, "closing_no_price": closing_no,
         },
         "yes_economics": {"research_unit_pnl": 0.45, "fee_adjusted_research_unit_pnl": 0.43, "estimated_fee": 0.02},
         "no_economics": {"research_unit_pnl": -0.50, "fee_adjusted_research_unit_pnl": -0.52, "estimated_fee": 0.02},
@@ -211,14 +175,8 @@ def test_missing_close_is_excluded_from_clv_aggregates(tmp_path):
     obs = [_obs(f"k{i}", game=f"g{i}", ticker=f"T{i}") for i in range(6)]
     attrs = [_attr(f"k{i}", game=f"g{i}", ticker=f"T{i}") for i in range(3)]
     attrs += [
-        _attr(
-            f"k{i}",
-            game=f"g{i}",
-            ticker=f"T{i}",
-            closing_status="CLOSING_MISSING_MARKET_CLOSED",
-            closing_yes=None,
-            closing_no=None,
-        )
+        _attr(f"k{i}", game=f"g{i}", ticker=f"T{i}",
+              closing_status="CLOSING_MISSING_MARKET_CLOSED", closing_yes=None, closing_no=None)
         for i in range(3, 6)
     ]
     ds = build_dataset(*_write(tmp_path, obs, attrs))
@@ -297,24 +255,9 @@ def test_slice_aggregation_scales(tmp_path):
 # --- Safety boundary (sections 31, 32) -----------------------------------
 
 FORBIDDEN_TOKENS = (
-    "recommend",
-    "qualify",
-    "qualification",
-    "stake",
-    "staking",
-    "bankroll",
-    "kelly",
-    "wager",
-    "place_order",
-    "submit_order",
-    "portfolio",
-    "tier_a",
-    "tier_b",
-    "best_bet",
-    "bet_size",
-    "select_best",
-    "optimal",
-    "threshold_search",
+    "recommend", "qualify", "qualification", "stake", "staking", "bankroll", "kelly",
+    "wager", "place_order", "submit_order", "portfolio", "tier_a", "tier_b",
+    "best_bet", "bet_size", "select_best", "optimal", "threshold_search",
 )
 
 
@@ -379,7 +322,8 @@ def test_no_function_returns_a_best_or_selected_slice():
 
 
 def test_slices_are_returned_in_fixed_order_not_sorted_by_performance(tmp_path):
-    obs = [_obs(f"k{i}", game=f"g{i % 9}", ticker=f"T{i}", yes=0.1 + 0.05 * (i % 9)) for i in range(45)]
+    obs = [_obs(f"k{i}", game=f"g{i % 9}", ticker=f"T{i}",
+                yes=0.1 + 0.05 * (i % 9)) for i in range(45)]
     attrs = [_attr(f"k{i}", game=f"g{i % 9}", ticker=f"T{i}", event_true=(i % 4 == 0)) for i in range(45)]
     rep = build_report(build_dataset(*_write(tmp_path, obs, attrs)))
     fam = rep.families[0]

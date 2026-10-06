@@ -96,7 +96,9 @@ def _code_without_docstrings(path: Path) -> str:
                     n
                     for n in tree.body
                     if not (
-                        isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)
+                        isinstance(n, ast.Expr)
+                        and isinstance(n.value, ast.Constant)
+                        and isinstance(n.value.value, str)
                     )
                 ],
                 type_ignores=[],
@@ -148,7 +150,9 @@ def _all_keys(value, found=None):
 
 def _fake():
     game = "26SEP19UGAARK"
-    events = {f"{s}-{game}": make_event(f"{s}-{game}") for s in ("KXNCAAFGAME", "KXNCAAFSPREAD")}
+    events = {
+        f"{s}-{game}": make_event(f"{s}-{game}") for s in ("KXNCAAFGAME", "KXNCAAFSPREAD")
+    }
     markets = {
         f"KXNCAAFGAME-{game}": [make_market(f"KXNCAAFGAME-{game}-UGA", floor_strike=None)],
         f"KXNCAAFSPREAD-{game}": [
@@ -222,7 +226,8 @@ def test_every_game_carries_full_diagnostics():
     }
     for game in catalog["games"]:
         assert required <= set(game["completeness"]), (
-            f"game {game['game_key']} is missing diagnostics: {sorted(required - set(game['completeness']))}"
+            f"game {game['game_key']} is missing diagnostics: "
+            f"{sorted(required - set(game['completeness']))}"
         )
 
 
@@ -520,7 +525,9 @@ def test_money_fields_normalize_to_dollars_from_either_spelling():
 def test_a_strike_and_a_price_of_the_same_magnitude_do_not_collide():
     """The regression in one assertion: the same number means different
     things in the two fields, and both must survive."""
-    contract = _build({"ticker": "T", "floor_strike": 3.5, "yes_ask_dollars": "0.3500", "status": "active"})
+    contract = _build(
+        {"ticker": "T", "floor_strike": 3.5, "yes_ask_dollars": "0.3500", "status": "active"}
+    )
     assert contract.semantics.floor_strike == pytest.approx(3.5)
     assert contract.quote.yes_ask == pytest.approx(0.35)
 
@@ -578,19 +585,15 @@ def _fee_block_for(series, event=None, series_lookup_succeeded=True):
     contract = build_contract(
         # Sizes on both sides: these tests are about FEES, and a mid is
         # only published for an executable two-sided book.
-        {
-            "ticker": "T",
-            "event_ticker": "E",
-            "status": "active",
-            "yes_bid_dollars": "0.49",
-            "yes_ask_dollars": "0.51",
-            "yes_bid_size_fp": "250.00",
-            "yes_ask_size_fp": "300.00",
-        },
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.49", "yes_ask_dollars": "0.51",
+         "yes_bid_size_fp": "250.00", "yes_ask_size_fp": "300.00"},
         game_key="g",
         series_ticker="KXNCAAFGAME",
         settlement_sources=[],
-        effective_fee=resolve_effective_fee(event or {}, series, series_lookup_succeeded=series_lookup_succeeded),
+        effective_fee=resolve_effective_fee(
+            event or {}, series, series_lookup_succeeded=series_lookup_succeeded
+        ),
         captured_at=NOW,
     )
     return contract_to_dict(contract, include_raw=False)
@@ -615,22 +618,12 @@ def test_the_published_block_prices_BOTH_executable_sides():
     from cfb_edge_finder.catalog.contract import build_contract, contract_to_dict
 
     contract = build_contract(
-        {
-            "ticker": "T",
-            "event_ticker": "E",
-            "status": "active",
-            "yes_bid_dollars": "0.40",
-            "yes_ask_dollars": "0.60",
-            "no_bid_dollars": "0.35",
-            "no_ask_dollars": "0.55",
-            "yes_bid_size_fp": "100.00",
-            "yes_ask_size_fp": "100.00",
-        },
-        game_key="g",
-        series_ticker="KXNCAAFGAME",
-        settlement_sources=[],
-        effective_fee=_quadratic_fee(),
-        captured_at=NOW,
+        {"ticker": "T", "event_ticker": "E", "status": "active",
+         "yes_bid_dollars": "0.40", "yes_ask_dollars": "0.60",
+         "no_bid_dollars": "0.35", "no_ask_dollars": "0.55",
+         "yes_bid_size_fp": "100.00", "yes_ask_size_fp": "100.00"},
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
     )
     block = contract_to_dict(contract, include_raw=False)["fee"]
     assert block["basis_yes_ask"] == pytest.approx(0.60)
@@ -639,7 +632,9 @@ def test_the_published_block_prices_BOTH_executable_sides():
     assert block["model_trade_fee_at_no_ask"] is not None
     # The NO fee comes from 0.55, not from 1 - 0.60 = 0.40. Those give
     # different numbers, which is the whole reason not to derive it.
-    assert block["model_trade_fee_at_no_ask"] != pytest.approx(block["model_trade_fee_at_yes_ask"], rel=1e-6)
+    assert block["model_trade_fee_at_no_ask"] != pytest.approx(
+        block["model_trade_fee_at_yes_ask"], rel=1e-6
+    )
     assert block["executable_bases"] == ["basis_yes_ask", "basis_no_ask"]
 
 
@@ -648,11 +643,8 @@ def test_a_contract_with_no_quoted_no_ask_publishes_a_null_no_fee():
 
     contract = build_contract(
         {"ticker": "T", "event_ticker": "E", "status": "active", "yes_ask_dollars": "0.60"},
-        game_key="g",
-        series_ticker="KXNCAAFGAME",
-        settlement_sources=[],
-        effective_fee=_quadratic_fee(),
-        captured_at=NOW,
+        game_key="g", series_ticker="KXNCAAFGAME", settlement_sources=[],
+        effective_fee=_quadratic_fee(), captured_at=NOW,
     )
     block = contract_to_dict(contract, include_raw=False)["fee"]
     assert block["basis_no_ask"] is None
@@ -695,7 +687,9 @@ def test_the_published_fee_never_claims_to_be_an_account_net_fee():
     precision, so it says so instead of implying a net cost."""
     block = _fee_block_for({"fee_type": "quadratic", "fee_multiplier": 1})["fee"]
     assert block["is_net_fee"] is False
-    assert set(block["excludes"]) == {"rounding_fee", "rebate", "fee_accumulator", "user_balance_precision"}
+    assert set(block["excludes"]) == {
+        "rounding_fee", "rebate", "fee_accumulator", "user_balance_precision"
+    }
     assert "net" in block["note"].lower()
 
 
@@ -727,7 +721,9 @@ def test_missing_fee_metadata_publishes_no_fee_and_says_why():
     a number is indistinguishable from a measurement."""
     for series in ({"fee_multiplier": 1}, {"fee_type": "quadratic"}, {}):
         block = _fee_block_for(series)["fee"]
-        assert block["model_trade_fee_at_yes_ask"] is None, f"series {series} produced a fee from absent metadata"
+        assert block["model_trade_fee_at_yes_ask"] is None, (
+            f"series {series} produced a fee from absent metadata"
+        )
         assert block["unavailable_reason"]
         assert block["support"] == str(FeeModelSupport.METADATA_UNAVAILABLE)
     # And the effective values published alongside it stay honest.
@@ -760,7 +756,9 @@ def test_an_event_fee_override_wins_over_its_series():
     overridden = _fee_block_for(series, event={"fee_multiplier_override": 2})["fee"]
     assert overridden["source"] == str(FeeSource.EVENT_OVERRIDE)
     assert overridden["multiplier"] == pytest.approx(2.0)
-    assert overridden["model_trade_fee_at_yes_ask"] == pytest.approx(2 * plain["model_trade_fee_at_yes_ask"], rel=1e-4)
+    assert overridden["model_trade_fee_at_yes_ask"] == pytest.approx(
+        2 * plain["model_trade_fee_at_yes_ask"], rel=1e-4
+    )
 
 
 def test_a_cleared_override_falls_back_to_the_series():
@@ -808,7 +806,9 @@ def test_an_unchanged_market_surface_rewrites_no_game_file_as_the_clock_moves():
         first = write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW), out)
         assert first.game_files_written == 1
 
-        later = write_catalog_artifacts(MarketDiscovery(_fake()).run(as_of=NOW + timedelta(hours=3)), out)
+        later = write_catalog_artifacts(
+            MarketDiscovery(_fake()).run(as_of=NOW + timedelta(hours=3)), out
+        )
         assert later.game_files_written == 0, "the clock alone rewrote a game file"
         assert later.game_files_unchanged == 1
 

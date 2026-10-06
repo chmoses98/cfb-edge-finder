@@ -86,7 +86,9 @@ def test_missing_factual_context_costs_more_than_present_context(tmp_path):
     bare = game_cost(packet).total
     enriched = dict(packet)
     enriched["factual_context"] = dict(packet["factual_context"])
-    enriched["factual_context"]["coverage"] = {domain: "fresh" for domain in packet["factual_context"]["coverage"]}
+    enriched["factual_context"]["coverage"] = {
+        domain: "fresh" for domain in packet["factual_context"]["coverage"]
+    }
     assert game_cost(enriched).total < bare
 
 
@@ -119,7 +121,9 @@ def test_every_game_lands_in_exactly_one_batch(tmp_path):
     slate = slate_of(tmp_path)
     batches = build_batches(slate, window_order=WINDOW_ORDER)
     assert sum(len(b.packets) for b in batches) == len(slate["games"])
-    assert sum(b.eligible for b in batches) == sum(p["counts"]["eligible"] for p in slate["games"])
+    assert sum(b.eligible for b in batches) == sum(
+        p["counts"]["eligible"] for p in slate["games"]
+    )
 
 
 def test_batches_are_contiguous_runs_of_kickoffs(tmp_path):
@@ -194,7 +198,10 @@ def test_the_union_of_batches_equals_the_whole_window(tmp_path):
     slate = slate_of(tmp_path)
     packets = {str(p["game_key"]): p for p in slate["games"]}
     handicaps = {key: handicap_for(packet) for key, packet in packets.items()}
-    evaluations = {key: evaluate_game(packet, handicaps[key], min_net_edge=0.02) for key, packet in packets.items()}
+    evaluations = {
+        key: evaluate_game(packet, handicaps[key], min_net_edge=0.02)
+        for key, packet in packets.items()
+    }
 
     def candidate_set(keys):
         artifact = build_candidate_artifact(
@@ -204,7 +211,10 @@ def test_the_union_of_batches_equals_the_whole_window(tmp_path):
             {k: handicaps[k] for k in keys},
             min_net_edge=0.02,
         )
-        return {(c["game_key"], c["market"], c["side"], c["kalshi_executable_price"]) for c in artifact["candidates"]}
+        return {
+            (c["game_key"], c["market"], c["side"], c["kalshi_executable_price"])
+            for c in artifact["candidates"]
+        }
 
     whole = candidate_set(list(packets))
     union: set = set()

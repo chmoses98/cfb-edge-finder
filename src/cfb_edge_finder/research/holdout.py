@@ -116,7 +116,9 @@ class FrozenCandidateRule:
             "discovery_game_ids": sorted(self.discovery_game_ids),
             "protocol_version": self.protocol_version,
         }
-        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
     def selects(self, obs: SettledResearchObservation) -> bool:
         """Whether this observation falls inside the rule's scope."""
@@ -225,7 +227,8 @@ def validate_candidate(
     if recomputed != frozen_hash:
         report.verdict = ValidationVerdict.REFUSED_RULE_MUTATED
         report.detail = (
-            f"rule hash {recomputed} does not match the frozen {frozen_hash}; the rule changed after it was frozen"
+            f"rule hash {recomputed} does not match the frozen {frozen_hash}; the rule "
+            f"changed after it was frozen"
         )
         return report
 
@@ -267,7 +270,10 @@ def validate_candidate(
 
     if len(games) < minimum_validation_games:
         report.verdict = ValidationVerdict.INSUFFICIENT_VALIDATION_SAMPLE
-        report.detail = f"{len(games)} independent game(s) below the declared minimum {minimum_validation_games}"
+        report.detail = (
+            f"{len(games)} independent game(s) below the declared minimum "
+            f"{minimum_validation_games}"
+        )
         return report
 
     mean, _se, low, high = _cluster_statistics(selected)

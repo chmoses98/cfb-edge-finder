@@ -197,7 +197,10 @@ def observed_interval_minutes(
     # strict=False deliberately: the two sequences are offset by one by
     # construction, which is the point -- pairing each run with its
     # successor is how a gap is formed.
-    gaps = [(b.invoked_at - a.invoked_at).total_seconds() / 60.0 for a, b in zip(recent, recent[1:], strict=False)]
+    gaps = [
+        (b.invoked_at - a.invoked_at).total_seconds() / 60.0
+        for a, b in zip(recent, recent[1:], strict=False)
+    ]
     return statistics.median(gaps), len(gaps)
 
 
@@ -303,11 +306,9 @@ def assess_collection_protection(
             ).strip(),
             remedy=(
                 "Switch the external scheduler to a tight cadence NOW"
-                + (
-                    ", and dispatch Research Capture manually as cover."
-                    if manual_fallback_available
-                    else " (no manual fallback recorded as available)."
-                )
+                + (", and dispatch Research Capture manually as cover."
+                   if manual_fallback_available
+                   else " (no manual fallback recorded as available).")
             ),
             tighten_by=tighten_by,
             **common,

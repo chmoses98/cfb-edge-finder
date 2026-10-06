@@ -223,7 +223,9 @@ def test_priced_tradeable_contract_without_a_verified_fee_is_high():
 
 
 def test_unpriced_contract_owes_no_fee():
-    findings = check_fee_provenance([snap("A", probability=None, pricing_status="not_priced", fee_status="unverified")])
+    findings = check_fee_provenance(
+        [snap("A", probability=None, pricing_status="not_priced", fee_status="unverified")]
+    )
     assert findings == []
 
 
@@ -235,12 +237,16 @@ def test_verified_fee_produces_nothing():
 
 
 def test_pricing_an_unsupported_population_is_a_blocker():
-    findings = check_unsupported_population_unpriced([snap("A", pricing_status="not_priced", probability=0.6)])
+    findings = check_unsupported_population_unpriced(
+        [snap("A", pricing_status="not_priced", probability=0.6)]
+    )
     assert findings[0].severity is DiagnosticSeverity.BLOCKER
 
 
 def test_unpriced_unsupported_contract_is_fine():
-    assert check_unsupported_population_unpriced([snap("A", pricing_status="not_priced", probability=None)]) == []
+    assert check_unsupported_population_unpriced(
+        [snap("A", pricing_status="not_priced", probability=None)]
+    ) == []
 
 
 def test_priced_contract_without_a_model_version_is_high():
@@ -273,15 +279,15 @@ def test_zero_carryover_is_disclosed_as_info_not_alarm():
 
 
 def test_a_clean_snapshot_set_is_healthy():
-    report = run_model_health([snap("H", team=Side.HOME, probability=0.6), snap("A", team=Side.AWAY, probability=0.4)])
+    report = run_model_health([snap("H", team=Side.HOME, probability=0.6),
+                               snap("A", team=Side.AWAY, probability=0.4)])
     assert report.is_healthy
     assert report.counts()["BLOCKER"] == 0
 
 
 def test_info_findings_do_not_make_a_report_unhealthy():
-    report = run_model_health(
-        [snap("H", team=Side.HOME, probability=0.60), snap("A", team=Side.AWAY, probability=0.378)]
-    )
+    report = run_model_health([snap("H", team=Side.HOME, probability=0.60),
+                               snap("A", team=Side.AWAY, probability=0.378)])
     assert report.counts()["INFO"] >= 1
     assert report.is_healthy
 

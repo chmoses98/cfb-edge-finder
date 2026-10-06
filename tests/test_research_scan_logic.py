@@ -68,40 +68,24 @@ def test_detect_reschedule_false_when_either_kickoff_unknown():
 def test_build_corpus_row_key_matches_identity_module():
     obs = make_observation(kalshi_market_ticker="MKT-1")
     row = scan_logic.build_corpus_row(
-        observation=obs,
-        season=2026,
-        kickoff_utc_at_capture=NOW,
-        game_status_at_capture="scheduled",
-        schedule_source_timestamp=NOW,
-        data_versions=make_data_versions(),
-        run_id="run-1",
+        observation=obs, season=2026, kickoff_utc_at_capture=NOW, game_status_at_capture="scheduled",
+        schedule_source_timestamp=NOW, data_versions=make_data_versions(), run_id="run-1",
     )
     expected = observation_key(
-        season=2026,
-        game_id=obs.game_id,
-        market_ticker=obs.kalshi_market_ticker,
-        timing_label=obs.snapshot_timing.label,
-        model_version=obs.model_version.model_version,
+        season=2026, game_id=obs.game_id, market_ticker=obs.kalshi_market_ticker,
+        timing_label=obs.snapshot_timing.label, model_version=obs.model_version.model_version,
     )
     assert row.observation_key == expected
 
 
 def test_build_corpus_row_unmapped_game_uses_placeholder_in_key():
     obs = make_observation(
-        game_id=None,
-        family=None,
-        model_version=None,
-        coverage_outcome="ticker_unresolved",
-        pricing_status="not_priced",
+        game_id=None, family=None, model_version=None,
+        coverage_outcome="ticker_unresolved", pricing_status="not_priced",
     )
     row = scan_logic.build_corpus_row(
-        observation=obs,
-        season=2026,
-        kickoff_utc_at_capture=None,
-        game_status_at_capture="unknown",
-        schedule_source_timestamp=None,
-        data_versions=make_data_versions(),
-        run_id=None,
+        observation=obs, season=2026, kickoff_utc_at_capture=None, game_status_at_capture="unknown",
+        schedule_source_timestamp=None, data_versions=make_data_versions(), run_id=None,
     )
     assert row.observation_key  # does not crash on missing game_id/model_version
 
@@ -159,7 +143,9 @@ def test_unsupported_population_classifier_is_exclusive_with_failure():
     # never both a failure and an unsupported population, so the health
     # report's accounting cannot double-count a market.
     for reason in KalshiCfbCoverageReason:
-        assert not (scan_logic.is_genuine_mapping_failure(reason) and scan_logic.is_unsupported_population(reason))
+        assert not (
+            scan_logic.is_genuine_mapping_failure(reason) and scan_logic.is_unsupported_population(reason)
+        )
     assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.NON_FBS_PARTICIPANT) is True
     assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.FCS_VS_FCS) is True
     assert scan_logic.is_unsupported_population(KalshiCfbCoverageReason.AMBIGUOUS_TEAM_MAPPING) is False

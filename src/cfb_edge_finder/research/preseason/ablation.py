@@ -218,9 +218,7 @@ def blocked_candidate(name: str, reason: str) -> CandidateResult:
 
 
 def classify_effect(
-    *,
-    margin_comparison: PairedComparison | None,
-    coverage_delta: float | None,
+    *, margin_comparison: PairedComparison | None, coverage_delta: float | None,
     coverage_tolerance: float = 0.01,
 ) -> EffectType:
     """Decide whether a candidate moved the mean, the spread, both or
@@ -229,7 +227,9 @@ def classify_effect(
     `coverage_tolerance` guards against reading noise as an uncertainty
     effect: interval coverage wanders by a point or two on a few hundred
     games regardless of the model."""
-    moved_mean = margin_comparison is not None and (margin_comparison.improves or margin_comparison.degrades)
+    moved_mean = margin_comparison is not None and (
+        margin_comparison.improves or margin_comparison.degrades
+    )
     moved_spread = coverage_delta is not None and abs(coverage_delta) > coverage_tolerance
     if moved_mean and moved_spread:
         return EffectType.BOTH

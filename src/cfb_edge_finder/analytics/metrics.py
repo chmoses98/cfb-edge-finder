@@ -134,11 +134,8 @@ def closing_line_value(
     for label, value in (("entry", entry_price), ("closing", closing_price)):
         if not (0.0 <= value <= 1.0):
             return ClosingLineValue(
-                available=False,
-                reason=f"INVALID_{label.upper()}_PRICE",
-                side=side,
-                entry_price=entry_price,
-                closing_price=closing_price,
+                available=False, reason=f"INVALID_{label.upper()}_PRICE", side=side,
+                entry_price=entry_price, closing_price=closing_price,
             )
 
     raw = closing_price - entry_price

@@ -156,18 +156,12 @@ def test_capture_state_same_state_reobserved_is_deduped(tmp_path):
 def test_capture_state_transition_appends(tmp_path):
     path = corpus_helpers.ref(tmp_path, persistence.CAPTURE_STATE_SUBDIR, 2026)
     not_due = CaptureStateRecord(
-        game_id="g1",
-        kalshi_market_ticker="MKT-1",
-        timing_label="T_60",
-        state=CaptureState.NOT_YET_DUE,
-        observed_at=NOW,
+        game_id="g1", kalshi_market_ticker="MKT-1", timing_label="T_60",
+        state=CaptureState.NOT_YET_DUE, observed_at=NOW,
     )
     captured = CaptureStateRecord(
-        game_id="g1",
-        kalshi_market_ticker="MKT-1",
-        timing_label="T_60",
-        state=CaptureState.CAPTURED,
-        observed_at=NOW,
+        game_id="g1", kalshi_market_ticker="MKT-1", timing_label="T_60",
+        state=CaptureState.CAPTURED, observed_at=NOW,
     )
     persistence.append_capture_state_rows(path.base, path.season, [not_due])
     result = persistence.append_capture_state_rows(path.base, path.season, [captured])

@@ -1,5 +1,4 @@
 """Bounded-retry behaviour of the Kalshi client (live 429 regression)."""
-
 from __future__ import annotations
 
 import pytest

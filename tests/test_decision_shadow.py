@@ -180,7 +180,9 @@ def test_an_approved_but_incompatible_rule_stops_the_candidate(tmp_path):
 
 
 def test_unvalidated_evidence_stops_an_otherwise_compatible_candidate(tmp_path):
-    decision = evaluate(resolution=approved_resolution(tmp_path), evidence_state=EvidenceState.VALIDATION_PENDING)
+    decision = evaluate(
+        resolution=approved_resolution(tmp_path), evidence_state=EvidenceState.VALIDATION_PENDING
+    )
     assert decision.state is ShadowDecisionState.EVIDENCE_NOT_VALIDATED
 
 
@@ -214,7 +216,9 @@ def test_the_decision_carries_its_full_diagnostic_trail():
 
 def test_the_gap_is_none_when_either_input_is_missing():
     assert evaluate(candidate=candidate(model_probability=None)).model_market_gap is None
-    assert evaluate(candidate=candidate(fee_adjusted_break_even_probability=None)).model_market_gap is None
+    assert (
+        evaluate(candidate=candidate(fee_adjusted_break_even_probability=None)).model_market_gap is None
+    )
 
 
 def test_group_identifiers_are_carried_through():
@@ -283,7 +287,9 @@ def test_a_snapshot_with_unknown_capture_mode_is_not_treated_as_prospective():
 def test_the_pipeline_derives_evidence_state_rather_than_trusting_a_caller():
     """A caller passing an enormous settled count still cannot conjure
     VALIDATED, because `assess_readiness` never returns it."""
-    result = run_shadow_pipeline([snapshot()], resolution=load_artifact(None), available_settled_games=10**7, now=NOW)
+    result = run_shadow_pipeline(
+        [snapshot()], resolution=load_artifact(None), available_settled_games=10**7, now=NOW
+    )
     assert all(d.evidence_state != "VALIDATED" for d in result.decisions)
 
 

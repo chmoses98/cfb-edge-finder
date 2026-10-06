@@ -68,35 +68,21 @@ ABSOLUTE_GAP_BUCKETS: tuple[tuple[str, float | None, float | None], ...] = (
 )
 
 PRICE_BUCKETS: tuple[tuple[str, float, float], ...] = (
-    ("0-10c", 0.00, 0.105),
-    ("11-20c", 0.105, 0.205),
-    ("21-30c", 0.205, 0.305),
-    ("31-40c", 0.305, 0.405),
-    ("41-50c", 0.405, 0.505),
-    ("51-60c", 0.505, 0.605),
-    ("61-70c", 0.605, 0.705),
-    ("71-80c", 0.705, 0.805),
-    ("81-90c", 0.805, 0.905),
+    ("0-10c", 0.00, 0.105), ("11-20c", 0.105, 0.205), ("21-30c", 0.205, 0.305),
+    ("31-40c", 0.305, 0.405), ("41-50c", 0.405, 0.505), ("51-60c", 0.505, 0.605),
+    ("61-70c", 0.605, 0.705), ("71-80c", 0.705, 0.805), ("81-90c", 0.805, 0.905),
     ("91-99c", 0.905, 1.01),
 )
 
 TIMING_ORDER: tuple[str, ...] = (
-    "EARLY_OPEN",
-    "T_7D",
-    "T_3D",
-    "T_24H",
-    "T_6H",
-    "T_90",
-    "T_60",
-    "T_30",
-    "CLOSING",
+    "EARLY_OPEN", "T_7D", "T_3D", "T_24H", "T_6H", "T_90", "T_60", "T_30", "CLOSING",
 )
 
 FAMILY_READINESS = {
     "moneyline": "research validated",
     "spread": "research validated",
     "total": "WEAKER -- research primitive only; the totals model underperformed the naive benchmark "
-    "in Milestone C.2 backtesting and has not been validated for pricing",
+             "in Milestone C.2 backtesting and has not been validated for pricing",
 }
 """Carried into every family report so a totals number can never be read
 without its caveat (mission section 12)."""
@@ -187,21 +173,15 @@ def summarize_slice(
 
     if not rows:
         return SliceSummary(
-            label=label,
-            dimension=dimension,
-            analysis_status=analysis_status,
-            n=0,
-            n_games=0,
-            confidence_label=confidence.label,
-            confidence_detail=confidence.detail,
+            label=label, dimension=dimension, analysis_status=analysis_status, n=0, n_games=0,
+            confidence_label=confidence.label, confidence_detail=confidence.detail,
             caveats=extra_caveats + ((EXPLORATORY_CAVEAT,) if analysis_status == EXPLORATORY else ()),
         )
 
     is_yes = side == "yes"
     entry_prices = [p for p in ((r.entry_yes_price if is_yes else r.entry_no_price) for r in rows) if p is not None]
     gaps = [
-        g
-        for g in ((r.gaps.yes_probability_gap if is_yes else r.gaps.no_probability_gap) for r in rows)
+        g for g in ((r.gaps.yes_probability_gap if is_yes else r.gaps.no_probability_gap) for r in rows)
         if g is not None
     ]
     # The event the SIDE wins on: YES wins when the contract's condition
@@ -216,7 +196,8 @@ def summarize_slice(
     favorable = [c.favorable for _, c in clv_available if c.favorable is not None]
 
     pnl_pairs = [
-        (r, (r.yes_fee_adjusted_research_unit_pnl if is_yes else r.no_fee_adjusted_research_unit_pnl)) for r in rows
+        (r, (r.yes_fee_adjusted_research_unit_pnl if is_yes else r.no_fee_adjusted_research_unit_pnl))
+        for r in rows
     ]
     pnl_available = [(r, v) for r, v in pnl_pairs if v is not None]
     fee_adj = [v for _, v in pnl_available]
@@ -248,7 +229,9 @@ def summarize_slice(
         mean_clv=_safe_mean(clv_values),
         median_clv=median(clv_values) if clv_values else None,
         favorable_clv_rate=(sum(1 for f in favorable if f) / len(favorable)) if favorable else None,
-        clv_interval=(cluster_bootstrap_mean(clv_values, clv_games) if bootstrap and clv_values else None),
+        clv_interval=(
+            cluster_bootstrap_mean(clv_values, clv_games) if bootstrap and clv_values else None
+        ),
         gross_unit_pnl=_safe_mean(gross),
         fee_adjusted_unit_pnl=_safe_mean(fee_adj),
         # ROI on deployed capital: total fee-adjusted P/L over total entry

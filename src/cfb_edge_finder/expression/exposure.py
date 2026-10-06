@@ -68,7 +68,9 @@ def build_exposure(semantics: ContractSemantics, executable_side: Side) -> Contr
             team_exposure = Side.AWAY if semantics.team is Side.HOME else Side.HOME
             direction = ExposureDirection.TEAM_FAVORABLE
     elif semantics.family is MarketFamily.TOTAL:
-        direction = ExposureDirection.HIGHER_TOTAL if executable_side is Side.YES else ExposureDirection.LOWER_TOTAL
+        direction = (
+            ExposureDirection.HIGHER_TOTAL if executable_side is Side.YES else ExposureDirection.LOWER_TOTAL
+        )
 
     return ContractExposure(
         market_ticker=semantics.market_ticker,

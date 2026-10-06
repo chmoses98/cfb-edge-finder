@@ -97,15 +97,15 @@ def test_three_triggers_in_a_row_write_one_row_each(tmp_path, monkeypatch, slate
     repo = tmp_path / "repo"
     repo.mkdir()
 
-    first, report1, _ = _run_once(
-        repo, monkeypatch, games, classification, markets, history, run_id="github-schedule", now=now
-    )
+    first, report1, _ = _run_once(repo, monkeypatch, games, classification, markets, history,
+                                  run_id="github-schedule", now=now)
     after_first = _rows(repo)
     assert after_first, "the harness must actually write rows or this proves nothing"
     assert report1.captures_written > 0
 
     for run_id in ("conductor-dispatch", "human-manual"):
-        _, report, _ = _run_once(repo, monkeypatch, games, classification, markets, history, run_id=run_id, now=now)
+        _, report, _ = _run_once(repo, monkeypatch, games, classification, markets, history,
+                                 run_id=run_id, now=now)
         assert report.captures_written == 0, f"{run_id} rewrote rows that already existed"
         # Dedup short-circuits EARLIER than persistence: the capture-state
         # ledger makes the label not-due, so the redundant run never
@@ -155,9 +155,8 @@ def test_a_delayed_trigger_still_dedups(tmp_path, monkeypatch, slate):
     _run_once(repo, monkeypatch, games, classification, markets, history, run_id="on-time", now=now)
     count_before = len(_rows(repo))
     # Still inside T_24H's window (18h-30h), so the label is due again.
-    _run_once(
-        repo, monkeypatch, games, classification, markets, history, run_id="late", now=now + dt.timedelta(minutes=45)
-    )
+    _run_once(repo, monkeypatch, games, classification, markets, history,
+              run_id="late", now=now + dt.timedelta(minutes=45))
     assert len(_rows(repo)) == count_before
 
 
@@ -172,22 +171,11 @@ def test_collector_failure_writes_nothing_and_leaves_corpus_intact(tmp_path, mon
     install_failing_market_feed(monkeypatch, failing_series=set(markets))
     report = health.CaptureHealthReport()
     collector._apply_scan(  # noqa: SLF001
-        repo,
-        season=SEASON,
-        games=games,
-        classification_by_game_id=classification,
-        fcs_school_names=frozenset(),
-        cache=GameProjectionCache(history),
-        kalshi_client=None,
+        repo, season=SEASON, games=games, classification_by_game_id=classification,
+        fcs_school_names=frozenset(), cache=GameProjectionCache(history), kalshi_client=None,
         model_version=_model_version(),
-        training_cutoff_fn=lambda r: "cutoff",
-        n_simulations=200,
-        seed=0,
-        now=now,
-        schedule_source_timestamp=now,
-        run_id="failing",
-        report=report,
-        telemetry=ScanTelemetry(),
+        training_cutoff_fn=lambda r: "cutoff", n_simulations=200, seed=0, now=now,
+        schedule_source_timestamp=now, run_id="failing", report=report, telemetry=ScanTelemetry(),
     )
     assert _rows(repo) == good, "a failed run mutated the corpus"
 

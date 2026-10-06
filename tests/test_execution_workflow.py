@@ -30,7 +30,9 @@ def two_game_catalog(tmp_path: Path) -> Path:
     return catalog_dir(
         tmp_path,
         kickoff="2026-09-19T16:00:00Z",
-        extra_games=[(SECOND_GAME, "LSU at Ole Miss", "2026-09-19T16:30:00Z", standard_markets(SECOND_GAME))],
+        extra_games=[
+            (SECOND_GAME, "LSU at Ole Miss", "2026-09-19T16:30:00Z", standard_markets(SECOND_GAME))
+        ],
     )
 
 
@@ -209,7 +211,9 @@ def test_the_report_distinguishes_evaluated_from_selected(tmp_path):
 def test_every_final_bet_carries_the_fields_an_operator_needs(tmp_path):
     packets = build_slate(two_game_catalog(tmp_path), config(), slate_date=None).packets
     payloads = {
-        p["game_key"]: handicap(game_key=p["game_key"], thesis="the thesis", opposing_case="the other side")
+        p["game_key"]: handicap(
+            game_key=p["game_key"], thesis="the thesis", opposing_case="the other side"
+        )
         for p in packets
     }
     evaluations = [evaluate_game(p, payloads[p["game_key"]], min_net_edge=0.0) for p in packets]
@@ -250,33 +254,12 @@ def test_every_final_bet_carries_the_fields_an_operator_needs(tmp_path):
 
 def test_the_correlation_review_keeps_the_best_expression_of_one_view():
     rows = [
-        {
-            "ticker": "A",
-            "game_key": "G",
-            "kind": "spread",
-            "period": "full_game",
-            "team": "home",
-            "best_side": "yes",
-            "net_edge": 0.05,
-        },
-        {
-            "ticker": "B",
-            "game_key": "G",
-            "kind": "spread",
-            "period": "full_game",
-            "team": "away",
-            "best_side": "no",
-            "net_edge": 0.09,
-        },
-        {
-            "ticker": "C",
-            "game_key": "G",
-            "kind": "total",
-            "period": "full_game",
-            "team": "none",
-            "best_side": "yes",
-            "net_edge": 0.03,
-        },
+        {"ticker": "A", "game_key": "G", "kind": "spread", "period": "full_game",
+         "team": "home", "best_side": "yes", "net_edge": 0.05},
+        {"ticker": "B", "game_key": "G", "kind": "spread", "period": "full_game",
+         "team": "away", "best_side": "no", "net_edge": 0.09},
+        {"ticker": "C", "game_key": "G", "kind": "total", "period": "full_game",
+         "team": "none", "best_side": "yes", "net_edge": 0.03},
     ]
     survivors, dropped = correlation_review(rows)
     assert {c.row["ticker"] for c in survivors} == {"B", "C"}
@@ -299,22 +282,13 @@ def test_the_cli_walks_the_whole_workflow(tmp_path, capsys):
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
 
-    assert (
-        run(
-            [
-                "prepare-live",
-                "--catalog-dir",
-                str(catalog),
-                "--out-dir",
-                str(out),
-                "--as-of",
-                NOW.isoformat(),
-                "--date",
-                "all",
-            ]
-        )
-        == 0
-    )
+    assert run([
+        "prepare-live",
+        "--catalog-dir", str(catalog),
+        "--out-dir", str(out),
+        "--as-of", NOW.isoformat(),
+        "--date", "all",
+    ]) == 0
     slate = json.loads((out / "cfb_execution_slate.json").read_text())
     assert slate["reconciliation"]["balanced"] is True
     manifest = json.loads((out / "shard_manifest.json").read_text())
@@ -329,22 +303,10 @@ def test_the_cli_walks_the_whole_workflow(tmp_path, capsys):
     handicap_file = tmp_path / "handicaps.json"
     handicap_file.write_text(json.dumps(filled_handicaps(shard["games"])))
 
-    assert (
-        run(
-            [
-                "evaluate",
-                "--shard",
-                shard_name,
-                "--out-dir",
-                str(out),
-                "--handicaps",
-                str(handicap_file),
-                "--min-edge",
-                "0.0",
-            ]
-        )
-        == 0
-    )
+    assert run([
+        "evaluate", "--shard", shard_name, "--out-dir", str(out),
+        "--handicaps", str(handicap_file), "--min-edge", "0.0",
+    ]) == 0
     ledger = json.loads((out / "ledgers" / f"{shard_name}.json").read_text())
     assert ledger["shard_complete"] is True
     assert ledger["totals"]["unaccounted_contracts"] == 0
@@ -359,7 +321,9 @@ def test_the_cli_walks_the_whole_workflow(tmp_path, capsys):
     reused = json.loads((out / "ledgers" / f"{shard_name}.json").read_text())
     assert len(reused["games_reused_from_state"]) == len(shard["games"])
 
-    assert run(["report", "--shard", shard_name, "--out-dir", str(out), "--top", "2", "--min-edge", "0.0"]) == 0
+    assert run([
+        "report", "--shard", shard_name, "--out-dir", str(out), "--top", "2", "--min-edge", "0.0"
+    ]) == 0
     report = json.loads((out / "reports" / f"{shard_name}.json").read_text())
     assert report["totals"]["unaccounted"] == 0
     assert len(report["final_bets"]) <= 2
@@ -369,19 +333,10 @@ def test_the_cli_walks_the_whole_workflow(tmp_path, capsys):
 def test_the_cli_refuses_a_handicap_whose_teams_do_not_match(tmp_path):
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
-    run(
-        [
-            "prepare-live",
-            "--catalog-dir",
-            str(catalog),
-            "--out-dir",
-            str(out),
-            "--as-of",
-            NOW.isoformat(),
-            "--date",
-            "all",
-        ]
-    )
+    run([
+        "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
+        "--as-of", NOW.isoformat(), "--date", "all",
+    ])
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard_name = manifest["shards"][0]["shard"]
     shard = json.loads((out / "shards" / f"{shard_name}.json").read_text())
@@ -391,25 +346,18 @@ def test_the_cli_refuses_a_handicap_whose_teams_do_not_match(tmp_path):
     path = tmp_path / "flipped.json"
     path.write_text(json.dumps(flipped))
 
-    assert run(["evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)]) == 2
+    assert run([
+        "evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)
+    ]) == 2
 
 
 def test_the_cli_refuses_a_handicap_built_against_a_different_packet(tmp_path):
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
-    run(
-        [
-            "prepare-live",
-            "--catalog-dir",
-            str(catalog),
-            "--out-dir",
-            str(out),
-            "--as-of",
-            NOW.isoformat(),
-            "--date",
-            "all",
-        ]
-    )
+    run([
+        "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
+        "--as-of", NOW.isoformat(), "--date", "all",
+    ])
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard_name = manifest["shards"][0]["shard"]
     shard = json.loads((out / "shards" / f"{shard_name}.json").read_text())
@@ -419,42 +367,22 @@ def test_the_cli_refuses_a_handicap_built_against_a_different_packet(tmp_path):
     path = tmp_path / "stale.json"
     path.write_text(json.dumps(stale))
 
-    assert run(["evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)]) == 2
-    assert (
-        run(
-            [
-                "evaluate",
-                "--shard",
-                shard_name,
-                "--out-dir",
-                str(out),
-                "--handicaps",
-                str(path),
-                "--allow-hash-mismatch",
-                "--min-edge",
-                "0.0",
-            ]
-        )
-        == 0
-    )
+    assert run([
+        "evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)
+    ]) == 2
+    assert run([
+        "evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path),
+        "--allow-hash-mismatch", "--min-edge", "0.0",
+    ]) == 0
 
 
 def test_evaluate_reports_pending_games_and_keeps_the_gate_shut(tmp_path):
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
-    run(
-        [
-            "prepare-live",
-            "--catalog-dir",
-            str(catalog),
-            "--out-dir",
-            str(out),
-            "--as-of",
-            NOW.isoformat(),
-            "--date",
-            "all",
-        ]
-    )
+    run([
+        "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
+        "--as-of", NOW.isoformat(), "--date", "all",
+    ])
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard_name = manifest["shards"][0]["shard"]
     shard = json.loads((out / "shards" / f"{shard_name}.json").read_text())
@@ -463,7 +391,9 @@ def test_evaluate_reports_pending_games_and_keeps_the_gate_shut(tmp_path):
     path = tmp_path / "partial.json"
     path.write_text(json.dumps(partial))
 
-    assert run(["evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)]) == 3
+    assert run([
+        "evaluate", "--shard", shard_name, "--out-dir", str(out), "--handicaps", str(path)
+    ]) == 3
     ledger = json.loads((out / "ledgers" / f"{shard_name}.json").read_text())
     assert ledger["shard_complete"] is False
     assert ledger["games_pending_handicap"]
@@ -475,22 +405,10 @@ def test_prepare_live_fails_closed_on_a_stale_capture(tmp_path, capsys):
     bet is not a success, and a scripted caller must not read it as one."""
     catalog = catalog_dir(tmp_path, captured_at=CAPTURED_AT - timedelta(hours=8))
     out = tmp_path / "exec"
-    assert (
-        run(
-            [
-                "prepare-live",
-                "--catalog-dir",
-                str(catalog),
-                "--out-dir",
-                str(out),
-                "--as-of",
-                NOW.isoformat(),
-                "--date",
-                "all",
-            ]
-        )
-        == 4
-    )
+    assert run([
+        "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
+        "--as-of", NOW.isoformat(), "--date", "all",
+    ]) == 4
     slate = json.loads((out / "cfb_execution_slate.json").read_text())
     assert slate["reconciliation"]["contracts_eligible"] == 0
     assert "stale_quote" in slate["reconciliation"]["exclusions_by_status"]
@@ -500,25 +418,20 @@ def test_prepare_live_fails_closed_on_a_stale_capture(tmp_path, capsys):
 def test_handicap_template_covers_every_game_in_the_shard(tmp_path):
     catalog = two_game_catalog(tmp_path)
     out = tmp_path / "exec"
-    run(
-        [
-            "prepare-live",
-            "--catalog-dir",
-            str(catalog),
-            "--out-dir",
-            str(out),
-            "--as-of",
-            NOW.isoformat(),
-            "--date",
-            "all",
-        ]
-    )
+    run([
+        "prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
+        "--as-of", NOW.isoformat(), "--date", "all",
+    ])
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard_name = manifest["shards"][0]["shard"]
     assert run(["handicap-template", "--shard", shard_name, "--out-dir", str(out)]) == 0
-    template = json.loads((out / "templates" / f"{shard_name}.handicap_template.json").read_text())
+    template = json.loads(
+        (out / "templates" / f"{shard_name}.handicap_template.json").read_text()
+    )
     shard = json.loads((out / "shards" / f"{shard_name}.json").read_text())
-    assert {h["game_key"] for h in template["handicaps"]} == {g["game_key"] for g in shard["games"]}
+    assert {h["game_key"] for h in template["handicaps"]} == {
+        g["game_key"] for g in shard["games"]
+    }
 
 
 def test_the_execution_package_places_no_orders():

@@ -131,7 +131,10 @@ def test_model_edge_is_not_an_input():
     for banned in ("edge", "gap", "roi", "profit", "disagreement", "expected_value"):
         assert not any(banned in name for name in parameters), banned
     # No parameter carries a probability VALUE, only counts of broken ones.
-    assert not any(name.startswith("model_probability") or name.endswith("_probability") for name in parameters)
+    assert not any(
+        name.startswith("model_probability") or name.endswith("_probability")
+        for name in parameters
+    )
 
 
 def test_the_rendered_verdict_disclaims_profitability():
@@ -215,7 +218,9 @@ def test_run_cfb_declares_the_preregistered_protocol(data_dir):
 
 
 def test_postgame_handles_zero_settlements_gracefully(data_dir):
-    result = run("postgame_research_report.py", "--data-repo-dir", str(data_dir), "--date", "2026-08-29")
+    result = run(
+        "postgame_research_report.py", "--data-repo-dir", str(data_dir), "--date", "2026-08-29"
+    )
     assert result.returncode == 0
     assert "No games have settled yet" in result.stdout
     assert "nothing may be inferred from nothing" in result.stdout
@@ -233,7 +238,9 @@ def test_trigger_report_never_claims_a_configured_external_cadence():
 
     tree = ast.parse(src)
     code_strings = [
-        node.value for node in ast.walk(tree) if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
     ]
     docstrings = set()
     for node in ast.walk(tree):
@@ -259,13 +266,8 @@ def test_trigger_report_documents_the_policy_as_temporary():
 def test_run_cfb_writes_a_machine_readable_payload(data_dir, tmp_path):
     out = tmp_path / "run.json"
     run(
-        "run_cfb.py",
-        "--data-repo-dir",
-        str(data_dir),
-        "--now",
-        "2026-08-28T13:00:00+00:00",
-        "--json-out",
-        str(out),
+        "run_cfb.py", "--data-repo-dir", str(data_dir),
+        "--now", "2026-08-28T13:00:00+00:00", "--json-out", str(out),
     )
     payload = json.loads(out.read_text())
     assert payload["research_state"]["shadow_qualified_count"] == 0

@@ -213,7 +213,9 @@ class TestGateDecisions:
         assert assessment.access_state == CFBD_ACCESS_OK
         assert assessment.recovery_detected is True
 
-    @pytest.mark.parametrize("exc", [_http_error(503), requests.ConnectionError("boom"), requests.Timeout("slow")])
+    @pytest.mark.parametrize(
+        "exc", [_http_error(503), requests.ConnectionError("boom"), requests.Timeout("slow")]
+    )
     def test_probe_failure_is_never_recovery(self, tmp_path, exc):
         save_state(tmp_path, _exhausted_state(NOW - timedelta(minutes=1)))
         client = GateFakeCFBD(info_exc=exc)
@@ -255,11 +257,8 @@ class TestRecordOutcome:
         assessment = assess(tmp_path, client, now=NOW)
         assert assessment.allow_cfbd is True
         outcome = football_state.RefreshOutcome(
-            state=None,
-            source="unavailable",
-            cfbd_requests=10,
-            refresh_error="HTTPError: 429 Client Error",
-            refresh_http_status=429,
+            state=None, source="unavailable", cfbd_requests=10,
+            refresh_error="HTTPError: 429 Client Error", refresh_http_status=429,
         )
         record = record_outcome(assessment, outcome, client, now=NOW)
         assert record["access_state"] == CFBD_QUOTA_EXHAUSTED
@@ -273,11 +272,8 @@ class TestRecordOutcome:
         client = GateFakeCFBD(info=LIVE_INFO_EXHAUSTED)
         assessment = assess(tmp_path, client, now=NOW)
         outcome = football_state.RefreshOutcome(
-            state=None,
-            source="unavailable",
-            cfbd_requests=10,
-            refresh_error=error,
-            refresh_http_status=status,
+            state=None, source="unavailable", cfbd_requests=10,
+            refresh_error=error, refresh_http_status=status,
         )
         record = record_outcome(assessment, outcome, client, now=NOW)
         assert record["access_state"] == CFBD_ACCESS_OK  # transient trouble is not quota exhaustion
@@ -400,11 +396,7 @@ class TestRecoveryBootstrap:
         assessment = assess(tmp_path, client, now=NOW)
         assert assessment.recovery_detected is True
         outcome = football_state.resolve_football_state(
-            tmp_path,
-            client,
-            season=SEASON,
-            history_seasons=HISTORY_SEASONS,
-            now=NOW,
+            tmp_path, client, season=SEASON, history_seasons=HISTORY_SEASONS, now=NOW,
             allow_cfbd=assessment.allow_cfbd,
         )
         assert outcome.source == "live_full_refresh"
@@ -420,11 +412,7 @@ class TestRecoveryBootstrap:
         assessment2 = assess(tmp_path, client, now=later)
         assert assessment2.allow_cfbd is True and client.info_calls == info_before
         outcome2 = football_state.resolve_football_state(
-            tmp_path,
-            client,
-            season=SEASON,
-            history_seasons=HISTORY_SEASONS,
-            now=later,
+            tmp_path, client, season=SEASON, history_seasons=HISTORY_SEASONS, now=later,
             allow_cfbd=assessment2.allow_cfbd,
         )
         assert outcome2.source == "cache"
@@ -437,11 +425,7 @@ class TestRecoveryBootstrap:
         assessment = assess(tmp_path, client, now=NOW)
         assert assessment.allow_cfbd is True
         outcome = football_state.resolve_football_state(
-            tmp_path,
-            client,
-            season=SEASON,
-            history_seasons=HISTORY_SEASONS,
-            now=NOW,
+            tmp_path, client, season=SEASON, history_seasons=HISTORY_SEASONS, now=NOW,
             allow_cfbd=assessment.allow_cfbd,
         )
         assert outcome.state is None  # fail closed: nothing fabricated
@@ -459,11 +443,7 @@ class TestRecoveryBootstrap:
             assessment = assess(tmp_path, client, now=clock)
             assert assessment.allow_cfbd is False
             outcome = football_state.resolve_football_state(
-                tmp_path,
-                client,
-                season=SEASON,
-                history_seasons=HISTORY_SEASONS,
-                now=clock,
+                tmp_path, client, season=SEASON, history_seasons=HISTORY_SEASONS, now=clock,
                 allow_cfbd=assessment.allow_cfbd,
             )
             assert outcome.state is None and outcome.cfbd_requests == 0
@@ -504,11 +484,8 @@ class TestReadOnlyGateViews:
     def test_summary_lines_expose_operator_answers(self):
         quota = parse_account_info(LIVE_INFO_EXHAUSTED, checked_at=NOW)
         assessment = cfbd_access.AccessAssessment(
-            access_state=CFBD_QUOTA_EXHAUSTED,
-            allow_cfbd=False,
-            probe_ran=True,
-            quota=quota,
-            next_probe_at=NOW + timedelta(hours=6),
+            access_state=CFBD_QUOTA_EXHAUSTED, allow_cfbd=False, probe_ran=True,
+            quota=quota, next_probe_at=NOW + timedelta(hours=6),
         )
         text = "\n".join(summary_lines(assessment))
         assert "CFBD_QUOTA_EXHAUSTED" in text
@@ -517,10 +494,7 @@ class TestReadOnlyGateViews:
 
     def test_recovery_summary_announces_bootstrap(self):
         assessment = cfbd_access.AccessAssessment(
-            access_state=CFBD_ACCESS_OK,
-            allow_cfbd=True,
-            probe_ran=True,
-            recovery_detected=True,
+            access_state=CFBD_ACCESS_OK, allow_cfbd=True, probe_ran=True, recovery_detected=True,
         )
         outcome = football_state.RefreshOutcome(state=object(), source="live_full_refresh", cfbd_requests=4)
         text = "\n".join(summary_lines(assessment, outcome))

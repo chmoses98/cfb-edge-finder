@@ -88,7 +88,9 @@ class GameUsabilityVerdict:
         if self.failed_event_tickers:
             detail.append(f"events that could not be fetched: {', '.join(self.failed_event_tickers)}")
         if self.pagination_failed_event_tickers:
-            detail.append(f"events whose market list was truncated: {', '.join(self.pagination_failed_event_tickers)}")
+            detail.append(
+                f"events whose market list was truncated: {', '.join(self.pagination_failed_event_tickers)}"
+            )
         if self.events_fetched < self.events_reported:
             detail.append(f"only {self.events_fetched} of {self.events_reported} events captured")
         if self.api_failures:

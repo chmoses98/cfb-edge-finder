@@ -46,7 +46,8 @@ def sidecar(**kw) -> ShadowSidecar:
     return ShadowSidecar(**base)
 
 
-def contract(sc: ShadowSidecar, *, ticker="KXNCAAFGAME-T1", home="alabama", away="east-carolina", both_fbs=True, **kw):
+def contract(sc: ShadowSidecar, *, ticker="KXNCAAFGAME-T1", home="alabama",
+             away="east-carolina", both_fbs=True, **kw):
     args = dict(
         observation_key="obs-1",
         game_id="cfb-2026-wk01-east-carolina-at-alabama",
@@ -154,14 +155,11 @@ def test_both_arms_read_the_same_margin_draws():
 # ------------------------------------- fail-closed talent
 
 
-@pytest.mark.parametrize(
-    "home,away,reason",
-    [
-        ("unknown-team", "alabama", ShadowUnavailableReason.TALENT_MISSING_HOME),
-        ("alabama", "unknown-team", ShadowUnavailableReason.TALENT_MISSING_AWAY),
-        ("unknown-a", "unknown-b", ShadowUnavailableReason.TALENT_MISSING_BOTH),
-    ],
-)
+@pytest.mark.parametrize("home,away,reason", [
+    ("unknown-team", "alabama", ShadowUnavailableReason.TALENT_MISSING_HOME),
+    ("alabama", "unknown-team", ShadowUnavailableReason.TALENT_MISSING_AWAY),
+    ("unknown-a", "unknown-b", ShadowUnavailableReason.TALENT_MISSING_BOTH),
+])
 def test_missing_talent_is_explicit_and_never_a_zero_delta(home, away, reason):
     sc = sidecar()
     out = contract(sc, home=home, away=away)
@@ -279,7 +277,9 @@ def test_no_shadow_row_for_a_capture_at_or_after_kickoff():
 # --------------------------------- production isolation
 
 
-@pytest.mark.parametrize("package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"])
+@pytest.mark.parametrize(
+    "package", ["modeling", "projections", "ratings", "recommendation", "kalshi", "decision"]
+)
 def test_no_production_package_imports_the_shadow_sidecar(package):
     root = SRC / package
     if not root.exists():
@@ -297,7 +297,10 @@ def test_the_scanner_never_writes_a_shadow_value_into_a_canonical_row():
     corpus row builder's inputs."""
     src = (REPO_ROOT / "scripts" / "research_scan_and_capture.py").read_text()
     tree = ast.parse(src)
-    emitter = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_emit_shadow_record")
+    emitter = next(
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef) and n.name == "_emit_shadow_record"
+    )
     assigned = {
         t.attr
         for node in ast.walk(emitter)
@@ -373,16 +376,11 @@ def test_the_cached_transform_and_the_persisted_record_agree_on_delta():
     sc = sidecar()
     out = contract(sc)
     cached = sc.transform_for_game(
-        game_id="cfb-2026-wk01-east-carolina-at-alabama",
-        timing_label="T_24H",
-        home_team_id="alabama",
-        away_team_id="east-carolina",
-        corrected_margin_samples=MARGINS,
-        control_margin_corrected=3.0,
+        game_id="cfb-2026-wk01-east-carolina-at-alabama", timing_label="T_24H",
+        home_team_id="alabama", away_team_id="east-carolina",
+        corrected_margin_samples=MARGINS, control_margin_corrected=3.0,
         control_probability_canonical=0.61,
-        control_expected_home=28.0,
-        control_expected_away=25.0,
-        both_fbs=True,
+        control_expected_home=28.0, control_expected_away=25.0, both_fbs=True,
     )
     assert cached is not None
     assert out.shadow_minus_control_margin == pytest.approx(cached.delta, abs=1e-12)
