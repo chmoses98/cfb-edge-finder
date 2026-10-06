@@ -1,0 +1,383 @@
+# CFB Script Engine V1
+
+```
+football data (pre-kickoff only)
+  -> opponent-adjusted team profiles            adjust.py, matchup.py
+  -> market-blind matchup vector                matchup.py
+  -> deterministic findings                     findings.py
+  -> 0-4 evidence-gated game scripts            scripts.py
+  -> FROZEN football artifact + SHA-256         freeze.py
+-------------------------------------------- market data enters only here
+  -> script/market compatibility map            market_map.py
+  -> script survival, labels, ladders           expressions.py
+  -> SIFT payload, prospective ledger           publish.py, ledger.py
+  -> realized-script scoring, report            realized.py, report.py
+```
+
+This is **not a betting model** and it does not revive the retired one
+(`docs/MODEL_RETIREMENT_2026.md`). Nothing in `cfb_edge_finder.scripting`
+imports `modeling`, `projections`, `recommendation`, `decision(s)` or `sizing`;
+nothing publishes a fair probability, an expected value, a stake or a "+EV"
+claim; `NO_MODEL_PRICES` stays true and `model_prices.json` stays empty.
+
+The product answers three questions **separately** and never collapses them:
+
+1. What does the football matchup say? (profile + findings)
+2. How can this game plausibly unfold? (scripts)
+3. Which available contracts express those possibilities, at today's prices? (market map)
+
+---
+
+## 1. Current-state audit (what existed before this layer)
+
+| Piece | State before | Source |
+|---|---|---|
+| Market discovery, catalog, completeness | Live, every 30 min | `catalog/`, `data/live` |
+| Factual context (12 domains) | Live, not committed | `execution/context*.py`, `scripts/collect_live_context.py` |
+| Scoring context | Raw points per game over a **21-day** ESPN scoreboard window, explicitly `opponent_adjusted: False` | `context_sources.scoring_field` |
+| Efficiency / situational / pace | CFBD-only, never fetched in production (no `--cfbd`), and per-game not per-season | `context_sources.cfbd_*` |
+| Box scores, play-by-play | **Not fetched anywhere** | — |
+| Opponent adjustment | Only inside the retired model (`modeling/ratings.py`) | — |
+| App export | `event_research.matchup` empty for all 242 events; CFBD values licence-gated off | `scripts/research_export.py` |
+
+So the engine needed its own game log. It is keyless:
+
+## 2. Data sources and tiers
+
+`scripts/collect_football_gamelog.py` (scheduled by `.github/workflows/script-engine.yml`):
+
+| Source | Endpoint | What | Tier |
+|---|---|---|---|
+| ESPN scoreboard | `site.web.api.espn.com …/scoreboard?groups=80|81&dates=` (CDN fallback) | schedule, kickoff, site, conference ids (division), status | identity / freshness |
+| ESPN summary — box score | `site.api.espn.com …/summary?event=` → `boxscore.teams[].statistics`, `boxscore.players[].statistics[defensive|passing]` | plays, yards, rush/pass splits, first downs, 3rd/4th down, turnovers, possession time, penalties, sacks, TFL, passes defended, hurries, primary passer | **CORE** |
+| ESPN summary — play log | `drives.previous[].plays[]` | success, early-down success, designed-rush vs dropback splits, sack-adjusted passing, explosive plays, drives, scoring opportunities, tempo, neutral-situation pass rate | **ENHANCED** |
+| ESPN core injuries | `sports.core.api.espn.com …/teams/{id}/injuries` | availability listing; a quarterback listed Out/Doubtful/Questionable | availability |
+| CFBD (opt-in only) | `/games/teams`, `/stats/game/advanced`, `/drives` | the same CORE counts; success counts and drive outcomes as an ENHANCED alternative | ENHANCED (licence-gated) |
+
+Measured on the first production run (2026-10-06): **390** completed games
+involving an FBS team, **0** fetch failures, **0** missing, **100 %** play-log
+coverage, 141 teams' availability observed.
+
+A play log is used only when it **reconciles** with the box score (logged
+scrimmage plays within ±25 % of box plays, at least four drives); otherwise
+the game's ENHANCED counts are dropped with the reason recorded, never
+half-used. The parser is tested against real captured payloads
+(`tests/fixtures/espn/`).
+
+### Play conventions (ENHANCED)
+
+| Term | Definition |
+|---|---|
+| scrimmage play | down 1–4, type rush / pass / sack / interception / fumble; never penalty, kick, punt, timeout, two-point try |
+| success | ≥ 50 % of distance on 1st down, ≥ 70 % on 2nd, 100 % on 3rd/4th; TD = success; turnover or sack = failure |
+| explosive | designed run of 12+ yards, completed pass of 16+ yards |
+| garbage time | margin at the snap > 38 (Q2), > 28 (Q3), > 22 (Q4): excluded from every rate, counted separately |
+| neutral situation | quarters 1–3, margin within 14 |
+| scoring opportunity | a drive with a snap at or inside the opponent's 40 |
+| drive points | TD = 7, FG = 3 (PATs and two-point tries not attributed; defensive/return scores are not the offense's) |
+
+## 3. The metric registry (`metrics.py`)
+
+Every metric is defined once, from the **offense's** point of view, as
+numerator/denominator counts. The defensive metric is the same quantity
+**allowed** (opponents' offense rows). Season values are Σnum / Σden, never
+a mean of per-game rates.
+
+| Dimension | CORE | ENHANCED |
+|---|---|---|
+| scoring | points per game | — |
+| sustained efficiency | yards/play, first downs/play, third-down rate (*secondary*) | success rate, early-down success rate |
+| rushing | yards/rush (NCAA box: sacks count as rushes) | rush success rate, yards/designed rush |
+| passing | yards/attempt, interception rate (*regression-prone*) | net yards/dropback (sack-adjusted), pass success rate |
+| explosiveness | — | explosive-play rate, explosive rush rate, explosive pass rate |
+| disruption | sack rate allowed, havoc proxy (TFL + PD per play, **turnovers excluded**), turnovers/game (*regression-prone*) | — |
+| finishing | — | points per scoring opportunity, points per drive |
+| pace | plays/game, possession seconds/play, pass rate (*not adjusted*) | neutral pass rate (*not adjusted*) |
+| volatility | residual game-to-game spread (from the fit) | explosive-yard share (*not adjusted*) |
+
+Turnovers are published but **never carry a script on their own**:
+repeatable disruption (sacks, TFL, passes defended) is a separate metric
+from raw turnover margin.
+
+Every metric published to SIFT carries: raw, adjusted (or `null` with the
+reason), standard error, rank, universe size, rank basis, direction, games,
+effective sample, prior weight, source, observation time, season, window
+and a quality flag (`OK`, `THIN_SAMPLE`, `PRIOR_HEAVY`, `UNAVAILABLE`,
+`NOT_ADJUSTED`). **Raw is never substituted for adjusted.**
+
+## 4. Opponent adjustment — the exact math (`adjust.py`)
+
+One fit per metric, per data cutoff. For every team-game row *r* (team *t*'s
+offense against opponent *d*) with per-game value *y_r = num_r / den_r*:
+
+```
+y_r = μ + h·x_r + o_t + g_o·[t ∉ FBS] + d_d + g_d·[d ∉ FBS] + ε_r
+```
+
+* `μ` league baseline (unpenalised); `x_r` = +1 home, −1 away, 0 neutral, so
+  `h` is half the home/away gap
+* `o_t` offensive effect (positive = produces more), `d_d` defensive effect
+  (positive = **allows** more)
+* `g_o`, `g_d` shared non-FBS offsets, so an FCS opponent is not treated as an
+  average FBS team
+
+Weighted ridge least squares, `w_r = den_r / mean(den)` clipped to
+[0.25, 2.5] (per-game counts weight 1). Penalty `λ` per team effect, stated
+**in games**: λ = 4 for FBS teams (8 for non-FBS, toward their offset), 0.5 on
+the group offsets, 1 on `h`. With *n* games against average opposition an
+estimate keeps ≈ n / (n + λ) of its raw deviation: a team two games in carries
+a 67 % prior weight and cannot look certain.
+
+```
+A     = XᵀWX + Λ
+β     = A⁻¹ XᵀWy
+s²    = Σ w·(y − Xβ)² / max(N − tr(A⁻¹XᵀWX), 1)
+Var β = s² · A⁻¹                      (posterior-style uncertainty)
+```
+
+Published per team and unit:
+
+* `adjusted = μ + o_t (+ g_o)` — this offense against an average defense,
+  neutral site (likewise defense)
+* `se = √(cᵀ Var β c)` for that contrast
+* `games`, `effective_n = Σw`, `prior_weight = λ / (λ + effective_n)`
+* rank within FBS teams (ties broken by team id); non-FBS teams are unranked
+
+**Stability**: the fit reports the number of connected components of the
+FBS-vs-FBS schedule graph and the median FBS sample; it is *stable* only with
+one component and a median ≥ 3 games.
+
+**Leakage**: history comes only through `gamelog.before(rows, cutoff)`,
+which keeps a game only if `kickoff + 4h30m < cutoff`. The cutoff for a game
+is **04:00 US/Eastern on its local date** (`gamelog.data_cutoff`): every game
+on a slate day shares one history, and a game in progress can never feed a
+later kickoff. `tests/test_script_engine_adjustment.py` proves a fit at
+cutoff C on the full season equals the fit on rows truncated at C, and that
+appending future games never changes a past estimate.
+
+Validated on known truth (synthetic season, `tests/script_engine_fakes.py`):
+correlation of adjusted with true offensive effects 0.92. On the real 2025
+CFBD season the method ranks plausibly (Tennessee, USC, Indiana top
+opponent-adjusted scoring offenses at 2025-10-11) with ~45 % prior weight at
+five games.
+
+## 5. The matchup vector (`matchup.py`)
+
+For one metric and one direction (home offense vs away defense):
+
+```
+offense_z   = s · (adjusted_offense − mean) / sd        (FBS distribution of adjusted values)
+defense_z   = s · (adjusted_defense_allowed − mean) / sd
+edge        = offense_z + defense_z                       s = +1 if more is better for an offense
+uncertainty = √((se_off/sd_off)² + (se_def/sd_def)²)
+```
+
+A dimension's edge is the mean of its primary metrics' edges (secondary,
+regression-prone and descriptive metrics are shown, never averaged in).
+`net_home_advantage = home direction − away direction`. Pace:
+`possession_environment = (z home O plays + z away D plays allowed + z away O
+plays + z home D plays allowed) / 2`. Volatility: residual spread percentiles,
+explosive-yard share, raw turnover rates.
+
+**Scoring baseline** — the only scoring number the engine computes:
+`home = adj_off(home) + adj_def_allowed(away) − μ + h·x`, likewise away.
+Labelled *descriptive, uncalibrated, NOT a projection*; used only to draw the
+scoring bands a script's shape is stated in.
+
+## 6. Findings (`findings.py`)
+
+Each finding is a code, the side it favours, the value, the threshold, the
+uncertainty, and the metric keys (`home.offense.success_rate`, …) that
+produced it; its sentence is generated from those numbers. Two gates for
+every matchup finding: `|value| ≥ threshold` **and** `|value| ≥ uncertainty`
+(noise cannot become a finding).
+
+| Family | Codes (S = HOME/AWAY) | Threshold (moderate / strong) |
+|---|---|---|
+| net advantage | `S_SUSTAINED_EFFICIENCY_ADVANTAGE`, `S_FINISHING_ADVANTAGE`, `S_EXPLOSIVE_ADVANTAGE`, `S_SCORING_ADVANTAGE`, `S_EARLY_DOWN_ADVANTAGE` | 1.0 / 2.0 |
+| unit matchup | `S_RUSH_ADVANTAGE`, `S_PASS_ADVANTAGE`, `S_PASS_EXPLOSIVE_ADVANTAGE`, `S_RUSH_EXPLOSIVE_ADVANTAGE`, `S_DISRUPTION_ADVANTAGE`, `S_DEFENSIVE_CONTROL` | 1.0 / 2.0 |
+| environment | `HIGH/LOW_POSSESSION_ENVIRONMENT` (1.0/2.0), `HIGH/LOW_SCORING_ENVIRONMENT` (1.5/3.0), `BOTH_OFFENSES_EFFICIENT`, `BOTH_DEFENSES_CONTROL` (0.75), `NARROW_EFFICIENCY_GAP`, `EVEN_MATCHUP` | as stated |
+| dependence | `S_SCORING_DEPENDENT_ON_EXPLOSIVES`, `S_DEFENSE_TURNOVER_RELIANT`, `S_OFFENSE_TURNOVER_PRONE`, `S_HIGH_VARIANCE_OFFENSE`, `HIGH_VARIANCE_MATCHUP` | z ≥ 1.0; percentile ≥ 0.8; ≥ 2 indicators |
+| data | `S_THIN_SAMPLE`, `S_NON_FBS`, `S_QB_CHANGE_RECENT`, `S_QB_AVAILABILITY_UNCERTAIN` | — |
+
+## 7. Scripts (`scripts.py`)
+
+Archetypes are labels with explicit evidence requirements, never hardcoded
+conclusions. A script exists only if its **required** findings exist.
+
+| Archetype | Requires | Margin band (definition) |
+|---|---|---|
+| `HOME_CONTROL` / `AWAY_CONTROL` | S sustained-efficiency advantage | S by 7–24 |
+| `FAVORITE_PULLS_AWAY` | **strong** S efficiency edge + a second S advantage | S by 17–45 |
+| `UNDERDOG_HANGS_AROUND` | S efficiency edge + a counter (other side's disruption or defensive control, low possessions, S explosive dependence or turnovers, other side's explosives, narrow gap) | −7 to +8 on S |
+| `EXPLOSIVE_UPSET` | S efficiency edge + the other side's explosive advantage | other side by 1–14 |
+| `TURNOVER_DISRUPTION` | S disruption advantage + a volatility finding (never turnovers alone) | S by 1–21 |
+| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | ±8, total baseline +4 to +28 |
+| `COMPETITIVE_GRIND` | low scoring / low possessions / both defenses control; no strong edge | ±8, total baseline −28 to −4 |
+| `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP`, and no shootout/grind applies | ±8 |
+| `PACE_DRIVEN_OVER` | high possession environment | total baseline +3 to +28 |
+| `DEFENSIVE_SUPPRESSION` | both defenses control | total baseline −30 to −6 |
+
+Team-points bands are drawn around the scoring baseline (e.g. control: leader
+baseline −3…+14, trailer −14…+2).
+
+**Ranking (no probabilities in V1).** `evidence = Σ weight(required +
+supporting) − Σ weight(contradicting)`, STRONG = 2, MODERATE = 1.
+PRIMARY = best evidence; DANGER = best remaining script that **breaks** the
+primary (different winner, opposite total environment, or a margin band
+below the primary's — a bigger version of the same thesis is an alternate,
+never a danger), which may be net-contradicted down to −1 but must have its
+required findings; SECONDARY / ALTERNATE = next best; at most four; mutually
+redundant archetypes excluded. `probability` is present and **always null**.
+
+**Causal chains** are built step by step from present findings and each step
+cites them (`tests/test_script_engine_scripts.py` asserts every step's
+findings exist and that no market word appears in any generated text).
+
+## 8. Data confidence and validation gates (`confidence.py`)
+
+Gates — all must pass for anything above LOW: opponent-adjusted inputs exist
+(yards/play and points, both units, both teams); ≥ 3 games each; identity
+PASS or RESOLVED; game log FRESH (every finished prior game of either team
+involving an FBS team is in the log); no quarterback listed uncertain;
+market-blind (structural).
+
+* **HIGH**: all gates, core coverage ≥ 90 %, ≥ 3 ENHANCED dimensions,
+  ≥ 5 games each, stable adjustment, availability **observed** for both teams,
+  no QB change, key prior weight ≤ 50 %
+* **MEDIUM**: all gates, core coverage ≥ 80 %, stable, no QB change
+* **LOW**: otherwise, with every reason listed
+
+Confidence describes evidence, never how strongly a side is favoured: the
+scripts themselves do not change with it.
+
+## 9. Freezing and market blindness (`freeze.py`, `football.py`)
+
+The frozen content is canonical JSON (sorted keys, compact, UTF-8) of
+identity, input fingerprints, matchup profile, findings, scripts,
+confidence and the SIFT read; `artifact_hash = SHA-256`. An unchanged
+football picture keeps its hash **and** its original `generated_at`. A change
+records why: `LEAGUE_GAMELOG_CHANGED (+n games)`, `TEAM_GAMELOG_CHANGED`,
+`AVAILABILITY_CHANGED`, `IDENTITY_CHANGED`, `FRESHNESS_CHANGED`,
+`METHODOLOGY_CHANGED`, `KICKOFF_CHANGED`. A market price is never a possible
+reason because it is never an input.
+
+**Proof** (`tests/test_script_engine_market_blindness.py`):
+
+1. *Structural*: the import closure of every football module
+   (`scripting.FOOTBALL_MODULES`) reaches no catalog, Kalshi, execution,
+   accounting, decision, recommendation, modeling, projections, sizing,
+   research or market-side scripting module; every scripting module is
+   classified football or market; `FootballPacket` and `GameRequest` have no
+   field a price could travel in; the catalog adapter keeps identity only.
+2. *Behavioural*: the same football packet run against five radically
+   different Kalshi price worlds (as listed, home 97¢, away 97¢, all 50¢,
+   inverted) yields **byte-identical** frozen artifacts and identical
+   compatibility maps (non-vacuous: ≥ 15 eligible contracts, ≥ 20 mapped
+   expressions in every world).
+3. `map_game` refuses an envelope whose content no longer matches its hash
+   and refuses to run before the artifact's `generated_at`.
+
+## 10. Market mapping (`market_map.py`, `expressions.py`)
+
+Contract terms come from the normalized semantics the evaluator already uses
+(`execution.semantics` via `slate.build_packet`), turned into the exact set of
+integer outcomes each side pays on by `card_review.win_set` — no ticker
+parsing. Kalshi team slots are translated to the football artifact's
+home/away **by team identity** when the orders differ.
+
+For a script band [lo, hi] on the same variable: **SUPPORTED** (every outcome
+pays), **PARTIAL** (some do; coverage = share of the band), **CONTRADICTED**
+(none), **NEUTRAL** (the script states no band), **UNMAPPABLE** (not a single
+interval on a full-game margin/total/team-points variable: first-half,
+props, tie/overtime, a two-piece NO — with the reason). Every eligible
+contract is evaluated on both sides:
+`expressions = 2 × eligible = mapped + unmappable`.
+
+**Survival**: supported / partial / contradicted / neutral counts out of the
+published scripts, plus a weighted sort score (PRIMARY 1.0, SECONDARY 0.7,
+ALTERNATE 0.5, DANGER 0.35; SUPPORTED +1, PARTIAL +0.5×coverage,
+CONTRADICTED −1) used **only to sort**; the raw per-script map is published.
+
+**Labels** (never a price verdict): `MULTI_SCRIPT`, `BEST_EXPRESSION`,
+`SCRIPT_ALIGNED`, `AGGRESSIVE`, `SCRIPT_DEPENDENT`, `NARROW_SCRIPT`,
+`CONTRADICTED`, `LOW_DATA_CONFIDENCE`, `MARKET_DISAGREEMENT`.
+`HIGH_PROBABILITY_EXPRESSION`, "+EV", fair probability and bet-up-to are
+**not in the vocabulary**: every expression carries
+`pricing = {status: RESEARCH_ONLY, source: null, fair_probability: null,
+expected_value: null}`.
+
+**Price enters only to compare rungs of one thesis**: the best expression of a
+thesis is the one with the most script support; between rungs with identical
+support, the cheaper entry (its extra requirement is inside every supporting
+script). Each thesis publishes its ladder: relation to the core expression
+(`card_review.relate`: nested tail extension, correlated path, …), the extra
+points required, which scripts each rung loses. `MARKET_DISAGREEMENT` (the
+football PRIMARY backs a side whose moneyline asks ≤ 40¢) is a flag beside
+the artifact; nothing in the artifact moves.
+
+## 11. Publication
+
+* `data/football/<season>/` — the game log, schedule, availability, manifest
+* `data/scripting/live/frozen/<game_key>.json.gz` — the frozen envelope
+* `data/scripting/live/sift/<game_key>.json.gz` — the compact SIFT payload
+  (metric tables with interned legends, compatibility strings, ladders;
+  **no prices**: SIFT joins quotes by ticker)
+* `event_research.extensions.script_engine` — embedded by
+  `research_export.py` (the contract's open `extensions` slot: no contract or
+  MANIFEST change, other sports unaffected), trimmed with a disclosed note to
+  the 150 KB event budget; `opponent_adjustment` and `matchup_metrics`
+  capabilities report `RESEARCH`
+* `script-ledger` branch (main only) — the prospective ledger
+
+## 12. Prospective validation (`ledger.py`, `realized.py`, `report.py`)
+
+Append-only rows: `PUBLICATION` (first publication of an artifact hash) and
+`FINAL_PREGAME` (the last build within 3 hours of kickoff; the workflow runs
+every 2 hours Thursday–Saturday). A row recorded at or after kickoff is
+refused. Each row carries the frozen scripts (role, archetype, bands), the
+finding codes, every mapped expression's compatibility, labels, survival,
+win set and entry price; the full envelope is stored once, content-addressed.
+
+After the game, `realized.py` classifies the game objectively from the same
+box-score/play-log rows (control, pulls away, hangs around, shootout, grind,
+toss-up, explosive upset, disruption, or `AMBIGUOUS`), checks each frozen
+script (every stated band contains the realized value **and** its mechanism
+held), checks each matchup finding's direction, and settles every expression
+from its exact win set. `report.py` builds: PRIMARY described, PRIMARY or
+SECONDARY, any script; by archetype and confidence tier; finding accuracy by
+code; and research-unit performance (one contract at the recorded cost) for
+MULTI_SCRIPT, BEST_EXPRESSION, single-script, AGGRESSIVE and CONTRADICTED
+expressions, by tier. Nothing is backfilled: a game with no pregame row does
+not exist for the report.
+
+## 13. Known limitations
+
+* ESPN is an undocumented public API; a shape change is caught by the
+  reconciliation check and the fixture tests, not prevented.
+* Early season (weeks 0–3) is LOW by design: thin samples, an unconnected
+  schedule graph.
+* Margin bands are archetype definitions, not estimates; total and
+  team-points bands sit on an uncalibrated descriptive baseline.
+* First-half, quarter, overtime and player markets are UNMAPPABLE in V1.
+* Availability is a listing, not a depth chart; ESPN's CFB injury lists are
+  sparse, and a quarterback change is inferred only from box scores.
+* No weather, travel distance, coaching tendency, motivation or roster
+  continuity enters the evidence.
+* The home effect is shared by all teams; FCS teams share an offset.
+* Four catalog games (spelling differences with no code match) fail identity
+  and publish no read, with the reason.
+
+## 14. What must happen before script probabilities are published
+
+1. Accumulate prospective, frozen `FINAL_PREGAME` rows and settle them —
+   at least 30 settled games per published archetype (`report.MIN_SAMPLE`),
+   ideally two seasons, covering all confidence tiers.
+2. Freeze a calibration method in advance (e.g. reliability by archetype and
+   evidence score, isotonic per role) and validate it out of sample on a
+   later block of weeks than it was fitted on.
+3. Show the calibrated frequencies beat a naive baseline (archetype base
+   rates) out of sample, by tier.
+4. Only then populate `probability`, versioned, with the calibration artifact
+   named — and still never call a contract "+EV" without an identified,
+   validated pricing source.

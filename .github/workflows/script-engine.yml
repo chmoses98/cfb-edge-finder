@@ -15,8 +15,10 @@ name: CFB Script Engine
 
 on:
   schedule:
-    # Every 6 hours, plus Saturday/Sunday mornings when the week's results land.
-    - cron: "41 */6 * * *"
+    # Every 2 hours Thursday-Saturday, so every kickoff gets a FINAL_PREGAME ledger row inside the
+    # 3-hour final window; every 6 hours otherwise; Sunday mornings when the week's results land.
+    - cron: "41 */2 * * 4-6"
+    - cron: "41 */6 * * 0-3"
     - cron: "11 9,13 * * 0"
   workflow_dispatch:
   push:

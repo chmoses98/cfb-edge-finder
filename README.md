@@ -145,6 +145,27 @@ into `accounting-data`, and read back by `scripts/cfb_postmortem.py`. See
 
 ---
 
+### The CFB Script Engine (descriptive, market-blind)
+
+```bash
+python scripts/collect_football_gamelog.py --season 2026 --out-dir data/football/2026
+python scripts/script_engine.py build --football-dir data/football/2026 --catalog-dir data/live \
+    --out-dir data/scripting/live
+```
+
+football data -> opponent-adjusted matchup profile -> evidence-gated game
+scripts -> **frozen** (SHA-256) -> only then: which Kalshi contracts each
+script supports or contradicts. Keyless ESPN box scores and play-by-play,
+a documented ridge opponent adjustment, deterministic findings, PRIMARY /
+SECONDARY / ALTERNATE / DANGER scripts with **no probabilities**, and
+expression labels that never claim a price edge. It is not a betting model
+and does not revive the retired one. Published to SIFT under
+`event_research.extensions.script_engine`; prospective publications are
+frozen on the `script-ledger` branch and scored after the games. See
+`docs/SCRIPT_ENGINE.md`.
+
+---
+
 This is a separate, from-scratch repository. It reuses architectural
 *patterns* audited from the production MLB system at
 `chmoses98/edge-finder-api` (see `docs/MLB_ARCHITECTURE_AUDIT.md`), but no
@@ -234,6 +255,10 @@ prints a notice -- no live 2026 data is fetched or implied.
 - `docs/KALSHI_MARKET_CATALOG.md` -- **the live path**: discovery
   architecture, verified Kalshi endpoint behaviour, output schema,
   completeness semantics, automation cadence, known limitations.
+- `docs/SCRIPT_ENGINE.md` -- **the CFB Script Engine**: data tiers, the
+  opponent-adjustment math, findings, scripts, freezing and the
+  market-blindness proof, script/market mapping, the prospective ledger and
+  what must happen before script probabilities could be published.
 - `docs/RUN_CFB_CONTRACT.md` -- **the consumer contract**: the RUN CFB
   procedure, the per-game completeness gate, and how freshness is
   determined without guessing.
