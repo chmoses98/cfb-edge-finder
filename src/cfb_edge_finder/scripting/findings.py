@@ -564,7 +564,7 @@ def derive_findings(
                     [f"{side}.offense.yards_per_play"],
                     (
                         f"{names[side]}'s offense has swung widely from game to game relative to its opponents "
-                        f"(residual spread in the {int(round(pct * 100))}th percentile of FBS)."
+                        f"(game-to-game residual variation in the {int(round(pct * 100))}th percentile of FBS)."
                     ),
                     vector,
                 )

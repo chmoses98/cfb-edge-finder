@@ -94,15 +94,12 @@ SURVIVAL_COLUMNS = (
 
 
 def _expression(e: dict[str, Any]) -> dict[str, Any]:
-    """One mapped contract side. Its quote and settlement text live on the
-    published market row with the same ticker; they are not repeated here."""
+    """One mapped contract side. Its quote, family, line and settlement text
+    live on the published market row with the same ticker; only what the
+    script mapping adds is carried here."""
     out = {
         "ticker": e["ticker"],
         "side": e["side"],
-        "kind": e["kind"],
-        "team": e["team"],
-        "line": e["line"],
-        "alt": e["is_alternate_line"],
         "wins_when": (e.get("wins_when") or {}).get("description"),
         "thesis": e["thesis"],
         "compat": "".join(COMPAT_CODES[c["status"]] for c in e["compatibility"]),
@@ -111,8 +108,40 @@ def _expression(e: dict[str, Any]) -> dict[str, Any]:
         "labels": e.get("labels") or [],
     }
     if e.get("correlation"):
-        out["correlation"] = e["correlation"]
+        out["correlation"] = [
+            [c["with"], c["relation"], c.get("both_can_cash"), c.get("both_lose_when")] for c in e["correlation"]
+        ]
     return out
+
+
+RUNG_COLUMNS = (
+    "expression_id",
+    "is_core",
+    "relation_to_core",
+    "additional_requirement_points",
+    "cashes_when_core_fails",
+    "scripts_supported",
+    "scripts_lost_vs_core_ranks",
+)
+
+
+def _thesis(t: dict[str, Any], rank_of: dict[str, int]) -> dict[str, Any]:
+    return {
+        "thesis": t["thesis"],
+        "core_expression": t["core_expression"],
+        "rungs": [
+            [
+                r["expression_id"],
+                r["is_core"],
+                r["relation_to_core"],
+                r["additional_requirement_points"],
+                r["cashes_when_core_fails"],
+                r["scripts_supported"],
+                sorted(rank_of.get(sid, 0) for sid in r["scripts_lost_vs_core"]),
+            ]
+            for r in t["ladder"]
+        ],
+    }
 
 
 def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
@@ -131,6 +160,7 @@ def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
     legend: dict[str, list[str]] = {}
     teams = {side: _team(profile["teams"][side], legend) for side in ("home", "away")}
     has_scripts = bool(content["game_scripts"]["scripts"])
+    rank_of = {sc["script_id"]: sc["rank"] for sc in content["game_scripts"]["scripts"]}
     expressions = [e for e in mm.get("expressions") or [] if e.get("unmappable_reason") is None and has_scripts]
     unmappable: dict[str, int] = {}
     for e in mm.get("expressions") or []:
@@ -197,6 +227,7 @@ def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
             "scripts": mm.get("scripts") or [],
             "compat_codes": {v: k for k, v in COMPAT_CODES.items()},
             "survival_columns": list(SURVIVAL_COLUMNS),
+            "correlation_columns": ["with", "relation", "both_can_cash", "both_lose_when"],
             "expressions": [_expression(e) for e in expressions],
             "unmappable_by_family": dict(sorted(unmappable.items())),
             "coverage": mm.get("coverage"),
@@ -207,17 +238,8 @@ def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
             ),
         },
         "script_survivors": [s["expression_id"] for s in mm.get("survivors") or []],
-        "theses": [
-            {
-                "thesis": t["thesis"],
-                "core_expression": t["core_expression"],
-                "ladder": [
-                    {k: v for k, v in rung.items() if k not in ("profit_per_dollar", "core_profit_per_dollar")}
-                    for rung in t["ladder"]
-                ],
-            }
-            for t in mm.get("theses") or []
-        ],
+        "rung_columns": list(RUNG_COLUMNS),
+        "theses": [_thesis(t, rank_of) for t in mm.get("theses") or []],
         "market_disagreement": mm.get("market_disagreement"),
         "metric_registry": {m.metric_id: m.describe() for m in METRICS},
     }

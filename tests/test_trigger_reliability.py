@@ -412,7 +412,12 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # app-export.yml joined the catalog in 2026-10: it reshapes the committed catalog and the
     # accounting ledger into app/latest (docs/APP_EXPORT.md). Like the catalog it consumes no
     # secret and produces no projection; unlike it, it writes nothing a model could read.
-    assert writers == ["app-export.yml", "kalshi-market-catalog.yml"], f"unexpected scheduled writers: {writers}"
+    # script-engine.yml joined in 2026-10: it commits the keyless ESPN game log and the frozen,
+    # market-blind football artifacts (docs/SCRIPT_ENGINE.md). It consumes no secret, prices nothing
+    # and produces no fair value; its scripts carry no probability.
+    assert writers == ["app-export.yml", "kalshi-market-catalog.yml", "script-engine.yml"], (
+        f"unexpected scheduled writers: {writers}"
+    )
 
     for name, text in scheduled.items():
         if name not in writers:

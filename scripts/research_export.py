@@ -1216,10 +1216,74 @@ def _add_research_states(g: _Graph) -> None:
                 )
 
 
+def load_script_engine(directory: Path | None) -> dict[str, dict]:
+    """Kalshi game key -> CFB Script Engine payload, from ``data/scripting/live/sift``.
+
+    Absent or unreadable payloads are simply absent: the event then publishes
+    no ``extensions.script_engine`` and SIFT says so. Never raises."""
+    out: dict[str, dict] = {}
+    if directory is None or not Path(directory).is_dir():
+        return out
+    for path in sorted(Path(directory).glob("*.json.gz")):
+        try:
+            with gzip.open(path, "rb") as fh:
+                out[path.name[: -len(".json.gz")]] = json.loads(fh.read().decode("utf-8"))
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def fit_script_engine(engine: dict, common: dict, matchup: list, notes: list) -> tuple[dict, str | None]:
+    """Fit a script-engine payload inside the event_research byte budget.
+
+    Trims in order of least loss -- expression correlations, then expressions
+    that carry no script-aligned label, then registry descriptions -- and
+    says what it trimmed. The football artifact itself is never trimmed."""
+    budget = BUDGETS["event_research"] - 2_000
+
+    def size(payload: dict) -> int:
+        return doc_bytes(
+            R.event_research(**{**common, "extensions": {"script_engine": payload}}, matchup=matchup,
+                             context={"notes": notes})
+        )
+
+    if size(engine) <= budget:
+        return engine, None
+    trimmed = json.loads(json.dumps(engine))
+    smm = trimmed.get("script_market_map") or {}
+    for expr in smm.get("expressions") or []:
+        expr.pop("correlation", None)
+    steps = ["expression correlations"]
+    if size(trimmed) > budget:
+        keep = {"BEST_EXPRESSION", "MULTI_SCRIPT", "SCRIPT_ALIGNED", "AGGRESSIVE", "CONTRADICTED"}
+        smm["expressions"] = [e for e in smm.get("expressions") or [] if keep & set(e.get("labels") or [])]
+        steps.append("expressions without a script label")
+    if size(trimmed) > budget:
+        for entry in (trimmed.get("metric_registry") or {}).values():
+            entry.pop("description", None)
+        steps.append("metric descriptions")
+    if size(trimmed) > budget:
+        featured = {"BEST_EXPRESSION", "MULTI_SCRIPT"}
+        smm["expressions"] = [e for e in smm.get("expressions") or [] if featured & set(e.get("labels") or [])]
+        trimmed["theses"] = [dict(t, rungs=[r for r in t["rungs"] if r[1]]) for t in trimmed.get("theses") or []]
+        steps.append("every expression except best and multi-script ones, and every non-core ladder rung")
+    return trimmed, "script engine payload trimmed to fit the event budget: " + ", ".join(steps)
+
+
 def build_explorer(
-    *, v1: dict[str, Any], research: dict[str, Any], history: dict[str, Any], generated_at: str | None = None
+    *,
+    v1: dict[str, Any],
+    research: dict[str, Any],
+    history: dict[str, Any],
+    generated_at: str | None = None,
+    script_engine: dict[str, dict] | None = None,
 ) -> list[dict]:
-    """Pure: the v1 bundle, the research-data tables and the catalog history in; contract documents out."""
+    """Pure: the v1 bundle, the research-data tables and the catalog history in; contract documents out.
+
+    ``script_engine`` maps a Kalshi game key to its CFB Script Engine payload
+    (``data/scripting/live/sift``); each is published under the event's
+    ``extensions.script_engine`` -- the contract's open, backward-compatible slot."""
+    script_engine = script_engine or {}
     manifest = v1["manifest"]
     run_id = manifest["run_id"]
     now = timeutil.to_iso(generated_at or manifest["generated_at"])
@@ -1643,6 +1707,20 @@ def build_explorer(
             wagers=sorted(wagers_by_event.get(eid, [])),
             links=links,
         )
+        game_key = str((ev.get("source_ids") or {}).get("kalshi_game_key") or "")
+        engine = script_engine.get(game_key)
+        extensions: dict[str, Any] = {}
+        if engine is not None:
+            engine, engine_note = fit_script_engine(engine, common, matchup, notes)
+            extensions["script_engine"] = engine
+            gen = engine.get("script_generation") or {}
+            notes = notes + [
+                "CFB Script Engine (RESEARCH ONLY): market-blind football artifact "
+                f"{str(gen.get('artifact_hash') or '')[:12]} generated {gen.get('generated_at')}, data confidence "
+                f"{gen.get('data_confidence')}; script survival is compatibility with frozen scripts, not a "
+                "probability or an expected value"
+            ] + ([engine_note] if engine_note else [])
+            common["extensions"] = extensions
         doc = R.event_research(**common, matchup=matchup, context={"notes": notes})
         rows, size = list(matchup), doc_bytes(doc)
         if size > BUDGETS["event_research"]:
@@ -1674,6 +1752,9 @@ def build_explorer(
         history=history,
         wagers=wagers,
         seasons_by_metric=seasons_by_metric,
+        script_engine_events={
+            eid: d for eid, d in event_docs.items() if (d.get("extensions") or {}).get("script_engine")
+        },
     )
     split_dims = (
         [{"dimension": "play_type", "values": ["pass", "rush"], "status": "PARTIAL"}] if any(split_obs.values()) else []
@@ -1795,6 +1876,7 @@ def _capabilities(
     history: dict,
     wagers: list,
     seasons_by_metric: dict,
+    script_engine_events: dict | None = None,
 ) -> list[dict]:
     C = R.capability
     U = "UNAVAILABLE"
@@ -2020,6 +2102,38 @@ def _capabilities(
                     "no matchup-specific metric is computed; rows are the two teams' own values",
                     "the audit rates stored matchup features (v2 diff_/sum_) RESEARCH; they are not republished",
                 ],
+            )
+        )
+    elif script_engine_events:
+        first_engine = sorted(script_engine_events)[0]
+        engine_lims = [
+            "a descriptive matchup layer, not a pricing model: no fair probability, no expected value",
+            "published per event under event_research.extensions.script_engine, not as registry metrics",
+            "estimates are season-to-date and shrunk toward the league baseline; early-season values carry a "
+            "large prior weight, stated per metric",
+        ]
+        caps.append(
+            C(
+                capability="opponent_adjustment",
+                status="RESEARCH",
+                entity_types=["TEAM"],
+                summary="CFB Script Engine: ridge offense/defense opponent adjustment of ESPN box-score and "
+                "play-by-play metrics, frozen before any market data is read",
+                evidence=[R.event_path(first_engine)],
+                limitations=engine_lims,
+                coverage="2026 season to date",
+            )
+        )
+        caps.append(
+            C(
+                capability="matchup_metrics",
+                status="RESEARCH",
+                entity_types=["MATCHUP"],
+                summary="CFB Script Engine matchup profile, findings and game scripts for "
+                f"{len(script_engine_events)} event(s)",
+                evidence=[R.event_path(first_engine)],
+                limitations=engine_lims
+                + ["script probabilities are not published: they have not been prospectively calibrated"],
             )
         )
     else:
@@ -2280,6 +2394,7 @@ def export_explorer(
     include_cfbd: bool = False,
     min_interval_seconds: float = 0,
     max_history_commits: int | None = None,
+    script_engine_dir: Path | None = None,
 ) -> dict:
     """Build and publish ``<app_root>/explorer``. Returns the explorer index, or ``{"skipped": True,
     "reason": ...}`` when ``min_interval_seconds`` > 0 and ``research.refresh_due`` says the published tree
@@ -2306,7 +2421,13 @@ def export_explorer(
         if (ev.get("source_ids") or {}).get("kalshi_game_key")
     }
     history = load_catalog_history(Path(data_root), game_keys, max_commits=max_history_commits)
-    documents = build_explorer(v1=v1, research=research, history=history, generated_at=generated_at)
+    documents = build_explorer(
+        v1=v1,
+        research=research,
+        history=history,
+        generated_at=generated_at,
+        script_engine=load_script_engine(script_engine_dir),
+    )
     meta = publication_meta(v1=v1, research=research, history=history, generated_at=generated_at)
     caps = next(d for d in documents if d["kind"] == "capability_manifest")
     return R.publish_explorer(
@@ -2353,6 +2474,11 @@ def main(argv: list[str] | None = None) -> int:
         help="rebuild only when the v1 events changed or the published explorer is older than this (0 = always)",
     )
     parser.add_argument(
+        "--script-engine-dir",
+        default=os.path.join(REPO_ROOT, "data", "scripting", "live", "sift"),
+        help="CFB Script Engine payloads (one <game_key>.json.gz per game); absent => no script engine extension",
+    )
+    parser.add_argument(
         "--check-due",
         action="store_true",
         help="print due=true|false and reason=... (GITHUB_OUTPUT lines) for --min-interval-minutes and exit",
@@ -2371,6 +2497,7 @@ def main(argv: list[str] | None = None) -> int:
             now=args.now,
             include_cfbd=args.include_cfbd,
             min_interval_seconds=args.min_interval_minutes * 60,
+            script_engine_dir=Path(args.script_engine_dir) if args.script_engine_dir else None,
         )
     except Exception as exc:  # noqa: BLE001 - report and exit 1; the previous explorer tree is untouched
         print(

@@ -43,12 +43,21 @@ FOOTBALL_MODULES = (
     "cfbd",
     "metrics",
     "adjust",
-    "profile",
     "matchup",
     "findings",
     "scripts",
     "confidence",
     "freeze",
     "football",
+    "packets",
     "realized",
+    "report",
+)
+
+#: Modules that run strictly AFTER the freeze and may read contracts and prices.
+MARKET_MODULES = (
+    "market_map",
+    "expressions",
+    "ledger",
+    "publish",
 )

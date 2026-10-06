@@ -15,7 +15,10 @@ Candidates are ordered by evidence, ties broken by a fixed archetype order.
   PRIMARY    the best-evidenced script
   DANGER     the best-evidenced remaining script that BREAKS the primary
              (a different winner, an opposite scoring environment, or a
-             margin band that barely overlaps it)
+             margin band below the primary's). Its REQUIRED findings must
+             exist; it may be net-contradicted down to evidence -1, because
+             a danger is the plausible path against the primary, not a
+             second endorsement of it
   SECONDARY, ALTERNATE   the next best remaining scripts
 At most four. `probability` is reserved and is always null in V1: script
 likelihoods will be calibrated from prospectively frozen outcomes, never
@@ -740,7 +743,15 @@ def candidates(findings: list[dict[str, Any]], names: dict[str, str], baseline: 
             cand = builder(ctx, side)
             if cand is not None:
                 out.append(cand)
-    for builder in (_shootout, _grind, _tossup, _pace_over, _suppression):
+    environment = [c for c in (_shootout(ctx), _grind(ctx)) if c is not None]
+    out.extend(environment)
+    # The toss-up is the fallback for an even game that no scoring-environment
+    # script describes; when one does, it says strictly more.
+    if not environment:
+        tossup = _tossup(ctx)
+        if tossup is not None:
+            out.append(tossup)
+    for builder in (_pace_over, _suppression):
         cand = builder(ctx)
         if cand is not None:
             out.append(cand)
@@ -782,14 +793,24 @@ def _sort_key(c: Candidate) -> tuple[float, int, str]:
     return (-c.evidence, ARCHETYPE_ORDER.index(c.archetype), c.lead or "")
 
 
+#: A DANGER script needs its REQUIRED findings present, but may be net
+#: contradicted down to this evidence score: it is the plausible path that
+#: breaks the primary, not a second endorsement of it.
+DANGER_MIN_EVIDENCE = -1.0
+
+
 def select(cands: list[Candidate]) -> list[tuple[str, Candidate]]:
-    pool = sorted([c for c in cands if c.evidence > 0], key=_sort_key)
+    ordered = sorted(cands, key=_sort_key)
+    pool = [c for c in ordered if c.evidence > 0]
     if not pool:
         return []
     primary = pool[0]
     chosen: list[tuple[str, Candidate]] = [(PRIMARY, primary)]
     rest = [c for c in pool[1:] if not _excluded(primary, c)]
-    danger = next((c for c in rest if _conflicts(primary, c)), None)
+    danger_pool = [
+        c for c in ordered if c is not primary and c.evidence >= DANGER_MIN_EVIDENCE and not _excluded(primary, c)
+    ]
+    danger = next((c for c in danger_pool if _conflicts(primary, c)), None)
     others = [c for c in rest if c is not danger]
     picked: list[Candidate] = [primary]
     for role in (SECONDARY, ALTERNATE):

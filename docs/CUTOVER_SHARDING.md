@@ -66,6 +66,7 @@ against the workflow files at this PR's head.
 
 | 7 | `probe-kalshi-fees.yml` — Probe Kalshi Fees and Event Overrides (evidence capture) | `push` to `claude/**` touching the probe, `workflow_dispatch` | Commits an evidence transcript to `docs/evidence/` on the **feature branch it was pushed from**, never `research-data` and never `main` | Not applicable — it cannot fire on `main` at all (see note) |
 | 8 | `app-export.yml` — App Export | `workflow_run` after the catalog, `schedule: */30 * * * *`, `workflow_dispatch` | `scripts/app_export.py` -> raw `git commit`/`git push` of `app/latest/` on the **working branch**, never `research-data`; reads `accounting-data` read-only | Not applicable to `research-data` — it holds the `research-data-write` group so it queues behind, never races, the writers above; disable it with Lock 1 for a quiet log |
+| 9 | `script-engine.yml` — CFB Script Engine | `schedule` (6-hourly, plus Sunday mornings), `workflow_dispatch` | `collect_football_gamelog.py` + `script_engine.py` -> raw `git commit`/`git push` of `data/football/` and `data/scripting/live/` on the **working branch**; the prospective ledger goes to its own `script-ledger` branch (main only), never `research-data` | Not applicable to `research-data` — it holds the `research-data-write` group so it queues behind, never races, the writers above; disable it with Lock 1 for a quiet log |
 
 **#7 cannot affect a cutover.** It is an investigation tool: it triggers
 only on a push to a `claude/**` branch touching the probe itself, and it

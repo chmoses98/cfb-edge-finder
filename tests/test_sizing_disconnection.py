@@ -60,6 +60,10 @@ GUARDED_PACKAGES = (
     "teams",
     "schemas",
     "data",
+    # The CFB Script Engine: a descriptive matchup/script layer plus a
+    # script-to-market compatibility map. It labels expressions and never
+    # prices or sizes them, so it sits firmly on the guarded side.
+    "scripting",
 )
 """Every package that could plausibly end up on a live or shadow path.
 Listed explicitly rather than 'everything except sizing' so that adding a

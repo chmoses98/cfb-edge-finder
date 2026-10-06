@@ -30,8 +30,11 @@ on:
 permissions:
   contents: write
 
+# Writes the repository (data/football, data/scripting/live), so it shares the
+# one writer group with the catalog and the app export -- see
+# tests/test_research_workflow_concurrency.py.
 concurrency:
-  group: cfb-script-engine-${{ github.ref_name }}
+  group: research-data-write
   cancel-in-progress: false
 
 jobs:

@@ -32,6 +32,7 @@ import cfb_edge_finder.modeling
 import cfb_edge_finder.projections
 import cfb_edge_finder.recommendation
 import cfb_edge_finder.research
+import cfb_edge_finder.scripting
 import cfb_edge_finder.teams
 
 FORBIDDEN_SUBSTRINGS = (
@@ -74,6 +75,10 @@ _SCANNED_PACKAGES = (
     # everything else rather than trusted to police itself.
     cfb_edge_finder.recommendation,
     cfb_edge_finder.expression,
+    # The script engine labels market expressions against football scripts.
+    # It is the newest place a "suggested stake" could be bolted on, so it is
+    # scanned by the same rule.
+    cfb_edge_finder.scripting,
 )
 _MILESTONE_B_PACKAGES = (cfb_edge_finder.ingestion, cfb_edge_finder.teams, cfb_edge_finder.data)
 

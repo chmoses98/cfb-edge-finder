@@ -25,6 +25,7 @@ import argparse
 import gzip
 import json
 import sys
+import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -96,6 +97,11 @@ def _write_if_changed(path: Path, payload: Any) -> bool:
     return True
 
 
+def _fold(text: str) -> str:
+    """'San José State' -> 'San Jose State': accents are spelling, not identity."""
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+
+
 def load_football(football_dir: Path) -> tuple[tuple[TeamGame, ...], list[dict[str, Any]], dict[str, Any], dict]:
     rows = tuple(read_jsonl(football_dir / "team_games.jsonl"))
     schedule = _load_json(football_dir / "schedule.json", {"events": []})["events"]
@@ -104,7 +110,7 @@ def load_football(football_dir: Path) -> tuple[tuple[TeamGame, ...], list[dict[s
             c["fbs"] = str(c.get("conference_id")) in FBS_CONFERENCE_IDS
             keys: set[str] = set()
             for name in c.get("names") or []:
-                keys |= names_util.name_variants(name)
+                keys |= names_util.name_variants(name) | names_util.name_variants(_fold(name))
             c["name_keys"] = sorted(keys)
     availability = _load_json(football_dir / "availability.json", {})
     manifest = _load_json(football_dir / "manifest.json", {})
@@ -133,9 +139,33 @@ def _espn_shape(event: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def match_by_codes(request: GameRequest, schedule: list[dict[str, Any]]) -> tuple[dict | None, str | None]:
+    """Fallback: Kalshi's game key spells both team codes (away first); ESPN
+    publishes abbreviations. A split of the key that equals an event's two
+    abbreviations, within 36 hours of kickoff, is the same physical game.
+    Returns (event, Kalshi home code)."""
+    suffix = request.game_key[7:].upper()
+    if not request.kickoff_utc or len(suffix) < 4:
+        return None, None
+    kickoff = parse_utc(request.kickoff_utc)
+    for event in schedule:
+        try:
+            if abs((parse_utc(event["date"]) - kickoff).total_seconds()) > 36 * 3600:
+                continue
+        except (TypeError, ValueError):
+            continue
+        abbrs = {str(c.get("abbreviation") or "").upper() for c in event["competitors"]}
+        for i in range(2, len(suffix) - 1):
+            away, home = suffix[:i], suffix[i:]
+            if {away, home} == abbrs and away != home:
+                return event, home
+    return None, None
+
+
 def match_event(request: GameRequest, schedule: list[dict[str, Any]]) -> tuple[dict | None, set[str], set[str]]:
     keys = names_util._kalshi_team_keys({"home": request.kalshi_home, "away": request.kalshi_away})
-    home_keys, away_keys = keys["home"], keys["away"]
+    home_keys = keys["home"] | (names_util.name_variants(_fold(request.kalshi_home or "")))
+    away_keys = keys["away"] | (names_util.name_variants(_fold(request.kalshi_away or "")))
     if not home_keys or not away_keys or not request.kickoff_utc:
         return None, home_keys, away_keys
     kickoff = parse_utc(request.kickoff_utc)
@@ -188,6 +218,23 @@ def cmd_build(args: argparse.Namespace) -> int:
         request = GameRequest(game_key, entry.get("title"), teams.home_name, teams.away_name, kickoff)
         event, home_keys, away_keys = match_event(request, schedule)
         check = identity_check(request, event, home_keys, away_keys)
+        if check["status"] == "FAIL":
+            coded, kalshi_home_code = match_by_codes(request, schedule)
+            if coded is not None:
+                espn_home = next(c for c in coded["competitors"] if c["home_away"] == "home")
+                swapped = str(espn_home.get("abbreviation") or "").upper() != kalshi_home_code
+                event = coded
+                check = {
+                    "status": "RESOLVED",
+                    "orientation_swapped": swapped,
+                    "espn_event_id": coded["id"],
+                    "method": "team_codes",
+                    "reason": (
+                        "matched by the team codes in the Kalshi game key against ESPN abbreviations "
+                        "(names are spelled differently)"
+                        + ("; home/away order differs and is translated by team identity" if swapped else "")
+                    ),
+                }
         if check["status"] == "FAIL":
             record = {"status": "UNAVAILABLE", "reason": f"identity: {check['reason']}"}
             _write_gz_if_changed(sift_dir / f"{game_key}.json.gz", sift_payload(record))

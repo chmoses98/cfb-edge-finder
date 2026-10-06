@@ -1,10 +1,10 @@
 {
  "catalog_captured_at": "2026-10-06T00:19:14.168096Z",
  "counts": {
-  "IDENTITY_FAIL": 12,
-  "NO_SCRIPT_CLEARED_EVIDENCE": 68,
-  "SCRIPTS_GENERATED": 52,
-  "SINGLE_SCRIPT": 110
+  "IDENTITY_FAIL": 4,
+  "NO_SCRIPT_CLEARED_EVIDENCE": 72,
+  "SCRIPTS_GENERATED": 110,
+  "SINGLE_SCRIPT": 56
  },
  "football_manifest": {
   "fetched_at": "2026-10-06T04:46:09Z",
@@ -37,7 +37,7 @@
    "survivors": 2
   },
   "26OCT07NMSUFIU": {
-   "artifact_hash": "0bdec1939c372fbb728401ba0f35261559fc9311280cb7f051efc9ec611f5ba9",
+   "artifact_hash": "ee389674c60e37da2274da10799588c89e43e74d15a8019ce3feb81861b2a411",
    "data_confidence": "LOW",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -49,7 +49,7 @@
    "survivors": 5
   },
   "26OCT08MOSUWKU": {
-   "artifact_hash": "54b13df6bf7add1f936be6a71883a97b868deec97d02cb9cf5a31ea6edecb071",
+   "artifact_hash": "21b48a0bdc21214abad3fdeaf5b2dff0a940d859c204e2e51fc46d609f23a738",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -69,7 +69,7 @@
    "survivors": 0
   },
   "26OCT08USAARST": {
-   "artifact_hash": "e253530aa2d2e26fc7a42f35ebea61b5c12fe1a7ebb39a9d6661276ad5175078",
+   "artifact_hash": "54a125942c943b08a382e9cc4b2b88fa5122d2443c87be9c520e86447a46a79f",
    "data_confidence": "HIGH",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -79,7 +79,7 @@
    "survivors": 0
   },
   "26OCT08USFUTSA": {
-   "artifact_hash": "67332f32907ea9ec8a9a6ee2f1366661b67a02fdb050e73199e3b5de53230a82",
+   "artifact_hash": "498d512b4b284b86f0b3ac50ffb3749e6132c80e7d6b6f4a6f243a905af5fceb",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -123,7 +123,7 @@
    "survivors": 5
   },
   "26OCT09ISUBYU": {
-   "artifact_hash": "f061a87ac27b15171b6a0685b3134d402cd238d8803acbc340ca0166f0e5e2de",
+   "artifact_hash": "fef4cc198686fc0d137b64802254dd2da5762cc74ebccf43eff2a4c53374c4a9",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -136,7 +136,7 @@
    "survivors": 17
   },
   "26OCT09WSUUSU": {
-   "artifact_hash": "c8e2b40efc7fd2cb86ba2a7b0ad516662c4b0cbc497de375a98c66e26974755c",
+   "artifact_hash": "27892ef4872aa77bc19d8c6030416eae43f186f1d73de06bb514e6a9d9e64ead",
    "data_confidence": "HIGH",
    "expressions_mapped": 134,
    "freshness": "FRESH",
@@ -148,11 +148,19 @@
    "survivors": 5
   },
   "26OCT09WYOSJSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "865cc99c7e64b6a92289645e94f0be545ef842b7d4ab16f29333c4312ce497e0",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 148,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_GRIND"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 5
   },
   "26OCT10AFANIU": {
-   "artifact_hash": "905bb224d955a68397a1f96aaaee0884f6cede7ccee4b3922d14903ba271cbae",
+   "artifact_hash": "6a35e69c1da1ef5a5c375764e2bdcee905f42bd413a929fe451bd4e69d87a349",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -162,7 +170,7 @@
    "survivors": 0
   },
   "26OCT10ARIZWVU": {
-   "artifact_hash": "62aea8add297c0a70fbe07ee4290f4495abe7a086da2763612bfd98e9c091f5b",
+   "artifact_hash": "012883e963ad248c22846c909ae2d041af4eaafdd54a46f4b66c722dcf949e4d",
    "data_confidence": "HIGH",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -176,7 +184,7 @@
    "survivors": 35
   },
   "26OCT10BALLNW": {
-   "artifact_hash": "a03f85c8b70dd20412a1f62a3f26a86320cd1b12ea5084976f647eb89bc51cfa",
+   "artifact_hash": "2f28eaa630e836ddcc9989894317c6fb24f9b13d34b18ab8a8e1e1011213a852",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 128,
    "freshness": "FRESH",
@@ -199,7 +207,7 @@
    "survivors": 0
   },
   "26OCT10BSUFRES": {
-   "artifact_hash": "fb92239cffe614776c0aa0897350a91717132c1fe22d3bd0b9e01448eee7f22b",
+   "artifact_hash": "c8ab18c4771994b2ddfdf2a7c6433934b049c7afcc5f3f29b0cefc0723496ac9",
    "data_confidence": "HIGH",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -233,15 +241,16 @@
    "survivors": 25
   },
   "26OCT10CARKAC": {
-   "artifact_hash": "61368fb0f2c3745e1cfb19f455e6312cee7805f0219f42a70fd75f8eb6eb718b",
+   "artifact_hash": "a052f6eee2913000fd0d37442390c1abb3e71afa99136151cfdc73bbe36b028d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10CCARMRSH": {
@@ -255,7 +264,7 @@
    "survivors": 0
   },
   "26OCT10CHARUNT": {
-   "artifact_hash": "e469c0e306755fbdfe70c7616b2ade252bef9708169288a6cab74ff0ae69fb1c",
+   "artifact_hash": "24cc172717c4c9fa6644723bbb76a684a7ad18c4ab96be268c4e7ae41fb37214",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -268,7 +277,7 @@
    "survivors": 20
   },
   "26OCT10CMUOHIO": {
-   "artifact_hash": "a19a3d68658f096300d698b965958fa303294940058de8accdc63d4c87f53183",
+   "artifact_hash": "5aec0b18950c92b21eb02b9cd3b1535fda48a8733f9480184b4161d764e0a025",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -300,7 +309,7 @@
    "survivors": 0
   },
   "26OCT10CPIDST": {
-   "artifact_hash": "8e956052d18367103d1c2b3907d5cacf9b84040f2b5a31342fb3dff2a8dc2908",
+   "artifact_hash": "5b8b70adc46b8127be9c8b9e9d3c8199e32523db03923f98f10c2afd8bd8b529",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -352,7 +361,7 @@
    "survivors": 0
   },
   "26OCT10EIUWEBB": {
-   "artifact_hash": "e9ad4471283892bbe58feb119862f93f07408b2e4e5713bd68f1ec6adc651061",
+   "artifact_hash": "cad4e0de158af3c1fd30feefd1b73a3630ab4375c12c900d58d235717152e7e2",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -364,7 +373,7 @@
    "survivors": 0
   },
   "26OCT10EMUAKR": {
-   "artifact_hash": "de60d3cdb2d0d5985cb691593a1b3f12a145032d3d96246961c4d96b227875dc",
+   "artifact_hash": "c4373c726e5d4a5b2777bdab20897608fa96fd62cba53d77b4243656a544917c",
    "data_confidence": "HIGH",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -374,7 +383,7 @@
    "survivors": 0
   },
   "26OCT10ETSUCIT": {
-   "artifact_hash": "e07afe6f17c24426d3c4953b4cc746e5ff99eaee22a253c590e3435921022480",
+   "artifact_hash": "77270416f583427e9d878fdd8bd09c36f4a7799cf862ab62e02ee97b7110bcc3",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -386,15 +395,16 @@
    "survivors": 0
   },
   "26OCT10FAMUALST": {
-   "artifact_hash": "fa9ceff974b4316912db5ff5f285933902ec127904c0d87a597e95cd8a8fa8dc",
+   "artifact_hash": "200687750d1c5df7181109674e36964242188a3611fdcc8cc569f057d315a269",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10FURTNTC": {
@@ -418,7 +428,7 @@
    "survivors": 0
   },
   "26OCT10HAWASU": {
-   "artifact_hash": "8acce06924df8580751a340b078a13c9d9acbeb472bdea4128914ea839dee62e",
+   "artifact_hash": "d7effdb742db08e90ca4eb31f411d2f5c5f369b6605a06e80f809502da6f5831",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 96,
    "freshness": "FRESH",
@@ -431,7 +441,7 @@
    "survivors": 13
   },
   "26OCT10HOUKSU": {
-   "artifact_hash": "ce521356c62adf938a4267faee14fa2f17f4a35caea2f9c7a4d483333f96bb84",
+   "artifact_hash": "f229191128f3103a9ea0f0bb4410d4180f940311d793bdd231f333111b480439",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 148,
    "freshness": "FRESH",
@@ -444,7 +454,7 @@
    "survivors": 19
   },
   "26OCT10HOWPENN": {
-   "artifact_hash": "a26df29c92a82e221a615d6d50382838b0c3a7db9095fbc60f4847624f9038e5",
+   "artifact_hash": "a33e03b22133d003842ba961856ea6c3745436188169d8b82fb3f95e28bd6009",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -454,19 +464,20 @@
    "survivors": 0
   },
   "26OCT10IDHOWEB": {
-   "artifact_hash": "b2bd733d343214a124ac7dd193a360f4ed39f9691cf9bdd4a8850f92f40aab25",
+   "artifact_hash": "42743ae7d830acf48921ff48e523afc59d05586a8c633cd3928b4073e48450c5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10ILLMSU": {
-   "artifact_hash": "624cf70ff9c5f6c627453a37ce9893f39ff4f7a2e57d969491c48d4e42347273",
+   "artifact_hash": "d58211e10fe6946b6c1260c2e0bc4984d50860f9843becc56ee06dbb68514c62",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -490,15 +501,16 @@
    "survivors": 6
   },
   "26OCT10IWLAM": {
-   "artifact_hash": "fb99fd9b8f7ec4a8a9b9b5d08121022db5335479709af649f87ff1c69e5ed62b",
+   "artifact_hash": "7da28f76ae7b87e92b33788c0263cb6d320f987864d1cc894d935f4a28fd529a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10JKSTGRAM": {
@@ -549,19 +561,20 @@
    "survivors": 0
   },
   "26OCT10LIUDUQ": {
-   "artifact_hash": "6da82854f62ad50b30ccce7586073d5716a80f1110fcd0bc45547da87fc93b09",
+   "artifact_hash": "e888a0a8457f78a8c3cc2d45bf5c6c00f75d69cc3392b1da7293c4ff841f9bc1",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10LSUUK": {
-   "artifact_hash": "04a2fe12d784f6f3b4479380ca2a81438cb0dbd7be84c6f164646aa418eb14bb",
+   "artifact_hash": "99d9985b8c51b6d6d48d3617b1c672a3a087ef10a9bf28f4824cf93ba2645bec",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -575,7 +588,7 @@
    "survivors": 19
   },
   "26OCT10MDOSU": {
-   "artifact_hash": "b5cab40d1b8f723991bb2dddb4d9f66d792c4a9694fb5f747055f08e701f366d",
+   "artifact_hash": "c5996645e078254c51741ce3b8bb005619352277ae139576650dc1375af3c9d7",
    "data_confidence": "HIGH",
    "expressions_mapped": 120,
    "freshness": "FRESH",
@@ -588,7 +601,7 @@
    "survivors": 15
   },
   "26OCT10MINNPUR": {
-   "artifact_hash": "6499535654e0b30754b5413a469f2af32c2409855c0ad5180a3e2c2fc43a5026",
+   "artifact_hash": "b0fb960694a7dfc873b3ced054e61f8d36ae686879912541f38b379621fd3439",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -613,7 +626,7 @@
    "survivors": 17
   },
   "26OCT10MOHMASS": {
-   "artifact_hash": "9b1934735bdad77dcafb26cb8772d19ae0fa845856ba6e764882f20380a31e88",
+   "artifact_hash": "5b68acc6b1739462abd011cb2a5d41f09968b027f88bd3e001eac1b0c3f865de",
    "data_confidence": "LOW",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -623,15 +636,16 @@
    "survivors": 0
   },
   "26OCT10MONTNAU": {
-   "artifact_hash": "40b9534d87288d31c40ea8f38160e1530755dc452b306fc286d7a12135385863",
+   "artifact_hash": "681b68befaaa94c3c193270ac9c32ad4f7810cda41ad86e8886cdf47799cbb4e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10MOREDAY": {
@@ -645,15 +659,16 @@
    "survivors": 0
   },
   "26OCT10MVSUTXSO": {
-   "artifact_hash": "601a3667c987523dbb40293d3c5c451e32229fb16d80edf5f8517c4c61e23850",
+   "artifact_hash": "bb71c628957e089a4118f83a8632e2b5f55aba9fa5bd9ff82619a4c28f25a9bd",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10NDSUUNLV": {
@@ -669,7 +684,7 @@
    "survivors": 5
   },
   "26OCT10NEVUTEP": {
-   "artifact_hash": "d125589705d0477e6bb4bd2310db71711b1385a1ffeb2151d1fea2f4ea3833fc",
+   "artifact_hash": "28398ec98befe408e510cf002bae1d62febd80b7d7e5595790a4147ee1c3531c",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -681,8 +696,17 @@
    "survivors": 3
   },
   "26OCT10ODUAPP": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "63d9a386f5b0b2299b326cfd5bde21b902142c6b3a529f744c9d7bdfa932b1fb",
+   "data_confidence": "MEDIUM",
+   "expressions_mapped": 154,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:TURNOVER_DISRUPTION",
+    "SECONDARY:DEFENSIVE_SUPPRESSION"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 4
   },
   "26OCT10PRINWAG": {
    "artifact_hash": "03573da49499e9cace6e9693a5c761a14705faa0cf6deb789e3e5ceac5a76fd8",
@@ -695,7 +719,7 @@
    "survivors": 0
   },
   "26OCT10RICEECU": {
-   "artifact_hash": "e51aed691e612da3b8d1a786044c34c9910edf614cc201c7e6588b56d4ce1260",
+   "artifact_hash": "c261abfa0cfb9fcc0a239db81790f29a169a1b31b170bf224c5a767eae2941e0",
    "data_confidence": "LOW",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -705,15 +729,16 @@
    "survivors": 0
   },
   "26OCT10RICHFOR": {
-   "artifact_hash": "76cce2e1f889e8c01464969e22ce09f34483716553b8f02898349c8d1184fa4c",
+   "artifact_hash": "f847b8bacd32d08bc01f6b244c2e8e1e6b2d0aac2617ebb40ecd4efd10e9c37a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10RMUMORG": {
@@ -793,19 +818,20 @@
    "status": "IDENTITY_FAIL"
   },
   "26OCT10SEMOLINW": {
-   "artifact_hash": "3eb4d5ddced765ce027fc5647f37d77f66b599b7eb23e969ed0a5343f9093e61",
+   "artifact_hash": "3c869a2f6ef8a834c049344ab4f38d8d6319381a553401a0cfdf9d840c752101",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10SIUSDAK": {
-   "artifact_hash": "b33e77e90856ebffcfa0b13320a22dcbd4ec2566a35e74de2ca225aabc64f3b1",
+   "artifact_hash": "62633550b22c13e517b40698bec0aa801bb2a154d667b399a223aa58a5512a58",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -817,15 +843,13 @@
    "survivors": 0
   },
   "26OCT10SOUPV": {
-   "artifact_hash": "a441615290ce7c9655be9dd090f68bc95d5d87a00d57891edbdb5d2b9a4a323c",
+   "artifact_hash": "040f497188b377585ff29ef7abb76ebb03e3255add7364cb6789fa24b6db024e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
-   ],
-   "status": "SINGLE_SCRIPT",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0
   },
   "26OCT10STANND": {
@@ -852,27 +876,26 @@
    "survivors": 0
   },
   "26OCT10STNHSHU": {
-   "artifact_hash": "52a8aaf468f6ff362f28066740ede908f5f76fed9484224f217897bcc3942ac3",
+   "artifact_hash": "a4890a930f4b4e29c5388c27b40fba576956bbd2aa8cce93abeecffd337ec115",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
-   ],
-   "status": "SINGLE_SCRIPT",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0
   },
   "26OCT10STONTOWS": {
-   "artifact_hash": "7a29e2d82953dc200403479be59681a7678b83eb0a4577cfde671b76f4df8371",
+   "artifact_hash": "e7a84187f0edc6e80e9c6a07556da52520d8aae46e2baa3d7b5c0eba4ec9e41a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10SYRUVA": {
@@ -889,28 +912,30 @@
    "survivors": 3
   },
   "26OCT10TARLPEAY": {
-   "artifact_hash": "82022a2e7ab7616f8c60dd8b2550b610bd8539e13d4f433b2510768f4064dcde",
+   "artifact_hash": "79902aff4b38339c0ff6888e1fb18b53f2651714702498f3c204ef7e9586643f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10TENNARK": {
-   "artifact_hash": "54f41f3bd59f8ac344d06c3e3d5866a7df839ea4dd2dc42c7a402851d311e522",
+   "artifact_hash": "4d0d6563595092f2a57d607861008426ac16bb63df96288bbcfcb1bdcfa3c906",
    "data_confidence": "LOW",
    "expressions_mapped": 154,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:AWAY_CONTROL"
+    "PRIMARY:AWAY_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 6
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 16
   },
   "26OCT10TEXOKLA": {
    "artifact_hash": "da2cb85e5130fe2c385742cca723f749b583eaea679a56ebf6a87695fb22823e",
@@ -947,7 +972,7 @@
    "survivors": 6
   },
   "26OCT10TXAMMIZZ": {
-   "artifact_hash": "7487855cd89313c7444d4be55728e1f7dd7b5ad589a57f6e499495c2e246c221",
+   "artifact_hash": "09da3da6ff53c55710dee0a67fbd55c459fbe001217c36f9981419b5627cf811",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -960,7 +985,7 @@
    "survivors": 33
   },
   "26OCT10UABMEM": {
-   "artifact_hash": "4dbd2aef6d5a7f81d9e33f90d7ec9ef7331c8733a8b7659da45a7b3851cd5da1",
+   "artifact_hash": "e81949d8d70aa251d8b2543704cf5678e4e37d50152aa0b7e6b8978445c8ba74",
    "data_confidence": "HIGH",
    "expressions_mapped": 158,
    "freshness": "FRESH",
@@ -973,7 +998,7 @@
    "survivors": 31
   },
   "26OCT10UCFOKST": {
-   "artifact_hash": "027367b3d5d18b161bacfe8600a2627ca5473ce5f347927b681afae96ff8ece1",
+   "artifact_hash": "edf8c6231698f9e2d1880239b3953dea826f071a06da9b214bfd369c89330866",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -983,7 +1008,7 @@
    "survivors": 0
   },
   "26OCT10UCLAORE": {
-   "artifact_hash": "1ffba93cd2e7c23218197c5cf049a5c7d048c40819af2b9081dbd7d27e4bd13c",
+   "artifact_hash": "bc078c5178f24740a99d2927a4ab21775b07b0916b58886119c34870f1d10ec8",
    "data_confidence": "LOW",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -995,19 +1020,20 @@
    "survivors": 6
   },
   "26OCT10UGAALA": {
-   "artifact_hash": "e36a0211d32ae0c18d8b17027e0ded4f76600ae2028c1f13d9654cc3da80724e",
+   "artifact_hash": "3b8113c97f49fac9dde56c51a38d3c4c1dc048a862f91d9961433ab9fa440dfb",
    "data_confidence": "HIGH",
    "expressions_mapped": 140,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 2
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 25
   },
   "26OCT10ULLLT": {
-   "artifact_hash": "b17b942af4724d656f3228a56c6d1a8ae428f5b1ee31f895c2377f771d226784",
+   "artifact_hash": "27d569f80b81c0575c43a2990c0221dbb50d499bbc2a721a2a58de34dacbe4c6",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -1017,15 +1043,16 @@
    "survivors": 0
   },
   "26OCT10UNCOEWU": {
-   "artifact_hash": "199b1d8c31fc9184330e89adb35642565855d9e2381ebf3af299afb6ed2520ef",
+   "artifact_hash": "c814de32f75cb1ba26e60bb819216191ea70bf305ca268db64c508aff789e63f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10UNCPITT": {
@@ -1041,31 +1068,33 @@
    "survivors": 6
   },
   "26OCT10UNDUNI": {
-   "artifact_hash": "1701d2bef3617845c54802c5cb50a987385428a6534090f56175c7b91e10f47f",
+   "artifact_hash": "28253fc323ad4b90d2a75cfe8f8bb0ddb6031656ef13aab2b4ab7acdfbf32fd9",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10UNHNCAT": {
-   "artifact_hash": "f52cc603782b99ce1fa8255fce3b618f560b7ba6a84e904417656c8409ae7ae0",
+   "artifact_hash": "21195e4f85933cbda2652fb9e15253c55b702f6bafeb03533371b79d96d05ffa",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10USCPSU": {
-   "artifact_hash": "687f195027a07d8e5b2dde83ab5ca5abbd094ef278696110e52d11df0231e3ae",
+   "artifact_hash": "f59c038fa4b6358d112255a600538dc6306fd6ac10b89d21c4c9c36127030d93",
    "data_confidence": "HIGH",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -1087,31 +1116,42 @@
    "survivors": 0
   },
   "26OCT10UTMTNST": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "7bd3995050ec465f14ec9caf2aab9b4bcda3a26e47fa77b7a903f0ba5cb7ee12",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 0
   },
   "26OCT10UTUPRST": {
-   "artifact_hash": "e97ea54ee23616681d87d8b0bc8f1e3cc914bd9420b996a2935896bbb99c5d83",
+   "artifact_hash": "83089459054867b4c8fc3140ad62c4c1060a263fbe56bd0ee053f1b357acc9cb",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10UWGAEKY": {
-   "artifact_hash": "5d6a965449c4afaf4d4c8c0e4a12c3c90bf97b9f0327e4b736ea0a68cacc0e9b",
+   "artifact_hash": "f10f2d31cdaa56366abaacdd4643e2f1e72502b705edcefd4a9741de89f399e6",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10VTCAL": {
@@ -1128,7 +1168,7 @@
    "survivors": 17
   },
   "26OCT10WAKENCST": {
-   "artifact_hash": "bdabb99da8633d9bc0140fdd05dc4b370ab953b951cb659293653c0f48c1ea18",
+   "artifact_hash": "48bbbb50fcd24b6b0607b85c08c73519a384b0bc8bc8253b004466fdd742dc14",
    "data_confidence": "HIGH",
    "expressions_mapped": 158,
    "freshness": "FRESH",
@@ -1141,27 +1181,29 @@
    "survivors": 34
   },
   "26OCT10WCUMER": {
-   "artifact_hash": "8059937c4b601ad18de99a33a17b3f1c7f0b59f425267e1a2d2e3f7010a58b35",
+   "artifact_hash": "049cc7a9de618408bdbf60bf2dc06779084ac28e99ef8d939eaea0952669b273",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10WMNCCU": {
-   "artifact_hash": "19cd7c22b09adbf7476032175ab96e40ae2cc965aacf00ece5e208b3870a8063",
+   "artifact_hash": "e4145eb2a049beb8065d121df6f5e691026c07483a0ef24017934b3e1deccaa0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT10WOFELON": {
@@ -1175,15 +1217,16 @@
    "survivors": 0
   },
   "26OCT10YSUINST": {
-   "artifact_hash": "b6153ebb36f13cb89e1259271119b3bab3c95cb117133212e7d711a839c484c9",
+   "artifact_hash": "424cf922e5ee0cfd399494aeefff800fd600c79ef62ce9b3599c0d50864b2bf4",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT13DELMTU": {
@@ -1197,7 +1240,7 @@
    "survivors": 0
   },
   "26OCT13FIUJVST": {
-   "artifact_hash": "d03fabef49085860c6722093590a87487c43cc5a52699c45570bbdb04376cab3",
+   "artifact_hash": "89acb9757bf30fe45d18b220fbe58c8d45cc8d89640af1cf3869695700ef1bec",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1209,7 +1252,7 @@
    "survivors": 0
   },
   "26OCT14KENNMOSU": {
-   "artifact_hash": "53b2b66674f71c9172dbdcf622fb769783315112ffcdd09104fdabd916a595da",
+   "artifact_hash": "c4e7c7bc099803adb5f0e3d4ffc7cef83f9c032beaae9d7d7b0da9cdc22e7f00",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1259,7 +1302,7 @@
    "survivors": 1
   },
   "26OCT15GASOODU": {
-   "artifact_hash": "9e748038b1ece1cb48634966c6f833e93bc1a0bda0ae31c7748e65a8905e7aa8",
+   "artifact_hash": "89043c7c1f6f5936662975694e069a4492363c7546bcf487bef33ea616e6a31a",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1274,15 +1317,16 @@
    "survivors": 1
   },
   "26OCT16AKRMOH": {
-   "artifact_hash": "1e80c3ee085e9f7afb4674bede318b014fc1e1dcb3f7ff5c8f31dfe21ed58acb",
+   "artifact_hash": "fdc113b4ccdfe881478142c5713a34f2fd7060ffa5901d6152112cb90f6132e5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT16APPCCAR": {
@@ -1322,26 +1366,27 @@
    "survivors": 0
   },
   "26OCT16BALLBGSU": {
-   "artifact_hash": "3d334ad3a9ca04df3d2056255f951d57b5fd3aee33b3d4f2b3e9a3a2cb291fe5",
+   "artifact_hash": "3ebf56a40c0d50d85fbf7e011de0103dc776ff071f47cd88b9b9a7c3f6eeb979",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_GRIND"
    ],
    "status": "SINGLE_SCRIPT",
    "survivors": 0
   },
   "26OCT16CHARTEM": {
-   "artifact_hash": "1fa4790eb58b0f34afc66093c4a4396f4f2aeabef12d60e35ceb97734d3bd2ae",
+   "artifact_hash": "b9c2e14bc91efbd97655b9ca2474ad739c5537aa23bde011168bb1bb5aaf44cf",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
@@ -1361,7 +1406,7 @@
    "survivors": 2
   },
   "26OCT16CINWVU": {
-   "artifact_hash": "0713827acd7e58424f587f0cbab5dd95658b183e829355d35b44b8484af865ef",
+   "artifact_hash": "df34da5d169c79153402865e28a7fec614570a11260b66fd7875544af8d0bdbe",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1383,7 +1428,7 @@
    "survivors": 0
   },
   "26OCT16FLATEX": {
-   "artifact_hash": "a22a2a838f8650329f568b1eb34b83cbb9144e3b1d3fbbd6246c0ac2bb988940",
+   "artifact_hash": "8418c03f8d90fc454a7af5e0c407d1e7f2226cf19a73e91a8af07052fb034a00",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1403,39 +1448,42 @@
    "survivors": 0
   },
   "26OCT16GTVT": {
-   "artifact_hash": "9235b11aac875ad0f78ebaffe9ee9aa553d410ce602ab8ebcb25b3d768fe9122",
+   "artifact_hash": "1d5ce0c793a9e64cba3108f398846d78c0b2329710df91d030f2edd0caa22ec3",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
   },
   "26OCT16ILSTSIU": {
-   "artifact_hash": "b31e0410deeb1f2a847076ff268f4a699b7566b1812fa68023d67e3c9d01d0c1",
+   "artifact_hash": "f1bf1cb5e1a54642a3a22d937cc0496b123f931a4438cc4bbcaef7af61a43c1d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT16KENTUSF": {
-   "artifact_hash": "84abd27aaa3ba4ad07edb57961f904f869d4f628e62a50a358dc39487dd1a680",
+   "artifact_hash": "b8e7fcb7a3d7740701630702b7df5d4378fb15216af9fa8ff47752d573650b08",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
@@ -1453,8 +1501,18 @@
    "survivors": 0
   },
   "26OCT16LTULM": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "ef735bcc8665f422c20bfc132e4dde45f1bb024ae03d1986232753b62f118ff1",
+   "data_confidence": "MEDIUM",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "SECONDARY:TURNOVER_DISRUPTION",
+    "DANGER:AWAY_CONTROL"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2
   },
   "26OCT16MASSBUFF": {
    "artifact_hash": "a4552a484eab15202fa2f5cf7f927189142f00e728208b707ff3f1b583d3c2a8",
@@ -1470,7 +1528,7 @@
    "survivors": 2
   },
   "26OCT16MEMTULN": {
-   "artifact_hash": "8af820353ef454b6506eac32271277b8a907e39098c4842a96d727b3a54851f5",
+   "artifact_hash": "c2b79f62d62ab075db980eab5cebd90d1675f4f0cf064fa27b2be73b0dbd807b",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1485,7 +1543,7 @@
    "survivors": 1
   },
   "26OCT16MIZZMISS": {
-   "artifact_hash": "7ffa164a6f836ae0f2a59a3b1e4911a8388e23381f1fbc0fef25d657ad99711b",
+   "artifact_hash": "f88b1916aa5cdeaf7e3f9f5681349cabfa1ce37348d45237b8207b5cf50def56",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1495,7 +1553,7 @@
    "survivors": 0
   },
   "26OCT16MSSTLSU": {
-   "artifact_hash": "7d690d81f4d1ee579fa8da8d4c1467c709efe3b889cb7805b1411b2e3cfab1fd",
+   "artifact_hash": "9025a9e9832d3108ef6d1f51fb69f68093c56a18626eaba1c4fac7cce7d55248",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1539,7 +1597,7 @@
    "survivors": 0
   },
   "26OCT16OKSTHOU": {
-   "artifact_hash": "46f4310c66f9715b4e50009c5ed308627b8a748776ba26bca2ccfb9f8d82fcdc",
+   "artifact_hash": "c906d345121060ff5317b899b917182b65ea346277188d39b706d4656e7a03a1",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1549,7 +1607,7 @@
    "survivors": 0
   },
   "26OCT16PITTBC": {
-   "artifact_hash": "0a353eb0cad5497ce4a5aa3227722a033c6f0830c14e84389d91f5b19fb1589f",
+   "artifact_hash": "a5f70cd13017f835f38ee5e280bd430b5ede1881e118c096b3e479c99a556e7d",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1562,7 +1620,7 @@
    "survivors": 1
   },
   "26OCT16RUTGMD": {
-   "artifact_hash": "ef03428be88b39af100a52c39202044a970bc4ff9c4bad27d84e07161ec93bf7",
+   "artifact_hash": "da97aafec76e5bc3b52046291d050a2d296ed4d4e56cd95c4ad3b880a9a14a7f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1576,19 +1634,20 @@
    "survivors": 1
   },
   "26OCT16TCUBAY": {
-   "artifact_hash": "ac89e576b85c16ed07891df21fab98a74eaf2a6e0aca4a9aa3f5e7f7936e71f6",
+   "artifact_hash": "0462d9a30408b054bab79a3d05f82603a03e4836c67ed7d9365eacb0be012851",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_GRIND"
+    "PRIMARY:COMPETITIVE_GRIND",
+    "DANGER:PACE_DRIVEN_OVER"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT16TLSARICE": {
-   "artifact_hash": "aa62ef93061f09993e0be5a4e8f4db9b7c0fad821ed434286f8634707110c58c",
+   "artifact_hash": "6cd56737795e5fd36b15301869d48c3bf3816d9e47a0f7f31d3964adaf5ebbd2",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1600,7 +1659,7 @@
    "survivors": 0
   },
   "26OCT16TROYULL": {
-   "artifact_hash": "8783d79a5c1e81dcefe077a39b366afb42cb8215b6df967d45809c5315f66772",
+   "artifact_hash": "b8d34ed65979d0005ac130f3d2abe46b49b900781b9b5407c62efc25e8a8f183",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1612,7 +1671,7 @@
    "survivors": 0
   },
   "26OCT16UKOKLA": {
-   "artifact_hash": "cd0c1f6b06a55029b1921298de9891247c1aa0c0a3adac6601676633d00b61b3",
+   "artifact_hash": "04c1663bb9b8df9c309e3625d31acba8ab89591d1148857af6c2ecea2b7ec3df",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1652,7 +1711,7 @@
    "survivors": 2
   },
   "26OCT16UVASMU": {
-   "artifact_hash": "7df0587602482454bb9ecf7f79c9d13b710044d903372a5e942698a03866091e",
+   "artifact_hash": "f8fa13a4b1ccb5c6c365e967b5703e9794e04aadf18438a0b7e002e167c57f61",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1677,7 +1736,7 @@
    "survivors": 2
   },
   "26OCT16WASHPUR": {
-   "artifact_hash": "00d1620480808101262dbea6ed79c7d57f8002f593a79aa062224b710c2ce7d9",
+   "artifact_hash": "191dde08c995703c149475489a3b67a363b1e6cc96aaa0e2777f1c3ed5a6c8ea",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1689,7 +1748,7 @@
    "survivors": 0
   },
   "26OCT16WISUCLA": {
-   "artifact_hash": "2f6979dafae82da57c95716d394be76d4995e8a2648cd4090f7040a2f7e72d3f",
+   "artifact_hash": "11e009eebb591c341f09d17a6c2bb57465ddf03adda24c25d93332d50c5d7281",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1702,7 +1761,7 @@
    "survivors": 1
   },
   "26OCT16WMUCMU": {
-   "artifact_hash": "778c3b811b9ccc2b159b2a365882008d9781130a8388f28f22155942f38844de",
+   "artifact_hash": "a044ee48eebad137770d310c8256cf8d1867e407d4456a84e4113c2d0a5582fa",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1714,31 +1773,33 @@
    "survivors": 0
   },
   "26OCT17ACUNA": {
-   "artifact_hash": "c2dc70d028f8c04171701f1be8212143af2ac97400d744cbbd928c78f414969f",
+   "artifact_hash": "328dfeb6ab6a1a46be32685142dd2f58a89f8e29978817b8cd3d8b46e80e8459",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17AKRMOH": {
-   "artifact_hash": "38b7646fb183eac15dd25a40cb727a6addae3108507098c0879ed278dd3d737b",
+   "artifact_hash": "49f511f75796978a4f6d0b0ea00429fe473d01b85184102893392b15172d71b6",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17ALATENN": {
-   "artifact_hash": "8db0887e323a4f6e23b0b35bd25715ad740a0dc8ee56067db4742cbd67c9b5ec",
+   "artifact_hash": "956dd1a013583420a083a6536266fe1d740b816cd96bb76d4c214b8abafdad90",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1756,27 +1817,29 @@
    "status": "IDENTITY_FAIL"
   },
   "26OCT17ALCNPV": {
-   "artifact_hash": "1ee9d35ad79a6a3bebdca82c24a857aa6bd9fd40eb472b5376d95489277647e7",
+   "artifact_hash": "773d97ab10577a4959111de8a804950b33f093d92ec801dafd9ded0fb3afd8f8",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17ALSTARPB": {
-   "artifact_hash": "44b19dfd248226f2adf7c95bb6ca6bf27853d2f9f41358fd73af761e37883f25",
+   "artifact_hash": "fe138d9088ba416e1efbeed651ea2b0a16f01704e5b1c8b200bc97d58ff93696",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17ARKVAN": {
@@ -1815,13 +1878,13 @@
    "survivors": 2
   },
   "26OCT17BALLBGSU": {
-   "artifact_hash": "61dee97944e8b2beb39e7ecac02bc99d7fe248b6ce63557d788c4e09646afae2",
+   "artifact_hash": "c352f3ea9ad90b5697bd00d6f37f3ad7adc6978773aa390f4ed81c8feba33c34",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_GRIND"
    ],
    "status": "SINGLE_SCRIPT",
    "survivors": 0
@@ -1837,19 +1900,20 @@
    "survivors": 0
   },
   "26OCT17BRYME": {
-   "artifact_hash": "0b08ffb9aabd1387fb755950ea0b6bd339d9c95624762bfdb778c05c092c162c",
+   "artifact_hash": "a3441c195578b98d50425f4fd6ce70bd7a8b8558ace6b5a8771319ec014b4cba",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17CARKTARL": {
-   "artifact_hash": "ef9e77c26dc3e07979cc34a2797ef6f8a3459695873aad4383ffb7fc2fd73cb5",
+   "artifact_hash": "2844eb3e09066f9531560205a4ce7b3986ea956812931dce82093d4991f44ae3",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1861,26 +1925,28 @@
    "survivors": 0
   },
   "26OCT17CCSUMHU": {
-   "artifact_hash": "4604a6e7fff2e955f37283885ad254dbbf89424121866c2bfaa43ece7f04d53d",
+   "artifact_hash": "3988c9151407603fca7e41c6bb7d997d305c19d721a73c2dd4c67cd4e37f688f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17CHARTEM": {
-   "artifact_hash": "6eb8361bc84940a932a1343ab560d5deac4b749cf8df704bb5e7ccea8f2e21c6",
+   "artifact_hash": "71ae24226f84cfd6b1677c04823ef37b59cfaf9f67453caa45af56b7380998cd",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
@@ -1910,7 +1976,7 @@
    "survivors": 2
   },
   "26OCT17CINWVU": {
-   "artifact_hash": "d1dd5cb887bdeffe91f785ce3e2c95f40d6272c5de2e094441135a87a4f62f62",
+   "artifact_hash": "e589d66345e31c36374890abebbe1c2d7e1925448bd0c6c709bf422433edc2f1",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1922,40 +1988,43 @@
    "survivors": 0
   },
   "26OCT17CITTXAM": {
-   "artifact_hash": "1b8fae7c1475580d3c18042fec7e1e362a22cb4f6897dd0b1cd76d727e196a22",
+   "artifact_hash": "c10845c33498c90bc67289b3ee90e446d8c5812ec1b2b15f006769d36d7adf5a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
   },
   "26OCT17COOKMVSU": {
-   "artifact_hash": "b2efb8e2039b0390df2b375edc9fd0f30015cf1ec872db902df584e238f888c2",
+   "artifact_hash": "1da65b42d65726ff4e63ef39580938881a13a5fd33e26f37d72a236ba373a810",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17CPUNCO": {
-   "artifact_hash": "5ea5aebd2103a161ec708988580fc60da4f04ba429498c7206944a4a3f4e008f",
+   "artifact_hash": "fb3d6e422ac6c5d53cef33c86f7f227272a93fa0165b13237e19b258328f3376",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17DAYBUT": {
@@ -1969,15 +2038,13 @@
    "survivors": 0
   },
   "26OCT17DUQSTNH": {
-   "artifact_hash": "5a135e6870cc07f9a9d045592ec7de49362046ae7ba959cd99819db01c7c519f",
+   "artifact_hash": "f1453882976a2c4ca224bbe9de331dfa1ee012f7dffe65f3e0af9737d818d04f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
-   ],
-   "status": "SINGLE_SCRIPT",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0
   },
   "26OCT17EKYTNTC": {
@@ -2001,15 +2068,16 @@
    "survivors": 0
   },
   "26OCT17ETAMHCU": {
-   "artifact_hash": "fe04716133f052349025b2e85783e23960ccaba90a78ada103fe67c7379a27c1",
+   "artifact_hash": "0b5894d4f8a20c9b5f3e21d56ad12689e96970af60d010587e408e39f5967dc6",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17FAMUJKST": {
@@ -2023,7 +2091,7 @@
    "survivors": 0
   },
   "26OCT17FAUARMY": {
-   "artifact_hash": "330a88e0fc6652863cc1dedb2b35d6e56e8f6e3b8a785e31043d36a175c487c5",
+   "artifact_hash": "33f8a75685756dffb13c812ca33d3c2a015bd8868c2cd42d50282b79e4c0bc07",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2035,7 +2103,7 @@
    "survivors": 0
   },
   "26OCT17FLATEX": {
-   "artifact_hash": "7870a4d638d7c50c9d73a9588cb577ae7e4f8c7b2d9af88dac92fc790501925a",
+   "artifact_hash": "f8635001e94918a3a80e3bfd438e7734307fff6f2083de3f5b344713d4ea333d",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2045,7 +2113,7 @@
    "survivors": 0
   },
   "26OCT17FRESSDSU": {
-   "artifact_hash": "8462c63924dac450a4721b868a07a866cef2ec98c8a9adcb8772c78bbc1ff488",
+   "artifact_hash": "f46aa9b708b06f11ac8b131460c5d1fbe8d233d6ca66db0489eb4a95450cab13",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2058,8 +2126,17 @@
    "survivors": 1
   },
   "26OCT17FSUMIA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "6f5caadc9b28d81350f74876cc8abf91e00a0d4ca97fc718e3d9cd09516a366d",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2
   },
   "26OCT17GASTJMU": {
    "artifact_hash": "b160d1d15ae396d312144dd13cd9d752d3cb91888dcba1820b57e776504e755b",
@@ -2082,14 +2159,15 @@
    "survivors": 0
   },
   "26OCT17GTVT": {
-   "artifact_hash": "f8f1384fd8155e57b0f0f476db6b7f2f20cf82d91c03e2f6861c508f00bc28a3",
+   "artifact_hash": "e4240a7765dd85e573b6ebaa039bec1665e77d76d4def868556ed47c36ffe15e",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
@@ -2105,15 +2183,16 @@
    "survivors": 0
   },
   "26OCT17HAMPSHU": {
-   "artifact_hash": "0a42852f4b25b9cf378fda9929f28fb49a6afbbd8e63dfe2d3c44c4c6df30dc5",
+   "artifact_hash": "92e96834faf3adb77458fdc87f6b3ba0e06812eb69c02a647ca4d85748c41a19",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17HCHARV": {
@@ -2127,15 +2206,16 @@
    "survivors": 0
   },
   "26OCT17IDHOMONT": {
-   "artifact_hash": "f82fb33f33eab0a75aa923b1e9b65254bd61abcda3ce24a247961069313e9393",
+   "artifact_hash": "69cd88eabdca9147a873ef7742aa5afee72861801659b8e4f554307b539fc3ea",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17IDSTWEB": {
@@ -2151,45 +2231,57 @@
    "survivors": 0
   },
   "26OCT17ILSTSIU": {
-   "artifact_hash": "83242bbdd8c1987bf712346219ad64d2e04f14549356d77761c10054860675ff",
+   "artifact_hash": "4dc68ed12c29343b75f6766770486cebe83a49075c2ca5d0fb52d5c44a4e7d60",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17KENTUSF": {
-   "artifact_hash": "90f59c2c173eca770c7e74b1e94ea3ca59a37424e2f511e07a7e214821a5654e",
+   "artifact_hash": "c4b2490a98d8b9af20c17d137f3497906116106c087f04e77c67b6700c5096e2",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2
   },
   "26OCT17LAFBUCK": {
-   "artifact_hash": "f476b89579cd41ae72dbde93c7e897d4a8a66f194d94e01795b7758b35ea4652",
+   "artifact_hash": "c4bdbf639b5d50aff341818e6cf87bfbd2d861214fb1f83f5e27c45548037e11",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17LAMSELA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "f8a0a3e43ca3c228ed4464ce87d2a5001fbbb7fbc7add275930f11565eb1bdd6",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 0
   },
   "26OCT17LEHCOR": {
    "artifact_hash": "805cf1e73136143b3b513219f563ec722598554cdce30ff763504fab4d1560ba",
@@ -2202,15 +2294,16 @@
    "survivors": 0
   },
   "26OCT17LINWEIU": {
-   "artifact_hash": "fa0008581728a2235b024e49125263c59bf944aeaf212bd0e369b79088c9c523",
+   "artifact_hash": "ce1b29f0c86df7195b6b794959d3d6e7e0d56d6a9b82dc4e21eb7ef176d5a830",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17LIUWAG": {
@@ -2238,8 +2331,18 @@
    "survivors": 0
   },
   "26OCT17LTULM": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "1ac6f475ea75952e4db0a7b2f68a7e048b4bfe1c9dfe658601625d85bedc1ea3",
+   "data_confidence": "MEDIUM",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "RESOLVED",
+   "scripts": [
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "SECONDARY:TURNOVER_DISRUPTION",
+    "DANGER:AWAY_CONTROL"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2
   },
   "26OCT17MASSBUFF": {
    "artifact_hash": "b2094706cc5a830dd2278ac1ed8cb6767f4c5f01b390db2325cef6353849e36f",
@@ -2255,31 +2358,33 @@
    "survivors": 2
   },
   "26OCT17MCNSNWST": {
-   "artifact_hash": "8a7a81bd6b8586221bacaa242f6c0b382dcc4b5b8d6615ecc14e61339facf15c",
+   "artifact_hash": "ffb4a22e9f42552b3ba2f8af0f657354e5e5240fdb7da33cc5acce7d18f28dc5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17MERSAM": {
-   "artifact_hash": "b3aa368689b50624603fe863c7321005579a7ed22ae7ad6a84abcbe58dd3db85",
+   "artifact_hash": "7f977a9bb6e69752f740cc800927ddb3afa7cb5090b69815f4ad345ef6a0f3ba",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17MIZZMISS": {
-   "artifact_hash": "325b6f2b9f34e3b82e2382eae830c266697c8a4baeab602f30426840494e2262",
+   "artifact_hash": "d9fc3549370b7a4857685dba4dd02fd7f02989e50a3de340dd2afd9058467ecb",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2289,15 +2394,16 @@
    "survivors": 0
   },
   "26OCT17MONMUNH": {
-   "artifact_hash": "b36331a1e142cb9e4d523f9d3905f65289b91667b386d0cd6a459d38282e0ff2",
+   "artifact_hash": "e5f3633f25c46df2a90e4e671cbe1cef8e53f9a22ecaf8c72489d09466e94d8f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17MOREDAV": {
@@ -2311,15 +2417,16 @@
    "survivors": 0
   },
   "26OCT17MORGTNST": {
-   "artifact_hash": "aedee4ea476218bff7a47dfcf67313d1e4bf82138bb61df851307913a3b52233",
+   "artifact_hash": "16f1dca2d49a3b115b14a307cdb97d7d72ffb5af7327f654af9a1c904e9e10a9",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17MRMKDART": {
@@ -2343,7 +2450,7 @@
    "survivors": 0
   },
   "26OCT17MSSTLSU": {
-   "artifact_hash": "e1142f60338ed6d5e03ef65c25502d5bfe5e332e40e8980c61fda5870c066517",
+   "artifact_hash": "bcb33941e3b7b00ba171af2eeee3848be9fff1e55eb5e43394a8162c7dd6a7e8",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2355,15 +2462,16 @@
    "survivors": 0
   },
   "26OCT17MTSTEWU": {
-   "artifact_hash": "2c6c04e8ca44904d992c5ae7107bdee2d5619b7e24f521333b18f2351e627d04",
+   "artifact_hash": "3c3351f4f3f7eb91c979d2e7eb6525619e3285d5c751b633628f2197eebca417",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17NAVYUTSA": {
@@ -2379,7 +2487,7 @@
    "survivors": 0
   },
   "26OCT17NDBYU": {
-   "artifact_hash": "27779df46f905f900d013d161946a3a3f217981cba3d2c4acf1d4c515284196b",
+   "artifact_hash": "eb0f874ac231d25201ab0ddb457ac17e34c6470bec0eefe31e282031c5c94936",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2393,15 +2501,16 @@
    "survivors": 2
   },
   "26OCT17NEVNDSU": {
-   "artifact_hash": "b915277c37f7fad5350eb608f465ee5b6c7de5798fb38475c5e8ca1b5ad67e93",
+   "artifact_hash": "8dcc7395f290869c4eb3bbd89920eb9c83c873cf5d7b93a9132328d54519acd2",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:HOME_CONTROL"
+    "PRIMARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 1
   },
   "26OCT17NHCRMU": {
@@ -2415,7 +2524,7 @@
    "survivors": 0
   },
   "26OCT17NIUWYO": {
-   "artifact_hash": "61e54c7fa9b628d96ecde7473c0dd102aaed6983d2e3bd85695e3a4d6d04a895",
+   "artifact_hash": "e809bdb5ac6c9d1621e53cb12e59584781af9327a5e44db1a6bb871e7fd5b035",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2437,19 +2546,20 @@
    "survivors": 0
   },
   "26OCT17PEAYUWGA": {
-   "artifact_hash": "1f050b8af6e127509d72c992c1ae1b5f9999cda30c32c426b7e9e47403284039",
+   "artifact_hash": "6e92e05435f4be66455941f877b7562185f956df9c3badadea1f25689dd63cd7",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17PITTBC": {
-   "artifact_hash": "f8753b9f6ccda569241b6159e87d5e6866c66235e5e15cf4728befdaad4eda14",
+   "artifact_hash": "2ff26fcc7aee530a87496add1d5a8a7fc005aececda9448300a04d5802b4923a",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2472,19 +2582,20 @@
    "survivors": 0
   },
   "26OCT17PRSTNAU": {
-   "artifact_hash": "a9223d7ba621653df963f5a5e62cf228cd263ecc413fe45973c5a27553b39012",
+   "artifact_hash": "2539ad863ce0746eeb2e7953744b1f7f7786deb60aee372652173c8ca0abf2b5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17RUTGMD": {
-   "artifact_hash": "203b4188202e458da38b315ccdebc1cb9bc5b3ebb9779fe018d1d226c79db38b",
+   "artifact_hash": "7b0a9e07cfa550f8f945fe658f55e1c9d847bfda5178c878b13d5ed414ae97af",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2498,27 +2609,29 @@
    "survivors": 1
   },
   "26OCT17SDAKMURR": {
-   "artifact_hash": "05ec20f900d666c82fefca9f7b2368de9dd9a875837cf0bcd66bda2b5ecbefbc",
+   "artifact_hash": "686db45e7d2324d4515cb4cfb7b189baef23a92e727985264d9cf4867a91d16d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17SDSTUND": {
-   "artifact_hash": "a1c953ebb431066a5d88d25ccf23adf03f6da6db3a4be74557c876e34ab1939b",
+   "artifact_hash": "a573c88e97e64a30029aff5ee915dbc1020b6e2240ef6223fe126f73250ed099",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17SFANICH": {
@@ -2532,11 +2645,19 @@
    "survivors": 0
   },
   "26OCT17SJSUUTEP": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "a6f2c2f2d5d859c31c5317ed6ea462f6a1cab16c0b778a3d5f083d2f5a83d26f",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:TURNOVER_DISRUPTION"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 1
   },
   "26OCT17TLSARICE": {
-   "artifact_hash": "56f4ce983c928cef668294a116fefb137501744e220f7c052b052abfda8ddbf8",
+   "artifact_hash": "56f1e45e3e4543af36ea68c9e6ce99dea3983b4b4a1ffe57801c8a2f2cfe4027",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2562,7 +2683,7 @@
    "survivors": 2
   },
   "26OCT17TOWSCAMP": {
-   "artifact_hash": "143f32c04e72e71520661e5064217829e0c89ae6dcf9dc7fd4a9aa711f52e991",
+   "artifact_hash": "591d8819a2a384c742e18b3863d7b6521c4f0a0e8231af29b46557fe103babe9",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2574,7 +2695,7 @@
    "survivors": 0
   },
   "26OCT17TROYULL": {
-   "artifact_hash": "a6e8ed71cade1b0b06888297225da47b78407458cfc3a2ee02fe2693af7630cc",
+   "artifact_hash": "bba340b9c9941444fda9872b12fc97b22d1f31ac17cd67ba5d482cba1818abca",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2586,7 +2707,7 @@
    "survivors": 0
   },
   "26OCT17UCDSUU": {
-   "artifact_hash": "e48faad5e9596561cb3b7be91c1ba0a60f3472344b6f97a3a6e91a56912c626d",
+   "artifact_hash": "9b36d1f450b63c733ed236dc2fc72a94f246339c581f1b5a510076174d493a2a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2598,7 +2719,7 @@
    "survivors": 0
   },
   "26OCT17UKOKLA": {
-   "artifact_hash": "1b14922d0e1fcc31f9437bfb228e501dafccd8a21ff2c484ae6acfb10e6a4f57",
+   "artifact_hash": "9364178ad5189206d92aeee4e505c1279085ee7b0a2e7d39d6f43749054cc527",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2611,7 +2732,7 @@
    "survivors": 1
   },
   "26OCT17UNCDUKE": {
-   "artifact_hash": "b92bbc304da5f9fcde50d02e318e3d7093a54298ace3f8245c4474bed1815b1f",
+   "artifact_hash": "eb0a2a0efcb95c716a6261af312812fe49eb94dea2de3dcbc222799432aac861",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2623,19 +2744,20 @@
    "survivors": 0
   },
   "26OCT17UNIYSU": {
-   "artifact_hash": "a0131fc4afa11302c8cf0fc92472655442a2078e869cce94cee8b178f218c3f7",
+   "artifact_hash": "c5eddc9059647966eb1a1cf06e5a6effb081b9fad3fff3387441e8bd7b8f633e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17UNLVAFA": {
-   "artifact_hash": "8bcb7a31a435331b2d6956cc32269a39be5fa887dc0904212af49376aed36185",
+   "artifact_hash": "18bae7abcfbf77cb0b03775430ca7b53f4191d32693f9055f67546ec3dad909e",
    "data_confidence": "MEDIUM",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2657,19 +2779,20 @@
    "survivors": 0
   },
   "26OCT17UTRGVIW": {
-   "artifact_hash": "1777bad80f2182adaa0b7b945eb5dc2ad7ab745ad171d4605e05fe7ca88c49e8",
+   "artifact_hash": "f79d9c0a750ba534554f92672a90e9238d523a937b88d02ef6ad3bb7ba4bf157",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17UVASMU": {
-   "artifact_hash": "ae0b1a9245a135563f0e9f4b60a76254701819b5b49cfe58e16bd6ea0ee2b32b",
+   "artifact_hash": "46a47e96bfe2bcb5de0c1669d7e4e62d01dcbf94605e81829660361f98ede226",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2691,27 +2814,29 @@
    "survivors": 0
   },
   "26OCT17VILLFOR": {
-   "artifact_hash": "111de0c31753d15569d4802bde014ed577aabaa2579d8cbe2e00b432ccfb58f6",
+   "artifact_hash": "41ec7516dd93cea1859ef996364c549b6267b81c41e6f185d295c074b2c06e97",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17VMIWOF": {
-   "artifact_hash": "733f92a631331310668c55ade52c0e70f9ab6d53f0e6008da360e2b7d72a9594",
+   "artifact_hash": "9c39995cf1611bc2103e532710bf6a2c92b831ecf0b03989ebf193a12120e446",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
    ],
-   "status": "SINGLE_SCRIPT",
+   "status": "SCRIPTS_GENERATED",
    "survivors": 0
   },
   "26OCT17WEBBUTM": {
@@ -2719,19 +2844,17 @@
    "status": "IDENTITY_FAIL"
   },
   "26OCT17WIUSEMO": {
-   "artifact_hash": "7c7144293a2ee101f6ff1ddab32b048ce82debb39ed5c63d0784b0cc97a0aacb",
+   "artifact_hash": "8ea1677cd4d2637657fe328f008397dd43bb4af8e49882e44db7a20716292836",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_TOSSUP"
-   ],
-   "status": "SINGLE_SCRIPT",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0
   },
   "26OCT17WMUCMU": {
-   "artifact_hash": "f61bfa9d2a7939a604fee03bb731602b5f9a4949b402330f7331cb8ff72c4208",
+   "artifact_hash": "79fb904728a07b524210b594f33744a123e178dd474977b626506090536e2aad",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2743,7 +2866,7 @@
    "survivors": 0
   },
   "26OCT17WSUORST": {
-   "artifact_hash": "410f0406674920ecde042124259900ae752990e36a07ed168c09dbec38a6a253",
+   "artifact_hash": "dea2490ac1299a02247849b2efe25bde9d30d66244eff785d6e38725acd14c84",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2757,6 +2880,6 @@
    "survivors": 2
   }
  },
- "ledger_rows_written": 230,
+ "ledger_rows_written": 0,
  "methodology_version": "cfb-script-engine/1.0.0"
 }
