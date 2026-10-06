@@ -180,3 +180,26 @@ def test_derive_findings_needs_no_market_argument():
 
     params = set(inspect.signature(derive_findings).parameters)
     assert params == {"vector", "names", "availability"}
+
+
+@pytest.mark.parametrize(
+    "home,away", [(h, a) for h in ("F00", "F02", "F05") for a in ("F01", "F03", "F04", "F06", "F07") if h != a]
+)
+def test_every_step_in_every_matchup_cites_only_findings_that_exist(season, home, away):
+    content = build_content(_packet(season, home=home, away=away))
+    codes = {f["code"] for f in content["matchup_findings"]}
+    for script in content["game_scripts"]["scripts"]:
+        for step in script["causal_chain"]:
+            assert step["findings"] and set(step["findings"]) <= codes, (script["archetype"], step)
+
+
+def test_a_volume_only_grind_never_claims_the_defenses_out_rate_the_offenses():
+    from cfb_edge_finder.scripting.scripts import _Ctx, _grind
+
+    findings = [
+        {"code": "LOW_POSSESSION_ENVIRONMENT", "strength": "MODERATE", "category": "ENVIRONMENT"},
+        {"code": "HIGH_SCORING_ENVIRONMENT", "strength": "STRONG", "category": "ENVIRONMENT"},
+    ]
+    cand = _grind(_Ctx(findings, {"home": "A", "away": "B"}, {}))
+    text = " ".join(s["step"] for s in cand.chain) + cand.summary
+    assert "out-rates" not in text and "upper hand" not in text

@@ -193,7 +193,7 @@ def _control(ctx: _Ctx, s: str) -> Candidate | None:
         )
     else:
         chain.append(_step(f"{lead_name} stays out of obvious passing downs", req))
-    chain.append(_step(f"{lead_name} sustains longer possessions", req, "LOW_POSSESSION_ENVIRONMENT"))
+    chain.append(_step(f"{lead_name} sustains longer possessions", req, *ctx.present(["LOW_POSSESSION_ENVIRONMENT"])))
     if ctx.has(f"{_u(s)}_FINISHING_ADVANTAGE"):
         chain.append(
             _step(
@@ -560,11 +560,29 @@ def _grind(ctx: _Ctx) -> Candidate | None:
         ]
     )
     t = ctx.total()
-    chain = [
-        _step("neither offense out-rates the defense in front of it", *required[:2]),
-        _step("drives stall before scoring range; field position decides", required[0]),
-        _step("few possessions and few points keep the margin inside one score", *required),
-    ]
+    # Each step says only what its cited finding says: a grind required by
+    # snap volume alone must not claim the defenses out-rate the offenses.
+    defensive = ctx.present(["LOW_SCORING_ENVIRONMENT", "BOTH_DEFENSES_CONTROL"])
+    chain = []
+    if defensive:
+        chain.append(_step("neither offense out-rates the defense in front of it", *defensive))
+        chain.append(_step("drives stall before scoring range; field position decides", defensive[0]))
+    if ctx.has("LOW_POSSESSION_ENVIRONMENT"):
+        chain.append(
+            _step(
+                "both teams run fewer snaps than an average FBS game, capping scoring chances",
+                "LOW_POSSESSION_ENVIRONMENT",
+            )
+        )
+    chain.append(_step("few possessions and few points keep the margin inside one score", *required))
+    summary = (
+        "Neither offense has the upper hand; a low-scoring game stays within one score."
+        if defensive
+        else (
+            "Fewer snaps than an average FBS game cap the scoring chances; "
+            "the game stays low-volume and within one score."
+        )
+    )
     shape = {
         "winner_lean": "NONE",
         "margin_environment": "ONE_SCORE",
@@ -588,7 +606,7 @@ def _grind(ctx: _Ctx) -> Candidate | None:
         shape,
         chain,
         "Competitive grind",
-        "Neither offense has the upper hand; a low-possession, low-scoring game stays within one score.",
+        summary,
     )
 
 
