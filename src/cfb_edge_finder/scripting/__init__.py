@@ -26,12 +26,12 @@ packet builder or anything else that carries a price, and
 radically different prices).
 """
 
-METHODOLOGY_VERSION = "cfb-script-engine/1.0.0"
+METHODOLOGY_VERSION = "cfb-script-engine/1.1.0"
 ADJUSTMENT_VERSION = "cfb-opponent-adjustment/1.0.0"
 TEAM_GAME_SCHEMA_VERSION = "cfb_team_game/1.0.0"
 MATCHUP_SCHEMA_VERSION = "cfb_matchup_profile/1.0.0"
 SCRIPT_ARTIFACT_SCHEMA_VERSION = "cfb_script_artifact/1.0.0"
-MARKET_MAP_SCHEMA_VERSION = "cfb_script_market_map/1.0.0"
+MARKET_MAP_SCHEMA_VERSION = "cfb_script_market_map/1.1.0"
 LEDGER_SCHEMA_VERSION = "cfb_script_ledger/1.0.0"
 REALIZED_SCHEMA_VERSION = "cfb_realized_script/1.0.0"
 

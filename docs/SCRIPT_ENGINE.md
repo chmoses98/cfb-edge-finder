@@ -221,6 +221,12 @@ conclusions. A script exists only if its **required** findings exist.
 Team-points bands are drawn around the scoring baseline (e.g. control: leader
 baseline −3…+14, trailer −14…+2).
 
+**Band authority.** Margin bands are `ARCHETYPE_DEFINITION`. Every total and
+team-points band is `UNCALIBRATED_DESCRIPTIVE`: its centre is the descriptive
+scoring baseline and its offsets are hand-set. Each script publishes
+`outcome_shape.band_authority`; market mapping may not rest on an
+uncalibrated band (section 15).
+
 **Ranking (no probabilities in V1).** `evidence = Σ weight(required +
 supporting) − Σ weight(contradicting)`, STRONG = 2, MODERATE = 1.
 PRIMARY = best evidence; DANGER = best remaining script that **breaks** the
@@ -290,18 +296,26 @@ For a script band [lo, hi] on the same variable: **SUPPORTED** (every outcome
 pays), **PARTIAL** (some do; coverage = share of the band), **CONTRADICTED**
 (none), **NEUTRAL** (the script states no band), **UNMAPPABLE** (not a single
 interval on a full-game margin/total/team-points variable: first-half,
-props, tie/overtime, a two-piece NO — with the reason). Every eligible
+props, tie/overtime, a two-piece NO — with the reason),
+**RESEARCH_UNCALIBRATED** (the script's band on this variable has no market
+authority — in V1 every total and team-points band; what it would have said
+is kept under `research`, and it scores 0). Every eligible
 contract is evaluated on both sides:
 `expressions = 2 × eligible = mapped + unmappable`.
 
 **Survival**: supported / partial / contradicted / neutral counts out of the
 published scripts, plus a weighted sort score (PRIMARY 1.0, SECONDARY 0.7,
 ALTERNATE 0.5, DANGER 0.35; SUPPORTED +1, PARTIAL +0.5×coverage,
-CONTRADICTED −1) used **only to sort**; the raw per-script map is published.
+CONTRADICTED −1, RESEARCH_UNCALIBRATED 0) used **only to sort**; the raw
+per-script map is published. `meaningful_scripts` excludes neutral,
+unmappable and research-uncalibrated entries, so a total or team-total
+contract has none and can earn no positive label.
 
 **Labels** (never a price verdict): `MULTI_SCRIPT`, `BEST_EXPRESSION`,
 `SCRIPT_ALIGNED`, `AGGRESSIVE`, `SCRIPT_DEPENDENT`, `NARROW_SCRIPT`,
-`CONTRADICTED`, `LOW_DATA_CONFIDENCE`, `MARKET_DISAGREEMENT`.
+`CONTRADICTED`, `LOW_DATA_CONFIDENCE`, `MARKET_DISAGREEMENT`,
+`SCORING_BAND_UNCALIBRATED` (every mapped total and team-total contract, and
+its only script label until the section 15 gate passes).
 `HIGH_PROBABILITY_EXPRESSION`, "+EV", fair probability and bet-up-to are
 **not in the vocabulary**: every expression carries
 `pricing = {status: RESEARCH_ONLY, source: null, fair_probability: null,

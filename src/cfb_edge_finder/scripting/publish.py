@@ -21,7 +21,7 @@ from cfb_edge_finder.scripting import METHODOLOGY_VERSION
 from cfb_edge_finder.scripting.market_map import COMPAT_CODES
 from cfb_edge_finder.scripting.metrics import METRICS
 
-PAYLOAD_VERSION = "cfb_script_engine_payload/1.0.0"
+PAYLOAD_VERSION = "cfb_script_engine_payload/1.1.0"
 
 #: Every required per-metric field, as table columns. Repeated strings
 #: (sources, observation times, unavailability reasons) are interned into
@@ -90,6 +90,7 @@ SURVIVAL_COLUMNS = (
     "total_scripts",
     "meaningful_scripts",
     "weighted_score",
+    "research_uncalibrated",
 )
 
 
@@ -106,7 +107,15 @@ def _expression(e: dict[str, Any]) -> dict[str, Any]:
         "coverage": [c["coverage"] for c in e["compatibility"]],
         "survival": [e["script_survival"][k] for k in SURVIVAL_COLUMNS],
         "labels": e.get("labels") or [],
+        "authority": e.get("market_authority"),
     }
+    if any(c.get("research") for c in e["compatibility"]):
+        # What each uncalibrated scoring band would have said, per script
+        # ("-" where the script's status is not RESEARCH_UNCALIBRATED).
+        # Research context only: it is never scored and never a label.
+        out["research"] = "".join(
+            COMPAT_CODES[c["research"]["band_relation"]] if c.get("research") else "-" for c in e["compatibility"]
+        )
     if e.get("correlation"):
         out["correlation"] = [
             [c["with"], c["relation"], c.get("both_can_cash"), c.get("both_lose_when")] for c in e["correlation"]
@@ -223,6 +232,7 @@ def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
         },
         "matchup_findings": [_finding(f) for f in content["matchup_findings"]],
         "game_scripts": content["game_scripts"]["scripts"],
+        "band_policy": content["game_scripts"].get("band_policy"),
         "script_market_map": {
             "scripts": mm.get("scripts") or [],
             "compat_codes": {v: k for k, v in COMPAT_CODES.items()},

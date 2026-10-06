@@ -25,7 +25,18 @@ For a script whose outcome band on that variable is [lo, hi] (integers):
     UNMAPPABLE    the contract's terms are not a single interval on a
                   full-game variable (props, first-half markets in V1,
                   tie/overtime, a two-piece NO), with the reason
-The classification never looks at a price.
+    RESEARCH_UNCALIBRATED
+                  the script states a band for this variable, but the band
+                  has no market authority (`outcome_shape.band_authority` is
+                  not ARCHETYPE_DEFINITION or CALIBRATED). In V1 that is
+                  every total and team-points band: they are drawn around
+                  the descriptive, uncalibrated scoring baseline. The raw
+                  band relation is kept under `research` for display; it
+                  counts as nothing in script survival, so it can never
+                  make a total or team total SUPPORTED, MULTI_SCRIPT or a
+                  BEST_EXPRESSION (nor CONTRADICTED).
+The classification never looks at a price, and band authority is decided on
+the football side before any price is read.
 """
 
 from __future__ import annotations
@@ -37,18 +48,35 @@ from cfb_edge_finder.execution.card_review import win_set
 from cfb_edge_finder.scripting import MARKET_MAP_SCHEMA_VERSION
 from cfb_edge_finder.scripting.freeze import verify
 from cfb_edge_finder.scripting.gamelog import parse_utc
+from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, CALIBRATED, UNCALIBRATED_DESCRIPTIVE
 
 SUPPORTED = "SUPPORTED"
 PARTIAL = "PARTIAL"
 CONTRADICTED = "CONTRADICTED"
 NEUTRAL = "NEUTRAL"
 UNMAPPABLE = "UNMAPPABLE"
-COMPAT_CODES = {SUPPORTED: "S", PARTIAL: "P", CONTRADICTED: "C", NEUTRAL: "N", UNMAPPABLE: "U"}
+RESEARCH_UNCALIBRATED = "RESEARCH_UNCALIBRATED"
+COMPAT_CODES = {
+    SUPPORTED: "S",
+    PARTIAL: "P",
+    CONTRADICTED: "C",
+    NEUTRAL: "N",
+    UNMAPPABLE: "U",
+    RESEARCH_UNCALIBRATED: "R",
+}
+
+#: Band authorities a market classification may rest on. Anything else -- in
+#: V1, every scoring band -- is research context only.
+MARKET_AUTHORITATIVE = frozenset({ARCHETYPE_DEFINITION, CALIBRATED})
+
+#: Expression-level market authority.
+ACTIVE = "ACTIVE"
+QUARANTINED = "RESEARCH_UNCALIBRATED"
 
 #: How heavily each script role counts when SORTING. The raw map is always
 #: published alongside; this weighting only orders lists.
 ROLE_WEIGHT = {"PRIMARY": 1.0, "SECONDARY": 0.7, "ALTERNATE": 0.5, "DANGER": 0.35}
-COMPAT_VALUE = {SUPPORTED: 1.0, CONTRADICTED: -1.0, NEUTRAL: 0.0, UNMAPPABLE: 0.0}
+COMPAT_VALUE = {SUPPORTED: 1.0, CONTRADICTED: -1.0, NEUTRAL: 0.0, UNMAPPABLE: 0.0, RESEARCH_UNCALIBRATED: 0.0}
 
 SUPPORTED_PERIOD = "full_game"
 
@@ -57,9 +85,33 @@ class MappingOrderError(RuntimeError):
     """The market map was asked to run against an unfrozen or altered artifact."""
 
 
+def _quantity(variable: str) -> str:
+    return variable.split(":", 1)[1]
+
+
 def _band_for(variable: str, bands: dict[str, Any]) -> list[int] | None:
-    _, quantity = variable.split(":", 1)
-    return bands.get(quantity)
+    return bands.get(_quantity(variable))
+
+
+def classify_against(ws: Any, shape: dict[str, Any]) -> dict[str, Any]:
+    """One expression against one script, respecting the band's authority.
+
+    A band without market authority yields RESEARCH_UNCALIBRATED; what it
+    would have said is kept under `research` and never scored. A band whose
+    authority is missing is treated as uncalibrated (fail closed)."""
+    quantity = _quantity(ws.variable)
+    band = (shape.get("bands") or {}).get(quantity)
+    status, coverage = classify(ws.low, ws.high, band)
+    if band is None:
+        return {"status": status, "coverage": coverage}
+    authority = (shape.get("band_authority") or {}).get(quantity) or UNCALIBRATED_DESCRIPTIVE
+    if authority in MARKET_AUTHORITATIVE:
+        return {"status": status, "coverage": coverage}
+    return {
+        "status": RESEARCH_UNCALIBRATED,
+        "coverage": None,
+        "research": {"band_relation": status, "band_coverage": coverage, "band_authority": authority},
+    }
 
 
 def classify(ws_low: float, ws_high: float, band: list[int] | None) -> tuple[str, float | None]:
@@ -116,7 +168,7 @@ def _price(contract: dict[str, Any], side: str) -> dict[str, Any] | None:
 
 
 def survival(compat: list[dict[str, Any]]) -> dict[str, Any]:
-    counts = {k: 0 for k in (SUPPORTED, PARTIAL, CONTRADICTED, NEUTRAL, UNMAPPABLE)}
+    counts = {k: 0 for k in COMPAT_CODES}
     weighted = 0.0
     for entry in compat:
         counts[entry["status"]] += 1
@@ -130,10 +182,11 @@ def survival(compat: list[dict[str, Any]]) -> dict[str, Any]:
         "neutral": counts[NEUTRAL],
         "unmappable": counts[UNMAPPABLE],
         "total_scripts": total,
-        "meaningful_scripts": total - counts[NEUTRAL] - counts[UNMAPPABLE],
+        "meaningful_scripts": total - counts[NEUTRAL] - counts[UNMAPPABLE] - counts[RESEARCH_UNCALIBRATED],
         "weighted_score": round(weighted, 4),
+        "research_uncalibrated": counts[RESEARCH_UNCALIBRATED],
         "weighting": "PRIMARY 1.0, SECONDARY 0.7, ALTERNATE 0.5, DANGER 0.35; SUPPORTED +1, PARTIAL +0.5 x coverage, "
-        "CONTRADICTED -1. Used to SORT only; the raw per-script map is the record.",
+        "CONTRADICTED -1, RESEARCH_UNCALIBRATED 0. Used to SORT only; the raw per-script map is the record.",
     }
 
 
@@ -169,14 +222,20 @@ def map_game(
                     )
             compat = []
             for script in scripts:
-                if ws is None:
-                    status, coverage = UNMAPPABLE, None
-                else:
-                    band = _band_for(ws.variable, script["outcome_shape"]["bands"])
-                    status, coverage = classify(ws.low, ws.high, band)
-                compat.append(
-                    {"script_id": script["script_id"], "role": script["role"], "status": status, "coverage": coverage}
+                verdict = (
+                    {"status": UNMAPPABLE, "coverage": None}
+                    if ws is None
+                    else classify_against(ws, script["outcome_shape"])
                 )
+                compat.append({"script_id": script["script_id"], "role": script["role"], **verdict})
+            if ws is None:
+                authority = None
+            elif any(c["status"] == RESEARCH_UNCALIBRATED for c in compat) or (
+                _quantity(ws.variable) != "home_margin" and not any(c["status"] != NEUTRAL for c in compat)
+            ):
+                authority = QUARANTINED
+            else:
+                authority = ACTIVE
             driver, direction = driver_and_direction(row)
             expressions.append(
                 {
@@ -195,6 +254,7 @@ def map_game(
                     "direction": direction,
                     "thesis": thesis_direction(row, driver, direction),
                     "unmappable_reason": reason,
+                    "market_authority": authority,
                     "compatibility": compat,
                     "script_survival": survival(compat),
                     "price": _price(contract, side),

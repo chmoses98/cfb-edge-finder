@@ -203,3 +203,22 @@ def test_a_volume_only_grind_never_claims_the_defenses_out_rate_the_offenses():
     cand = _grind(_Ctx(findings, {"home": "A", "away": "B"}, {}))
     text = " ".join(s["step"] for s in cand.chain) + cand.summary
     assert "out-rates" not in text and "upper hand" not in text
+
+
+def test_every_band_states_its_authority_and_only_margins_define_an_archetype(season):
+    from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, UNCALIBRATED_DESCRIPTIVE
+
+    seen = set()
+    for home, away in [(h, a) for h in ("F00", "F02", "F05") for a in ("F01", "F03", "F04", "F06", "F07")]:
+        out = build_content(_packet(season, home=home, away=away))["game_scripts"]
+        assert out["band_policy"]["home_margin"] == ARCHETYPE_DEFINITION
+        assert out["band_policy"]["total_points"] == UNCALIBRATED_DESCRIPTIVE
+        for script in out["scripts"]:
+            shape = script["outcome_shape"]
+            assert set(shape["band_authority"]) == {k for k, v in shape["bands"].items() if v is not None}
+            for band, authority in shape["band_authority"].items():
+                seen.add((band, authority))
+                expected = ARCHETYPE_DEFINITION if band == "home_margin" else UNCALIBRATED_DESCRIPTIVE
+                assert authority == expected, (script["archetype"], band)
+    assert ("home_margin", ARCHETYPE_DEFINITION) in seen
+    assert {b for b, a in seen if a == UNCALIBRATED_DESCRIPTIVE} >= {"home_points", "away_points"}

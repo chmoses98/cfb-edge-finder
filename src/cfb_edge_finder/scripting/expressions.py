@@ -21,6 +21,12 @@ scripts. None of them is a price judgement:
   LOW_DATA_CONFIDENCE the football evidence is LOW confidence
   MARKET_DISAGREEMENT the football PRIMARY materially disagrees with the
                       market baseline (a flag; the artifact is untouched)
+  SCORING_BAND_UNCALIBRATED
+                      a total or team-total contract. The scripts' scoring
+                      bands are descriptive and uncalibrated, so the contract
+                      is research only: it carries no other script label and
+                      can never be a BEST_EXPRESSION or MULTI_SCRIPT until the
+                      scoring-band promotion gate passes
 
 `HIGH_PROBABILITY_EXPRESSION`, `+EV`, fair probability and bet-up-to require
 a legitimate, identified pricing source. V1 has none, so they are never
@@ -40,7 +46,7 @@ from collections import defaultdict
 from typing import Any
 
 from cfb_edge_finder.execution.card_review import relate
-from cfb_edge_finder.scripting.market_map import CONTRADICTED, PARTIAL, SUPPORTED
+from cfb_edge_finder.scripting.market_map import CONTRADICTED, PARTIAL, QUARANTINED, SUPPORTED
 
 MULTI_SCRIPT = "MULTI_SCRIPT"
 BEST_EXPRESSION = "BEST_EXPRESSION"
@@ -52,6 +58,7 @@ CONTRADICTED_LABEL = "CONTRADICTED"
 LOW_DATA_CONFIDENCE = "LOW_DATA_CONFIDENCE"
 MARKET_DISAGREEMENT = "MARKET_DISAGREEMENT"
 RESEARCH_ONLY = "RESEARCH_ONLY"
+SCORING_BAND_UNCALIBRATED = "SCORING_BAND_UNCALIBRATED"
 HIGH_PROBABILITY_EXPRESSION = "HIGH_PROBABILITY_EXPRESSION"
 
 LABELS = (
@@ -65,6 +72,7 @@ LABELS = (
     LOW_DATA_CONFIDENCE,
     MARKET_DISAGREEMENT,
     RESEARCH_ONLY,
+    SCORING_BAND_UNCALIBRATED,
 )
 """Every label V1 can emit. HIGH_PROBABILITY_EXPRESSION is deliberately absent."""
 
@@ -78,8 +86,11 @@ def _status(expr: dict[str, Any], role: str) -> str | None:
 
 
 def base_labels(expr: dict[str, Any], data_confidence: str) -> list[str]:
+    low = [LOW_DATA_CONFIDENCE] if data_confidence == "LOW" else []
     if expr["unmappable_reason"] is not None:
-        return [LOW_DATA_CONFIDENCE] if data_confidence == "LOW" else []
+        return low
+    if expr.get("market_authority") == QUARANTINED:
+        return [SCORING_BAND_UNCALIBRATED, *low]
     surv = expr["script_survival"]
     meaningful = surv["meaningful_scripts"]
     labels: list[str] = []
@@ -201,13 +212,20 @@ def market_disagreement(
     band = (primary["outcome_shape"].get("bands") or {}).get("total_points")
     median = _market_median_total(expressions)
     if band and median is not None and not (band[0] - 0.5 <= median <= band[1] + 0.5):
+        authority = (primary["outcome_shape"].get("band_authority") or {}).get("total_points")
         flags.append(
             {
                 "kind": "TOTAL",
                 "thesis": "total:over" if median < band[0] else "total:under",
                 "market_median_total": median,
                 "script_total_band": band,
+                "band_authority": authority,
+                "evidence_of_value": False,
                 "rule": f"PRIMARY's total band {band[0]}-{band[1]} excludes the market's coin-flip total line {median}",
+                "note": (
+                    "An observation, not evidence of value: the total band is drawn around a descriptive, "
+                    "uncalibrated scoring baseline. Total contracts stay research only."
+                ),
             }
         )
     if not flags:
@@ -217,7 +235,12 @@ def market_disagreement(
         "football_primary": primary["archetype"],
         "flags": flags,
         "rule": "; ".join(f["rule"] for f in flags),
-        "note": "Reported, never obeyed: the football artifact is not rewritten because the market disagrees.",
+        "note": "Reported, never obeyed: the football artifact is not rewritten because the market disagrees."
+        + (
+            " The total-band disagreement is an observation about an uncalibrated scoring band, not evidence of value."
+            if any(f["kind"] == "TOTAL" for f in flags)
+            else ""
+        ),
     }
 
 
@@ -264,7 +287,11 @@ def annotate(content: dict[str, Any], market_map: dict[str, Any]) -> dict[str, A
     thesis_blocks = []
     for thesis, members in sorted(theses.items()):
         aligned = [
-            e for e in members if CONTRADICTED_LABEL not in e["labels"] and e["script_survival"]["supported"] > 0
+            e
+            for e in members
+            if CONTRADICTED_LABEL not in e["labels"]
+            and e["script_survival"]["supported"] > 0
+            and e.get("market_authority") != QUARANTINED
         ]
         if not aligned:
             continue
@@ -291,7 +318,11 @@ def annotate(content: dict[str, Any], market_map: dict[str, Any]) -> dict[str, A
     if disagreement is not None:
         flagged = {f["thesis"] for f in disagreement["flags"]}
         for expr in expressions:
-            if expr["thesis"] in flagged and expr["unmappable_reason"] is None:
+            if (
+                expr["thesis"] in flagged
+                and expr["unmappable_reason"] is None
+                and expr.get("market_authority") != QUARANTINED
+            ):
                 expr["labels"].append(MARKET_DISAGREEMENT)
 
     featured = [e for e in expressions if {BEST_EXPRESSION, MULTI_SCRIPT} & set(e["labels"])]

@@ -17,20 +17,29 @@ from cfb_edge_finder.scripting.expressions import (
     LABELS,
     MARKET_DISAGREEMENT,
     MULTI_SCRIPT,
+    NARROW_SCRIPT,
+    SCORING_BAND_UNCALIBRATED,
+    SCRIPT_ALIGNED,
+    SCRIPT_DEPENDENT,
     annotate,
 )
 from cfb_edge_finder.scripting.football import FootballPacket, build_content
 from cfb_edge_finder.scripting.freeze import freeze
 from cfb_edge_finder.scripting.market_map import (
+    ACTIVE,
     CONTRADICTED,
     NEUTRAL,
     PARTIAL,
+    QUARANTINED,
+    RESEARCH_UNCALIBRATED,
     SUPPORTED,
     UNMAPPABLE,
     classify,
+    classify_against,
     map_game,
 )
 from cfb_edge_finder.scripting.publish import sift_payload
+from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, CALIBRATED, UNCALIBRATED_DESCRIPTIVE
 
 CAPTURED = CAPTURED_AT
 
@@ -119,10 +128,50 @@ def test_the_no_side_is_the_exact_complement(mapped):
         assert flip[a["status"]] == b["status"]
 
 
-def test_the_trailing_teams_total_under_fits_a_control_script(mapped):
-    _, mm, _ = mapped
+def test_an_uncalibrated_scoring_band_is_research_not_support(mapped):
+    """The trailing team's team-total under sits inside the control script's
+    points band -- but that band is drawn around the uncalibrated scoring
+    baseline, so the relation is kept as research and never counted."""
+    envelope, mm, _ = mapped
+    primary = envelope["content"]["game_scripts"]["scripts"][0]
+    assert primary["outcome_shape"]["band_authority"]["home_margin"] == ARCHETYPE_DEFINITION
+    assert primary["outcome_shape"]["band_authority"]["away_points"] == UNCALIBRATED_DESCRIPTIVE
     away_tt = [e for e in mm["expressions"] if e["kind"] == "team_total" and e["team"] == "away" and e["side"] == "NO"]
-    assert away_tt and any(_status(e, "PRIMARY") in (SUPPORTED, PARTIAL) for e in away_tt)
+    assert away_tt
+    research = [c for e in away_tt for c in e["compatibility"] if c["role"] == "PRIMARY"]
+    assert {c["status"] for c in research} == {RESEARCH_UNCALIBRATED}
+    assert any(c["research"]["band_relation"] in (SUPPORTED, PARTIAL) for c in research)
+    for e in away_tt:
+        assert e["market_authority"] == QUARANTINED
+        assert e["labels"] == [SCORING_BAND_UNCALIBRATED]
+        assert e["script_survival"]["supported"] == 0 and e["script_survival"]["weighted_score"] == 0
+
+
+def test_no_scoring_contract_can_earn_a_positive_script_label(mapped):
+    _, mm, _ = mapped
+    scoring = [e for e in mm["expressions"] if e["kind"] in ("total", "team_total") and e["unmappable_reason"] is None]
+    assert len(scoring) >= 6
+    positive = {MULTI_SCRIPT, BEST_EXPRESSION, SCRIPT_ALIGNED, SCRIPT_DEPENDENT, NARROW_SCRIPT, AGGRESSIVE}
+    for e in scoring:
+        assert not positive & set(e["labels"]), e["expression_id"]
+        assert all(c["status"] in (RESEARCH_UNCALIBRATED, NEUTRAL) for c in e["compatibility"])
+    survivors = {s["expression_id"] for s in mm["survivors"]}
+    assert not survivors & {e["expression_id"] for e in scoring}
+    assert not any(t["thesis"].startswith(("total:", "team_total:")) for t in mm["theses"])
+    # Margin markets keep their full authority.
+    assert any(MULTI_SCRIPT in e["labels"] or BEST_EXPRESSION in e["labels"] for e in mm["expressions"])
+    margin = [e for e in mm["expressions"] if e["kind"] in ("moneyline", "spread") and e["unmappable_reason"] is None]
+    assert margin and all(e["market_authority"] == ACTIVE for e in margin)
+
+
+def test_a_band_missing_its_authority_is_treated_as_uncalibrated():
+    from cfb_edge_finder.execution.card_review import WinSet
+
+    ws = WinSet(variable="full_game:total_points", low=40, high=float("inf"))
+    shape = {"bands": {"total_points": [50, 70], "home_margin": [7, 24]}}
+    assert classify_against(ws, shape)["status"] == RESEARCH_UNCALIBRATED
+    calibrated = {**shape, "band_authority": {"total_points": CALIBRATED}}
+    assert classify_against(ws, calibrated) == {"status": SUPPORTED, "coverage": 1.0}
 
 
 def test_every_eligible_contract_is_accounted_for(mapped):
@@ -281,5 +330,7 @@ def test_a_total_band_that_excludes_the_markets_coin_flip_line_is_flagged():
     flag = market_disagreement(content, totals, False)
     assert flag is not None and flag["flags"][0]["kind"] == "TOTAL"
     assert flag["flags"][0]["market_median_total"] == 55.5 and flag["flags"][0]["thesis"] == "total:over"
+    # An observation about an uncalibrated band, never evidence of value.
+    assert flag["flags"][0]["evidence_of_value"] is False and "not evidence of value" in flag["note"]
     totals_inside = [dict(t, line=t["line"] + 20) for t in totals]
     assert market_disagreement(content, totals_inside, False) is None

@@ -24,12 +24,25 @@ At most four. `probability` is reserved and is always null in V1: script
 likelihoods will be calibrated from prospectively frozen outcomes, never
 from script counts.
 
-*** OUTCOME BANDS ARE DEFINITIONS ***
-Margin bands are what an archetype MEANS ("control" = the leading team wins
-by 7 to 24). Scoring bands are drawn around the opponent-adjusted scoring
-baseline from `matchup.scoring_baseline` -- a football quantity. No line,
-total or price informs any band, and the market mapping reads bands only
-after the artifact is frozen.
+*** OUTCOME BANDS AND THEIR AUTHORITY ***
+Every numeric band carries its provenance in `outcome_shape.band_authority`:
+  ARCHETYPE_DEFINITION     margin bands: what an archetype MEANS ("control" =
+                           the leading team wins by 7 to 24, one-score = +/-8).
+                           A definition, not an estimate; market mapping may
+                           classify against it.
+  UNCALIBRATED_DESCRIPTIVE total and team-points bands: drawn around the
+                           opponent-adjusted scoring baseline
+                           (`matchup.scoring_baseline`), which is descriptive
+                           and has NOT passed the scoring-band promotion gate
+                           (docs/SCRIPT_ENGINE.md section 15). Published as
+                           research; market mapping may NOT classify a
+                           contract as supported or contradicted by it.
+  CALIBRATED               reserved. Only the promotion gate can grant it; no
+                           V1 band carries it.
+The qualitative scoring statements (`total_environment`, `home_scoring`,
+`away_scoring`) are football conclusions and are unaffected. No line, total
+or price informs any band or any authority, and the market mapping reads
+bands only after the artifact is frozen.
 
 *** CAUSAL CHAINS ***
 Each step is a football mechanism and cites the findings that justify it.
@@ -75,6 +88,28 @@ EXCLUSIVE_GROUPS = (
 )
 
 ONE_SCORE = 8
+
+ARCHETYPE_DEFINITION = "ARCHETYPE_DEFINITION"
+UNCALIBRATED_DESCRIPTIVE = "UNCALIBRATED_DESCRIPTIVE"
+CALIBRATED = "CALIBRATED"
+BAND_AUTHORITIES = (ARCHETYPE_DEFINITION, UNCALIBRATED_DESCRIPTIVE, CALIBRATED)
+
+#: Bands whose numbers ARE the archetype's definition.
+DEFINITIONAL_BANDS = frozenset({"home_margin"})
+#: Authority of every band drawn around the scoring baseline. It changes to
+#: CALIBRATED only through the promotion gate (docs/SCRIPT_ENGINE.md section
+#: 15), which requires out-of-sample evidence on actual scores -- never on
+#: market totals.
+SCORING_BAND_AUTHORITY = UNCALIBRATED_DESCRIPTIVE
+
+
+def band_authority(bands: dict[str, Any]) -> dict[str, str]:
+    """The authority of every numeric band a script states."""
+    return {
+        name: ARCHETYPE_DEFINITION if name in DEFINITIONAL_BANDS else SCORING_BAND_AUTHORITY
+        for name, band in sorted(bands.items())
+        if band is not None
+    }
 
 
 @dataclass
@@ -879,7 +914,7 @@ def build_scripts(
                 "supporting_findings": list(dict.fromkeys(cand.supporting)),
                 "contradicting_findings": list(dict.fromkeys(cand.contradicting)),
                 "evidence_score": cand.evidence,
-                "outcome_shape": cand.shape,
+                "outcome_shape": {**cand.shape, "band_authority": band_authority(cand.shape["bands"])},
                 "data_confidence": data_confidence,
                 "probability": None,
             }
@@ -903,6 +938,17 @@ def build_scripts(
         "status": status,
         "scripts": scripts,
         "candidates_considered": considered,
+        "band_policy": {
+            "home_margin": ARCHETYPE_DEFINITION,
+            "total_points": SCORING_BAND_AUTHORITY,
+            "home_points": SCORING_BAND_AUTHORITY,
+            "away_points": SCORING_BAND_AUTHORITY,
+            "rule": (
+                "Margin bands define the archetype. Scoring bands are drawn around the descriptive, uncalibrated "
+                "scoring baseline: research context only, never grounds for calling a total or team-total "
+                "contract supported, until the scoring-band promotion gate passes."
+            ),
+        },
         "ranking_rule": (
             "evidence = weight(required + supporting findings) - weight(contradicting findings), STRONG=2, "
             "MODERATE=1; PRIMARY = best evidence; DANGER = best remaining script that breaks the primary; "
