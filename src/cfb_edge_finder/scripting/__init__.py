@@ -52,6 +52,7 @@ FOOTBALL_MODULES = (
     "packets",
     "realized",
     "report",
+    "baseline_eval",
 )
 
 #: Modules that run strictly AFTER the freeze and may read contracts and prices.

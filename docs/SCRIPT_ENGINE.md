@@ -496,3 +496,51 @@ All of the following, for one frozen, versioned correction method:
    enter: no step of the gate reads a price.
 
 Until every point holds, scoring contracts stay `RESEARCH_UNCALIBRATED`.
+
+### 15.3 Results (run 2026-10-06; full tables in `docs/SCORING_BASELINE_VALIDATION.md`)
+
+Per-game records and the summary are in `data/scripting/validation/`;
+the 2026 inputs used are snapshotted in `data/scripting/validation/inputs/`;
+2024 and 2025 come from the CFBD cache on the `research-data` branch
+(file digests in the report). Reproduce with `scripts/validate_scoring_baseline.py`.
+
+* **No overall upward bias.** Total bias (predicted − actual): 2024 −0.97
+  (N 784), 2025 −0.75 (N 793), 2026 −0.42 (N 244); every 95% interval
+  contains 0. MAE 12.2–12.9, RMSE 15.2–16.4, p90 absolute error ≈ 24–27.
+* **Little information about totals.** corr(baseline, actual total) is
+  0.24–0.27; the baseline's MAE beats the naive league total (2 × `mu`) by
+  only 2.7% (2024–25) and 4.6% (2026).
+* **Over-dispersed.** Low predictions come in low and high ones high:
+  predicted < 45 runs −5 points; 55–65 runs +3 to +3.5; 65–75 runs +4.5 to
+  +4.8 (small N). The pre-registered `linear_total` slope fitted on 2024 is
+  0.61, i.e. the baseline's spread should be shrunk by ~40%.
+* **Strong defenses are not double-counted.** `b_defense` = 1.04 ± 0.07
+  (2024), 1.12 ± 0.07 (2025), 1.01 ± 0.13 (2026): the additive baseline
+  credits defensive strength about right (if anything slightly under).
+  Both-defenses-strong games are unbiased (−1.95, +1.21, +1.19, all CIs
+  containing 0).
+* **The scripts' total bands are what is mis-placed.** Where the PRIMARY
+  was a shootout, actual totals landed *below* the baseline (−3.1, −1.4,
+  −3.7) while the band is centred +16 above it; where it was a grind, totals
+  landed *above* the baseline (+2.4, +2.5; 2026 −2.5) while the band is
+  centred −16 below. Only 26–31% of shootout totals fell inside the shootout
+  band. The scoring-environment findings are computed from the same
+  adjusted inputs the baseline already contains, so offsetting the band by
+  them counts the environment twice. Georgia–Alabama (baseline 69, band
+  73–97) is this pattern, not a baseline that ran high.
+* **2026 home effect is inflated early.** Applied home effect 6.0 points in
+  2026 (2.4 and 3.3 in 2024–25): home points run +3.0, away −3.4, and the
+  predicted home margin (+15.1) is well above the actual (+8.7). Early in the
+  season the home term is confounded with FBS-hosts-FCS games. Margin bands
+  are archetype definitions and do not use it; it is a known limitation
+  of the descriptive baseline, recorded here, not changed.
+* **Early season runs low.** Games where a team had 1–2 prior games run
+  −4.5 to −5.7 (2024–25); LOW-confidence games −2.5 / −5.1.
+* **No correction passes.** Split A (2024 → 2025): `linear_total` MAE
+  12.77 vs 12.90 raw (−1.0%, needs −3%) and it over-shoots
+  both-defenses-strong games (+3.65); `components` 12.92. Split B
+  (2024+2025 → 2026): `linear_total` 12.16 = raw; `components` 12.20; and
+  N = 244 < 300. **No scoring band is promoted.** Even a calibrated
+  baseline would need an 80% band about 40 points wide (p10 / p90 of
+  actual − baseline ≈ −19 / +22), so scoring markets stay
+  `RESEARCH_UNCALIBRATED`.

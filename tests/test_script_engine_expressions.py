@@ -157,7 +157,7 @@ def test_no_scoring_contract_can_earn_a_positive_script_label(mapped):
         assert all(c["status"] in (RESEARCH_UNCALIBRATED, NEUTRAL) for c in e["compatibility"])
     survivors = {s["expression_id"] for s in mm["survivors"]}
     assert not survivors & {e["expression_id"] for e in scoring}
-    assert not any(t["thesis"].startswith(("total:", "team_total:")) for t in mm["theses"])
+    assert not any(t["thesis"].startswith(("total:", "team_scoring:")) for t in mm["theses"])
     # Margin markets keep their full authority.
     assert any(MULTI_SCRIPT in e["labels"] or BEST_EXPRESSION in e["labels"] for e in mm["expressions"])
     margin = [e for e in mm["expressions"] if e["kind"] in ("moneyline", "spread") and e["unmappable_reason"] is None]
