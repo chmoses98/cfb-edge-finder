@@ -217,6 +217,16 @@ def derive_findings(
         refs = _refs(sus.get("home_offense_vs_away_defense") or {}) + _refs(
             sus.get("away_offense_vs_home_defense") or {}
         )
+        # The efficiency gap's uncertainty, as the net-advantage findings use it.
+        # Published on the closeness findings so a script can tell measured
+        # parity from an edge the data cannot see.
+        sus_unc = (
+            max(
+                (sus.get("home_offense_vs_away_defense") or {}).get("uncertainty") or 0.0,
+                (sus.get("away_offense_vs_home_defense") or {}).get("uncertainty") or 0.0,
+            )
+            or None
+        )
         if NET_THRESHOLD[0] <= abs(sus_net) < NET_THRESHOLD[1]:
             leader = names["home"] if sus_net > 0 else names["away"]
             out.append(
@@ -228,7 +238,7 @@ def derive_findings(
                     MODERATE,
                     abs(sus_net),
                     NET_THRESHOLD[1],
-                    None,
+                    sus_unc,
                     refs,
                     (
                         f"{leader}'s sustained-efficiency edge is real but not decisive ({abs(sus_net):.2f}, below the "
@@ -247,7 +257,7 @@ def derive_findings(
                     MODERATE,
                     abs(sus_net),
                     EVEN_NET,
-                    None,
+                    sus_unc,
                     refs,
                     (
                         f"Neither team owns the opponent-adjusted efficiency or scoring matchup "

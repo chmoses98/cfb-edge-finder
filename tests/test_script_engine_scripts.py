@@ -230,8 +230,17 @@ _NAMES = {"home": "Home U", "away": "Away St"}
 _BASE = {"home_points": 31.0, "away_points": 27.0, "total_points": 58.0}
 
 
-def _f(code, strength="MODERATE", category="ENVIRONMENT"):
-    return {"code": code, "strength": strength, "category": category}
+#: Closeness findings carry the efficiency gap and its uncertainty. RESOLVED
+#: measurements may authorise a close margin; UNRESOLVED ones may not.
+RESOLVED = {"EVEN_MATCHUP": (0.2, 1.0), "NARROW_EFFICIENCY_GAP": (1.5, 1.0)}
+UNRESOLVED = {"EVEN_MATCHUP": (0.2, 1.9), "NARROW_EFFICIENCY_GAP": (1.2, 1.5)}
+
+
+def _f(code, strength="MODERATE", category="ENVIRONMENT", resolved=True):
+    out = {"code": code, "strength": strength, "category": category}
+    if code in RESOLVED:
+        out["value"], out["uncertainty"] = (RESOLVED if resolved else UNRESOLVED)[code]
+    return out
 
 
 @pytest.mark.parametrize(
@@ -428,6 +437,8 @@ _POOL = [
     ("BOTH_DEFENSES_CONTROL", "MODERATE"),
     ("EVEN_MATCHUP", "MODERATE"),
     ("NARROW_EFFICIENCY_GAP", "MODERATE"),
+    ("EVEN_MATCHUP", "UNRESOLVED"),
+    ("NARROW_EFFICIENCY_GAP", "UNRESOLVED"),
     ("HOME_FINISHING_ADVANTAGE", "MODERATE"),
     ("AWAY_DISRUPTION_ADVANTAGE", "MODERATE"),
     ("HOME_DISRUPTION_ADVANTAGE", "MODERATE"),
@@ -446,7 +457,10 @@ def _combos(max_size=3):
         for combo in itertools.combinations(_POOL, size):
             codes = [c for c, _ in combo]
             if len(set(codes)) == len(codes):
-                yield [_f(c, strength) for c, strength in combo]
+                yield [
+                    _f(c, "MODERATE", resolved=False) if strength == "UNRESOLVED" else _f(c, strength)
+                    for c, strength in combo
+                ]
 
 
 def test_no_margin_band_anywhere_in_the_library_rests_on_scoring_or_pace():
@@ -479,7 +493,7 @@ def test_no_margin_band_anywhere_in_the_library_rests_on_scoring_or_pace():
                 },
                 "causal_chain": cand.chain,
             }
-            assert margin_authority_violations(script, present) == [], (cand.archetype, sorted(present))
+            assert margin_authority_violations(script, present, findings) == [], (cand.archetype, sorted(present))
         if present <= FORBIDDEN_MARGIN_AUTHORITY:
             # Scoring and pace findings alone: scripts may exist, margins may not.
             out = build_scripts("E", findings, _NAMES, _BASE, "MEDIUM")
@@ -496,6 +510,68 @@ def test_every_published_script_in_the_synthetic_season_honours_the_contract(sea
         content = build_content(_packet(season, home=home, away=away))
         present = {f["code"] for f in content["matchup_findings"]}
         for script in content["game_scripts"]["scripts"]:
-            assert margin_authority_violations(script, present) == []
+            assert margin_authority_violations(script, present, content["matchup_findings"]) == []
             shape = script["outcome_shape"]
             assert bool(shape["margin_authority_evidence"]) == (shape["bands"]["home_margin"] is not None)
+
+
+# --- closeness must be resolved by the data, not inferred from a missing edge ---------------------------
+
+
+@pytest.mark.parametrize("closeness", ["EVEN_MATCHUP", "NARROW_EFFICIENCY_GAP"])
+def test_an_unresolved_closeness_finding_grants_no_margin(closeness):
+    from cfb_edge_finder.scripting.scripts import _Ctx, _grind, _shootout, closeness_grants_margin
+
+    unresolved = _f(closeness, resolved=False)
+    assert not closeness_grants_margin(unresolved)
+    assert closeness_grants_margin(_f(closeness))
+    for builder, env in ((_shootout, "HIGH_SCORING_ENVIRONMENT"), (_grind, "LOW_SCORING_ENVIRONMENT")):
+        cand = builder(_Ctx([_f(env), unresolved], _NAMES, _BASE))
+        # The script and its environment stay; the finding stays published; the margin does not.
+        assert cand is not None and cand.shape["bands"]["home_margin"] is None
+        assert cand.margin_evidence == []
+        assert all("one score" not in st["step"] for st in cand.chain)
+
+
+def test_the_closeness_gate_follows_the_stated_thresholds():
+    from cfb_edge_finder.scripting.scripts import closeness_grants_margin
+
+    even = lambda v, u: closeness_grants_margin({"code": "EVEN_MATCHUP", "value": v, "uncertainty": u})  # noqa: E731
+    narrow = lambda v, u: closeness_grants_margin(  # noqa: E731
+        {"code": "NARROW_EFFICIENCY_GAP", "value": v, "uncertainty": u}
+    )
+    assert even(0.17, 1.41) and even(0.5, 1.5) and not even(0.6, 1.5) and not even(0.0, 2.01)
+    assert narrow(1.5, 1.5) and not narrow(1.49, 1.5)
+    assert not closeness_grants_margin({"code": "EVEN_MATCHUP", "value": 0.1, "uncertainty": None})
+
+
+def test_a_tossup_needs_resolved_even_matchup_and_never_exists_hollow():
+    from cfb_edge_finder.scripting.scripts import _Ctx, _tossup
+
+    assert _tossup(_Ctx([_f("EVEN_MATCHUP", resolved=False)], _NAMES, _BASE)) is None
+    cand = _tossup(_Ctx([_f("EVEN_MATCHUP")], _NAMES, _BASE))
+    assert cand is not None and cand.margin_evidence == ["EVEN_MATCHUP"]
+
+
+def test_an_unresolved_narrow_gap_cannot_qualify_hangs_around():
+    assert _hangs([_EDGE, _f("NARROW_EFFICIENCY_GAP", resolved=False)]) is None
+    cand = _hangs(
+        [_EDGE, _f("NARROW_EFFICIENCY_GAP", resolved=False), _f("AWAY_DEFENSIVE_CONTROL", "MODERATE", "MATCHUP")]
+    )
+    assert cand is not None and "NARROW_EFFICIENCY_GAP" not in cand.margin_evidence
+
+
+def test_the_validator_rejects_unresolved_closeness_evidence():
+    from cfb_edge_finder.scripting.scripts import ARCHETYPE_DEFINITION, margin_authority_violations
+
+    script = {
+        "archetype": "COMPETITIVE_TOSSUP",
+        "outcome_shape": {
+            "bands": {"home_margin": [-8, 8]},
+            "band_authority": {"home_margin": ARCHETYPE_DEFINITION},
+            "margin_authority_evidence": ["EVEN_MATCHUP"],
+        },
+        "causal_chain": [{"step": "inside one score", "findings": ["EVEN_MATCHUP"]}],
+    }
+    assert margin_authority_violations(script, {"EVEN_MATCHUP"}, [_f("EVEN_MATCHUP")]) == []
+    assert margin_authority_violations(script, {"EVEN_MATCHUP"}, [_f("EVEN_MATCHUP", resolved=False)])

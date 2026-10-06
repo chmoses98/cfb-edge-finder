@@ -53,7 +53,10 @@ FAVORITE_PULLS_AWAY's qualifying second edge must be a non-scoring matchup
 advantage (finishing, disruption, explosiveness, rushing, passing);
 SCORING_ADVANTAGE, derived from the uncalibrated points metric, may only
 support it. UNDERDOG_HANGS_AROUND needs a non-pace counter: a low-possession
-environment may support it, never qualify it.
+environment may support it, never qualify it. Closeness findings authorise a
+margin only when the data resolve it (`closeness_grants_margin`): EVEN_MATCHUP
+when gap + uncertainty rules out a strong edge, NARROW_EFFICIENCY_GAP when its
+edge clears its uncertainty. Otherwise they stay informational.
 
 *** THE MARGIN-AUTHORITY CONTRACT ***
 Every script that states a home_margin band names, in
@@ -80,7 +83,7 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from cfb_edge_finder.scripting.findings import CATEGORY_DATA, STRONG
+from cfb_edge_finder.scripting.findings import CATEGORY_DATA, NET_THRESHOLD, STRONG
 
 PRIMARY = "PRIMARY"
 SECONDARY = "SECONDARY"
@@ -192,6 +195,10 @@ class _Ctx:
     def strong(self, code: str) -> bool:
         return code in self.by_code and self.by_code[code]["strength"] == STRONG
 
+    def close(self) -> list[str]:
+        """Closeness findings that may authorise a one-score margin for this game."""
+        return [c for c in CLOSENESS_FINDINGS if closeness_grants_margin(self.by_code.get(c))]
+
     def pts(self, side: str) -> float | None:
         return self.base.get(f"{side}_points")
 
@@ -202,6 +209,31 @@ class _Ctx:
 #: Matchup findings that independently support a one-score margin. Scoring
 #: and possession environments are not among them.
 CLOSENESS_FINDINGS = ("EVEN_MATCHUP", "NARROW_EFFICIENCY_GAP")
+
+#: The strong-edge threshold. EVEN_MATCHUP grants margin authority only when
+#: the efficiency gap plus its uncertainty stays at or below it -- the data
+#: rule out a decisive edge either way. A small point estimate with a wide
+#: uncertainty is an edge the data cannot see, not parity.
+CLOSENESS_MAX_PLAUSIBLE_EDGE = NET_THRESHOLD[1]
+
+
+def closeness_grants_margin(finding: dict[str, Any] | None) -> bool:
+    """May this closeness finding authorise a one-score margin band?
+
+    EVEN_MATCHUP: |gap| + uncertainty <= the strong-edge threshold.
+    NARROW_EFFICIENCY_GAP: its edge clears its uncertainty, as the finding
+    claims ("real but not decisive"). Without an uncertainty: no (fail
+    closed). A gate on evidence quality, not a probability: the finding
+    itself is still published either way."""
+    if not finding or finding.get("value") is None or finding.get("uncertainty") is None:
+        return False
+    value, unc = abs(float(finding["value"])), float(finding["uncertainty"])
+    if finding["code"] == "EVEN_MATCHUP":
+        return value + unc <= CLOSENESS_MAX_PLAUSIBLE_EDGE
+    if finding["code"] == "NARROW_EFFICIENCY_GAP":
+        return value >= unc
+    return False
+
 
 #: Findings that may support a margin script but can never authorise a margin
 #: band: scoring environments, possession (pace) environments, and the
@@ -226,11 +258,15 @@ class MarginAuthorityError(ValueError):
     """A script states a margin band without football evidence that authorises it."""
 
 
-def margin_authority_violations(script: dict[str, Any], present: set[str] | None = None) -> list[str]:
+def margin_authority_violations(
+    script: dict[str, Any], present: set[str] | None = None, findings: list[dict[str, Any]] | None = None
+) -> list[str]:
     """Why this script's margin band lacks authority (empty when it is sound).
 
     `present` is the set of finding codes published for the game; when given,
-    every evidence code must be in it. Applies to a published script dict."""
+    every evidence code must be in it. `findings`, when given, lets the check
+    also require that closeness evidence resolves (`closeness_grants_margin`).
+    Applies to a published script dict."""
     shape = script.get("outcome_shape") or {}
     band = (shape.get("bands") or {}).get("home_margin")
     evidence = shape.get("margin_authority_evidence")
@@ -247,6 +283,11 @@ def margin_authority_violations(script: dict[str, Any], present: set[str] | None
         missing = sorted(set(evidence or []) - present)
         if missing:
             out.append(f"{name}: margin evidence {missing} is not among the game's findings")
+    if findings is not None:
+        by_code = {f["code"]: f for f in findings}
+        for code in sorted(set(evidence or []) & set(CLOSENESS_FINDINGS)):
+            if not closeness_grants_margin(by_code.get(code)):
+                out.append(f"{name}: {code} does not resolve a close margin (gap + uncertainty too wide)")
     authority = (shape.get("band_authority") or {}).get("home_margin")
     if authority != ARCHETYPE_DEFINITION:
         out.append(f"{name}: home_margin authority is {authority}, not {ARCHETYPE_DEFINITION}")
@@ -444,7 +485,10 @@ def _hangs_around(ctx: _Ctx, s: str) -> Candidate | None:
     all_counters = ctx.present([c.format(s=_u(s), o=_u(o)) for c in _COUNTERS])
     # A low-possession environment may support the thesis; only a football
     # counter can qualify it and carry the one-score claim.
-    counters = [c for c in all_counters if c not in PACE_ONLY_COUNTERS]
+    # A narrow gap the data cannot resolve is not a counter either.
+    counters = [
+        c for c in all_counters if c not in PACE_ONLY_COUNTERS and (c not in CLOSENESS_FINDINGS or c in ctx.close())
+    ]
     pace = [c for c in all_counters if c in PACE_ONLY_COUNTERS]
     if not counters:
         return None
@@ -641,7 +685,7 @@ def _shootout(ctx: _Ctx) -> Candidate | None:
         ]
     )
     H, A = ctx.names["home"], ctx.names["away"]
-    close = ctx.present(list(CLOSENESS_FINDINGS))
+    close = ctx.close()
     chain = [
         _step(f"both offenses out-rate the defense in front of them ({H} and {A})", *required),
         _step("neither defense gets enough stops to slow the scoring", required[0]),
@@ -716,7 +760,7 @@ def _grind(ctx: _Ctx) -> Candidate | None:
             )
         )
     chain.append(_step("few possessions and few points keep the total down", *required))
-    close = ctx.present(list(CLOSENESS_FINDINGS))
+    close = ctx.close()
     if close:
         names = f"{ctx.names['home']} nor {ctx.names['away']}"
         chain.append(_step(f"neither {names} separates: the margin stays inside one score", *close))
@@ -755,7 +799,9 @@ def _grind(ctx: _Ctx) -> Candidate | None:
 
 
 def _tossup(ctx: _Ctx) -> Candidate | None:
-    if not ctx.has("EVEN_MATCHUP"):
+    # A tossup is nothing but a one-score claim: without EVEN_MATCHUP that the
+    # data can resolve, there is no script, only the informational finding.
+    if "EVEN_MATCHUP" not in ctx.close():
         return None
     supporting = ctx.present(["LOW_POSSESSION_ENVIRONMENT"])
     contradicting = ctx.present(
@@ -1036,7 +1082,7 @@ def build_scripts(
                 "probability": None,
             }
         )
-        violations = margin_authority_violations(scripts[-1], present)
+        violations = margin_authority_violations(scripts[-1], present, findings)
         if violations:
             raise MarginAuthorityError("; ".join(violations))
     considered = [

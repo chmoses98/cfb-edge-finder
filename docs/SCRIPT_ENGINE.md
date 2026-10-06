@@ -214,7 +214,7 @@ conclusions. A script exists only if its **required** findings exist.
 | `TURNOVER_DISRUPTION` | S disruption advantage + a volatility finding (never turnovers alone) | S by 1–21 |
 | `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | ±8 **only with** `EVEN_MATCHUP` or `NARROW_EFFICIENCY_GAP`, otherwise no margin; total baseline +4 to +28 |
 | `COMPETITIVE_GRIND` | low scoring / low possessions / both defenses control; no strong edge | ±8 **only with** `EVEN_MATCHUP` or `NARROW_EFFICIENCY_GAP`, otherwise no margin; total baseline −28 to −4 |
-| `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP`, and no shootout/grind applies | ±8 |
+| `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP` that the data resolve (see below), and no shootout/grind applies | ±8 |
 | `PACE_DRIVEN_OVER` | high possession environment | total baseline +3 to +28 |
 | `DEFENSIVE_SUPPRESSION` | both defenses control | total baseline −30 to −6 |
 
@@ -569,6 +569,18 @@ without a margin band publish an empty list.
 Forbidden findings stay valid football findings and may support a margin
 script; they never authorise one.
 
+**Closeness must be resolved, not inferred from a missing edge**
+(`scripts.closeness_grants_margin`). The closeness findings publish the
+efficiency gap and its uncertainty:
+- `EVEN_MATCHUP` authorises a close margin only when |gap| + uncertainty ≤ 2.0, the strong-edge threshold. The data must rule out a decisive edge either way.
+- `NARROW_EFFICIENCY_GAP` authorises one only when its edge clears its uncertainty, as the finding claims.
+
+Otherwise the finding is still published, as information, but authorises
+nothing. A shootout or grind then states no margin, a tossup (which is nothing
+but a one-score claim) is not generated, and an unresolved narrow gap cannot
+qualify hangs-around. This is a gate on evidence quality, not a probability.
+`LOW_DATA_CONFIDENCE` labelling is unchanged.
+
 **Enforcement**:
 - `build_scripts` raises `MarginAuthorityError` rather than publish a violating script.
 - `market_map.classify_against` independently refuses to classify against a margin band whose evidence is empty or contains a forbidden code. Such a contract is classified `RESEARCH_UNCALIBRATED`, never supported or contradicted.
@@ -580,10 +592,10 @@ script; they never authorise one.
 |---|---|---|---|---|---|
 | `HOME_CONTROL` / `AWAY_CONTROL` | S sustained-efficiency advantage | that advantage | S by 7–24 | yes (S scoring advantage, low possessions support) | **no** |
 | `FAVORITE_PULLS_AWAY` | strong S efficiency advantage + finishing / disruption / explosive / rush / pass advantage | both | S by 17–45 | yes (S scoring advantage supports; low possessions contradicts) | **no** |
-| `UNDERDOG_HANGS_AROUND` | S efficiency advantage + a non-pace counter | advantage + counter | trailing side within −7…+8 | yes (low possessions supports; high possessions contradicts) | **no** |
+| `UNDERDOG_HANGS_AROUND` | S efficiency advantage + a non-pace counter (a narrow gap only when resolved) | advantage + counter | trailing side within −7…+8 | yes (low possessions supports; high possessions contradicts) | **no** |
 | `EXPLOSIVE_UPSET` | S efficiency advantage + other side's explosive advantage | both | other side by 1–14 | no | **no** |
 | `TURNOVER_DISRUPTION` | D disruption advantage + a volatility finding | both | D by 1–21 | no | **no** |
-| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` when present | ±8 only with that evidence | yes (scoring/pace create the script and rank it) | **no** |
-| `COMPETITIVE_GRIND` | low scoring / both defenses control / low possessions; no strong edge | `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` when present | ±8 only with that evidence | yes | **no** |
-| `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP` | `EVEN_MATCHUP` | ±8 | yes (low possessions supports) | **no** |
+| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | resolved `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` | ±8 only with that evidence | yes (scoring/pace create the script and rank it) | **no** |
+| `COMPETITIVE_GRIND` | low scoring / both defenses control / low possessions; no strong edge | resolved `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` | ±8 only with that evidence | yes | **no** |
+| `COMPETITIVE_TOSSUP` | resolved `EVEN_MATCHUP` | `EVEN_MATCHUP` | ±8 | yes (low possessions supports) | **no** |
 | `PACE_DRIVEN_OVER`, `DEFENSIVE_SUPPRESSION` | possession / defensive environment | — | no margin band | — | — |
