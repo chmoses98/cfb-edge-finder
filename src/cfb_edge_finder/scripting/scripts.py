@@ -40,7 +40,19 @@ Every numeric band carries its provenance in `outcome_shape.band_authority`:
   CALIBRATED               reserved. Only the promotion gate can grant it; no
                            V1 band carries it.
 The qualitative scoring statements (`total_environment`, `home_scoring`,
-`away_scoring`) are football conclusions and are unaffected. No line, total
+`away_scoring`) are football conclusions and are unaffected.
+
+*** A SCORING OR PACE ENVIRONMENT IS NOT A MARGIN ***
+High scoring, low scoring and possession volume say nothing about how close
+the game is. COMPETITIVE_SHOOTOUT and COMPETITIVE_GRIND therefore state the
+one-score margin band (and say "within one score" in their chain) only when
+an independent closeness finding exists -- EVEN_MATCHUP or
+NARROW_EFFICIENCY_GAP -- and the margin step cites it. Without one the
+script keeps its scoring environment and states no margin.
+FAVORITE_PULLS_AWAY's qualifying second edge must be a non-scoring matchup
+advantage (finishing, disruption, explosiveness, rushing, passing);
+SCORING_ADVANTAGE, derived from the uncalibrated points metric, may only
+support it. No line, total
 or price informs any band or any authority, and the market mapping reads
 bands only after the artifact is frozen.
 
@@ -173,6 +185,21 @@ class _Ctx:
         return self.base.get("total_points")
 
 
+#: Matchup findings that independently support a one-score margin. Scoring
+#: and possession environments are not among them.
+CLOSENESS_FINDINGS = ("EVEN_MATCHUP", "NARROW_EFFICIENCY_GAP")
+
+#: Edges that may qualify FAVORITE_PULLS_AWAY as its second advantage
+#: (SCORING_ADVANTAGE is supporting only: points-derived, not validated for margins).
+PULL_AWAY_QUALIFYING_EDGES = (
+    "FINISHING_ADVANTAGE",
+    "DISRUPTION_ADVANTAGE",
+    "EXPLOSIVE_ADVANTAGE",
+    "RUSH_ADVANTAGE",
+    "PASS_ADVANTAGE",
+)
+
+
 def _step(text: str, *codes: str) -> dict[str, Any]:
     return {"step": text, "findings": [c for c in codes if c]}
 
@@ -277,18 +304,11 @@ def _pulls_away(ctx: _Ctx, s: str) -> Candidate | None:
     if not ctx.strong(req):
         return None
     o = _other(s)
-    second = ctx.present(
-        [
-            f"{_u(s)}_FINISHING_ADVANTAGE",
-            f"{_u(s)}_SCORING_ADVANTAGE",
-            f"{_u(s)}_DISRUPTION_ADVANTAGE",
-            f"{_u(s)}_EXPLOSIVE_ADVANTAGE",
-            f"{_u(s)}_RUSH_ADVANTAGE",
-            f"{_u(s)}_PASS_ADVANTAGE",
-        ]
-    )
+    second = ctx.present([f"{_u(s)}_{edge}" for edge in PULL_AWAY_QUALIFYING_EDGES])
     if not second:
         return None
+    # A scoring advantage may support the thesis; it can never be the qualifying edge.
+    supporting = second + ctx.present([f"{_u(s)}_SCORING_ADVANTAGE"])
     lead_name, other_name = ctx.names[s], ctx.names[o]
     contradicting = ctx.present(
         [
@@ -324,7 +344,7 @@ def _pulls_away(ctx: _Ctx, s: str) -> Candidate | None:
         "FAVORITE_PULLS_AWAY",
         s,
         [req],
-        second,
+        supporting,
         contradicting,
         shape,
         chain,
@@ -543,22 +563,26 @@ def _shootout(ctx: _Ctx) -> Candidate | None:
         ]
     )
     H, A = ctx.names["home"], ctx.names["away"]
+    close = ctx.present(list(CLOSENESS_FINDINGS))
     chain = [
         _step(f"both offenses out-rate the defense in front of them ({H} and {A})", *required),
-        _step("neither defense gets enough stops to separate", required[0]),
-        _step("possessions trade scores", required[0], *ctx.present(["HIGH_POSSESSION_ENVIRONMENT"])),
-        _step("the margin stays within one score while the total climbs", required[0]),
+        _step("neither defense gets enough stops to slow the scoring", required[0]),
+        _step(
+            "possessions trade scores and the total climbs", required[0], *ctx.present(["HIGH_POSSESSION_ENVIRONMENT"])
+        ),
     ]
+    if close:
+        chain.append(_step(f"neither {H} nor {A} separates: the margin stays within one score", *close))
     t = ctx.total()
     shape = {
         "winner_lean": "NONE",
-        "margin_environment": "ONE_SCORE",
+        "margin_environment": "ONE_SCORE" if close else "NOT_STATED",
         "total_environment": "ELEVATED",
         "home_scoring": "ABOVE_BASELINE",
         "away_scoring": "ABOVE_BASELINE",
         "pace": "MORE_POSSESSIONS" if ctx.has("HIGH_POSSESSION_ENVIRONMENT") else "NOT_STATED",
         "bands": {
-            "home_margin": [-ONE_SCORE, ONE_SCORE],
+            "home_margin": [-ONE_SCORE, ONE_SCORE] if close else None,
             "total_points": _band(_add(t, 4), _add(t, 28)),
             "home_points": _band(_add(ctx.pts("home"), 2), _add(ctx.pts("home"), 17)),
             "away_points": _band(_add(ctx.pts("away"), 2), _add(ctx.pts("away"), 17)),
@@ -573,7 +597,10 @@ def _shootout(ctx: _Ctx) -> Candidate | None:
         shape,
         chain,
         "Competitive shootout",
-        f"Both offenses hold the upper hand against the defense they face; {H} and {A} trade scores in a close game.",
+        (
+            f"Both offenses hold the upper hand against the defense they face; {H} and {A} trade scores"
+            + (" in a close game." if close else ".")
+        ),
     )
 
 
@@ -609,24 +636,26 @@ def _grind(ctx: _Ctx) -> Candidate | None:
                 "LOW_POSSESSION_ENVIRONMENT",
             )
         )
-    chain.append(_step("few possessions and few points keep the margin inside one score", *required))
+    chain.append(_step("few possessions and few points keep the total down", *required))
+    close = ctx.present(list(CLOSENESS_FINDINGS))
+    if close:
+        names = f"{ctx.names['home']} nor {ctx.names['away']}"
+        chain.append(_step(f"neither {names} separates: the margin stays inside one score", *close))
+    within = " and within one score" if close else ""
     summary = (
-        "Neither offense has the upper hand; a low-scoring game stays within one score."
+        f"Neither offense has the upper hand; the game stays low-scoring{within}."
         if defensive
-        else (
-            "Fewer snaps than an average FBS game cap the scoring chances; "
-            "the game stays low-volume and within one score."
-        )
+        else f"Fewer snaps than an average FBS game cap the scoring chances; the game stays low-volume{within}."
     )
     shape = {
         "winner_lean": "NONE",
-        "margin_environment": "ONE_SCORE",
+        "margin_environment": "ONE_SCORE" if close else "NOT_STATED",
         "total_environment": "SUPPRESSED",
         "home_scoring": "BELOW_BASELINE",
         "away_scoring": "BELOW_BASELINE",
         "pace": "FEWER_POSSESSIONS" if ctx.has("LOW_POSSESSION_ENVIRONMENT") else "NOT_STATED",
         "bands": {
-            "home_margin": [-ONE_SCORE, ONE_SCORE],
+            "home_margin": [-ONE_SCORE, ONE_SCORE] if close else None,
             "total_points": _band(_floor0(_sub(t, 28)), _sub(t, 4)),
             "home_points": _band(_floor0(_sub(ctx.pts("home"), 17)), _sub(ctx.pts("home"), 2)),
             "away_points": _band(_floor0(_sub(ctx.pts("away"), 17)), _sub(ctx.pts("away"), 2)),

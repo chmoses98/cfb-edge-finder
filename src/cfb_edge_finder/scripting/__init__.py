@@ -26,7 +26,7 @@ packet builder or anything else that carries a price, and
 radically different prices).
 """
 
-METHODOLOGY_VERSION = "cfb-script-engine/1.1.0"
+METHODOLOGY_VERSION = "cfb-script-engine/1.2.0"
 ADJUSTMENT_VERSION = "cfb-opponent-adjustment/1.0.0"
 TEAM_GAME_SCHEMA_VERSION = "cfb_team_game/1.0.0"
 MATCHUP_SCHEMA_VERSION = "cfb_matchup_profile/1.0.0"

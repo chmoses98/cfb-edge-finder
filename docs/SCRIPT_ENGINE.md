@@ -208,18 +208,26 @@ conclusions. A script exists only if its **required** findings exist.
 | Archetype | Requires | Margin band (definition) |
 |---|---|---|
 | `HOME_CONTROL` / `AWAY_CONTROL` | S sustained-efficiency advantage | S by 7–24 |
-| `FAVORITE_PULLS_AWAY` | **strong** S efficiency edge + a second S advantage | S by 17–45 |
+| `FAVORITE_PULLS_AWAY` | **strong** S efficiency edge + a second, non-scoring S advantage (finishing, disruption, explosiveness, rushing or passing; a scoring advantage only supports) | S by 17–45 |
 | `UNDERDOG_HANGS_AROUND` | S efficiency edge + a counter (other side's disruption or defensive control, low possessions, S explosive dependence or turnovers, other side's explosives, narrow gap) | −7 to +8 on S |
 | `EXPLOSIVE_UPSET` | S efficiency edge + the other side's explosive advantage | other side by 1–14 |
 | `TURNOVER_DISRUPTION` | S disruption advantage + a volatility finding (never turnovers alone) | S by 1–21 |
-| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | ±8, total baseline +4 to +28 |
-| `COMPETITIVE_GRIND` | low scoring / low possessions / both defenses control; no strong edge | ±8, total baseline −28 to −4 |
+| `COMPETITIVE_SHOOTOUT` | high scoring environment or both offenses efficient; no strong edge | ±8 **only with** `EVEN_MATCHUP` or `NARROW_EFFICIENCY_GAP`, otherwise no margin; total baseline +4 to +28 |
+| `COMPETITIVE_GRIND` | low scoring / low possessions / both defenses control; no strong edge | ±8 **only with** `EVEN_MATCHUP` or `NARROW_EFFICIENCY_GAP`, otherwise no margin; total baseline −28 to −4 |
 | `COMPETITIVE_TOSSUP` | `EVEN_MATCHUP`, and no shootout/grind applies | ±8 |
 | `PACE_DRIVEN_OVER` | high possession environment | total baseline +3 to +28 |
 | `DEFENSIVE_SUPPRESSION` | both defenses control | total baseline −30 to −6 |
 
 Team-points bands are drawn around the scoring baseline (e.g. control: leader
 baseline −3…+14, trailer −14…+2).
+
+**A scoring or pace environment is not a margin.** High or low scoring and
+possession volume say nothing about closeness, so a shootout or grind states
+its one-score band — and a chain step claiming "within one score" — only
+when an independent closeness finding (`EVEN_MATCHUP`,
+`NARROW_EFFICIENCY_GAP`) exists, and that step cites it. Without one the
+script keeps its scoring environment and states no margin, so it is NEUTRAL
+for every moneyline and spread.
 
 **Band authority.** Margin bands are `ARCHETYPE_DEFINITION`. Every total and
 team-points band is `UNCALIBRATED_DESCRIPTIVE`: its centre is the descriptive

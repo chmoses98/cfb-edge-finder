@@ -222,3 +222,108 @@ def test_every_band_states_its_authority_and_only_margins_define_an_archetype(se
                 assert authority == expected, (script["archetype"], band)
     assert ("home_margin", ARCHETYPE_DEFINITION) in seen
     assert {b for b, a in seen if a == UNCALIBRATED_DESCRIPTIVE} >= {"home_points", "away_points"}
+
+
+# --- a scoring or pace environment is not a margin -----------------------------------------------------
+
+_NAMES = {"home": "Home U", "away": "Away St"}
+_BASE = {"home_points": 31.0, "away_points": 27.0, "total_points": 58.0}
+
+
+def _f(code, strength="MODERATE", category="ENVIRONMENT"):
+    return {"code": code, "strength": strength, "category": category}
+
+
+@pytest.mark.parametrize(
+    "archetype,environment",
+    [
+        ("COMPETITIVE_SHOOTOUT", "HIGH_SCORING_ENVIRONMENT"),
+        ("COMPETITIVE_GRIND", "LOW_SCORING_ENVIRONMENT"),
+        ("COMPETITIVE_GRIND", "LOW_POSSESSION_ENVIRONMENT"),
+    ],
+)
+def test_an_environment_alone_cannot_create_an_active_one_score_band(archetype, environment):
+    from cfb_edge_finder.execution.card_review import WinSet
+    from cfb_edge_finder.scripting.market_map import NEUTRAL, classify_against
+    from cfb_edge_finder.scripting.scripts import _Ctx, _grind, _shootout, band_authority
+
+    builder = _shootout if archetype == "COMPETITIVE_SHOOTOUT" else _grind
+    cand = builder(_Ctx([_f(environment)], _NAMES, _BASE))
+    # The script and its scoring environment stay...
+    assert cand is not None and cand.archetype == archetype
+    assert cand.shape["total_environment"] in ("ELEVATED", "SUPPRESSED")
+    assert cand.shape["bands"]["total_points"] is not None
+    # ...but it states no margin, says nothing about one score, and has no margin authority.
+    assert cand.shape["bands"]["home_margin"] is None
+    assert cand.shape["margin_environment"] == "NOT_STATED"
+    text = " ".join(st["step"] for st in cand.chain) + " " + cand.summary
+    assert "one score" not in text and "close game" not in text and "separate" not in text
+    shape = {**cand.shape, "band_authority": band_authority(cand.shape["bands"])}
+    assert "home_margin" not in shape["band_authority"]
+    # So it contributes nothing to a moneyline or a spread.
+    for ws in (WinSet("full_game:home_margin", 1, float("inf")), WinSet("full_game:home_margin", -3, float("inf"))):
+        assert classify_against(ws, shape)["status"] == NEUTRAL
+
+
+@pytest.mark.parametrize(
+    "archetype,environment,closeness",
+    [
+        ("COMPETITIVE_SHOOTOUT", "HIGH_SCORING_ENVIRONMENT", "EVEN_MATCHUP"),
+        ("COMPETITIVE_SHOOTOUT", "HIGH_SCORING_ENVIRONMENT", "NARROW_EFFICIENCY_GAP"),
+        ("COMPETITIVE_GRIND", "LOW_SCORING_ENVIRONMENT", "NARROW_EFFICIENCY_GAP"),
+        ("COMPETITIVE_GRIND", "LOW_POSSESSION_ENVIRONMENT", "EVEN_MATCHUP"),
+    ],
+)
+def test_independent_closeness_evidence_states_the_one_score_band_and_carries_the_claim(
+    archetype, environment, closeness
+):
+    from cfb_edge_finder.scripting.scripts import (
+        ARCHETYPE_DEFINITION,
+        ONE_SCORE,
+        _Ctx,
+        _grind,
+        _shootout,
+        band_authority,
+    )
+
+    builder = _shootout if archetype == "COMPETITIVE_SHOOTOUT" else _grind
+    cand = builder(_Ctx([_f(environment), _f(closeness)], _NAMES, _BASE))
+    assert cand.shape["bands"]["home_margin"] == [-ONE_SCORE, ONE_SCORE]
+    assert cand.shape["margin_environment"] == "ONE_SCORE"
+    assert band_authority(cand.shape["bands"])["home_margin"] == ARCHETYPE_DEFINITION
+    # Every step that claims a one-score margin cites the closeness finding -- and only it.
+    margin_steps = [st for st in cand.chain if "one score" in st["step"]]
+    assert margin_steps
+    for st in margin_steps:
+        assert st["findings"] == [closeness]
+    # No step lets the environment carry the margin claim.
+    for st in cand.chain:
+        if environment in st["findings"]:
+            assert "one score" not in st["step"] and "separate" not in st["step"]
+
+
+def test_a_strong_efficiency_edge_and_a_scoring_advantage_alone_cannot_pull_away():
+    from cfb_edge_finder.scripting.scripts import _Ctx, _pulls_away
+
+    findings = [
+        _f("HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "STRONG", "MATCHUP"),
+        _f("HOME_SCORING_ADVANTAGE", "STRONG", "MATCHUP"),
+    ]
+    assert _pulls_away(_Ctx(findings, _NAMES, _BASE), "home") is None
+
+
+@pytest.mark.parametrize("edge", ["FINISHING", "DISRUPTION", "EXPLOSIVE", "RUSH", "PASS"])
+def test_an_independent_second_matchup_advantage_can_pull_away(edge):
+    from cfb_edge_finder.scripting.scripts import _Ctx, _pulls_away
+
+    findings = [
+        _f("HOME_SUSTAINED_EFFICIENCY_ADVANTAGE", "STRONG", "MATCHUP"),
+        _f("HOME_SCORING_ADVANTAGE", "STRONG", "MATCHUP"),
+        _f(f"HOME_{edge}_ADVANTAGE", "MODERATE", "MATCHUP"),
+    ]
+    cand = _pulls_away(_Ctx(findings, _NAMES, _BASE), "home")
+    assert cand is not None and cand.shape["bands"]["home_margin"] == [17, 45]
+    # The scoring advantage may support the script; the qualifying step cites the independent edge.
+    assert "HOME_SCORING_ADVANTAGE" in cand.supporting
+    second_step = cand.chain[1]
+    assert second_step["findings"] == [f"HOME_{edge}_ADVANTAGE"]
