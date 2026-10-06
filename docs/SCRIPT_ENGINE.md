@@ -383,3 +383,102 @@ not exist for the report.
 4. Only then populate `probability`, versioned, with the calibration artifact
    named — and still never call a contract "+EV" without an identified,
    validated pricing source.
+
+## 15. Scoring-band authority and the promotion gate
+
+Every numeric band a script states carries its provenance in
+`outcome_shape.band_authority` (and the game-level `game_scripts.band_policy`):
+
+| Authority | Bands | May a market classification rest on it? |
+|---|---|---|
+| `ARCHETYPE_DEFINITION` | `home_margin` — control 7–24, pulls away 17–45, one score ±8, hangs around −7…+8, upset 1–14, disruption 1–21 | Yes. The numbers *are* the archetype. |
+| `UNCALIBRATED_DESCRIPTIVE` | `total_points`, `home_points`, `away_points` — every band whose centre is `matchup.scoring_baseline` | **No.** Research context only. |
+| `CALIBRATED` | reserved; no V1 band carries it | Only after this gate passes. |
+
+**Market consequence.** A total or team-total contract classified against an
+uncalibrated band gets the compatibility status `RESEARCH_UNCALIBRATED`, with
+what the band would have said kept under `research.band_relation`. That
+status scores 0 in script survival and is excluded from `meaningful_scripts`,
+so a scoring contract can never be SUPPORTED, CONTRADICTED, MULTI_SCRIPT,
+SCRIPT_ALIGNED or a BEST_EXPRESSION; it carries the single label
+`SCORING_BAND_UNCALIBRATED` and `market_authority: RESEARCH_UNCALIBRATED`.
+A band whose authority is missing is treated as uncalibrated (fail closed).
+The qualitative scoring conclusions — `total_environment` ELEVATED /
+SUPPRESSED, `home_scoring` / `away_scoring` ABOVE / BELOW_BASELINE, and the
+findings behind them — are untouched and remain football research.
+A MARKET_DISAGREEMENT on totals is still reported, marked
+`evidence_of_value: false`: it is an observation about an uncalibrated band.
+
+**The market never repairs the baseline.** Band authority is decided on the
+football side before any price is read; the football artifact stays
+byte-identical across price worlds (`test_script_engine_market_blindness.py`).
+
+### 15.1 Pre-registered retrospective validation (written before any error was computed)
+
+*Target:* actual final scores (home points, away points, total). Never a
+Kalshi total, never a sportsbook line.
+
+*Prediction under test:* `matchup.scoring_baseline` exactly as production
+computes it, rebuilt for each target game by `build_content` from only the
+games that finished before that game's data cutoff (04:00 America/New_York on
+its local date; `gamelog.before`). One league fit per distinct history.
+
+*Blocks:* 2024 regular season (CFBD cache, `research-data` branch), 2025
+regular season (same source), 2026 completed games before 2026-10-06 (the
+production ESPN game log). Every completed game with both teams in the log;
+games where the baseline is undefined (a team with no prior game) are counted
+and excluded.
+
+*Reported:* N, bias (predicted − actual), MAE, RMSE, median / p80 / p90
+absolute error for the total; bias and MAE for home and away points;
+segmented by prior-games bucket, reconstructed data confidence, predicted
+total bucket, unit-strength matchups (terciles of the adjusted points
+offense / defense among FBS teams at the cutoff), conference game, and
+FBS-vs-FCS involvement. Reference: the naive league total (2 × fitted `mu`
+plus the home effect) from the same fit.
+
+*Defense double-counting test:* per team-game, regress
+`actual − mu − h·x` on `o = adj_off − mu` and `d = adj_def_allowed − mu`.
+A coefficient on `d` below 1 means defensive strength is over-credited in
+the additive baseline, above 1 under-credited.
+
+*Candidate corrections (fixed in advance; nothing else is tried):*
+1. `linear_total`: `total = a + b · baseline_total` (OLS).
+2. `components`: per team-game `points = mu + h·x + c + b_o · o + b_d · d` (OLS).
+
+*Splits (fixed in advance):*
+* **Split A** — fit on 2024, evaluate on 2025.
+* **Split B** — fit on 2024 + 2025, evaluate on 2026-to-date.
+
+No correction is fitted on, tuned on or selected by a test block, and none
+is put into production by this validation: a passing correction only becomes
+a candidate for the gate below.
+
+### 15.2 Promotion gate: UNCALIBRATED_DESCRIPTIVE → CALIBRATED
+
+All of the following, for one frozen, versioned correction method:
+
+1. **Pre-registration.** The method, its training block and its test blocks
+   are committed before the test blocks are scored.
+2. **Two untouched out-of-sample blocks pass**, each with N ≥ 300 completed
+   FBS-involved games (Split A and Split B above, or later blocks):
+   * total bias within ±1.5 points, with its 95% interval containing 0;
+     home and away points bias each within ±1.0;
+   * total MAE at least 3% better than both the raw baseline and the naive
+     league total;
+   * no segment from 15.1 with N ≥ 100 shows a bias beyond ±3 points whose
+     95% interval excludes 0.
+3. **Bands come from the calibrated error distribution**, not from hand-set
+   offsets: each scoring band is a stated central interval of the
+   out-of-sample residual distribution, and its empirical coverage in each
+   test block is within ±5 percentage points of nominal, overall and in each
+   predicted-total bucket with N ≥ 100.
+4. **Prospective confirmation.** The first ≥ 150 prospectively frozen games
+   (ledger `FINAL_PREGAME` rows, settled on actual scores) meet the bias and
+   coverage criteria of points 2 and 3.
+5. **One change, recorded.** `SCORING_BAND_AUTHORITY` moves to `CALIBRATED`
+   in the same change that bumps `METHODOLOGY_VERSION`, names the calibration
+   artifact and adds a test pinning the evaluation report. The markets never
+   enter: no step of the gate reads a price.
+
+Until every point holds, scoring contracts stay `RESEARCH_UNCALIBRATED`.
