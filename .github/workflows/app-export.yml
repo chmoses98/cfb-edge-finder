@@ -26,13 +26,31 @@ name: App Export
 # nothing. On a build failure it rewrites ONLY app/latest/health.json
 # (export_failed=true, payload left as last-known-good), that file IS
 # committed so the app can see the failure, and the job is red.
+#
+# *** WHY IT ALSO FOLLOWS THE SCRIPT ENGINE ***
+# The research explorer embeds the CFB Script Engine payloads (data/scripting/live/sift) into
+# event_research.extensions.script_engine. A successful Script Engine run on main therefore starts
+# this export, and the explorer rebuilds at once, whatever its age, whenever the payload set's content
+# fingerprint differs from the one recorded with the published explorer (explorer/sources.json; see
+# docs/APP_EXPORT.md "Refresh cadence"). Only a successful main run counts: a feature-branch, failed
+# or forked run never starts the job (the `if:` below), and the checkout is always main, so no branch
+# but main can certify what the explorer embeds.
+#
+# *** FORCING A REBUILD ***
+# workflow_dispatch with force_explorer=true rebuilds the explorer now, bypassing only its 180-minute
+# age throttle; the v1 export, every validation and the atomic publish run exactly as on the clock.
 on:
   workflow_run:
-    workflows: ["Kalshi CFB Market Catalog"]
+    workflows: ["Kalshi CFB Market Catalog", "CFB Script Engine"]
     types: [completed]
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+    inputs:
+      force_explorer:
+        description: "Rebuild the research explorer now (bypasses only its 180-minute age throttle)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -46,12 +64,22 @@ concurrency:
 
 jobs:
   export:
+    # A Script Engine completion starts the export only when it is a successful run on main in this
+    # repository; the catalog trigger, the clock and manual dispatch are unchanged.
+    if: >-
+      github.event_name != 'workflow_run'
+      || github.event.workflow_run.name != 'CFB Script Engine'
+      || (github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.head_branch == 'main'
+          && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       # Owner opt-in for CFBD-derived explorer values (see docs/APP_EXPORT.md "Research explorer"). Off until
       # the CFBD redistribution licence question is resolved; "true" fetches research-data and passes --include-cfbd.
       INCLUDE_CFBD: "false"
+      # "true" only for a manual dispatch with force_explorer ticked; every other trigger keeps the throttle.
+      FORCE_EXPLORER: ${{ github.event_name == 'workflow_dispatch' && inputs.force_explorer == true }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,11 +110,16 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --skip-unchanged
       - name: Is a research explorer rebuild due?
-        # The explorer is rebuilt only when it is missing, the v1 events changed, or it is older than
-        # 3 hours (research.refresh_due), so the 30-minute cron does not rewrite ~1,300 files each tick.
+        # The explorer is rebuilt when it is missing, the v1 events changed, the Script Engine publication
+        # it embeds changed (content fingerprint), or it is older than 3 hours, so the 30-minute cron does
+        # not rewrite ~1,300 files each tick. force_explorer makes it due now.
         id: explorer_due
         continue-on-error: true
-        run: python scripts/research_export.py --out app/latest --min-interval-minutes 180 --check-due >> "$GITHUB_OUTPUT"
+        run: |
+          FORCE_ARGS=()
+          if [ "$FORCE_EXPLORER" = "true" ]; then FORCE_ARGS=(--force); fi
+          python scripts/research_export.py --out app/latest --min-interval-minutes 180 --check-due \
+            "${FORCE_ARGS[@]}" >> "$GITHUB_OUTPUT"
       - name: Deepen the catalog history (market history, read-only)
         # Market history is rebuilt from the catalog's git history on every rebuild, whatever the cadence,
         # and the checkout is depth 1. The catalog lists games about two weeks ahead and the exporter stops
@@ -127,11 +160,13 @@ jobs:
           if [ "$INCLUDE_CFBD" = "true" ]; then
             CFBD_ARGS=(--include-cfbd --research-root "$RUNNER_TEMP/research")
           fi
+          FORCE_ARGS=()
+          if [ "$FORCE_EXPLORER" = "true" ]; then FORCE_ARGS=(--force); fi
           python scripts/research_export.py \
             --out app/latest \
             --data-root data/live \
             --min-interval-minutes 180 \
-            "${CFBD_ARGS[@]}" 2>&1 | tee "$RUNNER_TEMP/research_export.log"
+            "${CFBD_ARGS[@]}" "${FORCE_ARGS[@]}" 2>&1 | tee "$RUNNER_TEMP/research_export.log"
           {
             echo "### Research explorer"
             echo "due: ${{ steps.explorer_due.outputs.reason }}"
