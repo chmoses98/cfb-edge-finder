@@ -64,6 +64,9 @@ GUARDED_PACKAGES = (
     # script-to-market compatibility map. It labels expressions and never
     # prices or sizes them, so it sits firmly on the guarded side.
     "scripting",
+    # Historical archetype validation: research-only replay of the Script
+    # Engine. It publishes no probability and must never reach for a stake.
+    "archetype_research",
 )
 """Every package that could plausibly end up on a live or shadow path.
 Listed explicitly rather than 'everything except sizing' so that adding a
