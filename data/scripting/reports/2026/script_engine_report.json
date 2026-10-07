@@ -3,15 +3,15 @@
   "min_games_per_archetype_required": 30,
   "note": "Script probabilities stay null until every published archetype has at least the required number of prospectively frozen, settled games, and a calibration method is validated out of sample.",
   "ready": false,
-  "smallest_archetype_sample": 0
+  "smallest_archetype_sample": 1
  },
  "expression_performance": {
   "AGGRESSIVE": {
    "ALL": {
-    "expressions": 0,
-    "profit_per_contract": null,
-    "sample": "insufficient",
-    "win_rate": null
+    "expressions": 32,
+    "profit_per_contract": -0.0168,
+    "sample": "ok",
+    "win_rate": 0.5
    },
    "HIGH": {
     "expressions": 0,
@@ -26,18 +26,18 @@
     "win_rate": null
    },
    "MEDIUM": {
-    "expressions": 0,
-    "profit_per_contract": null,
-    "sample": "insufficient",
-    "win_rate": null
+    "expressions": 32,
+    "profit_per_contract": -0.0168,
+    "sample": "ok",
+    "win_rate": 0.5
    }
   },
   "BEST_EXPRESSION": {
    "ALL": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 2,
+    "profit_per_contract": -0.2207,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.5
    },
    "HIGH": {
     "expressions": 0,
@@ -52,18 +52,18 @@
     "win_rate": null
    },
    "MEDIUM": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 2,
+    "profit_per_contract": -0.2207,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.5
    }
   },
   "CONTRADICTED": {
    "ALL": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 17,
+    "profit_per_contract": 0.213,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.4706
    },
    "HIGH": {
     "expressions": 0,
@@ -78,10 +78,10 @@
     "win_rate": null
    },
    "MEDIUM": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 17,
+    "profit_per_contract": 0.213,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.4706
    }
   },
   "MULTI_SCRIPT": {
@@ -112,10 +112,10 @@
   },
   "SINGLE_SCRIPT": {
    "ALL": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 17,
+    "profit_per_contract": -0.2449,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.5294
    },
    "HIGH": {
     "expressions": 0,
@@ -130,10 +130,10 @@
     "win_rate": null
    },
    "MEDIUM": {
-    "expressions": 0,
-    "profit_per_contract": null,
+    "expressions": 17,
+    "profit_per_contract": -0.2449,
     "sample": "insufficient",
-    "win_rate": null
+    "win_rate": 0.5294
    }
   }
  },
@@ -141,19 +141,33 @@
  "not_a_claim_of_edge": "Expression performance is research-unit bookkeeping at recorded entry prices. It is not evidence of an edge until the sample supports it, and no stake is implied.",
  "publications": {
   "games": 214,
-  "rows": 428
+  "rows": 641
  },
  "schema_version": "cfb_script_engine_report/1.0.0",
  "script_accuracy": {
-  "any_script_described": null,
-  "by_data_confidence": {},
-  "by_primary_archetype": {},
-  "games": 0,
-  "primary_described": null,
-  "primary_or_secondary_described": null,
-  "realized_archetypes": {}
+  "any_script_described": 0.0,
+  "by_data_confidence": {
+   "MEDIUM": {
+    "described": 0.0,
+    "games": 1,
+    "sample": "insufficient"
+   }
+  },
+  "by_primary_archetype": {
+   "COMPETITIVE_TOSSUP": {
+    "described": 0.0,
+    "games": 1,
+    "sample": "insufficient"
+   }
+  },
+  "games": 1,
+  "primary_described": 0.0,
+  "primary_or_secondary_described": 0.0,
+  "realized_archetypes": {
+   "HOME_CONTROL": 1
+  }
  },
  "settled": {
-  "games": 0
+  "games": 1
  }
 }
