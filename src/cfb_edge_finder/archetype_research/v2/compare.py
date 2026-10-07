@@ -105,6 +105,11 @@ def compare(records: list[dict[str, Any]], v2_eval: dict[str, Any], v2_criteria:
             "v1_archetypes_with_stable_lift": _v1_stable(ident),
             "v2_families_passing": [f for f, ok in v2_criteria["summary"]["families_passed"].items() if ok],
         },
+        "v1_confidence_audit": {
+            a: {"by_confidence": b["by_confidence"], "by_evidence_bucket": b["by_evidence_bucket"]}
+            for a, b in ident.items()
+            if not a.startswith("_")
+        },
         "v1_identification_lift": {
             a: {
                 "generated": b["generated"],

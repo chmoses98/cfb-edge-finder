@@ -1,0 +1,303 @@
+{
+ "control": {
+  "AWAY_CONTROL_MODERATE": {
+   "development_in_sample_coverage": {
+    "central_50": 0.5198,
+    "central_80": 0.7995
+   },
+   "distribution": {
+    "mean": 7.02,
+    "n": 404,
+    "p10": -13.7,
+    "p25": -4.0,
+    "p50": 7.0,
+    "p75": 18.0,
+    "p90": 30.0,
+    "p_margin_ge_10": 0.4208,
+    "p_margin_ge_14": 0.3292,
+    "p_margin_ge_17": 0.2748,
+    "p_margin_ge_21": 0.2228,
+    "p_margin_ge_24": 0.1782,
+    "p_margin_ge_28": 0.1337,
+    "p_margin_ge_3": 0.6337,
+    "p_margin_ge_7": 0.5272,
+    "p_margin_gt_0": 0.6658,
+    "win_rate": {
+     "ci95": [
+      0.6185,
+      0.7101
+     ],
+     "hits": 269,
+     "n": 404,
+     "rate": 0.6658
+    }
+   },
+   "intervals": {
+    "central_50": [
+     -4.0,
+     18.0
+    ],
+    "central_80": [
+     -13.7,
+     30.0
+    ]
+   }
+  },
+  "AWAY_CONTROL_STRONG": {
+   "development_in_sample_coverage": {
+    "central_50": 0.5079,
+    "central_80": 0.8016
+   },
+   "distribution": {
+    "mean": 15.14,
+    "n": 378,
+    "p10": -5.3,
+    "p25": 3.0,
+    "p50": 14.5,
+    "p75": 27.0,
+    "p90": 37.0,
+    "p_margin_ge_10": 0.5899,
+    "p_margin_ge_14": 0.5238,
+    "p_margin_ge_17": 0.4788,
+    "p_margin_ge_21": 0.381,
+    "p_margin_ge_24": 0.3175,
+    "p_margin_ge_28": 0.2487,
+    "p_margin_ge_3": 0.7566,
+    "p_margin_ge_7": 0.6772,
+    "p_margin_gt_0": 0.8095,
+    "win_rate": {
+     "ci95": [
+      0.7669,
+      0.8459
+     ],
+     "hits": 306,
+     "n": 378,
+     "rate": 0.8095
+    }
+   },
+   "intervals": {
+    "central_50": [
+     3.0,
+     27.0
+    ],
+    "central_80": [
+     -5.3,
+     37.0
+    ]
+   }
+  },
+  "HOME_CONTROL_MODERATE": {
+   "development_in_sample_coverage": {
+    "central_50": 0.5248,
+    "central_80": 0.8168
+   },
+   "distribution": {
+    "mean": 12.93,
+    "n": 404,
+    "p10": -7.0,
+    "p25": 3.0,
+    "p50": 12.0,
+    "p75": 24.0,
+    "p90": 34.0,
+    "p_margin_ge_10": 0.5693,
+    "p_margin_ge_14": 0.4876,
+    "p_margin_ge_17": 0.4183,
+    "p_margin_ge_21": 0.3441,
+    "p_margin_ge_24": 0.2649,
+    "p_margin_ge_28": 0.1955,
+    "p_margin_ge_3": 0.7599,
+    "p_margin_ge_7": 0.6559,
+    "p_margin_gt_0": 0.7995,
+    "win_rate": {
+     "ci95": [
+      0.7577,
+      0.8356
+     ],
+     "hits": 323,
+     "n": 404,
+     "rate": 0.7995
+    }
+   },
+   "intervals": {
+    "central_50": [
+     3.0,
+     24.0
+    ],
+    "central_80": [
+     -7.0,
+     34.0
+    ]
+   }
+  },
+  "HOME_CONTROL_STRONG": {
+   "development_in_sample_coverage": {
+    "central_50": 0.508,
+    "central_80": 0.8057
+   },
+   "distribution": {
+    "mean": 22.76,
+    "n": 628,
+    "p10": 1.0,
+    "p25": 8.0,
+    "p50": 23.0,
+    "p75": 35.0,
+    "p90": 48.0,
+    "p_margin_ge_10": 0.7293,
+    "p_margin_ge_14": 0.6704,
+    "p_margin_ge_17": 0.6194,
+    "p_margin_ge_21": 0.5541,
+    "p_margin_ge_24": 0.4952,
+    "p_margin_ge_28": 0.4124,
+    "p_margin_ge_3": 0.8742,
+    "p_margin_ge_7": 0.7834,
+    "p_margin_gt_0": 0.9013,
+    "win_rate": {
+     "ci95": [
+      0.8754,
+      0.9222
+     ],
+     "hits": 566,
+     "n": 628,
+     "rate": 0.9013
+    }
+   },
+   "intervals": {
+    "central_50": [
+     8.0,
+     35.0
+    ],
+    "central_80": [
+     1.0,
+     48.0
+    ]
+   }
+  }
+ },
+ "criteria": {
+  "closeness_min_lift": 1.1,
+  "control_tiers": [
+   "HOME_CONTROL_MODERATE",
+   "HOME_CONTROL_STRONG",
+   "AWAY_CONTROL_MODERATE",
+   "AWAY_CONTROL_STRONG"
+  ],
+  "coverage_hard_limits": {
+   "central_50": [
+    0.35,
+    0.65
+   ],
+   "central_80": [
+    0.65,
+    0.93
+   ]
+  },
+  "coverage_tolerance": {
+   "central_50": [
+    0.42,
+    0.58
+   ],
+   "central_80": [
+    0.72,
+    0.88
+   ]
+  },
+  "extreme_third_min_lift": 1.15,
+  "families": [
+   "CONTROL",
+   "CONTROL_INTERVALS",
+   "CLOSENESS",
+   "CLOSENESS_EVEN",
+   "ELEVATED_SCORING_ENVIRONMENT",
+   "SUPPRESSED_SCORING_ENVIRONMENT",
+   "PACE_HIGH",
+   "PACE_LOW",
+   "DEFENSIVE_SUPPRESSION",
+   "DISRUPTION"
+  ],
+  "interval_tiers_required": 3,
+  "intervals": {
+   "central_50": [
+    25,
+    75
+   ],
+   "central_80": [
+    10,
+    90
+   ]
+  },
+  "label_min_lift": 1.2,
+  "margin_thresholds": [
+   0,
+   3,
+   7,
+   10,
+   14,
+   17,
+   21,
+   24,
+   28
+  ],
+  "min_evaluable_seasons": 5,
+  "one_score": 8,
+  "quantiles": [
+   10,
+   25,
+   50,
+   75,
+   90
+  ],
+  "season_min_n": {
+   "closeness": 20,
+   "control": 15,
+   "disruption": 15,
+   "environment": 20,
+   "suppression": 10
+  },
+  "seasons_required": 5,
+  "v1_bands": {
+   "CONTROL": [
+    7,
+    24
+   ],
+   "FAVORITE_PULLS_AWAY": [
+    17,
+    45
+   ],
+   "ONE_SCORE": [
+    -8,
+    8
+   ]
+  }
+ },
+ "development_games": 3825,
+ "development_seasons": [
+  2021,
+  2022,
+  2023,
+  2024,
+  2025
+ ],
+ "holdout_seasons": [
+  2014,
+  2015,
+  2016,
+  2017,
+  2018,
+  2019,
+  2020
+ ],
+ "label": "HISTORICAL EMPIRICAL DISTRIBUTIONS fitted on DEVELOPMENT seasons only; not probabilities",
+ "schema": "cfb_archetype_v2_frozen_parameters/1.0.0",
+ "sha256": "683d075d99efdfed16f7fb35a9fd58234808d1a354f8fb8e3352c64e972bf7aa",
+ "sources": {
+  "wave1_report": "data/scripting/validation/archetype_historical_report.json",
+  "wave1_rows_sha256": {
+   "2021": "6915068d1aaf505cbc90ccc017d0c09bb9c8b38587e42eed0900d9a7ca356d0e",
+   "2022": "abbfde77070bfcf65cb6c6e5252ffd3c9cc0917180e67101c529c2e685b2327c",
+   "2023": "dcf36acfcb7fff1977a9744928ddd6802cf4f30e591a96e2f0934367203be160",
+   "2024": "0077929a99953b882194a1f2c96a90b95612c7926f1c348190763cf81033f58f",
+   "2025": "73b9c4489d9b01982b86b9e5f20616801a2ef6f9d1030c0c65e7f04bd62b140e"
+  }
+ },
+ "v2_version": "cfb-archetype-v2-candidate/1.0.0"
+}
