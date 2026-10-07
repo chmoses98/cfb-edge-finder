@@ -180,6 +180,8 @@ GUARDED_PACKAGES = (
     # The CFB Script Engine labels market expressions against football
     # scripts; it never prices or sizes them.
     "scripting",
+    # Research-only historical replay of the Script Engine.
+    "archetype_research",
 )
 
 
