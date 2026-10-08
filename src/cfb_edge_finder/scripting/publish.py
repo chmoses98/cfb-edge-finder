@@ -11,6 +11,12 @@ team; registry text (names, descriptions) is stated once in
 into the profile) instead of being copied. Prices are NOT in this payload:
 SIFT joins each expression to its live or published quote by ticker, so a
 price move never rewrites the football research.
+
+`claims_v2` (payload 1.2.0, additive) carries the Script Engine V2 claims
+published beside V1 in SHADOW (docs/SCRIPT_ENGINE_V2_MIGRATION.md): the
+frozen claims content minus identity already stated above, with
+EXPLOSIVE_UPSET scripts referenced by `script_id` into `game_scripts`, and
+the compact V2 market-authority map. Every 1.1.0 field is unchanged.
 """
 
 from __future__ import annotations
@@ -18,10 +24,11 @@ from __future__ import annotations
 from typing import Any
 
 from cfb_edge_finder.scripting import METHODOLOGY_VERSION
+from cfb_edge_finder.scripting.claims_market import compact
 from cfb_edge_finder.scripting.market_map import COMPAT_CODES
 from cfb_edge_finder.scripting.metrics import METRICS
 
-PAYLOAD_VERSION = "cfb_script_engine_payload/1.1.0"
+PAYLOAD_VERSION = "cfb_script_engine_payload/1.2.0"
 
 #: Every required per-metric field, as table columns. Repeated strings
 #: (sources, observation times, unavailability reasons) are interned into
@@ -153,6 +160,35 @@ def _thesis(t: dict[str, Any], rank_of: dict[str, int]) -> dict[str, Any]:
     }
 
 
+#: Claims-content keys the payload already states elsewhere (identity) or that
+#: are static contract text (the retired-label table; it stays in the frozen
+#: artifact and docs/SCRIPT_ENGINE_V2_MIGRATION.md).
+_CLAIMS_DROPPED = ("event_id", "game_key", "season", "kickoff_utc", "football_data_cutoff", "retired_v1")
+
+
+def claims_section(
+    claims_envelope: dict[str, Any] | None, authority_map: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """The V2 shadow claims as SIFT reads them; None when V2 was not built for this game."""
+    if claims_envelope is None:
+        return None
+    content = claims_envelope["content"]
+    out = {k: v for k, v in content.items() if k not in _CLAIMS_DROPPED}
+    upset = content["claims"]["explosive_upset"]
+    out["claims"] = {
+        **content["claims"],
+        "explosive_upset": {
+            "status": upset["status"],
+            "methodology": upset["methodology"],
+            "script_ids": [s["script_id"] for s in upset["scripts"]],
+        },
+    }
+    out["claims_artifact_hash"] = claims_envelope["artifact_hash"]
+    out["generated_at"] = claims_envelope["generated_at"]
+    out["market_authority"] = compact(authority_map)
+    return out
+
+
 def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
     """`record` = {"football": envelope, "market_map": annotated map | None, ...}."""
     envelope = record.get("football")
@@ -252,4 +288,5 @@ def sift_payload(record: dict[str, Any]) -> dict[str, Any]:
         "theses": [_thesis(t, rank_of) for t in mm.get("theses") or []],
         "market_disagreement": mm.get("market_disagreement"),
         "metric_registry": {m.metric_id: m.describe() for m in METRICS},
+        "claims_v2": claims_section(record.get("claims"), record.get("claims_market")),
     }

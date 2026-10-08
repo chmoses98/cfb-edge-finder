@@ -266,3 +266,31 @@ def test_an_event_that_cannot_fit_raises_instead_of_publishing(monkeypatch, tmp_
         rx.export_explorer(
             out, data_root=data_root, research_root=None, max_history_commits=2, script_engine_dir=sift_dir
         )
+
+
+V2_STEPS = len(rx.ENGINE_TRIM_STEPS) - 2
+
+
+def test_the_v2_shadow_claims_are_published_and_shed_only_before_v1_would_be_omitted(boundary, published):
+    engine, common, full = boundary
+    assert engine["claims_v2"]["activation"] == "SHADOW"
+    for budget in (full - 1, full // 2, full // 3, full // 4, 1):
+        out, _ = rx.fit_script_engine(engine, common, [], [], budget=budget)
+        steps = out["payload_trim"]["steps"]
+        if len(steps) <= V2_STEPS:  # every V1 detail step comes first; V2 is untouched until they are spent
+            assert out["claims_v2"] == engine["claims_v2"], budget
+        elif not out["payload_trim"]["omitted"] and len(steps) == V2_STEPS + 1:
+            assert out["claims_v2"]["story"] == engine["claims_v2"]["story"]
+            assert (
+                out["claims_v2"]["claims"]["control"]
+                == {k: v for k, v in (engine["claims_v2"]["claims"]["control"] or {}).items() if k != "context"}
+                or engine["claims_v2"]["claims"]["control"] is None
+            )
+    assert rx.ENGINE_TRIM_STEPS[-1] == "the V2 shadow claims (V1 is the active publication)"
+    carried = 0
+    for doc, _ in _events(published):
+        engine_doc = (doc.get("extensions") or {}).get("script_engine") or {}
+        if engine_doc.get("script_generation"):
+            assert engine_doc["claims_v2"]["claims_artifact_hash"]
+            carried += 1
+    assert carried == 3

@@ -599,3 +599,21 @@ qualify hangs-around. This is a gate on evidence quality, not a probability.
 | `COMPETITIVE_GRIND` | low scoring / both defenses control / low possessions; no strong edge | resolved `EVEN_MATCHUP` / `NARROW_EFFICIENCY_GAP` | ±8 only with that evidence | yes | **no** |
 | `COMPETITIVE_TOSSUP` | resolved `EVEN_MATCHUP` | `EVEN_MATCHUP` | ±8 | yes (low possessions supports) | **no** |
 | `PACE_DRIVEN_OVER`, `DEFENSIVE_SUPPRESSION` | possession / defensive environment | — | no margin band | — | — |
+
+## Script Engine V2 (shadow)
+
+`cfb-script-engine/2.0.0` publishes **independent football claims** beside V1, in SHADOW:
+
+* CONTROL (side + strength, with a frozen historical empirical range);
+* CLOSENESS;
+* PACE;
+* SCORING_ENVIRONMENT;
+* DEFENSIVE_SUPPRESSION;
+* DISRUPTION_EDGE;
+* EXPLOSIVE_UPSET, unchanged.
+
+V1 remains the active publication, and its artifacts, market map, labels and ledger are unchanged.
+Contract, retirements, market authority, ledger stream and the activation gate are in
+[`SCRIPT_ENGINE_V2_MIGRATION.md`](SCRIPT_ENGINE_V2_MIGRATION.md). The first shadow comparison is in
+[`SCRIPT_ENGINE_V2_SHADOW_COMPARISON.md`](SCRIPT_ENGINE_V2_SHADOW_COMPARISON.md).
+

@@ -35,6 +35,15 @@ MARKET_MAP_SCHEMA_VERSION = "cfb_script_market_map/1.1.0"
 LEDGER_SCHEMA_VERSION = "cfb_script_ledger/1.0.0"
 REALIZED_SCHEMA_VERSION = "cfb_realized_script/1.0.0"
 
+#: Script Engine V2 (docs/SCRIPT_ENGINE_V2_MIGRATION.md): independent football
+#: claims read from the frozen V1 artifact, published beside V1 in SHADOW.
+#: V1 (`METHODOLOGY_VERSION`) remains the active publication and its
+#: artifacts, hashes and ledger rows are unchanged.
+METHODOLOGY_V2_VERSION = "cfb-script-engine/2.0.0"
+CLAIMS_SCHEMA_VERSION = "cfb_script_claims/2.0.0"
+CLAIMS_MARKET_SCHEMA_VERSION = "cfb_claims_market_authority/1.0.0"
+LEDGER_V2_SCHEMA_VERSION = "cfb_script_ledger/2.0.0"
+
 #: Modules that build the football artifact. None of them may import anything
 #: that carries a market price; the market-blindness test enforces it.
 FOOTBALL_MODULES = (
@@ -53,6 +62,8 @@ FOOTBALL_MODULES = (
     "realized",
     "report",
     "baseline_eval",
+    "calibration",
+    "claims",
 )
 
 #: Modules that run strictly AFTER the freeze and may read contracts and prices.
@@ -61,4 +72,5 @@ MARKET_MODULES = (
     "expressions",
     "ledger",
     "publish",
+    "claims_market",
 )

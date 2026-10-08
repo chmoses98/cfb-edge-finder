@@ -1328,6 +1328,9 @@ ENGINE_TRIM_STEPS = (
     "team metric tables (team identity is kept)",
     "matchup dimension detail (the scoring baseline and adjustment summary are kept)",
     "finding metric references and evidence rows",
+    "V2 shadow drill-down (abstentions, data-quality reasons, calibration provenance, control context; "
+    "the claims, story and historical ranges are kept)",
+    "the V2 shadow claims (V1 is the active publication)",
 )
 #: When even the fully trimmed payload does not fit, it is replaced by this explicit marker, which the
 #: consumer renders as "unavailable, with reason" (it carries no `script_generation`). Fail closed: a
@@ -1372,6 +1375,19 @@ def _engine_trim_step(payload: dict, index: int) -> None:
         for finding in payload.get("matchup_findings") or []:
             finding.pop("evidence", None)
             finding["metric_refs"] = []
+    elif index == 9:
+        v2 = payload.get("claims_v2")
+        if isinstance(v2, dict):
+            v2.pop("abstentions", None)
+            (v2.get("data_quality") or {}).pop("reasons", None)
+            if isinstance(v2.get("calibration"), dict):
+                v2["calibration"] = {"sha256": v2["calibration"].get("sha256")}
+            control = (v2.get("claims") or {}).get("control")
+            if isinstance(control, dict):
+                control.pop("context", None)
+    elif index == 10:
+        if payload.get("claims_v2") is not None:
+            payload["claims_v2"] = None
 
 
 def fit_script_engine(
