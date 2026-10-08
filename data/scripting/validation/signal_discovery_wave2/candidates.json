@@ -1,0 +1,88 @@
+{
+  "status": "PRE-REGISTERED",
+  "version": "cfb-signal-discovery-wave2/1.0.0",
+  "kind": "PROSPECTIVE CONFIRMATION (research only; no bets, recommendations, SIFT badges, staking or automatic wagers)",
+  "registered_on_main": "45a527718b274a3417529bab0b7256db3c3569b6",
+  "wave1_provenance": {
+    "hypotheses_set1_canonical_sha256": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+    "hypotheses_set2_canonical_sha256": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+    "evaluation_report_canonical_sha256": "6c2b802f11e7d7221bed8caf29a6be32301346b549f848b52c90a1d77a59e169",
+    "frozen_context_moderate_control_ats": "n 1,834, 921-869-44, 51.5% cover, ROI -1.8%: NO ATS EDGE. Not reopened."
+  },
+  "population": {
+    "kickoff_on_or_after_utc": "2026-10-10T00:00:00Z",
+    "no_backfill": "Only games whose OBSERVATION row was appended by the research conductor strictly before the checkpoint window closed (kickoff-60 min). A game kicking off on/after the activation instant with no observation by then is recorded as SYSTEM_FAILURE, never reconstructed later.",
+    "game_identity": "Kalshi game key from the production market catalog; ESPN event id from the production frozen V2 artifact (content.event_id); home/away and team ids from the ESPN schedule event. Unresolvable -> IDENTITY_FAILURE."
+  },
+  "checkpoint": {
+    "id": "PRIMARY_60_180",
+    "window_minutes_before_kickoff": {"open": 180.0, "close": 60.0, "inclusive": true},
+    "capture_slots_minutes_before_kickoff": [165, 120, 90, 70],
+    "closing_context_slot_minutes_before_kickoff": [30],
+    "series": "KXNCAAFSPREAD",
+    "rule": "The checkpoint snapshot is the LAST capture attempt inside the window whose oriented ladder yields a market_implied_margin. Nothing outside the window is ever searched. No such capture -> ENTRY_UNAVAILABLE (or MARKET_NOT_OFFERED / ORIENTATION_FAILURE / SYSTEM_FAILURE when that is the reason)."
+  },
+  "market_center": {
+    "name": "market_implied_margin",
+    "never_called": ["fair spread", "true spread"],
+    "algorithm": "Wave-1 scripts/signal_discovery_cfb_kalshi_2026_spread.py, unchanged arithmetic. For perspective team T: every KXNCAAFSPREAD rung '<team> wins by over s' with status active/open and 0 < yes_bid <= yes_ask < 1 gives mid = (yes_bid + yes_ask)/2. A rung of T gives the point (s, mid); a rung of T's opponent gives the point (-s, 1 - mid). Points are sorted ascending (strike, then probability). market_implied_margin = s1 + (p1 - 0.5)/(p1 - p2) * (s2 - s1) at the FIRST consecutive pair with p1 >= 0.5 >= p2 and p1 != p2. No crossing -> None (missing stays missing). The final score is never read.",
+    "orientation": "A spread rung's team code is its ticker suffix with the trailing integer (floor_strike + 0.5) removed. The code is mapped to an ESPN team id through the frozen production matcher control_market.quotes.orient_markets applied to the SAME game's captured KXNCAAFGAME markets (<event>-<CODE>). Both ladder codes must map to the two different competitors of the game's ESPN event, else ORIENTATION_FAILURE.",
+    "report": "rungs used (all points, the bracketing pair), snapshot captured_at, minutes before kickoff"
+  },
+  "contract": {
+    "name": "natural rung (deterministic; never optimised)",
+    "rule": "Among the side-perspective ladder points of the checkpoint snapshot, the point with the smallest |p - 0.5|; ties broken by smaller |s|, then by ticker. A point from the side's own rung is bought as YES at the captured yes_ask; a point from the opponent's rung is bought as NO at the captured no_ask. NO is never 1 - YES. An ask that is not a whole cent in [1, 99] -> economics unavailable (QUOTE_NOT_EXECUTABLE); no other rung is substituted.",
+    "pays": "YES on '<side> wins by over s' pays iff side margin > s; NO on '<opponent> wins by over s' pays iff opponent margin <= s. Strikes are half-points: no push.",
+    "fee": "kalshi.fee_schedule.calculate_fee_cents(price_cents, 1, KALSHI_FEE_SCHEDULE_2026_07_07_TAKER, get_taker_multiplier('KXNCAAFSPREAD')), taker, at the entry ask. Uncomputable -> FEE_UNAVAILABLE, never 0.",
+    "units": "one research contract; no stake, no sizing"
+  },
+  "settlement": {
+    "source": "production game log data/football/<season>/team_games.jsonl (ESPN final score), read only after kickoff",
+    "actual_margin": "side points - opponent points",
+    "residual": "actual_margin - market_implied_margin (side perspective)",
+    "ats_like": "WIN if residual > 0, LOSS if residual < 0, PUSH if exactly 0 (excluded from the rate)",
+    "append_only": "Settlement is a new SETTLEMENT row; frozen OBSERVATION and ENTRY rows are never mutated.",
+    "closing_context": "the last capture with 0 < minutes_before < 60 yielding a market_implied_margin; side-aware closing move = closing implied margin - entry implied margin (positive = moved toward the side). Contract CLV = the same ticker's same-side ask at that capture - entry ask. Missing stays missing."
+  },
+  "streams": {
+    "CFB-PROS-001": {
+      "name": "RUSHING_EDGE_SPREAD",
+      "hypothesis_id": "H1-CFB",
+      "wording": "An opponent-adjusted rushing / rush-defense quality edge of at least the Wave-1 frozen qualifying magnitude produces a positive realized margin residual relative to the pre-registered Kalshi spread-market expectation.",
+      "wave1_source": "CFB-DSC-001 (set 2, Holm-surviving, block B +0.69 pts/SD, 12/12 seasons) with its pre-registered follow rule",
+      "feature": "defdiff.rush_success_rate = home_def_q.rush_success_rate - away_def_q.rush_success_rate (signal_discovery.evaluate._derive_set2), from signal_discovery.features.pregame_features on the production game log at the production 04:00 ET data cutoff",
+      "standardisation": {"mean": 0.13804024626610417, "sd": 1.4218539928759784, "source": "evaluation_report.json CFB-DSC-001 market.feature_mean / feature_sd (2014-2025)"},
+      "qualifies": "|z| >= 1.0 where z = (feature - mean) / sd",
+      "side": "home if z > 0, away if z < 0 (expected_sign +1)",
+      "feature_eligibility": "signal_discovery.features.eligibility(row) is None and the feature is defined",
+      "descriptive_only": "CFB-SIG-015 net.rushing is recorded on the observation for description; it never selects games",
+      "primary_question": "mean residual > 0",
+      "also_reported": ["median residual", "residual distribution", "positive-residual rate", "ATS-like success", "natural-rung contract economics"],
+      "reads": {"50": "EARLY_READ", "100": "INTERIM", "200": "INTERIM", "400": "PRIMARY_REVIEW"},
+      "falsified": "mean residual <= 0 at n >= 400 settled -> REJECTED. Economics are judged separately and never rescue or reject the residual question."
+    },
+    "CFB-PROS-002": {
+      "name": "STRONG_CONTROL_MARKET_SKEPTICISM",
+      "hypothesis_id": "H2-CFB",
+      "wording": "STRONG CONTROL games in which the pre-registered Kalshi spread-ladder market expectation assigns the CONTROL side an implied margin below +3 points outperform that market expectation prospectively.",
+      "wave1_source": "CFB-SIG-023 (+5.25 pts, 60.9% cover, n 70, DISCOVERY_ONLY)",
+      "control_source": "the first production V2 FINAL_PREGAME ledger row (methodology control-v2) for the game seen by the conductor before the window closes; CONTROL tier/side copied verbatim, never recomputed",
+      "eligibility": "CONTROL exists, strength STRONG, CONTROL side known, valid PRIMARY_60_180 ladder, market_implied_margin(CONTROL side) < 3.0 (strict)",
+      "frozen_threshold_points": 3.0,
+      "not_allowed": ["moneyline substitution", "rankings", "home/away filters", "conference filters", "favorite exclusions", "injury filters", "price thresholds"],
+      "recorded": ["side", "home/away", "implied margin", "actual margin", "residual", "outright win", "ATS-like result", "natural-rung contract economics"],
+      "primary_question": "mean residual > 0",
+      "reads": {"50": "INTERIM", "100": "PRIMARY_REVIEW"},
+      "falsified": "ATS-like success rate < 52% at n >= 100 settled -> REJECTED (descriptive falsification threshold)"
+    }
+  },
+  "row_statuses": ["PENDING", "ELIGIBLE", "ENTRY_UNAVAILABLE", "MARKET_NOT_OFFERED", "ORIENTATION_FAILURE", "IDENTITY_FAILURE", "FEE_UNAVAILABLE", "SETTLEMENT_PENDING", "SETTLED", "EXCLUDED_PROTOCOL", "SYSTEM_FAILURE"],
+  "verdict_states": ["PROSPECTIVE_TRACKING", "EARLY_READ", "INTERIM", "PRIMARY_REVIEW", "REJECTED", "REVIEW_REQUIRED"],
+  "verdict_rule": "n settled below the first read -> PROSPECTIVE_TRACKING; at/after a read -> that read's state; at/after PRIMARY_REVIEW n: falsified -> REJECTED, otherwise REVIEW_REQUIRED (a human decides; nothing is promoted by code).",
+  "never_emitted_by_code": ["EDGE_CONFIRMED"],
+  "statistics": {
+    "unit": "one row per (stream, game)",
+    "intervals": "95% bootstrap percentile, 4,000 resamples, numpy default_rng(20261010); Wilson 95% for rates",
+    "empty": "NO SETTLED SAMPLE (n 0 is never shown as a 0 rate or 0 ROI)"
+  }
+}
