@@ -1314,13 +1314,77 @@ def recorded_script_engine_fingerprint(app_root: Path) -> str | None:
     return (doc.get("script_engine") or {}).get("fingerprint")
 
 
-def fit_script_engine(engine: dict, common: dict, matchup: list, notes: list) -> tuple[dict, str | None]:
+#: The script-engine payload's trim order when an event would exceed its byte budget, lowest-value
+#: content first. Each step runs only while the document is still over budget. Never trimmed by any
+#: step: identity and status (`script_generation`, `status`, `version`), the scripts with their
+#: summaries and causal chains, the SIFT read, data confidence, findings and the band policy.
+ENGINE_TRIM_STEPS = (
+    "expression correlations",
+    "expressions without a script label",
+    "metric descriptions",
+    "every expression except best and multi-script ones, and every non-core ladder rung",
+    "every market expression, ladder and survivor (the compatibility summary is kept)",
+    "the metric registry",
+    "team metric tables (team identity is kept)",
+    "matchup dimension detail (the scoring baseline and adjustment summary are kept)",
+    "finding metric references and evidence rows",
+)
+#: When even the fully trimmed payload does not fit, it is replaced by this explicit marker, which the
+#: consumer renders as "unavailable, with reason" (it carries no `script_generation`). Fail closed: a
+#: partial football artifact is never published without its identity.
+ENGINE_OMITTED_STATUS = "OMITTED_OVER_BUDGET"
+
+
+class EventBudgetError(RuntimeError):
+    """An event_research document cannot be brought under its byte budget. Raised, never published."""
+
+
+def _engine_trim_step(payload: dict, index: int) -> None:
+    smm = payload.get("script_market_map") or {}
+    if index == 0:
+        for expr in smm.get("expressions") or []:
+            expr.pop("correlation", None)
+    elif index == 1:
+        keep = {"BEST_EXPRESSION", "MULTI_SCRIPT", "SCRIPT_ALIGNED", "AGGRESSIVE", "CONTRADICTED"}
+        smm["expressions"] = [e for e in smm.get("expressions") or [] if keep & set(e.get("labels") or [])]
+    elif index == 2:
+        for entry in (payload.get("metric_registry") or {}).values():
+            entry.pop("description", None)
+    elif index == 3:
+        featured = {"BEST_EXPRESSION", "MULTI_SCRIPT"}
+        smm["expressions"] = [e for e in smm.get("expressions") or [] if featured & set(e.get("labels") or [])]
+        payload["theses"] = [dict(t, rungs=[r for r in t["rungs"] if r[1]]) for t in payload.get("theses") or []]
+    elif index == 4:
+        if smm:
+            smm["expressions"] = []
+        payload["theses"] = []
+        payload["script_survivors"] = []
+    elif index == 5:
+        payload["metric_registry"] = {}
+    elif index == 6:
+        for team in ((payload.get("matchup_profile") or {}).get("teams") or {}).values():
+            if isinstance(team, dict):
+                team["metrics"] = {}
+    elif index == 7:
+        if isinstance(payload.get("matchup_profile"), dict):
+            payload["matchup_profile"]["dimensions"] = {}
+    elif index == 8:
+        for finding in payload.get("matchup_findings") or []:
+            finding.pop("evidence", None)
+            finding["metric_refs"] = []
+
+
+def fit_script_engine(
+    engine: dict, common: dict, matchup: list, notes: list, budget: int | None = None
+) -> tuple[dict, str | None]:
     """Fit a script-engine payload inside the event_research byte budget.
 
-    Trims in order of least loss -- expression correlations, then expressions
-    that carry no script-aligned label, then registry descriptions -- and
-    says what it trimmed. The football artifact itself is never trimmed."""
-    budget = BUDGETS["event_research"] - 2_000
+    Applies `ENGINE_TRIM_STEPS` in order, each only while the document is still over budget, and
+    records what it removed in the payload itself (`payload_trim`) and in the returned note. If even
+    the fully trimmed payload does not fit, the payload is replaced by an explicit
+    `ENGINE_OMITTED_STATUS` marker. Deterministic: the same inputs always trim the same way. The
+    football artifact is never altered: trimming removes published detail, it never rewrites a value."""
+    budget = BUDGETS["event_research"] - 2_000 if budget is None else budget
 
     def size(payload: dict) -> int:
         return doc_bytes(
@@ -1331,24 +1395,26 @@ def fit_script_engine(engine: dict, common: dict, matchup: list, notes: list) ->
     if size(engine) <= budget:
         return engine, None
     trimmed = json.loads(json.dumps(engine))
-    smm = trimmed.get("script_market_map") or {}
-    for expr in smm.get("expressions") or []:
-        expr.pop("correlation", None)
-    steps = ["expression correlations"]
-    if size(trimmed) > budget:
-        keep = {"BEST_EXPRESSION", "MULTI_SCRIPT", "SCRIPT_ALIGNED", "AGGRESSIVE", "CONTRADICTED"}
-        smm["expressions"] = [e for e in smm.get("expressions") or [] if keep & set(e.get("labels") or [])]
-        steps.append("expressions without a script label")
-    if size(trimmed) > budget:
-        for entry in (trimmed.get("metric_registry") or {}).values():
-            entry.pop("description", None)
-        steps.append("metric descriptions")
-    if size(trimmed) > budget:
-        featured = {"BEST_EXPRESSION", "MULTI_SCRIPT"}
-        smm["expressions"] = [e for e in smm.get("expressions") or [] if featured & set(e.get("labels") or [])]
-        trimmed["theses"] = [dict(t, rungs=[r for r in t["rungs"] if r[1]]) for t in trimmed.get("theses") or []]
-        steps.append("every expression except best and multi-script ones, and every non-core ladder rung")
-    return trimmed, "script engine payload trimmed to fit the event budget: " + ", ".join(steps)
+    steps: list[str] = []
+    for index, label in enumerate(ENGINE_TRIM_STEPS):
+        _engine_trim_step(trimmed, index)
+        steps.append(label)
+        trimmed["payload_trim"] = {"budget_bytes": budget, "steps": list(steps), "omitted": False}
+        if size(trimmed) <= budget:
+            return trimmed, "script engine payload trimmed to fit the event budget: " + ", ".join(steps)
+    gen = engine.get("script_generation") or {}
+    omitted = {
+        "status": ENGINE_OMITTED_STATUS,
+        "reason": (
+            "the script engine payload could not be fitted inside the event's byte budget even after "
+            "every trim step; it is omitted rather than published oversized"
+        ),
+        "version": engine.get("version"),
+        "artifact_hash": gen.get("artifact_hash"),
+        "methodology_version": gen.get("methodology_version"),
+        "payload_trim": {"budget_bytes": budget, "steps": list(ENGINE_TRIM_STEPS), "omitted": True},
+    }
+    return omitted, "script engine payload omitted: it does not fit the event budget even fully trimmed"
 
 
 def build_explorer(
@@ -1815,6 +1881,11 @@ def build_explorer(
                 f"every market under the {BUDGETS['event_research']}-byte budget"
             )
             doc = R.event_research(**common, matchup=rows, context={"notes": notes + [trim_note]})
+        if doc_bytes(doc) > BUDGETS["event_research"]:
+            raise EventBudgetError(
+                f"{eid}: {doc_bytes(doc)} bytes exceeds the {BUDGETS['event_research']}-byte event_research "
+                "budget after every trim; refusing to publish an oversized event"
+            )
         event_docs[eid] = doc
 
     # ---- capability manifest
