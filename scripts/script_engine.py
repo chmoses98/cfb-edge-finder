@@ -455,6 +455,47 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_settle_v2(args: argparse.Namespace) -> int:
+    """Settle V2 FINAL_PREGAME rows (frozen claims, never regenerated) against the game log. Append-only."""
+    from cfb_edge_finder.scripting.ledger import load_artifact, read_rows_v2
+    from cfb_edge_finder.scripting.realized_v2 import key_of, settle_rows
+
+    rows, _, _, _ = load_football(args.football_dir)
+    out_path = args.ledger_dir / str(args.season) / "realized_v2.jsonl"
+    existing = out_path.read_text().splitlines() if out_path.exists() else []
+    done = {key_of(json.loads(line)) for line in existing if line.strip()}
+
+    def load_claims(digest: str) -> dict | None:
+        path = args.ledger_dir / str(args.season) / "artifacts_v2" / f"{digest}.json.gz"
+        return _read_gz(path) if path.exists() else None
+
+    def load_v1(digest: str | None) -> dict | None:
+        return load_artifact(args.ledger_dir, args.season, digest) if digest else None
+
+    new = settle_rows(read_rows_v2(args.ledger_dir, args.season), done, rows, load_claims, load_v1)
+    if new:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with out_path.open("a", encoding="utf-8") as fh:
+            for record in new:
+                fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+    print(f"V2: settled {len(new)} FINAL_PREGAME row(s)")
+    return 0
+
+
+def cmd_report_v2(args: argparse.Namespace) -> int:
+    from cfb_edge_finder.scripting.ledger import read_rows_v2
+    from cfb_edge_finder.scripting.realized_v2 import build_report_v2, render_markdown_v2
+
+    path = args.ledger_dir / str(args.season) / "realized_v2.jsonl"
+    realized = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+    report = build_report_v2(read_rows_v2(args.ledger_dir, args.season), realized)
+    args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / "script_engine_v2_report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
+    (args.out / "script_engine_v2_report.md").write_text(render_markdown_v2(report))
+    print(f"V2 report: {report['final_pregame_games']} FINAL_PREGAME game(s), {report['settled_games']} settled")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -474,8 +515,23 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--ledger-dir", type=Path, required=True)
     r.add_argument("--season", type=int, default=2026)
     r.add_argument("--out", type=Path, required=True)
+    s2 = sub.add_parser("settle-v2")
+    s2.add_argument("--football-dir", type=Path, required=True)
+    s2.add_argument("--ledger-dir", type=Path, required=True)
+    s2.add_argument("--season", type=int, default=2026)
+    r2 = sub.add_parser("report-v2")
+    r2.add_argument("--ledger-dir", type=Path, required=True)
+    r2.add_argument("--season", type=int, default=2026)
+    r2.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
-    return {"build": cmd_build, "settle": cmd_settle, "report": cmd_report}[args.cmd](args)
+    commands = {
+        "build": cmd_build,
+        "settle": cmd_settle,
+        "report": cmd_report,
+        "settle-v2": cmd_settle_v2,
+        "report-v2": cmd_report_v2,
+    }
+    return commands[args.cmd](args)
 
 
 if __name__ == "__main__":

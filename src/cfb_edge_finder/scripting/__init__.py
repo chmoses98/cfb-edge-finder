@@ -60,6 +60,7 @@ FOOTBALL_MODULES = (
     "football",
     "packets",
     "realized",
+    "realized_v2",
     "report",
     "baseline_eval",
     "calibration",

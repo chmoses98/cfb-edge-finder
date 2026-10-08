@@ -1,0 +1,149 @@
+name: CFB Research Conductor
+
+# *** WHAT THIS IS ***
+# The prospective research clock for CFB (scripts/cfb_research_conductor.py, docs/CFB_RESEARCH_CONDUCTOR.md):
+#
+#   * PRIMARY-WINDOW CAPTURE: every game's Kalshi game-winner quotes at 165/120/90/70 minutes before kickoff
+#     (the frozen PRIMARY_60_180 window), a missed moment caught up while the window is open, every attempt
+#     logged so a missing price always says whether the MARKET or OUR PIPELINE is why;
+#   * FINAL_PREGAME WATCHDOG: a game kicking off within ~3 h with a V2 claim but no FINAL_PREGAME ledger row
+#     dispatches the CFB Script Engine (debounced, never while one runs); finished games missing from the game
+#     log do the same so settlement data arrives;
+#   * PROSPECTIVE SETTLEMENT of the pre-registered H1/H2 (docs/CONTROL_PROSPECTIVE_2026_PROTOCOL.md);
+#   * PUBLICATION of cfb_research_signals/1.0.0 (signals/cfb_research_signals.json), which SIFT renders.
+#
+# Keyless: Kalshi's public GET /markets only. It cannot place an order, and nothing it writes is a stake,
+# a probability or a recommendation.
+#
+# *** WHY A LOOP THAT DISPATCHES ITS SUCCESSOR ***
+# GitHub's scheduler is not a dependable clock for this repository: the */30 catalog cron really fires every
+# 2-6 hours, and an 18:41 Script Engine slot once ran at 23:17, after a 23:00 kickoff. So each run cycles every
+# 5 minutes for ~5.5 hours and then dispatches the next run (workflow_dispatch from GITHUB_TOKEN may start a
+# run). The cron below only restarts the chain if it ever breaks; the concurrency group keeps one loop alive.
+#
+# *** WHERE IT WRITES ***
+# Only its own branch, `research-signals` (`research-signals-dev` from any other ref, so a branch test can
+# never touch production records). It never writes main, so it does not hold the research-data-write group
+# and cannot displace the catalog, the app export or the Script Engine (tests/test_research_workflow_concurrency.py).
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  # A feature-branch push that touches the conductor runs a short live test against research-signals-dev.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - ".github/workflows/cfb-research-conductor.yml"
+      - "scripts/cfb_research_conductor.py"
+      - "src/cfb_edge_finder/control_prospective/**"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "Loop length in minutes (default 330)"
+        default: "330"
+        required: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: cfb-research-conductor-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  conduct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      SEASON: "2026"
+      CYCLE_SECONDS: "300"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Prepare the store and the input directories
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" = "main" ]; then BRANCH=research-signals; else BRANCH=research-signals-dev; fi
+          echo "STORE_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "STORE=$RUNNER_TEMP/store" >> "$GITHUB_ENV"
+          echo "MAIN_DATA=$RUNNER_TEMP/main" >> "$GITHUB_ENV"
+          echo "LEDGER=$RUNNER_TEMP/ledger" >> "$GITHUB_ENV"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin "$BRANCH" 2>/dev/null; then
+            git worktree add -B "$BRANCH" "$RUNNER_TEMP/store" FETCH_HEAD
+          else
+            git worktree add --orphan -b "$BRANCH" "$RUNNER_TEMP/store"
+          fi
+
+      - name: Conduct (one cycle every 5 minutes, ~5.5 hours)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOOP_MINUTES: ${{ inputs.minutes || (github.event_name == 'push' && '12') || '330' }}
+        run: |
+          set -uo pipefail
+          refresh() {
+            # main's data (catalog, game log, V2 claims, event ids) and the V2 ledger, read-only
+            git fetch -q --depth=1 origin main || return 1
+            rm -rf "$MAIN_DATA.tmp" && mkdir -p "$MAIN_DATA.tmp"
+            git archive FETCH_HEAD data/live/cfb_market_catalog.json data/live/games "data/football/$SEASON" \
+              data/scripting/live/sift data/scripting/live/frozen_v2 app/latest/events.json \
+              | tar -x -C "$MAIN_DATA.tmp" || return 1
+            rm -rf "$MAIN_DATA" && mv "$MAIN_DATA.tmp" "$MAIN_DATA"
+            mkdir -p "$LEDGER/$SEASON"
+            if git fetch -q --depth=1 origin script-ledger; then
+              git show "FETCH_HEAD:data/scripting/ledger/$SEASON/publications_v2.jsonl" \
+                > "$LEDGER/$SEASON/publications_v2.jsonl.tmp" \
+                && mv "$LEDGER/$SEASON/publications_v2.jsonl.tmp" "$LEDGER/$SEASON/publications_v2.jsonl"
+            fi
+          }
+          publish() {
+            ( cd "$STORE" \
+              && git add -A \
+              && { git diff --cached --quiet || git commit -qm "research conductor: $(date -u +%Y-%m-%dT%H:%MZ)"; } \
+              && for attempt in 1 2 3 4; do
+                   git push -q origin "HEAD:$STORE_BRANCH" && exit 0
+                   sleep $((attempt * 4))
+                 done; exit 1 )
+          }
+          DISPATCH=()
+          if [ "$GITHUB_REF_NAME" = "main" ]; then DISPATCH=(--dispatch); fi
+          end=$(( $(date +%s) + LOOP_MINUTES * 60 ))
+          ok=0; fail=0
+          while :; do
+            start=$(date +%s)
+            if refresh || [ -d "$MAIN_DATA" ]; then
+              if python scripts/cfb_research_conductor.py --main-dir "$MAIN_DATA" --ledger-dir "$LEDGER" \
+                   --store-dir "$STORE" --season "$SEASON" --run-id "$GITHUB_RUN_ID" "${DISPATCH[@]}" \
+                   > "$RUNNER_TEMP/cycle.json"; then
+                ok=$((ok + 1)); cat "$RUNNER_TEMP/cycle.json"
+              else
+                fail=$((fail + 1)); echo "::warning::conductor cycle failed"
+              fi
+              publish || echo "::warning::publish failed (will retry next cycle)"
+            else
+              fail=$((fail + 1)); echo "::warning::could not read main"
+            fi
+            now=$(date +%s)
+            [ $(( now + CYCLE_SECONDS )) -lt "$end" ] || break
+            wait=$(( CYCLE_SECONDS - (now - start) ))
+            [ "$wait" -gt 0 ] && sleep "$wait"
+          done
+          {
+            echo "### CFB research conductor"
+            echo "cycles ok: $ok, failed: $fail, store: $STORE_BRANCH"
+            echo '```json'
+            cat "$RUNNER_TEMP/cycle.json" 2>/dev/null | python3 -m json.tool 2>/dev/null | head -80
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$ok" -gt 0 ]
+
+      - name: Dispatch the next loop
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run cfb-research-conductor.yml --ref main --repo "$GITHUB_REPOSITORY"
