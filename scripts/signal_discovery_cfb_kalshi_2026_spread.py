@@ -18,8 +18,8 @@ def ts(s):
 
 
 rows = [
-    json.loads(l)
-    for l in gzip.open(f"{REPO}/data/scripting/validation/control_market_2026/control_market_rows.jsonl.gz")
+    json.loads(line)
+    for line in gzip.open(f"{REPO}/data/scripting/validation/control_market_2026/control_market_rows.jsonl.gz")
 ]
 keys = {}
 for line in sh("log", "--format=%H", "origin/main", "--", "data/live/games").split():
