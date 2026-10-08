@@ -129,6 +129,15 @@ def cmd_freeze_set1(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_freeze_set2(args: argparse.Namespace) -> int:
+    from cfb_edge_finder.signal_discovery.hypotheses import SET2
+
+    payload = {"set": 2, "version": SIGNAL_DISCOVERY_VERSION, "hypotheses": SET2, "decisive_block": "B"}
+    SET2_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    print("set2 sha256", _canon_sha(payload))
+    return 0
+
+
 def _check_frozen(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text())
     sha = _canon_sha(payload)
@@ -298,6 +307,7 @@ def main() -> int:
     f.add_argument("--out", required=True)
     f.add_argument("--workers", type=int, default=4)
     sub.add_parser("freeze-set1")
+    sub.add_parser("freeze-set2")
     for name in ("screen", "evaluate"):
         p = sub.add_parser(name)
         p.add_argument("--cfbd", action="append", required=True, help="SEASON=DIR")
@@ -308,6 +318,8 @@ def main() -> int:
         return cmd_features(args)
     if args.cmd == "freeze-set1":
         return cmd_freeze_set1(args)
+    if args.cmd == "freeze-set2":
+        return cmd_freeze_set2(args)
     if args.cmd == "screen":
         return cmd_screen(args)
     if args.cmd == "evaluate":

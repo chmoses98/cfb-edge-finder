@@ -142,7 +142,30 @@ feature snapshot, contract, executable price and timestamp, later settlement, co
 
 ## 12. Set 2 registration (appended after the Stage A screen)
 
-_Pending._
+The Stage A screen (`stage_a_screen.json`, block A 2014–2019 only, code `2e9f55a7`) tested 410 associations
+(273 market, 137 football); 15 market associations had whole-screen BH q < 0.05 and 21 had q < 0.10. They were
+dominated by one theme (run-game / run-defense efficiency vs the spread) plus a "visibility" pattern inside STRONG
+CONTROL (the more the control team's adjusted scoring offense out-rates its opponent's, the worse it covers) and a
+pass-rate style effect. None of the 8 curated interactions had a market q < 0.3. Eight candidates were written down:
+
+| Id | Rule (exact spec in `hypotheses_set2.json`) | Expected |
+|---|---|---|
+| CFB-DSC-001 | slope of home ATS residual on home − away rush-defense quality (`*_def_q.rush_success_rate`) | + |
+| CFB-DSC-002 | slope of home ATS residual on production `net.rushing` (no controls) | + |
+| CFB-DSC-003 | slope of home ATS residual on home − away raw pass rate | − |
+| CFB-DSC-004 | within STRONG CONTROL: slope of control-side ATS residual on control-oriented adjusted ppg-offense quality difference | − |
+| CFB-DSC-005 | STRONG CONTROL with that difference ≤ 1.5 (rounded block-A median 1.645) → control side ATS | + |
+| CFB-DSC-006 | slope of home ATS residual on `net.sustained_efficiency − net.scoring` (not screened; generalises DSC-004) | + |
+| CFB-DSC-007 | slope of total residual on home + away raw pass rate | − |
+| CFB-DSC-008 | within MODERATE CONTROL: slope of control-side ATS residual on control-oriented success-rate matchup net | + |
+
+| Item | Value |
+|---|---|
+| **Set 2** | `data/scripting/validation/signal_discovery_wave1/hypotheses_set2.json` |
+| **Set 2 canonical SHA-256** | **`babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234`** |
+| Decisive sample | block B (2020–2025) only; block A is shown as the discovery sample, never as validation |
+| FDR | set-2 primary tests join set 1 in the all-hypothesis BH family, and are also corrected within set 2 on block B |
+| Derived features | `evaluate._derive_set2` (pregame quantities only), committed with this registration |
 
 ## 13. Deviations
 

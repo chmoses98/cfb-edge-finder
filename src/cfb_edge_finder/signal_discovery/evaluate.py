@@ -112,6 +112,34 @@ def _derive(r: dict) -> None:
     q = [r.get(f"{s}_off_q.points_per_game") for s in ("home", "away")]
     r["off_quality_sum"] = sum(q) if None not in q else None
     r["early_season"] = (r.get("week") or 0) <= 6 and r.get("season_type") == "regular"
+    _derive_set2(r)
+
+
+def _q(r: dict, side: str, unit: str, metric: str) -> float | None:
+    return r.get(f"{side}_{unit}_q.{metric}")
+
+
+def _derive_set2(r: dict) -> None:
+    """Derived football features named by hypothesis set 2 (pregame quantities only)."""
+    h, a = _q(r, "home", "def", "rush_success_rate"), _q(r, "away", "def", "rush_success_rate")
+    r["defdiff.rush_success_rate"] = h - a if None not in (h, a) else None
+    hp, ap = r.get("home_pass_rate_raw"), r.get("away_pass_rate_raw")
+    r["pass_rate_diff_raw"] = hp - ap if None not in (hp, ap) else None
+    r["pass_rate_sum_raw"] = hp + ap if None not in (hp, ap) else None
+    se, sc = r.get("net.sustained_efficiency"), r.get("net.scoring")
+    r["eff_minus_scoring_net"] = se - sc if None not in (se, sc) else None
+    cs = r.get("control_side")
+    r["ctrl.offdiff_ppg"] = r["ctrl.netq_success_rate"] = None
+    if cs is not None:
+        sg = 1.0 if cs == "home" else -1.0
+        ho, ao = _q(r, "home", "off", "points_per_game"), _q(r, "away", "off", "points_per_game")
+        if None not in (ho, ao):
+            r["ctrl.offdiff_ppg"] = sg * (ho - ao)
+        q = [
+            _q(r, s, u, "success_rate") for s, u in (("home", "off"), ("away", "def"), ("away", "off"), ("home", "def"))
+        ]
+        if None not in q:
+            r["ctrl.netq_success_rate"] = sg * ((q[0] - q[1]) - (q[2] - q[3]))
 
 
 def season_norms(rows: list[dict]) -> dict[int, dict[str, float]]:

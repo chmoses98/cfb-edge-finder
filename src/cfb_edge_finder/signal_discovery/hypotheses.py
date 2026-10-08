@@ -488,3 +488,140 @@ STATUS_RULE = {
     "efficient_ci_halfwidth_cover": 0.05,
     "blocks": {"A": [2014, 2015, 2016, 2017, 2018, 2019], "B": [2020, 2021, 2022, 2023, 2024, 2025]},
 }
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# SET 2 -- written AFTER the Stage A screen (block A = 2014-2019 lines + outcomes only) and BEFORE any block-B
+# (2020-2025) line was joined to these features. Decisive evaluation: block B only. Thresholds come from block-A
+# feature distributions (never from block-A outcomes) or are the sign split.
+# --------------------------------------------------------------------------------------------------------------------
+
+SET2: list[dict[str, Any]] = [
+    {
+        "id": "CFB-DSC-001",
+        "name": "Rush-defense quality edge -> home ATS residual",
+        "family": "RUSHING",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "all"},
+        "feature": "defdiff.rush_success_rate",
+        "expected_sign": 1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "block A: +0.83 pts/SD, z +3.45, whole-screen q 0.002, 6/6 seasons",
+        "interpretation": (
+            "The team whose run defense is better (opponent-adjusted rush success allowed) may be under-rated: run "
+            "stopping is less visible than points/passing yards, yet it forces long down-and-distance."
+        ),
+    },
+    {
+        "id": "CFB-DSC-002",
+        "name": "Production rushing net (unconditional) -> home ATS residual",
+        "family": "RUSHING",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "all"},
+        "feature": "net.rushing",
+        "expected_sign": 1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "block A: +0.67 pts/SD, z +2.75, q 0.019, 6/6 seasons",
+        "interpretation": "Same theme on the production rushing dimension (offense rush efficiency vs run defense).",
+    },
+    {
+        "id": "CFB-DSC-003",
+        "name": "Pass-rate tendency difference -> home ATS residual (negative)",
+        "family": "STYLE",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "all"},
+        "feature": "pass_rate_diff_raw",
+        "expected_sign": -1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "block A: -0.72 pts/SD, z -2.93, q 0.011, 5/6 seasons",
+        "interpretation": (
+            "The more pass-heavy side may be over-rated (passing production is the most visible stat). Pass rate is a "
+            "descriptive TENDENCY the production adjustment deliberately leaves raw (not a performance statistic)."
+        ),
+    },
+    {
+        "id": "CFB-DSC-004",
+        "name": "Within STRONG CONTROL: control-side scoring-offense advantage -> control-side ATS (negative)",
+        "family": "CONTROL_INTERACTION",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "control", "strength": "STRONG"},
+        "side": "control",
+        "feature": "ctrl.offdiff_ppg",
+        "expected_sign": -1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "block A within STRONG: -1.31 pts/SD, z -3.03, q 0.008, 6/6 seasons",
+        "interpretation": (
+            "VISIBILITY: when a STRONG efficiency edge is also visible as a big adjusted points-per-game advantage of "
+            "the control team's offense, the market prices it fully or over-prices it; when the edge is in efficiency "
+            "but not yet in scoring, it may be under-priced."
+        ),
+    },
+    {
+        "id": "CFB-DSC-005",
+        "name": "STRONG CONTROL with low scoring visibility (control offense ppg-quality edge <= 1.5 SD) -> ATS",
+        "family": "CONTROL_INTERACTION",
+        "kind": "SIDE",
+        "population": {
+            "rule": "feature_range",
+            "feature": "ctrl.offdiff_ppg",
+            "hi": 1.5,
+            "and": [{"rule": "control", "strength": "STRONG"}],
+        },
+        "side": "control",
+        "primary_market": "ATS",
+        "markets": ["ATS", "ML"],
+        "screen_evidence": "threshold 1.5 = rounded block-A median (1.645) of the oriented feature within STRONG",
+        "interpretation": "Binary form of CFB-DSC-004: the less-visible half of STRONG CONTROL.",
+    },
+    {
+        "id": "CFB-DSC-006",
+        "name": "Efficiency net minus scoring net -> home ATS residual",
+        "family": "VISIBILITY",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "all"},
+        "feature": "eff_minus_scoring_net",
+        "expected_sign": 1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "not screened directly; generalises the CFB-DSC-004 visibility idea to every game",
+        "interpretation": (
+            "Efficiency that has not (yet) shown up in points may be under-priced by a points-anchored market."
+        ),
+    },
+    {
+        "id": "CFB-DSC-007",
+        "name": "Combined pass-rate tendency -> total residual (under)",
+        "family": "STYLE",
+        "kind": "SLOPE_TOTAL",
+        "population": {"rule": "all"},
+        "feature": "pass_rate_sum_raw",
+        "expected_sign": -1,
+        "primary_market": "TOTAL",
+        "markets": ["TOTAL"],
+        "screen_evidence": "block A: -0.56 pts/SD, z -2.18, q 0.082, 6/6 seasons",
+        "interpretation": (
+            "Totals may over-weight pass-heavy matchups (incompletions stop the clock but also end drives)."
+        ),
+    },
+    {
+        "id": "CFB-DSC-008",
+        "name": "Within MODERATE CONTROL: success-rate matchup net -> control-side ATS",
+        "family": "CONTROL_INTERACTION",
+        "kind": "SLOPE_SIDE",
+        "population": {"rule": "control", "strength": "MODERATE"},
+        "side": "control",
+        "feature": "ctrl.netq_success_rate",
+        "expected_sign": 1,
+        "primary_market": "ATS",
+        "markets": ["ATS"],
+        "screen_evidence": "block A within MODERATE: +1.22 pts/SD, z +2.44, q 0.043, 6/6 seasons",
+        "interpretation": (
+            "Among MODERATE edges, the ones carried by success rate (the most stable efficiency stat) may be"
+            " under-priced."
+        ),
+    },
+]
