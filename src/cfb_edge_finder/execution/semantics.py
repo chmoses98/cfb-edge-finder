@@ -230,6 +230,22 @@ def _split_matchup(
     return None, None, "unparsed", "none"
 
 
+def title_readings(title: str | None) -> list[tuple[str, str]]:
+    """Every (away, home) a game title can be read as, for a caller that has
+    its own evidence to choose with (the Script Engine has the football
+    schedule, never the contracts). " at " readings first; " vs " readings
+    only when the title has no " at " separator -- the same precedence as
+    `_split_matchup`. One reading for an ordinary title, several for
+    "University at Albany at Stony Brook"."""
+    if not title:
+        return []
+    for seps in (_AT_SEPARATORS, _VS_SEPARATORS):
+        splits = _candidate_splits(str(title), seps)
+        if splits:
+            return splits
+    return []
+
+
 def _ticker_suffix(market_ticker: str | None, event_ticker: str | None) -> str | None:
     if not market_ticker:
         return None

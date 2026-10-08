@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import collect_live_context as names_util  # noqa: E402  (name matching only; no network used here)
 
 from cfb_edge_finder.execution.disposition import DispositionConfig, parse_timestamp  # noqa: E402
-from cfb_edge_finder.execution.semantics import build_game_teams  # noqa: E402
+from cfb_edge_finder.execution.semantics import build_game_teams, title_readings  # noqa: E402
 from cfb_edge_finder.execution.slate import build_packet, load_catalog  # noqa: E402
 from cfb_edge_finder.scripting import METHODOLOGY_V2_VERSION, METHODOLOGY_VERSION  # noqa: E402
 from cfb_edge_finder.scripting.calibration import CalibrationMismatch, load_calibration  # noqa: E402
@@ -192,6 +192,34 @@ def match_event(request: GameRequest, schedule: list[dict[str, Any]]) -> tuple[d
     return (best[1] if best else None), home_keys, away_keys
 
 
+def resolve_request(
+    game_key: str, title: str | None, kickoff: str | None, schedule: list[dict[str, Any]]
+) -> tuple[GameRequest, dict | None, set[str], set[str]]:
+    """The game's two teams from its title, and the football-schedule event they play.
+
+    An ordinary title has one reading. A title whose school name contains the
+    separator ("University at Albany at Stony Brook") has several, and the
+    title parser, which here gets no contracts to decide with, reports it
+    ambiguous. The football schedule decides instead: the one reading whose
+    BOTH teams play a scheduled game near kickoff is the game. None or more
+    than one such reading leaves the request ambiguous, and identity fails
+    as before -- never a guess.
+    """
+    teams = build_game_teams(title, [])
+    request = GameRequest(game_key, title, teams.home_name, teams.away_name, kickoff)
+    if teams.home_away_source == "ambiguous_title":
+        found = []
+        for away, home in title_readings(title):
+            reading = GameRequest(game_key, title, home, away, kickoff)
+            event, home_keys, away_keys = match_event(reading, schedule)
+            if event is not None:
+                found.append((reading, event, home_keys, away_keys))
+        if len(found) == 1:
+            return found[0]
+    event, home_keys, away_keys = match_event(request, schedule)
+    return request, event, home_keys, away_keys
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     now = iso_utc(datetime.now(UTC)) if not args.as_of else iso_utc(parse_utc(args.as_of))
     rows, schedule, availability, manifest = load_football(args.football_dir)
@@ -232,9 +260,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             continue
 
         # 1-2. identity only, then the physical game in the football schedule
-        teams = build_game_teams(entry.get("title"), [])
-        request = GameRequest(game_key, entry.get("title"), teams.home_name, teams.away_name, kickoff)
-        event, home_keys, away_keys = match_event(request, schedule)
+        request, event, home_keys, away_keys = resolve_request(game_key, entry.get("title"), kickoff, schedule)
         check = identity_check(request, event, home_keys, away_keys)
         if check["status"] == "FAIL":
             coded, kalshi_home_code = match_by_codes(request, schedule)
