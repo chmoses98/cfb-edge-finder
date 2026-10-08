@@ -156,3 +156,72 @@ def test_an_unresolvable_team_is_reported_not_guessed():
     contract = derive_semantics(stranger, game_teams)
     assert contract.team == TeamSlot.UNRESOLVED.value
     assert contract.status == "unresolved_team"
+
+
+# ------------------------------------------- a separator inside a school's own name
+
+
+def _moneyline_pair(game_key: str, away: tuple[str, str], home: tuple[str, str]):
+    """The two game-winner contracts Kalshi lists for a game: (code, YES label) per side, plus the tie."""
+    rows = [
+        market(
+            f"KXNCAAFGAME-{game_key}-{code}", family="game_moneyline", title=f"Will {label} win?", yes_sub_title=label
+        )
+        for code, label in (away, home)
+    ]
+    rows.append(market(f"KXNCAAF1H-{game_key}-TIE", family="first_half_moneyline", title="Tie", yes_sub_title="Tie"))
+    return rows
+
+
+def test_university_at_albany_at_stony_brook_is_two_real_teams():
+    # The live milestone (26OCT17ALBYSTON, data/live/games/26OCT17ALBYSTON.json). Partitioning on the FIRST " at "
+    # published away "University" and home "Albany at Stony Brook"; the contracts name the real two.
+    rows = _moneyline_pair("26OCT17ALBYSTON", ("ALBY", "University at Albany"), ("STON", "Stony Brook"))
+    game_teams = build_game_teams("University at Albany at Stony Brook", rows)
+    assert game_teams.away_name == "University at Albany"
+    assert game_teams.home_name == "Stony Brook"
+    assert game_teams.home_away_source == "milestone_title_at"
+    assert game_teams.home_away_confidence == "stated"
+    # Both sides now carry their exchange code (before: STON matched no side, so home had no code at all).
+    assert game_teams.code_to_slot == {"ALBY": TeamSlot.AWAY.value, "STON": TeamSlot.HOME.value}
+    assert "University" not in (game_teams.away_name, game_teams.home_name)
+
+
+def test_a_school_with_at_in_its_name_can_be_home_too():
+    rows = _moneyline_pair("26OCT24STONALBY", ("STON", "Stony Brook"), ("ALBY", "University at Albany"))
+    game_teams = build_game_teams("Stony Brook at University at Albany", rows)
+    assert (game_teams.away_name, game_teams.home_name) == ("Stony Brook", "University at Albany")
+    assert game_teams.code_to_slot == {"STON": TeamSlot.AWAY.value, "ALBY": TeamSlot.HOME.value}
+
+
+def test_an_at_inside_a_name_never_hijacks_a_vs_title():
+    rows = _moneyline_pair("26SEP06UNHALBY", ("UNH", "New Hampshire"), ("ALBY", "University at Albany"))
+    game_teams = build_game_teams("New Hampshire vs University at Albany", rows)
+    assert (game_teams.away_name, game_teams.home_name) == ("New Hampshire", "University at Albany")
+    assert game_teams.home_away_confidence == "convention"
+
+
+def test_several_separators_and_no_contract_evidence_is_reported_not_guessed():
+    game_teams = build_game_teams("University at Albany at Stony Brook", [])
+    assert game_teams.away_name is None and game_teams.home_name is None
+    assert game_teams.home_away_source == "ambiguous_title"
+    assert not game_teams.known
+
+
+def test_ordinary_names_keep_parsing_exactly_as_before():
+    cases = {
+        "Miami (OH) at Miami (FL)": ("Miami (OH)", "Miami (FL)"),
+        "Appalachian St. at Louisiana": ("Appalachian St.", "Louisiana"),
+        "Louisiana Tech at NC State": ("Louisiana Tech", "NC State"),
+        "Penn at Penn State": ("Penn", "Penn State"),
+        "UMass at LIU": ("UMass", "LIU"),
+        "Southeast Missouri St. at Central Connecticut St.": ("Southeast Missouri St.", "Central Connecticut St."),
+        "Northwestern St. at Missouri St.": ("Northwestern St.", "Missouri St."),
+        "Sacramento St. at Bowling Green": ("Sacramento St.", "Bowling Green"),
+    }
+    for title, (away, home) in cases.items():
+        without = build_game_teams(title, [])
+        assert (without.away_name, without.home_name, without.home_away_confidence) == (away, home, "stated"), title
+        codes = (away[:4].upper().replace(" ", ""), home[:4].upper().replace(" ", "") + "H")
+        with_contracts = build_game_teams(title, _moneyline_pair("26OCT31TEST", (codes[0], away), (codes[1], home)))
+        assert (with_contracts.away_name, with_contracts.home_name) == (away, home), title
