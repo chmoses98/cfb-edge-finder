@@ -1,30 +1,37 @@
 {
  "capture_health": {
-  "expected_games": 5,
-  "game_winner_markets_found": 5,
+  "expected_games": 11,
+  "game_winner_markets_found": 11,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 0,
-  "pending": 5,
+  "pending": 7,
   "price_1_00": 0,
-  "primary_window_coverage": null,
+  "primary_window_coverage": 0.0,
   "statuses": {
-   "CAPTURE_PENDING": 5
+   "CAPTURE_PENDING": 7,
+   "CAPTURE_SYSTEM_FAILURE": 4
   },
-  "system_failures": 0,
+  "system_failures": 4,
   "unexecutable": 0,
   "valid_primary_captures": 0,
   "window": {
    "from": "2026-10-08T23:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 0
+  "windows_closed": 4
  },
  "population": {
-  "awaiting_kickoff": {},
-  "by_strength": {},
-  "by_tier": {},
-  "final_pregame_games": 0,
+  "awaiting_kickoff": {
+   "NO_CONTROL": 4
+  },
+  "by_strength": {
+   "NO_CONTROL": 4
+  },
+  "by_tier": {
+   "NO_CONTROL": 4
+  },
+  "final_pregame_games": 4,
   "missing_final_pregame": []
  },
  "summary": {
