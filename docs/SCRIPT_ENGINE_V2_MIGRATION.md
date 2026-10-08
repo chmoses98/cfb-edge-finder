@@ -411,3 +411,37 @@ All of the following must hold:
 | Market-blindness | the claims builder is structurally price-free; byte-identical claims under different prices |
 | SIFT (sift repo) | every V2 dimension renders; ranges labelled "historical empirical range"; no probability language |
 
+## 18. Verification against the research (done before wiring the build)
+
+**Claim equivalence.** `derive_claims` (production) reproduces the Wave 2 research definition
+(`archetype_research.v2.claims.v2_claims`) on **every** committed historical record:
+
+* 4,546 development records (2021–2025);
+* 5,823 validation records (2014–2020).
+
+There are **0 mismatches** across CONTROL tier, CLOSENESS_EVEN, PACE, SCORING_ENVIRONMENT (level and
+strengthened), DEFENSIVE_SUPPRESSION and DISRUPTION (side and strength). The production
+`closeness_grants_margin` agrees with the research `closeness_resolved` on every record. The check is
+the test `test_production_claims_equal_the_wave2_research_definition_on_every_historical_record`, so
+the validated numbers describe exactly the claims production states.
+
+**Calibration.** `scripts/promote_control_calibration.py --check` re-derives the production artifact
+from the frozen research file (`683d075d…`) and the holdout report. The result is identical, with
+sha256 `626c649b91379bc7d8855f121b32c2d148d4e9b129ea674b612a9a0978e89730`.
+
+**V1 untouched.** The same `--as-of` build on main and on this branch produces byte-identical results:
+
+* all 214 V1 frozen artifacts;
+* the V1 ledger rows and stored artifacts;
+* all 221 SIFT payloads, apart from the added `claims_v2` and the version string.
+
+A test also proves that disabling V2 leaves the V1 ledger stream byte-identical.
+
+## 19. Shadow comparison (current slate)
+
+See `docs/SCRIPT_ENGINE_V2_SHADOW_COMPARISON.md`. Over 214 games:
+
+* **0 winner-direction disagreements;**
+* **0 unexpected structural differences;**
+* one explained V2-only CONTROL (V1 dropped its CONTROL candidate at evidence 0);
+* retirements and newly surfaced claims exactly as this design predicts.
