@@ -1,0 +1,106 @@
+{
+  "schema": "cfb_control_market_protocol/1.0.0",
+  "study": "CONTROL_2026_MARKET_PRICING",
+  "status": "PRE-REGISTERED",
+  "question": "When the CFB engine identified a MODERATE or STRONG CONTROL edge before kickoff in 2026, did buying that side in the Kalshi game-winner market at the pre-registered pregame executable price produce positive fee-adjusted returns?",
+  "base_main_sha": "be483103e9c6f895047f0a410d64906ba59c00ae",
+  "football": {
+    "methodology_version": "cfb-script-engine/2.0.0",
+    "control_rule": "scripting.claims.derive_claims(...)['control'] over the production findings: {SIDE}_SUSTAINED_EFFICIENCY_ADVANTAGE, NET_THRESHOLD=(1.0 MODERATE, 2.0 STRONG), uncertainty gate abs(net) >= uncertainty; tier = finding strength",
+    "tiers": ["HOME_CONTROL_MODERATE", "HOME_CONTROL_STRONG", "AWAY_CONTROL_MODERATE", "AWAY_CONTROL_STRONG"],
+    "calibration_artifact": "data/scripting/calibration/control_margin_v2.json",
+    "calibration_sha256": "626c649b91379bc7d8855f121b32c2d148d4e9b129ea674b612a9a0978e89730",
+    "inputs_read_at_commit": "be483103e9c6f895047f0a410d64906ba59c00ae",
+    "game_log": {"path": "data/football/2026/team_games.jsonl", "sha256": "6e6cf409f25e511c465c4537b7e3a0f1574d60adb456419246083c6c6f31b242"},
+    "schedule": {"path": "data/football/2026/schedule.json", "sha256": "daee74eebe1a066ac87922dc17515ecdf4bfdefb366805cc08556a569d95e0b2"},
+    "replay": "archetype_research.replay.history_for + build_pregame_content (production build_content on gamelog.before(rows, data_cutoff(kickoff)), availability OBSERVED_CLEAN as in Waves 1-2)",
+    "historical_context_only": {
+      "HOME_CONTROL_MODERATE": {"dev_n": 404, "dev_win_rate": 0.7995, "dev_median": 12.0, "val_n": 512, "val_win_rate": 0.7949, "val_median": 13.0},
+      "HOME_CONTROL_STRONG": {"dev_n": 628, "dev_win_rate": 0.9013, "dev_median": 23.0, "val_n": 824, "val_win_rate": 0.9102, "val_median": 24.0},
+      "AWAY_CONTROL_MODERATE": {"dev_n": 404, "dev_win_rate": 0.6658, "dev_median": 7.0, "val_n": 514, "val_win_rate": 0.679, "val_median": 7.0},
+      "AWAY_CONTROL_STRONG": {"dev_n": 378, "dev_win_rate": 0.8095, "dev_median": 14.5, "val_n": 552, "val_win_rate": 0.846, "val_median": 17.0}
+    }
+  },
+  "populations": {
+    "RETROSPECTIVE_FOOTBALL_REPLAY_WITH_PROSPECTIVELY_CAPTURED_MARKET_PRICE": "every completed 2026 game in the frozen game log (both teams present, both scores present, oriented by the frozen ESPN schedule) with kickoff before 2026-10-08T01:39:58Z (first V2 ledger write); CONTROL reconstructed by replay at the production cutoff",
+    "PROSPECTIVE_V2_CONTROL": "V2 ledger rows (origin/script-ledger data/scripting/ledger/2026/publications_v2.jsonl) of kind FINAL_PREGAME for games completed by the data freeze; CONTROL tier read from the row, never recomputed",
+    "v2_ledger_commit": "5e0e1d60c4b7a501cab351da8b8fa50737913ff4",
+    "pooling": "pooled tables are always shown beside each population separately"
+  },
+  "market": {
+    "family": "game winner only: series KXNCAAFGAME (no spreads, totals, team totals, halves, margins, ladders)",
+    "sources": {
+      "RESEARCH_OBSERVATION": {"branch": "research-data", "commit": "292f3aacafe4b892d56ed7c1446225ce85afbc81", "path": "data/research/observations/2026/*.jsonl", "timestamp": "observation.captured_at", "yes": "observation.executable_yes_price", "no": "observation.executable_no_price", "filter": "observation.kalshi_market_ticker starts with KXNCAAFGAME- (any family label)"},
+      "CATALOG_SNAPSHOT": {"branch": "main", "commits": "every commit touching data/live up to be483103e9c6f895047f0a410d64906ba59c00ae", "path": "data/live/games/<game_key>.json", "timestamp": "data/live/cfb_catalog_status.json captured_at at the same commit", "yes": "market.yes_ask", "no": "market.no_ask", "filter": "market.series_ticker == KXNCAAFGAME or market_ticker starts with KXNCAAFGAME-; sentinel full-width books rejected"}
+    },
+    "kickoff_reference": "ESPN kickoff_utc of the game in the frozen game log",
+    "orientation": {
+      "rule": "each KXNCAAFGAME market <event>-<CODE> pays YES iff team CODE wins. The market is resolved to an ESPN competitor by (1) team codes: the event key splits into two codes equal to the ESPN abbreviations of a schedule event within 36 h, and CODE equals one abbreviation; (2) names: the market's team name (catalog yes_sub_title; observation game_id slug side named by observation.team) matches exactly one competitor's production name keys in the schedule event matched within 36 h. Both resolve and disagree -> ORIENTATION_CONFLICT; neither -> ORIENTATION_UNRESOLVED; the two markets of an event resolving to the same competitor -> ORIENTATION_CONFLICT. Excluded before any outcome is read.",
+      "primary_contract": "CONTROL team's own market, YES side, priced at its executable YES ask",
+      "secondary_contract_descriptive": "opponent's market, NO side, priced at its own executable NO ask (never 1 - YES)"
+    },
+    "valid_quote": "side ask price p in dollars with 0.01 <= p <= 0.99 and p*100 an integer (1e-9 tolerance); market status, when recorded, in {active, open}; captured strictly before kickoff; catalog sentinel books rejected. Missing stays missing: no imputation, no complement.",
+    "entry_checkpoint_primary": {"name": "PRIMARY_60_180", "rule": "LAST valid executable quote of the primary contract with kickoff-180min <= captured_at <= kickoff-60min", "missing": "ENTRY_QUOTE_UNAVAILABLE (excluded from primary economics; never searched outside the window)", "tie_break": "identical captured_at: RESEARCH_OBSERVATION before CATALOG_SNAPSHOT"},
+    "descriptive_checkpoints": {
+      "EARLY_OPEN": "first valid quote ever captured before kickoff",
+      "W_180_360": "last valid quote with kickoff-360min <= t < kickoff-180min",
+      "PRIMARY_60_180": "as above",
+      "W_15_60": "last valid quote with kickoff-60min < t <= kickoff-15min",
+      "CLOSING": "last valid quote with kickoff-60min < t < kickoff"
+    }
+  },
+  "fees": {
+    "schedule": "kalshi.fee_schedule.KALSHI_FEE_SCHEDULE_2026_07_07_TAKER (VERIFIED_CURRENT)",
+    "multiplier": "get_taker_multiplier('KXNCAAFGAME') = 1",
+    "formula": "calculate_fee_cents(price_cents, 1, TAKER, M): ceil to whole cent of M*0.07*1*P*(1-P), computed at the captured entry price of the side bought",
+    "unavailable": "price not an integer cent or outside [1,99] -> FEE_UNAVAILABLE; economics unavailable; never fee = 0"
+  },
+  "settlement": {
+    "value": "$1 if the CONTROL team won the game, else $0 (one research contract)",
+    "source_primary": "final score in the frozen production game log (Kalshi game-winner rules resolve on the official winner)",
+    "cross_check": "official_kalshi_settlement / derived_contract_settlement for the same ticker in research-data attributions or settlements where present; any disagreement -> SETTLEMENT_MISMATCH (excluded)",
+    "unavailable": "missing score or tie -> SETTLEMENT_UNAVAILABLE"
+  },
+  "economics": {
+    "unit": "one game, one CONTROL side, one KXNCAAFGAME contract, one research contract; no staking, bankroll, Kelly, sizing, parlays or selection",
+    "outlay": "entry_price + fee",
+    "fee_adjusted_pnl": "settlement_value - entry_price - fee",
+    "gross_pnl": "settlement_value - entry_price",
+    "roi_primary": "sum(fee_adjusted_pnl) / sum(outlay)",
+    "roi_secondary": "sum(fee_adjusted_pnl) / sum(entry_price) (repo analytics convention)",
+    "break_even": "mean(outlay) (payout is $1)",
+    "margin_vs_break_even": "realized_win_rate - break_even"
+  },
+  "clv": {
+    "closing": "CLOSING checkpoint of the SAME contract and side; must be captured after the entry quote",
+    "yes": "closing_yes_ask - entry_yes_ask",
+    "no": "closing_no_ask - entry_no_ask",
+    "labels": "favorable > 0, flat == 0, unfavorable < 0",
+    "logit": "logit(close) - logit(entry), prices clamped to [0.005, 0.995]",
+    "missing": "CLOSE_MISSING; never zero-filled; clv_n reported beside n"
+  },
+  "price_buckets_cents": [[1, 49], [50, 59], [60, 69], [70, 79], [80, 84], [85, 89], [90, 94], [95, 99]],
+  "season_blocks_by_log_week": {"BLOCK_1_WEEKS_1_2": [1, 2], "BLOCK_2_WEEKS_3_4": [3, 4], "BLOCK_3_WEEKS_5_PLUS": [5, 99]},
+  "descriptive_slices": ["data_confidence HIGH/MEDIUM/LOW", "prior-games bucket min(home,away) 0/1/2/3/4+", "log week", "FBS-vs-FBS vs FCS-involved", "quote source", "population"],
+  "uncertainty": {
+    "method": "nonparametric bootstrap resampling games with replacement (each row is one game), percentile 95% interval",
+    "resamples": 10000,
+    "seed": 20261008,
+    "withheld_below_n": 5,
+    "football_win_rate_interval": "Wilson 95%"
+  },
+  "verdict_rules": {
+    "evaluable": "n_primary (rows with entry quote, fee and settlement) >= 20, else INSUFFICIENT_DATA",
+    "EVIDENCE_OF_UNDERPRICING": "evaluable, ROI > 0, ROI 95% lower bound > 0, n_primary >= 50, clv_n >= 10 and mean CLV > 0",
+    "POSSIBLE_UNDERPRICING": "evaluable, ROI > 0, not EVIDENCE_OF_UNDERPRICING",
+    "OVERPRICED": "evaluable, ROI <= 0 and ROI 95% upper bound < 0",
+    "APPROXIMATELY_EFFICIENT": "evaluable, ROI <= 0 and ROI 95% interval includes 0",
+    "overall": "all tiers INSUFFICIENT -> INSUFFICIENT 2026 MARKET DATA; every evaluable tier EVIDENCE_OF_UNDERPRICING -> 2026 CONTROL SHOWS MARKET UNDERPRICING; every evaluable tier APPROXIMATELY_EFFICIENT -> 2026 CONTROL FOOTBALL SIGNAL HOLDS BUT MARKET IS APPROXIMATELY EFFICIENT; every evaluable tier OVERPRICED -> 2026 CONTROL SIDE IS OVERPRICED BY THE MARKET; otherwise 2026 CONTROL RESULTS ARE MIXED BY TIER / PRICE",
+    "football_continuing": "per tier: CONSISTENT if the 2026 Wilson 95% interval contains or exceeds the development win rate; BELOW_HISTORICAL if its upper bound is below it; INSUFFICIENT if n < 20"
+  },
+  "exclusions_outcome_independent": ["NO_CONTROL_CLAIM", "NO_GAME_WINNER_MARKET", "ORIENTATION_UNRESOLVED", "ORIENTATION_CONFLICT", "ENTRY_QUOTE_UNAVAILABLE", "FEE_UNAVAILABLE", "SETTLEMENT_UNAVAILABLE", "SETTLEMENT_MISMATCH"],
+  "never_excluded_on": ["team", "conference", "favorite/underdog", "price", "result", "week", "ranking", "injury hindsight", "data-quality confidence", "whether a wager was placed"],
+  "sensitivities_descriptive_only": ["secondary contract: opponent market NO at its own ask", "FBS-vs-FBS only", "replay eligibility subset (both teams >= 1 prior game, profile and baseline defined)", "ROI over entry price (repo convention)"],
+  "stages": ["1 PROTOCOL (this file, committed first)", "2 FREEZE: population, CONTROL tiers and every selected quote written to a manifest with no outcome read; manifest hashed and committed", "3 REVEAL: settlement joined, hashes re-checked, report generated once"],
+  "forbidden": ["changing any threshold, tier, window, bucket or rule after stage 2", "a bet-up-to price derived from these rows", "a production probability", "recommendation, stake, play or +EV language in any conclusion field"]
+}
