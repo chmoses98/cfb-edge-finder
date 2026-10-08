@@ -47,7 +47,7 @@ It is reported, never re-standardised.
 
 ## Verification
 
-* `tests/test_signal_discovery_wave2_cfb.py`: 34 tests. Full suite: 3,837 passed, 3 skipped. `ruff check` clean.
+* `tests/test_signal_discovery_wave2_cfb.py`: 41 tests. These add the protocol §44 properties: exact 180/60 inclusive boundaries, no capture at or after kickoff, no outcome in pregame rows, a deterministic rerun across stores, duplicate captures unable to inflate n, interim results unable to alter eligibility, and closing context that stays missing. Full suite: 3,844 passed, 3 skipped. `ruff check` clean.
 * The conductor's Wave-2 step runs in a try/except. A failure is logged as SYSTEM_FAILURE and the CONTROL capture,
   watchdog, H1/H2 settlement and the SIFT contract are unaffected (tested).
 * SIFT's `cfb_research_signals.json` carries no Wave-2 field (tested). The CFB Value Watch is untouched.

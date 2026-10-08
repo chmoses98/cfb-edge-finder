@@ -664,3 +664,146 @@ def test_feature_reads_only_games_finished_before_the_cutoff(tmp_path):
     )
     assert {k: clean.get(k) for k in keep} == {k: dirty.get(k) for k in keep}
     assert clean["football_data_cutoff"] == "2026-10-10T08:00:00Z"
+
+
+# --------------------------------------------------------------------------- required-property tests (protocol §44)
+
+
+def test_primary_window_boundaries_are_exactly_180_and_60_inclusive():
+    assert cap.in_primary_window(KICKOFF, at(180)) and cap.in_primary_window(KICKOFF, at(60))
+    assert not cap.in_primary_window(KICKOFF, at(180.02)) and not cap.in_primary_window(KICKOFF, at(59.98))
+    late, lq = _attempt(59.9, markets=norm(ladder(0.2)))
+    early, eq = _attempt(180.5, markets=norm(ladder(-0.2)))
+    edge, gq = _attempt(60, markets=norm(ladder()))
+    cp = W.checkpoint(
+        kickoff=KICKOFF, now=at(10), attempts=[early, edge, late], quotes=eq + gq + lq, codes_status=CODES, team_id="99"
+    )
+    assert cp["captured_at"] == at(60)  # neither the 180.5 nor the 59.9 capture can be the entry
+    only_outside = W.checkpoint(
+        kickoff=KICKOFF, now=at(10), attempts=[early, late], quotes=eq + lq, codes_status=CODES, team_id="99"
+    )
+    assert only_outside["status"] != W.ELIGIBLE
+
+
+def test_no_spread_capture_at_or_after_kickoff(tmp_path, monkeypatch):
+    calls = []
+    _run(tmp_path, KICKOFF, monkeypatch, fetch=lambda k: calls.append(k) or ladder())
+    _run(
+        tmp_path,
+        cap.iso(cap.parse_utc(KICKOFF) + timedelta(minutes=1)),
+        monkeypatch,
+        fetch=lambda k: calls.append(k) or ladder(),
+    )
+    assert calls == [] and not (tmp_path / "wave2" / "2026" / "spread_attempts.jsonl").exists()
+    with pytest.raises(ValueError):
+        cap.capture(
+            cap.SlateGame(game_key=KEY, kickoff_utc=KICKOFF, kickoff_source="espn_schedule"), ["T30"], KICKOFF, []
+        )
+
+
+def test_pregame_rows_carry_no_outcome(tmp_path, monkeypatch):
+    _run(tmp_path, at(195), monkeypatch, fetch=lambda k: ladder())
+    obs = _ledger(tmp_path)[0]
+    text = json.dumps(obs)
+    for banned in ("points_for", "points_against", "actual_margin", "residual", "ats_like", "outright_win", "score"):
+        assert banned not in text, banned
+
+
+def test_rerun_is_deterministic_across_stores(tmp_path, monkeypatch):
+    winner = _winner_quotes(at(120))
+
+    def play(store):
+        for m in (195, 165, 120, 90, 70, 55):
+            _run(store, at(m), monkeypatch, fetch=lambda k: ladder(), winner=winner)
+        return (store / "wave2" / "2026" / "ledger.jsonl").read_text()
+
+    assert play(tmp_path / "a") == play(tmp_path / "b")
+
+
+def test_duplicate_captures_cannot_inflate_n(tmp_path, monkeypatch):
+    winner = _winner_quotes(at(120))
+    store = tmp_path / "s"
+    for m in (195, 165, 165, 150, 120, 120, 90, 70, 70, 65, 55, 50):  # repeated and extra cycles
+        _run(store, at(m), monkeypatch, fetch=lambda k: ladder(), winner=winner)
+    final = _final_rows(tmp_path, lsu=28, uk=14)
+    for h in (5, 6, 7):
+        _run(
+            store,
+            cap.iso(cap.parse_utc(KICKOFF) + timedelta(hours=h)),
+            monkeypatch,
+            fetch=lambda k: ladder(),
+            winner=winner,
+            team_rows=final,
+        )
+    rows = _ledger(store)
+    assert [r["record"] for r in rows if r["signal_id"] == W.PROS_001] == ["OBSERVATION", "ENTRY", "SETTLEMENT"]
+    attempts = [json.loads(x) for x in (store / "wave2" / "2026" / "spread_attempts.jsonl").read_text().splitlines()]
+    assert sorted(s for a in attempts for s in a["slots"]) == ["T120", "T165", "T70", "T90"]  # each slot once
+    report = json.loads((store / "wave2" / "reports" / "2026" / "wave2_status.json").read_text())
+    assert report["streams"][W.PROS_001]["summary"]["n"] == 1
+
+
+def test_interim_results_cannot_alter_eligibility(tmp_path, monkeypatch):
+    """A cumulative read (here: 400 settled rows with a negative mean) changes nothing about a new game's rows."""
+    winner = _winner_quotes(at(120))
+
+    def entry_for(store):
+        for m in (195, 165, 120, 90, 70, 55):
+            _run(store, at(m), monkeypatch, fetch=lambda k: ladder(), winner=winner)
+        return [{k: v for k, v in r.items() if k != "generated_at"} for r in _ledger(store) if r["game_key"] == KEY]
+
+    clean = entry_for(tmp_path / "clean")
+    seeded = tmp_path / "seeded"
+    (seeded / "wave2" / "2026").mkdir(parents=True)
+    fake = [
+        {
+            "row_id": f"{W.PROS_001}:SETTLEMENT:OLD{i}",
+            "record": "SETTLEMENT",
+            "signal_id": W.PROS_001,
+            "status": W.SETTLED,
+            "game_key": f"OLD{i}",
+            "kickoff_utc": "2026-10-10T16:00:00Z",
+            "generated_at": "2026-10-10T21:00:00Z",
+            "residual": -2.0,
+            "ats_like": "LOSS",
+            "outright_win": False,
+            "side": "home",
+            "economics": {"available": False},
+        }
+        for i in range(400)
+    ]
+    (seeded / "wave2" / "2026" / "ledger.jsonl").write_text("\n".join(json.dumps(r) for r in fake) + "\n")
+    assert entry_for(seeded) == clean
+    report = json.loads((seeded / "wave2" / "reports" / "2026" / "wave2_status.json").read_text())
+    assert report["streams"][W.PROS_001]["summary"]["verdict"] == W.REJECTED  # the read is reported, never acted on
+
+
+def test_closing_context_missing_stays_missing():
+    ok, q = _attempt(120, markets=norm(ladder()))
+    assert W.closing_context(attempts=[ok], quotes=q, codes=CODES["codes"], team_id="99", kickoff=KICKOFF) is None
+    entry = {
+        "market_implied_margin": 7.0,
+        "contract": {
+            "status": W.ELIGIBLE,
+            "contract_side": "yes",
+            "floor_strike": 6.5,
+            "ask": 0.55,
+            "fee": 0.02,
+            "ticker": "T",
+        },
+        **{k: GAME.get(k) for k in ("game_key", "game_id", "kickoff_utc", "teams")},
+        "sport": "CFB",
+        "signal_id": W.PROS_001,
+        "version": W.VERSION,
+        "side": "away",
+        "side_team": GAME["teams"]["away"],
+        "row_id": "x",
+    }
+    st = W.settlement_row(
+        entry=entry,
+        outcome={"control_margin": 10.0, "control_points": 24.0, "opponent_points": 14.0},
+        closing=None,
+        now=at(-300),
+        code_sha=None,
+    )
+    assert st["clv"] == {"closing_implied_margin": None, "closing_move_toward_side": None, "contract_clv": None}
