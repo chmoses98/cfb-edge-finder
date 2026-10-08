@@ -182,6 +182,7 @@ GUARDED_PACKAGES = (
     "scripting",
     # Research-only historical replay of the Script Engine.
     "archetype_research",
+    "control_market",
 )
 
 

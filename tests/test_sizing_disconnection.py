@@ -67,6 +67,8 @@ GUARDED_PACKAGES = (
     # Historical archetype validation: research-only replay of the Script
     # Engine. It publishes no probability and must never reach for a stake.
     "archetype_research",
+    # The 2026 CONTROL market-pricing study: one research contract, never a size.
+    "control_market",
 )
 """Every package that could plausibly end up on a live or shadow path.
 Listed explicitly rather than 'everything except sizing' so that adding a

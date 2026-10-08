@@ -1,0 +1,43 @@
+{
+ "manifest": "data/scripting/validation/control_market_2026/control_market_manifest.json.gz",
+ "manifest_sha256": "bc74f8bf79ac2a56568ce966386b12b45e401498606893649f03033b376f4ab7",
+ "orientation_status_counts": {
+  "ORIENTATION_UNRESOLVED": 10,
+  "RESOLVED": 908
+ },
+ "outcome_read": false,
+ "prospective": {
+  "control_rows": 0,
+  "rows": 0
+ },
+ "protocol_sha256": "61aa278d86582532556d0174abc2e1c5f883ebaa882285fe603d1ee2af23e1db",
+ "replay": {
+  "control_games": 89,
+  "kickoff_range": [
+   "2026-08-29T16:00:00Z",
+   "2026-10-07T00:00:00Z"
+  ],
+  "no_control_claim": 302,
+  "skipped": {
+   "kickoff_not_before_v2_ledger": 0,
+   "missing_side": 0,
+   "no_schedule_meta": 0
+  },
+  "targets": 391,
+  "weeks": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ]
+ },
+ "rows": 89,
+ "tier_counts": {
+  "RETROSPECTIVE_FOOTBALL_REPLAY_WITH_PROSPECTIVELY_CAPTURED_MARKET_PRICE|AWAY_CONTROL_MODERATE": 3,
+  "RETROSPECTIVE_FOOTBALL_REPLAY_WITH_PROSPECTIVELY_CAPTURED_MARKET_PRICE|AWAY_CONTROL_STRONG": 21,
+  "RETROSPECTIVE_FOOTBALL_REPLAY_WITH_PROSPECTIVELY_CAPTURED_MARKET_PRICE|HOME_CONTROL_MODERATE": 4,
+  "RETROSPECTIVE_FOOTBALL_REPLAY_WITH_PROSPECTIVELY_CAPTURED_MARKET_PRICE|HOME_CONTROL_STRONG": 61
+ }
+}
