@@ -415,7 +415,16 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # script-engine.yml joined in 2026-10: it commits the keyless ESPN game log and the frozen,
     # market-blind football artifacts (docs/SCRIPT_ENGINE.md). It consumes no secret, prices nothing
     # and produces no fair value; its scripts carry no probability.
-    assert writers == ["app-export.yml", "kalshi-market-catalog.yml", "script-engine.yml"], (
+    # cfb-research-conductor.yml joined in 2026-10: it records keyless Kalshi game-winner quotes inside the
+    # pre-registered PRIMARY_60_180 window and publishes research state (docs/CFB_RESEARCH_CONDUCTOR.md). It
+    # writes ONLY its own `research-signals` branch, consumes no secret, produces no projection, no fair value,
+    # no stake and no recommendation; its cron merely revives a self-dispatching loop.
+    assert writers == [
+        "app-export.yml",
+        "cfb-research-conductor.yml",
+        "kalshi-market-catalog.yml",
+        "script-engine.yml",
+    ], (
         f"unexpected scheduled writers: {writers}"
     )
 

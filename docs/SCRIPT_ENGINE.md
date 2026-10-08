@@ -357,9 +357,17 @@ artifact moves.
 ## 12. Prospective validation (`ledger.py`, `realized.py`, `report.py`)
 
 Append-only rows: `PUBLICATION` (first publication of an artifact hash) and
-`FINAL_PREGAME` (the last build within 3 hours of kickoff; the workflow runs
-every 2 hours Thursday–Saturday). A row recorded at or after kickoff is
-refused. Each row carries the frozen scripts (role, archetype, bands), the
+`FINAL_PREGAME` (written once per artifact hash by a build within 3 hours of
+kickoff -- in practice the FIRST build inside the window, plus one more row if
+the hash changes inside it; readers take the LAST `FINAL_PREGAME` recorded
+before kickoff). The workflow runs every 2 hours every day, and the CFB
+Research Conductor (`docs/CFB_RESEARCH_CONDUCTOR.md`) dispatches it whenever a
+game inside its final window still lacks a V2 `FINAL_PREGAME` row, because
+GitHub's cron alone does not reliably reach every window. A row recorded at
+or after kickoff is refused. V2 rows are settled by `script_engine.py
+settle-v2` (`realized_v2.py`: CONTROL win/margin and central-50/80 coverage,
+CLOSENESS <=3/<=7/<=8, environment descriptors; missing inputs explicitly
+UNAVAILABLE) into `realized_v2.jsonl`, reported by `report-v2`. Each row carries the frozen scripts (role, archetype, bands), the
 finding codes, every mapped expression's compatibility, labels, survival,
 win set and entry price; the full envelope is stored once, content-addressed.
 

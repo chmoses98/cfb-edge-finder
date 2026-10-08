@@ -69,6 +69,9 @@ GUARDED_PACKAGES = (
     "archetype_research",
     # The 2026 CONTROL market-pricing study: one research contract, never a size.
     "control_market",
+    # Prospective CONTROL capture, H1/H2 tracking and the research-signals contract SIFT renders. It
+    # publishes research status for a football signal; it must never compute a stake.
+    "control_prospective",
 )
 """Every package that could plausibly end up on a live or shadow path.
 Listed explicitly rather than 'everything except sizing' so that adding a

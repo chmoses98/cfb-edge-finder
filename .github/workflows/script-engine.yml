@@ -15,10 +15,12 @@ name: CFB Script Engine
 
 on:
   schedule:
-    # Every 2 hours Thursday-Saturday, so every kickoff gets a FINAL_PREGAME ledger row inside the
-    # 3-hour final window; every 6 hours otherwise; Sunday mornings when the week's results land.
-    - cron: "41 */2 * * 4-6"
-    - cron: "41 */6 * * 0-3"
+    # Every 2 hours EVERY day (weekday MACtion kicks off 23:00-00:41Z, which the old 6-hourly Sun-Wed cadence
+    # could never reach inside the 3-hour final window); Sunday mornings when the week's results land.
+    # GitHub fires these late or not at all, so the cron is only a fallback: the CFB Research Conductor
+    # (cfb-research-conductor.yml) dispatches this workflow whenever a game inside its final window lacks a
+    # V2 FINAL_PREGAME row, and when finished games are missing from the game log.
+    - cron: "41 */2 * * *"
     - cron: "11 9,13 * * 0"
   workflow_dispatch:
 
@@ -71,6 +73,14 @@ jobs:
           python scripts/script_engine.py report --ledger-dir "$LEDGER/data/scripting/ledger" \
             --season "$SEASON" --out "$LEDGER/data/scripting/reports/$SEASON"
           cat "$LEDGER/data/scripting/reports/$SEASON/script_engine_report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Settle V2 FINAL_PREGAME claims (frozen, never regenerated) and rebuild the V2 report
+        run: |
+          python scripts/script_engine.py settle-v2 --football-dir "data/football/$SEASON" \
+            --ledger-dir "$LEDGER/data/scripting/ledger" --season "$SEASON"
+          python scripts/script_engine.py report-v2 --ledger-dir "$LEDGER/data/scripting/ledger" \
+            --season "$SEASON" --out "$LEDGER/data/scripting/reports/$SEASON"
+          cat "$LEDGER/data/scripting/reports/$SEASON/script_engine_v2_report.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit football data and live payloads
         run: |

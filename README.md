@@ -13,6 +13,14 @@ not produce an edge worth wagering on -- see
 probability, no fair value, no expected score and no edge; the judgement
 about what a price is worth belongs to whoever reads the catalog.
 
+## Prospective research (CFB research conductor)
+
+`.github/workflows/cfb-research-conductor.yml` captures every game's Kalshi game-winner quotes inside the frozen
+PRIMARY_60_180 window (kickoff-180 to kickoff-60 minutes), guarantees V2 `FINAL_PREGAME` ledger rows by
+dispatching the Script Engine when one is missing, settles the pre-registered H1/H2 CONTROL hypotheses
+(`docs/CONTROL_PROSPECTIVE_2026_PROTOCOL.md`) and publishes `cfb_research_signals/1.0.0` on the
+`research-signals` branch for SIFT. See `docs/CFB_RESEARCH_CONDUCTOR.md`. Research only.
+
 ## The live path
 
 ```bash
