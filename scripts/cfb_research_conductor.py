@@ -66,6 +66,7 @@ from cfb_edge_finder.control_prospective.tracking import (  # noqa: E402
     summarize,
 )
 from cfb_edge_finder.scripting.gamelog import TeamGame, read_jsonl  # noqa: E402
+from cfb_edge_finder.signal_discovery import wave2_cycle  # noqa: E402
 
 SEASON = 2026
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
@@ -250,6 +251,35 @@ def fetch_event_markets(base: str, event_ticker: str) -> list[dict[str, Any]]:
     return page.get("markets") or []
 
 
+def fetch_spread_ladder(base: str, game_key: str) -> list[dict[str, Any]]:
+    """Every rung of one game's KXNCAAFSPREAD event (paged; both teams' ladders live in one event)."""
+    from cfb_edge_finder.data.kalshi_client import KalshiClient
+
+    client = KalshiClient(base_url=base)
+    out: list[dict[str, Any]] = []
+    cursor = None
+    for _ in range(5):
+        page = client._get("/markets", {"event_ticker": f"KXNCAAFSPREAD-{game_key}", "limit": 200, "cursor": cursor})
+        out.extend(page.get("markets") or [])
+        cursor = page.get("cursor")
+        if not cursor:
+            break
+    return out
+
+
+def code_sha() -> str | None:
+    import os
+
+    if os.environ.get("GITHUB_SHA"):
+        return os.environ["GITHUB_SHA"]
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=30, check=True
+        ).stdout.strip()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 # --------------------------------------------------------------------------- watchdog
 
 
@@ -314,6 +344,7 @@ def run_cycle(
     season: int = SEASON,
     fetch: Any = None,
     fetch_event: Any = None,
+    fetch_spread: Any = None,
     dispatch: Any = None,
     busy: Any = None,
     run_id: str | None = None,
@@ -365,6 +396,32 @@ def run_cycle(
     append_rows(quotes_path, new_quotes)
     attempts += new_attempts
     quotes += new_quotes
+
+    # 1b. Football Signal Discovery Lab, Wave 2 (research only). Isolated: a failure here is reported as
+    #     SYSTEM_FAILURE health and never stops the CONTROL capture, the watchdog or settlement below.
+    try:
+        wave2 = wave2_cycle.run(
+            store_dir=store,
+            root=ROOT,
+            season=season,
+            now=now,
+            games=[sg for _, sg in games],
+            schedule=inputs.schedule,
+            team_rows=inputs.team_rows,
+            frozen=inputs.frozen,
+            ledger_v2=ledger_v2,
+            winner_quotes=quotes,
+            keys=market_keys,
+            fetch_spread=fetch_spread,
+            code_sha=code_sha(),
+            run_id=run_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        wave2 = {"status": "SYSTEM_FAILURE", "error": f"{type(exc).__name__}: {exc}"}
+        append_rows(
+            store / "wave2" / season_dir / "cycles.jsonl",
+            [{"at": now, "run_id": run_id, "system_failure": wave2["error"]}],
+        )
 
     # 2. watchdog
     needs = watchdog_needs(games, ledger_v2, inputs, now)
@@ -466,6 +523,7 @@ def run_cycle(
         "watchdog": needs,
         "dispatched": dispatched,
         "settled": len(new_settled),
+        "wave2": wave2,
         "published": bool(changed or stale),
         "capture_health": doc["capture_health"],
     }
@@ -495,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
         season=args.season,
         fetch=offline if args.offline else (lambda: fetch_series_markets(args.kalshi_base)),
         fetch_event=None if args.offline else (lambda t: fetch_event_markets(args.kalshi_base, t)),
+        fetch_spread=None if args.offline else (lambda k: fetch_spread_ladder(args.kalshi_base, k)),
         dispatch=dispatch_script_engine if args.dispatch else None,
         busy=script_engine_busy if args.dispatch else None,
         run_id=args.run_id,

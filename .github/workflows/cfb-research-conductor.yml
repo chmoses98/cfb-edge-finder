@@ -11,6 +11,10 @@ name: CFB Research Conductor
 #     log do the same so settlement data arrives;
 #   * PROSPECTIVE SETTLEMENT of the pre-registered H1/H2 (docs/CONTROL_PROSPECTIVE_2026_PROTOCOL.md);
 #   * PUBLICATION of cfb_research_signals/1.0.0 (signals/cfb_research_signals.json), which SIFT renders.
+#   * FOOTBALL SIGNAL DISCOVERY LAB WAVE 2 (docs/research/FOOTBALL_SIGNAL_DISCOVERY_WAVE2_PROTOCOL.md): the
+#     KXNCAAFSPREAD ladder at the same PRIMARY_60_180 slots, frozen CFB-PROS-001/002 observations, entries and
+#     settlements under wave2/ (append-only). Isolated in a try/except: it can never stop the steps above, and
+#     SIFT does not read it.
 #
 # Keyless: Kalshi's public GET /markets only. It cannot place an order, and nothing it writes is a stake,
 # a probability or a recommendation.
@@ -35,6 +39,7 @@ on:
       - ".github/workflows/cfb-research-conductor.yml"
       - "scripts/cfb_research_conductor.py"
       - "src/cfb_edge_finder/control_prospective/**"
+      - "src/cfb_edge_finder/signal_discovery/wave2*.py"
   workflow_dispatch:
     inputs:
       minutes:
