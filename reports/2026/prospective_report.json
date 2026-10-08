@@ -1,0 +1,133 @@
+{
+ "capture_health": {
+  "expected_games": 5,
+  "game_winner_markets_found": 5,
+  "market_absent": 0,
+  "not_tracked": 0,
+  "orientation_failures": 0,
+  "pending": 5,
+  "price_1_00": 0,
+  "primary_window_coverage": null,
+  "statuses": {
+   "CAPTURE_PENDING": 5
+  },
+  "system_failures": 0,
+  "unexecutable": 0,
+  "valid_primary_captures": 0,
+  "window": {
+   "from": "2026-10-08T23:00:00Z",
+   "horizon_hours": 36.0
+  },
+  "windows_closed": 0
+ },
+ "population": {
+  "awaiting_kickoff": {},
+  "by_strength": {},
+  "by_tier": {},
+  "final_pregame_games": 0,
+  "missing_final_pregame": []
+ },
+ "summary": {
+  "H1": {
+   "break_even": null,
+   "checkpoint": {
+    "next": "EARLY_READ_ONLY",
+    "next_at_n": 10,
+    "reached": null,
+    "reached_at_n": null
+   },
+   "coverage": {
+    "healthy": null,
+    "pipeline_coverage": null,
+    "statuses": {}
+   },
+   "fee_adjusted_pnl": null,
+   "football": {
+    "n": 0,
+    "wilson95": null,
+    "win_rate": null,
+    "wins": 0
+   },
+   "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
+   "losses": 0,
+   "mean_entry": null,
+   "n": 0,
+   "roi": null,
+   "roi_ci95": null,
+   "slices": {
+    "AWAY_CONTROL_MODERATE": {
+     "break_even": null,
+     "fee_adjusted_pnl": null,
+     "losses": 0,
+     "mean_entry": null,
+     "n": 0,
+     "roi": null,
+     "roi_ci95": null,
+     "win_rate": null,
+     "wins": 0
+    },
+    "HOME_CONTROL_MODERATE": {
+     "break_even": null,
+     "fee_adjusted_pnl": null,
+     "losses": 0,
+     "mean_entry": null,
+     "n": 0,
+     "roi": null,
+     "roi_ci95": null,
+     "win_rate": null,
+     "wins": 0
+    }
+   },
+   "weeks": 0,
+   "win_rate": null,
+   "wins": 0
+  },
+  "H2": {
+   "break_even": null,
+   "checkpoint": {
+    "next": "EARLY_READ_ONLY",
+    "next_at_n": 10,
+    "reached": null,
+    "reached_at_n": null
+   },
+   "fee_adjusted_pnl": null,
+   "id": "H2_STRONG_CONTROL_BELOW_85_UNDERPERFORMS",
+   "losses": 0,
+   "mean_entry": null,
+   "n": 0,
+   "realized_minus_break_even": null,
+   "roi": null,
+   "roi_ci95": null,
+   "underperforming_so_far": null,
+   "win_rate": null,
+   "wins": 0
+  },
+  "moderate_status": {
+   "capture_coverage_healthy": null,
+   "decision": null,
+   "edge_criteria_met": null,
+   "football_coherent": null,
+   "review_reason": null,
+   "source": "AUTOMATIC_GATE",
+   "status": "VALUE_WATCH"
+  },
+  "settled_rows": 0,
+  "strong": {
+   "break_even": null,
+   "fee_adjusted_pnl": null,
+   "football": {
+    "n": 0,
+    "wilson95": null,
+    "win_rate": null,
+    "wins": 0
+   },
+   "losses": 0,
+   "mean_entry": null,
+   "n": 0,
+   "roi": null,
+   "roi_ci95": null,
+   "win_rate": null,
+   "wins": 0
+  }
+ }
+}
