@@ -212,13 +212,12 @@ def map_claims(
 
 
 def compact(authority_map: dict[str, Any] | None) -> dict[str, Any] | None:
-    """What SIFT needs: the policy, the counts, and the moneyline directions by expression id."""
+    """What SIFT needs per game: the counts and the moneyline directions by expression id. The policy
+    table is static for a schema version (`POLICY`, design section 10); it stays in the full map."""
     if not authority_map:
         return None
     return {
         "schema_version": authority_map["schema_version"],
-        "policy": authority_map["policy"],
-        "rule": authority_map["rule"],
         "counts": authority_map["counts"],
         "moneyline": [
             [r["expression_id"], r["relations"]["CONTROL"]]

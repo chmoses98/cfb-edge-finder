@@ -161,8 +161,9 @@ def _thesis(t: dict[str, Any], rank_of: dict[str, int]) -> dict[str, Any]:
 
 
 #: Claims-content keys the payload already states elsewhere (identity) or that
-#: the payload carries by reference.
-_CLAIMS_DROPPED = ("event_id", "game_key", "season", "kickoff_utc", "football_data_cutoff")
+#: are static contract text (the retired-label table; it stays in the frozen
+#: artifact and docs/SCRIPT_ENGINE_V2_MIGRATION.md).
+_CLAIMS_DROPPED = ("event_id", "game_key", "season", "kickoff_utc", "football_data_cutoff", "retired_v1")
 
 
 def claims_section(

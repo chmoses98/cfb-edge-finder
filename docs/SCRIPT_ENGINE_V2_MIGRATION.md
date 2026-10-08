@@ -307,14 +307,29 @@ and market-blind, and is registered in `FOOTBALL_MODULES`, so the market-blindne
 
 * `version` goes from `cfb_script_engine_payload/1.1.0` to `1.2.0`. The change is **additive**: every
   1.1.0 field is unchanged.
-* New `claims_v2`:
-  * the frozen claims content: identity duplicates dropped, and
-    `claims.explosive_upset.scripts` replaced by `script_ids` into `game_scripts`;
-  * `claims_artifact_hash`, `generated_at`;
-  * `market_authority` (policy table, moneyline alignments, counts).
+* New `claims_v2` contains:
+  * the frozen claims content, with identity duplicates and the static `retired_v1` table dropped,
+    and `claims.explosive_upset.scripts` replaced by `script_ids` into `game_scripts`;
+  * `claims_artifact_hash` and `generated_at`;
+  * `market_authority`: the authority schema version, the counts by authority, the moneyline
+    directions `[expression_id, ALIGNED|OPPOSED]`, and the unchanged V1 EXPLOSIVE_UPSET compat codes.
+* Payload size is about 4–5 KB. The static policy table (section 10) is part of the schema version
+  and lives in the full V2 map and in this document, not in every event.
 * Old decoders ignore the key.
-* `research_export.fit_script_engine` never trims `claims_v2`. It is small (about 3–5 KB); the
-  `OMITTED_OVER_BUDGET` marker remains the only case without it.
+
+Trim order under the 150 KB event budget, in `research_export.fit_script_engine`:
+
+1. Every V1 detail step comes first, unchanged.
+2. Then two V2 steps:
+   1. the V2 drill-down: abstentions, data-quality reasons, calibration provenance and control
+      context. The claims, story and ranges are kept.
+   2. the whole `claims_v2`.
+3. Only then is the explicit `OMITTED_OVER_BUDGET` marker used.
+
+So the active V1 publication is never omitted to make room for the shadow.
+
+On the current live slate (221 events), every one of the 214 built games carries `claims_v2`, no
+event is omitted, and the largest event is 148,446 B.
 
 ## 12. Prospective ledger versioning
 

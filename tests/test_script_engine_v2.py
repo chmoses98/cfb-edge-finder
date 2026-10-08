@@ -583,7 +583,8 @@ def test_the_payload_is_additive_and_carries_claims_v2(built):
         assert payload["version"] == "cfb_script_engine_payload/1.2.0"
         v2 = payload["claims_v2"]
         assert v2["claims_artifact_hash"] == built["claims"][g]["artifact_hash"]
-        assert v2["activation"] == "SHADOW" and v2["market_authority"]["policy"] == POLICY
+        assert v2["activation"] == "SHADOW" and "retired_v1" not in v2
+        assert v2["market_authority"]["schema_version"] == "cfb_claims_market_authority/1.0.0"
         record = {
             "football": built["football"][g],
             "market_map": None,
@@ -592,7 +593,7 @@ def test_the_payload_is_additive_and_carries_claims_v2(built):
         without = sift_payload(record)
         assert without["claims_v2"] is None
         assert set(payload) - {"claims_v2"} == set(without) - {"claims_v2"}
-        assert len(json.dumps(v2)) < 12_000
+        assert len(json.dumps(v2, separators=(",", ":"))) < 6_000
 
 
 def test_v1_ledger_rows_are_unchanged_and_v2_rows_carry_their_own_methodology(built, tmp_path, monkeypatch):
