@@ -39,7 +39,10 @@ import collect_live_context as names_util  # noqa: E402  (name matching only; no
 from cfb_edge_finder.execution.disposition import DispositionConfig, parse_timestamp  # noqa: E402
 from cfb_edge_finder.execution.semantics import build_game_teams  # noqa: E402
 from cfb_edge_finder.execution.slate import build_packet, load_catalog  # noqa: E402
-from cfb_edge_finder.scripting import METHODOLOGY_VERSION  # noqa: E402
+from cfb_edge_finder.scripting import METHODOLOGY_V2_VERSION, METHODOLOGY_VERSION  # noqa: E402
+from cfb_edge_finder.scripting.calibration import CalibrationMismatch, load_calibration  # noqa: E402
+from cfb_edge_finder.scripting.claims import build_claims, freeze_claims  # noqa: E402
+from cfb_edge_finder.scripting.claims_market import map_claims  # noqa: E402
 from cfb_edge_finder.scripting.espn import FBS_CONFERENCE_IDS  # noqa: E402
 from cfb_edge_finder.scripting.expressions import annotate  # noqa: E402
 from cfb_edge_finder.scripting.football import LeagueFitCache, build_content  # noqa: E402
@@ -48,11 +51,14 @@ from cfb_edge_finder.scripting.gamelog import TeamGame, iso_utc, parse_utc, read
 from cfb_edge_finder.scripting.ledger import (  # noqa: E402
     LedgerOrderError,
     append,
+    append_v2,
     checkpoint_for,
     load_artifact,
     read_rows,
     row_for,
+    row_for_v2,
     store_artifact,
+    store_claims_artifact,
 )
 from cfb_edge_finder.scripting.market_map import map_game  # noqa: E402
 from cfb_edge_finder.scripting.packets import (  # noqa: E402
@@ -193,11 +199,23 @@ def cmd_build(args: argparse.Namespace) -> int:
     captured_raw = (index.get("capture") or {}).get("captured_at")
     captured = parse_timestamp(captured_raw)
     frozen_dir = args.out_dir / "frozen"
+    frozen_v2_dir = args.out_dir / "frozen_v2"
     sift_dir = args.out_dir / "sift"
     cache = LeagueFitCache()
     summary: dict[str, Any] = {"games": {}, "counts": {}}
     wanted = set(args.game or [])
     ledger_written = 0
+    ledger_v2_written = 0
+    # V2 claims are published in SHADOW beside V1 (docs/SCRIPT_ENGINE_V2_MIGRATION.md).
+    # Nothing V2 does can stop or alter the V1 publication: a calibration that
+    # fails verification disables V2 for the run, and a per-game V2 error is
+    # recorded and that game publishes V1 alone.
+    try:
+        calibration: dict[str, Any] | None = load_calibration(ROOT)
+        v2_status = {"status": "SHADOW", "methodology_version": METHODOLOGY_V2_VERSION}
+    except (CalibrationMismatch, OSError, ValueError) as exc:
+        calibration = None
+        v2_status = {"status": "DISABLED", "reason": f"control calibration failed verification: {exc}"}
 
     for entry in sorted(index.get("games") or [], key=lambda g: (str(g.get("kickoff")), str(g.get("game_key")))):
         game_key = str(entry.get("game_key"))
@@ -246,6 +264,23 @@ def cmd_build(args: argparse.Namespace) -> int:
         content = build_content(packet, cache)
         envelope = freeze(content, generated_at=now, previous_envelope=previous)
 
+        # 3b. V2 claims (shadow), read from the frozen V1 artifact, frozen before any contract is read.
+        # Pregame only: a game that has kicked off gets no V2 artifact, so nothing is backfilled.
+        claims_env = None
+        v2_game: dict[str, Any] = {"status": "NOT_BUILT", "reason": v2_status.get("reason")}
+        if calibration is not None and kickoff and parse_utc(kickoff) > parse_utc(now):
+            claims_path = frozen_v2_dir / f"{game_key}.json.gz"
+            try:
+                claims_env = freeze_claims(
+                    build_claims(envelope, calibration), generated_at=now, previous_envelope=_read_gz(claims_path)
+                )
+            except Exception as exc:  # noqa: BLE001 -- shadow must never break the V1 publication
+                v2_game = {"status": "ERROR", "reason": f"{type(exc).__name__}: {exc}"}
+            else:
+                _write_gz_if_changed(claims_path, claims_env)
+        elif calibration is not None:
+            v2_game = {"status": "NOT_BUILT", "reason": "kickoff unknown or passed: V2 is pregame only"}
+
         # 4. only now: the contracts, mapped to the frozen scripts
         config = DispositionConfig(as_of=captured or parse_utc(now), captured_at=captured)
         market_packet = build_packet(entry, detail, config, set(), "America/New_York")
@@ -257,11 +292,27 @@ def cmd_build(args: argparse.Namespace) -> int:
             excluded_contracts=market_packet["excluded_contracts"],
         )
         annotate(envelope["content"], market_map)
+        claims_market = None
+        if claims_env is not None:
+            try:
+                claims_market = map_claims(claims_env, market_map, mapped_at=now)
+            except Exception as exc:  # noqa: BLE001 -- shadow must never break the V1 publication
+                claims_env = None
+                v2_game = {"status": "ERROR", "reason": f"{type(exc).__name__}: {exc}"}
+        if claims_env is not None:
+            control = claims_env["content"]["claims"]["control"]
+            v2_game = {
+                "status": claims_env["content"]["status"],
+                "claims_artifact_hash": claims_env["artifact_hash"],
+                "control": None if control is None else control["tier"],
+            }
 
         record = {
             "game_key": game_key,
             "football": envelope,
             "market_map": market_map,
+            "claims": claims_env,
+            "claims_market": claims_market,
             "prices_captured_at": captured_raw,
         }
         _write_gz_if_changed(path, envelope)
@@ -288,6 +339,26 @@ def cmd_build(args: argparse.Namespace) -> int:
                         ledger_written += append(args.ledger_dir, args.season, first)
                 except LedgerOrderError:
                     pass
+                if claims_env is not None:
+                    store_claims_artifact(args.ledger_dir, args.season, claims_env)
+                    try:
+                        row_v2 = row_for_v2(
+                            game_key=game_key,
+                            season=args.season,
+                            claims_envelope=claims_env,
+                            authority_map=claims_market,
+                            market_map=market_map,
+                            checkpoint=checkpoint,
+                            recorded_at=now,
+                            prices_captured_at=captured_raw,
+                        )
+                        ledger_v2_written += append_v2(args.ledger_dir, args.season, row_v2)
+                        if checkpoint == "FINAL_PREGAME":
+                            ledger_v2_written += append_v2(
+                                args.ledger_dir, args.season, dict(row_v2, kind="PUBLICATION")
+                            )
+                    except LedgerOrderError:
+                        pass
 
         summary["games"][game_key] = {
             "status": content["game_scripts"]["status"],
@@ -298,6 +369,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             "freshness": packet.freshness["status"],
             "survivors": len(market_map.get("survivors") or []),
             "expressions_mapped": market_map["coverage"]["expressions_mapped"],
+            "v2": v2_game,
         }
 
     counts: dict[str, int] = {}
@@ -308,8 +380,12 @@ def cmd_build(args: argparse.Namespace) -> int:
     summary["football_manifest"] = {k: manifest.get(k) for k in ("fetched_at", "games_in_log", "play_log_coverage")}
     summary["catalog_captured_at"] = captured_raw
     summary["ledger_rows_written"] = ledger_written
+    summary["v2"] = {**v2_status, "ledger_rows_written": ledger_v2_written}
     _write_if_changed(args.out_dir / INDEX_NAME, {k: v for k, v in summary.items()})
-    print(f"script engine: {summary['counts']} ; ledger rows written {ledger_written}")
+    print(
+        f"script engine: {summary['counts']} ; ledger rows written {ledger_written} ; "
+        f"V2 {v2_status['status']} rows written {ledger_v2_written}"
+    )
     return 0
 
 

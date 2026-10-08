@@ -1,0 +1,291 @@
+{
+ "calibration_version": "cfb-control-margin/2021-2025/1.0.0",
+ "development_games": 3825,
+ "development_seasons": [
+  2021,
+  2022,
+  2023,
+  2024,
+  2025
+ ],
+ "intervals": {
+  "central_50": "[p25, p75]",
+  "central_80": "[p10, p90]"
+ },
+ "label": "Historical empirical range: the full-game margins of past games (2021-2025) that carried the same football claim, from the control side's point of view.",
+ "not": "Not a prediction interval, a probability, a fair price, an expected value or a guarantee. The win rate is a historical conditional frequency, not this game's chance to win.",
+ "not_promoted": [
+  "p_margin_ge_<k> and p_margin_gt_0 threshold rates: contract-level frequencies, never published",
+  "p10/p25/p75/p90 beyond the two central ranges"
+ ],
+ "schema": "cfb_control_margin_calibration/1.0.0",
+ "sha256": "626c649b91379bc7d8855f121b32c2d148d4e9b129ea674b612a9a0978e89730",
+ "source": {
+  "holdout_report_file": "data/scripting/validation/archetype_v2_holdout_report.json",
+  "holdout_report_schema": "cfb_archetype_v2_holdout_report/1.0.0",
+  "parameters_file": "data/scripting/validation/archetype_v2_frozen_parameters.json",
+  "parameters_schema": "cfb_archetype_v2_frozen_parameters/1.0.0",
+  "parameters_sha256": "683d075d99efdfed16f7fb35a9fd58234808d1a354f8fb8e3352c64e972bf7aa",
+  "promoted_by": "Wave 3 production-migration review (docs/SCRIPT_ENGINE_V2_MIGRATION.md)",
+  "research_version": "cfb-archetype-v2-candidate/1.0.0"
+ },
+ "tiers": {
+  "AWAY_CONTROL_MODERATE": {
+   "central_50": [
+    -4.0,
+    18.0
+   ],
+   "central_80": [
+    -13.7,
+    30.0
+   ],
+   "development_in_sample_coverage": {
+    "central_50": 0.5198,
+    "central_80": 0.7995
+   },
+   "mean": 7.02,
+   "median": 7.0,
+   "n": 404,
+   "win_rate": {
+    "ci95": [
+     0.6185,
+     0.7101
+    ],
+    "hits": 269,
+    "n": 404,
+    "rate": 0.6658
+   }
+  },
+  "AWAY_CONTROL_STRONG": {
+   "central_50": [
+    3.0,
+    27.0
+   ],
+   "central_80": [
+    -5.3,
+    37.0
+   ],
+   "development_in_sample_coverage": {
+    "central_50": 0.5079,
+    "central_80": 0.8016
+   },
+   "mean": 15.14,
+   "median": 14.5,
+   "n": 378,
+   "win_rate": {
+    "ci95": [
+     0.7669,
+     0.8459
+    ],
+    "hits": 306,
+    "n": 378,
+    "rate": 0.8095
+   }
+  },
+  "HOME_CONTROL_MODERATE": {
+   "central_50": [
+    3.0,
+    24.0
+   ],
+   "central_80": [
+    -7.0,
+    34.0
+   ],
+   "development_in_sample_coverage": {
+    "central_50": 0.5248,
+    "central_80": 0.8168
+   },
+   "mean": 12.93,
+   "median": 12.0,
+   "n": 404,
+   "win_rate": {
+    "ci95": [
+     0.7577,
+     0.8356
+    ],
+    "hits": 323,
+    "n": 404,
+    "rate": 0.7995
+   }
+  },
+  "HOME_CONTROL_STRONG": {
+   "central_50": [
+    8.0,
+    35.0
+   ],
+   "central_80": [
+    1.0,
+    48.0
+   ],
+   "development_in_sample_coverage": {
+    "central_50": 0.508,
+    "central_80": 0.8057
+   },
+   "mean": 22.76,
+   "median": 23.0,
+   "n": 628,
+   "win_rate": {
+    "ci95": [
+     0.8754,
+     0.9222
+    ],
+    "hits": 566,
+    "n": 628,
+    "rate": 0.9013
+   }
+  }
+ },
+ "validation": {
+  "role": "Out-of-time validation, opened once in Wave 2 after these values were frozen. No longer sealed; it validated these exact values and was not used to change them.",
+  "seasons": [
+   2014,
+   2015,
+   2016,
+   2017,
+   2018,
+   2019,
+   2020
+  ],
+  "tiers": {
+   "AWAY_CONTROL_MODERATE": {
+    "coverage_50": {
+     "ci95": [
+      0.4937,
+      0.5796
+     ],
+     "hits": 276,
+     "n": 514,
+     "rate": 0.537
+    },
+    "coverage_80": {
+     "ci95": [
+      0.7464,
+      0.8174
+     ],
+     "hits": 403,
+     "n": 514,
+     "rate": 0.784
+    },
+    "median": 7.0,
+    "n": 514,
+    "win_rate": {
+     "ci95": [
+      0.6374,
+      0.7179
+     ],
+     "hits": 349,
+     "n": 514,
+     "rate": 0.679
+    },
+    "within_tolerance": true
+   },
+   "AWAY_CONTROL_STRONG": {
+    "coverage_50": {
+     "ci95": [
+      0.4819,
+      0.5649
+     ],
+     "hits": 289,
+     "n": 552,
+     "rate": 0.5236
+    },
+    "coverage_80": {
+     "ci95": [
+      0.7273,
+      0.798
+     ],
+     "hits": 422,
+     "n": 552,
+     "rate": 0.7645
+    },
+    "median": 17.0,
+    "n": 552,
+    "win_rate": {
+     "ci95": [
+      0.8135,
+      0.8737
+     ],
+     "hits": 467,
+     "n": 552,
+     "rate": 0.846
+    },
+    "within_tolerance": true
+   },
+   "HOME_CONTROL_MODERATE": {
+    "coverage_50": {
+     "ci95": [
+      0.4821,
+      0.5683
+     ],
+     "hits": 269,
+     "n": 512,
+     "rate": 0.5254
+    },
+    "coverage_80": {
+     "ci95": [
+      0.7475,
+      0.8185
+     ],
+     "hits": 402,
+     "n": 512,
+     "rate": 0.7852
+    },
+    "median": 13.0,
+    "n": 512,
+    "win_rate": {
+     "ci95": [
+      0.7578,
+      0.8276
+     ],
+     "hits": 407,
+     "n": 512,
+     "rate": 0.7949
+    },
+    "within_tolerance": true
+   },
+   "HOME_CONTROL_STRONG": {
+    "coverage_50": {
+     "ci95": [
+      0.495,
+      0.563
+     ],
+     "hits": 436,
+     "n": 824,
+     "rate": 0.5291
+    },
+    "coverage_80": {
+     "ci95": [
+      0.794,
+      0.8462
+     ],
+     "hits": 677,
+     "n": 824,
+     "rate": 0.8216
+    },
+    "median": 24.0,
+    "n": 824,
+    "win_rate": {
+     "ci95": [
+      0.8887,
+      0.9279
+     ],
+     "hits": 750,
+     "n": 824,
+     "rate": 0.9102
+    },
+    "within_tolerance": true
+   }
+  },
+  "tolerance": {
+   "central_50": [
+    0.42,
+    0.58
+   ],
+   "central_80": [
+    0.72,
+    0.88
+   ]
+  }
+ },
+ "variable": "control_side_margin: control-side points minus opponent points, full game"
+}

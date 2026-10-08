@@ -266,3 +266,19 @@ def test_an_event_that_cannot_fit_raises_instead_of_publishing(monkeypatch, tmp_
         rx.export_explorer(
             out, data_root=data_root, research_root=None, max_history_commits=2, script_engine_dir=sift_dir
         )
+
+
+def test_the_v2_shadow_claims_are_published_and_never_trimmed(boundary, published):
+    engine, common, full = boundary
+    assert engine["claims_v2"]["activation"] == "SHADOW"
+    for budget in (full - 1, full // 2, full // 3):
+        out, _ = rx.fit_script_engine(engine, common, [], [], budget=budget)
+        if not out["payload_trim"]["omitted"]:
+            assert out["claims_v2"] == engine["claims_v2"], budget
+    carried = 0
+    for doc, _ in _events(published):
+        engine_doc = (doc.get("extensions") or {}).get("script_engine") or {}
+        if engine_doc.get("script_generation"):
+            assert engine_doc["claims_v2"]["claims_artifact_hash"]
+            carried += 1
+    assert carried == 3
