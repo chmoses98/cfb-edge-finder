@@ -165,7 +165,26 @@ class GameTeams:
         return names
 
 
-def _split_matchup(title: str | None) -> tuple[str | None, str | None, str, str]:
+_AT_SEPARATORS = (" at ", " @ ")
+_VS_SEPARATORS = (" vs. ", " vs ", " v. ")
+
+
+def _candidate_splits(text: str, separators: tuple[str, ...]) -> list[tuple[str, str]]:
+    """Every (left, right) split of `text` at EVERY occurrence of each separator, in order."""
+    out: list[tuple[str, str]] = []
+    for sep in separators:
+        start = 0
+        while (i := text.find(sep, start)) != -1:
+            left, right = text[:i].strip(), text[i + len(sep) :].strip()
+            if left and right:
+                out.append((left, right))
+            start = i + 1
+    return out
+
+
+def _split_matchup(
+    title: str | None, team_labels: frozenset[str] = frozenset()
+) -> tuple[str | None, str | None, str, str]:
     """(away, home, source, confidence) from a game title.
 
     " at " is Kalshi's own milestone phrasing and states home/away
@@ -174,18 +193,40 @@ def _split_matchup(title: str | None) -> tuple[str | None, str | None, str, str]
     "LSU at Ole Miss" <-> event "LSU vs Ole Miss" <-> key 26SEP19LSUMISS).
     That ordering is used, and LABELLED AS A CONVENTION rather than as a
     fact, so a reader can overrule it.
+
+    A school's own name can contain the separator: Kalshi's milestone for
+    UAlbany's trip to Stony Brook is "University at Albany at Stony Brook".
+    Partitioning on the FIRST " at " made that "University" (away) vs
+    "Albany at Stony Brook" (home) -- two teams that do not exist, published
+    as such. So every occurrence is a candidate split, and `team_labels`
+    (the normalized team names the game's own contracts print, see
+    `_contract_team_labels`) decides: the split whose BOTH sides are teams
+    the contracts name wins, whatever separator it uses. With no such
+    split, a title with a single separator keeps the old reading; a title
+    with several and no evidence is reported "ambiguous_title" rather than
+    guessed.
     """
     if not title:
         return None, None, "absent", "none"
     text = str(title)
-    for sep in (" at ", " @ "):
-        if sep in text:
-            left, _, right = text.partition(sep)
-            return left.strip(), right.strip(), "milestone_title_at", "stated"
-    for sep in (" vs. ", " vs ", " v. "):
-        if sep in text:
-            left, _, right = text.partition(sep)
-            return left.strip(), right.strip(), "event_title_order", "convention"
+    groups = (
+        (_AT_SEPARATORS, "milestone_title_at", "stated"),
+        (_VS_SEPARATORS, "event_title_order", "convention"),
+    )
+    candidates = [
+        (split, source, confidence) for seps, source, confidence in groups for split in _candidate_splits(text, seps)
+    ]
+    if team_labels:
+        for (left, right), source, confidence in candidates:
+            if _norm(left) in team_labels and _norm(right) in team_labels:
+                return left, right, source, confidence
+    for seps, source, confidence in groups:
+        splits = _candidate_splits(text, seps)
+        if len(splits) == 1:
+            left, right = splits[0]
+            return left, right, source, confidence
+        if splits:
+            return None, None, "ambiguous_title", "none"
     return None, None, "unparsed", "none"
 
 
@@ -207,10 +248,23 @@ def _suffix_code(suffix: str | None) -> str | None:
     return code or None
 
 
+def _contract_team_labels(markets: list[dict[str, Any]]) -> frozenset[str]:
+    """Normalized YES labels of the contracts whose ticker ends in a team code (never TIE/NONE): the names the
+    exchange itself gives the two sides ("University at Albany", "Stony Brook"). Evidence for `_split_matchup`
+    only -- a label that is not a whole team name (a spread's "LSU wins by over 2.5 points") never matches a split."""
+    labels: set[str] = set()
+    for market in markets:
+        code = _suffix_code(_ticker_suffix(market.get("market_ticker"), market.get("event_ticker")))
+        label = market.get("yes_sub_title")
+        if code and label and code.upper() not in (*_TIE_TOKENS, *_NEITHER_TOKENS):
+            labels.add(_norm(label))
+    return frozenset(labels)
+
+
 def build_game_teams(game_title: str | None, markets: list[dict[str, Any]]) -> GameTeams:
     """Learn the game's two teams, and the code/uuid aliases Kalshi uses
     for them, from the contracts themselves."""
-    away, home, source, confidence = _split_matchup(game_title)
+    away, home, source, confidence = _split_matchup(game_title, _contract_team_labels(markets))
     teams = GameTeams(
         home_name=home, away_name=away, home_away_source=source, home_away_confidence=confidence
     )
