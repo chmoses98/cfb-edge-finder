@@ -1,0 +1,89 @@
+{
+  "schema": "cfb_control_prospective_protocol/1.0.0",
+  "study": "CONTROL_2026_PROSPECTIVE_MARKET_TRACKING",
+  "status": "PRE-REGISTERED",
+  "registered_before": "2026-10-08T12:00:00Z",
+  "registration_note": "Committed before any game in the population kicked off: the first V2 FINAL_PREGAME-eligible kickoff is 2026-10-08T23:00Z, and no prospective quote, settlement or outcome was read to write this file.",
+  "base_main_sha": "fe156f6330b0caf52adee05b092ee7baa6327fa6",
+  "retrospective_basis": {
+    "study": "CONTROL_2026_MARKET_PRICING (chmoses98/cfb-edge-finder#105)",
+    "protocol_sha256": "61aa278d86582532556d0174abc2e1c5f883ebaa882285fe603d1ee2af23e1db",
+    "manifest_sha256": "bc74f8bf79ac2a56568ce966386b12b45e401498606893649f03033b376f4ab7",
+    "rows_sha256": "3956ea6a50c04cd6234f172ace6b6f95a28a01d85969ce7c8ffd76f16cdf8208",
+    "report_path": "data/scripting/validation/control_market_2026/control_market_report.json",
+    "rows_path": "data/scripting/validation/control_market_2026/control_market_rows.jsonl.gz",
+    "use": "Context only. The retrospective sample is never pooled with prospective rows and is never re-evaluated."
+  },
+  "population": {
+    "methodology_version": "cfb-script-engine/2.0.0",
+    "ledger": "script-ledger branch data/scripting/ledger/<season>/publications_v2.jsonl",
+    "rule": "every game with at least one V2 ledger row of kind FINAL_PREGAME recorded strictly before its kickoff_utc, kickoff_utc on or after 2026-10-08T12:00:00Z; the game's row is the LAST such FINAL_PREGAME row by recorded_at; the CONTROL tier (side, strength) is copied from that row verbatim and is never recomputed, re-derived or backfilled",
+    "kickoff_on_or_after": "2026-10-08T12:00:00Z",
+    "no_final_pregame": "a game without a FINAL_PREGAME row is outside the population and is counted as a pipeline coverage miss (NO_FINAL_PREGAME), never imputed from a PUBLICATION row",
+    "pooling": "prospective rows only; never pooled with the retrospective study"
+  },
+  "capture": {
+    "source": "PROSPECTIVE_CAPTURE: the CFB research conductor's own read of Kalshi's public market data (GET /markets, series KXNCAAFGAME), appended to the research-signals branch capture/<season>/quotes.jsonl at capture time; no other source is an entry",
+    "window": {"name": "PRIMARY_60_180", "open_minutes_before": 180.0, "close_minutes_before": 60.0, "inclusive": "kickoff-180min <= captured_at <= kickoff-60min"},
+    "slots_minutes_before_kickoff": [165, 120, 90, 70],
+    "catch_up": "a slot whose moment passed without an attempt is attempted on the next cycle while the window is still open; the captured_at actually recorded is what the window rule reads",
+    "descriptive_slots_minutes_before_kickoff": [30],
+    "kickoff_reference": "kickoff_utc of the game's V2 FINAL_PREGAME row (ESPN schedule kickoff)",
+    "health_statuses": {
+      "CAPTURE_OK": "at least one valid executable quote of the side in the window",
+      "CAPTURE_PENDING": "the window has not closed and no valid quote yet",
+      "MARKET_NOT_OFFERED": "an attempt in the window succeeded against Kalshi and no KXNCAAFGAME market exists for the game (market absence, not our failure)",
+      "QUOTE_NOT_EXECUTABLE": "the market existed but no side ask was a whole cent in [1,99] with status active/open",
+      "PRICE_1_00": "the side's ask was $1.00 (no offer below a dollar)",
+      "ORIENTATION_FAILURE": "markets existed but the frozen matcher could not resolve which ESPN team each pays on",
+      "CAPTURE_SYSTEM_FAILURE": "the window closed with no successful attempt (our request failed or no attempt ran); never reported as market absence"
+    }
+  },
+  "entry": {
+    "contract": "the CONTROL team's own KXNCAAFGAME market, YES side, one research contract",
+    "rule": "LAST valid executable YES ask of that market with kickoff-180min <= captured_at <= kickoff-60min; missing stays missing (ENTRY_QUOTE_UNAVAILABLE); never searched outside the window; NO is never 1 - YES",
+    "valid_quote": "identical to the frozen market protocol: ask p with 0.01 <= p <= 0.99, p*100 an integer (1e-9 tolerance), status in {active, open} when recorded, captured strictly before kickoff",
+    "orientation": "the frozen market protocol's matcher (control_market.quotes.orient_markets) against the ESPN schedule; unresolved or conflicting -> excluded before any outcome is read",
+    "price_cap": "none: every available price is included"
+  },
+  "fees": "identical to the frozen market protocol: kalshi.fee_schedule.KALSHI_FEE_SCHEDULE_2026_07_07_TAKER at the captured entry price; uncomputable -> FEE_UNAVAILABLE, never 0",
+  "settlement": "$1 iff the CONTROL team won; final score from the production ESPN game log; missing score or tie -> SETTLEMENT_UNAVAILABLE",
+  "economics": "identical to the frozen market protocol: outlay = entry + fee; fee_adjusted_pnl = settlement - outlay; ROI = sum(fee_adjusted_pnl) / sum(outlay); break-even = mean(outlay)",
+  "hypotheses": {
+    "H1": {
+      "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
+      "wording": "MODERATE CONTROL, home and away pooled, purchased at the frozen PRIMARY_60_180 executable game-winner ask at all available prices, has fee-adjusted ROI > 0.",
+      "tiers": ["HOME_CONTROL_MODERATE", "AWAY_CONTROL_MODERATE"],
+      "primary_metric": "pooled fee-adjusted ROI on outlay over rows with entry, fee and settlement",
+      "secondary_slices_descriptive": ["HOME_CONTROL_MODERATE", "AWAY_CONTROL_MODERATE"],
+      "never": ["a price cap", "excluding a team, conference, opponent or price", "redefining home/away after results", "pooling with the retrospective study"]
+    },
+    "H2": {
+      "id": "H2_STRONG_CONTROL_BELOW_85_UNDERPERFORMS",
+      "wording": "STRONG CONTROL priced below 85¢ underperforms its fee-adjusted break-even rate.",
+      "tiers": ["HOME_CONTROL_STRONG", "AWAY_CONTROL_STRONG"],
+      "entry_ask_strictly_below_cents": 85,
+      "primary_metric": "realized CONTROL win rate minus fee-adjusted break-even rate (mean outlay) over rows with entry, fee and settlement and entry ask < 0.85; fee-adjusted ROI reported beside it",
+      "status": "tracked prospectively; not a rule of any kind",
+      "never": ["changing the 85 cent threshold after outcomes", "adding a second threshold"]
+    }
+  },
+  "review_checkpoints": {"10": "EARLY_READ_ONLY", "20": "INTERIM_RESEARCH_READ", "30": "MEANINGFUL_EARLY_SAMPLE", "50": "PRIMARY_REVIEW"},
+  "uncertainty": {"method": "nonparametric bootstrap over games, percentile 95%", "resamples": 10000, "seed": 20261008, "withheld_below_n": 5, "football_win_rate_interval": "Wilson 95%"},
+  "research_status": {
+    "statuses": ["VALUE_WATCH", "EDGE_CONFIRMED", "NO_EDGE", "INSUFFICIENT_DATA", "REVIEW_REQUIRED"],
+    "initial": {"MODERATE_CONTROL": "VALUE_WATCH", "STRONG_CONTROL": "NO_EDGE", "MARKET_DISAGREEMENT": "INSUFFICIENT_DATA"},
+    "automatic": "code may emit only VALUE_WATCH or REVIEW_REQUIRED for MODERATE CONTROL; EDGE_CONFIRMED, NO_EDGE or INSUFFICIENT_DATA for it appear only from a reviewed entry in decisions.json",
+    "review_gate_MODERATE": "REVIEW_REQUIRED when (H1 n >= 30 AND ROI > 0 AND capture coverage healthy AND football coherent) OR H1 n >= 50; otherwise VALUE_WATCH",
+    "capture_coverage_healthy": "among MODERATE population games whose primary window closed, CAPTURE_OK / (CAPTURE_OK + ORIENTATION_FAILURE + CAPTURE_SYSTEM_FAILURE) >= 0.90 (market-side statuses are not our failure and are excluded from the denominator)",
+    "football_coherent": "Wilson 95% upper bound of the prospective MODERATE football win rate (every settled MODERATE population game, priced or not) >= 0.6658 (the lowest frozen development/validation MODERATE win rate)",
+    "edge_criteria_for_review": "H1 n >= 50 AND ROI > 0 AND bootstrap 95% ROI lower bound > 0 AND each of HOME/AWAY MODERATE >= 10 rows AND rows from >= 3 distinct season weeks AND no protocol deviation recorded; meeting them sets edge_criteria_met=true on a REVIEW_REQUIRED status, never EDGE_CONFIRMED"
+  },
+  "forbidden": [
+    "changing any window, slot, threshold, tier, checkpoint or gate after the first prospective outcome",
+    "a probability, fair price or bet-up-to price derived from these rows",
+    "a stake, bankroll, Kelly fraction, unit size or automatic order of any kind",
+    "recommendation language in any published field",
+    "promoting a status by code beyond REVIEW_REQUIRED"
+  ]
+}
