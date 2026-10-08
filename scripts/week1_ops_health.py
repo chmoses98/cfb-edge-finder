@@ -184,6 +184,7 @@ GUARDED_PACKAGES = (
     "archetype_research",
     "control_market",
     "control_prospective",
+    "signal_discovery",
 )
 
 

@@ -72,6 +72,9 @@ GUARDED_PACKAGES = (
     # Prospective CONTROL capture, H1/H2 tracking and the research-signals contract SIFT renders. It
     # publishes research status for a football signal; it must never compute a stake.
     "control_prospective",
+    # Football Signal Discovery Lab (Wave 1 retrospective research, Wave 2 prospective tracking): research
+    # signals, research contracts and settlement. It must never compute a stake.
+    "signal_discovery",
 )
 """Every package that could plausibly end up on a live or shadow path.
 Listed explicitly rather than 'everything except sizing' so that adding a

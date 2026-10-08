@@ -1,0 +1,556 @@
+{
+  "hypotheses": [
+    {
+      "family": "CONTROL",
+      "id": "CFB-SIG-001",
+      "interpretation": "A team that owns the opponent-adjusted sustained-efficiency matchup moves the ball more reliably per snap than its opponent allows; over ~70 snaps that should convert into winning more often.",
+      "kind": "SIDE",
+      "markets": [
+        "ML",
+        "ATS"
+      ],
+      "name": "CONTROL (any tier) -> winner / moneyline",
+      "population": {
+        "rule": "control",
+        "strength": null
+      },
+      "primary_market": "ML",
+      "side": "control"
+    },
+    {
+      "family": "CONTROL",
+      "id": "CFB-SIG-002",
+      "interpretation": "A moderate efficiency edge is a smaller, less visible advantage; if the market anchors on records, rankings or raw scoring it could under-rate it. Required study (prompt section 11).",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "MODERATE CONTROL -> closing spread (ATS)",
+      "population": {
+        "rule": "control",
+        "strength": "MODERATE"
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "family": "CONTROL",
+      "id": "CFB-SIG-003",
+      "interpretation": "A strong efficiency edge is the most visible kind; it should be well priced. Tests whether the market fully prices the separation.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "STRONG CONTROL -> closing spread (ATS)",
+      "population": {
+        "rule": "control",
+        "strength": "STRONG"
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "expected_sign": 1,
+      "family": "CONTROL_INTERACTION",
+      "feature": "possession_environment",
+      "feature_orientation": "game",
+      "id": "CFB-SIG-004",
+      "interpretation": "A per-play efficiency edge compounds over more snaps: more possessions should mean more separation for the CONTROL side. Spreads may scale with talent gaps but not with expected snap count.",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "CONTROL x PACE (control-side margin and ATS vs possession environment)",
+      "population": {
+        "rule": "control",
+        "strength": null
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "family": "CONTROL_INTERACTION",
+      "id": "CFB-SIG-005",
+      "interpretation": "Trailing teams come back through the air. When the CONTROL team's pass defense outclasses the opponent's pass offense (opponent passing direction edge <= -1.0), the weaker side has few fast comeback paths, so the CONTROL side should convert its edge into wins more reliably.",
+      "kind": "SIDE",
+      "markets": [
+        "ML",
+        "ATS"
+      ],
+      "name": "CONTROL x DEFENSIVE SUPPRESSION (opponent passing offense outclassed) -> winner",
+      "population": {
+        "rule": "control_opp_pass_suppressed",
+        "strength": null,
+        "threshold": -1.0
+      },
+      "primary_market": "ML",
+      "side": "control"
+    },
+    {
+      "family": "CLOSENESS",
+      "id": "CFB-SIG-006",
+      "interpretation": "When neither offense owns the efficiency matchup (EVEN_MATCHUP resolves), the game should be closer than an average game; if the spread still reflects a talent/brand gap, the underdog should cover.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "CLOSENESS -> market underdog ATS",
+      "population": {
+        "rule": "closeness"
+      },
+      "primary_market": "ATS",
+      "side": "market_underdog"
+    },
+    {
+      "family": "CLOSENESS",
+      "id": "CFB-SIG-007",
+      "interpretation": "Fewer possessions shrink the variance of the margin; an even matchup with few snaps favours the points.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "EVEN MATCHUP x LOW PACE -> market underdog ATS",
+      "population": {
+        "rule": "closeness_low_pace",
+        "threshold": -0.5
+      },
+      "primary_market": "ATS",
+      "side": "market_underdog"
+    },
+    {
+      "direction": 1,
+      "family": "PACE",
+      "id": "CFB-SIG-008",
+      "interpretation": "More snaps -> more scoring opportunities, beyond what the scoring baseline already counts.",
+      "kind": "TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "PACE claim HIGH -> over",
+      "population": {
+        "level": "HIGH",
+        "rule": "pace_claim"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "direction": -1,
+      "family": "PACE",
+      "id": "CFB-SIG-009",
+      "interpretation": "Fewer snaps -> fewer possessions -> fewer points.",
+      "kind": "TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "PACE claim LOW -> under",
+      "population": {
+        "level": "LOW",
+        "rule": "pace_claim"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "expected_sign": 1,
+      "family": "PACE",
+      "feature": "possession_environment",
+      "id": "CFB-SIG-010",
+      "interpretation": "As 008/009 on the continuous production pace measure.",
+      "kind": "SLOPE_TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "Possession environment (continuous) -> total residual",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "direction": -1,
+      "family": "DEFENSIVE_SUPPRESSION",
+      "id": "CFB-SIG-011",
+      "interpretation": "Both defenses out-rate the offenses they face; drives stall on both sides.",
+      "kind": "TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "DEFENSIVE SUPPRESSION claim -> under",
+      "population": {
+        "rule": "defensive_suppression"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "direction": 1,
+      "family": "SCORING_ENVIRONMENT",
+      "id": "CFB-SIG-012",
+      "interpretation": "Both offenses efficient / high-scoring environment beyond the baseline (V2: incremental on holdout).",
+      "kind": "TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "SCORING ENVIRONMENT ELEVATED -> over",
+      "population": {
+        "level": "ELEVATED",
+        "rule": "scoring_env"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "direction": -1,
+      "family": "SCORING_ENVIRONMENT",
+      "id": "CFB-SIG-013",
+      "interpretation": "Low-scoring environment (V2: NOT incremental over the baseline on holdout).",
+      "kind": "TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "SCORING ENVIRONMENT SUPPRESSED -> under",
+      "population": {
+        "level": "SUPPRESSED",
+        "rule": "scoring_env"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "controls": [
+        "net.sustained_efficiency"
+      ],
+      "expected_sign": 1,
+      "family": "PASSING",
+      "feature": "net.passing",
+      "id": "CFB-SIG-014",
+      "interpretation": "An aerial mismatch (pass offense vs pass defense) may separate games beyond generic efficiency.",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "Passing matchup net, beyond sustained efficiency -> margin / ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS"
+    },
+    {
+      "controls": [
+        "net.sustained_efficiency"
+      ],
+      "expected_sign": 1,
+      "family": "RUSHING",
+      "feature": "net.rushing",
+      "id": "CFB-SIG-015",
+      "interpretation": "A ground mismatch controls clock and down-and-distance beyond generic efficiency.",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "Rushing matchup net, beyond sustained efficiency -> margin / ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS"
+    },
+    {
+      "family": "CONTROL_INTERACTION",
+      "id": "CFB-SIG-016",
+      "interpretation": "A team that owns efficiency AND the run game can shorten the game while ahead and finish drives.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "RUSH EDGE x CONTROL (same-side rushing net >= 1) -> ATS",
+      "population": {
+        "rule": "control_rush_aligned",
+        "threshold": 1.0
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "family": "DISRUPTION",
+      "id": "CFB-SIG-017",
+      "interpretation": "A repeatable sack/TFL edge matters most against an offense that already allows sacks (opponent offense sack-rate quality <= -0.5 SD): drive-killing negative plays.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "DISRUPTION x WEAK PROTECTION -> disruption side ATS",
+      "population": {
+        "rule": "disruption_weak_protection",
+        "threshold": -0.5
+      },
+      "primary_market": "ATS",
+      "side": "disruption"
+    },
+    {
+      "family": "EXPLOSIVENESS",
+      "id": "CFB-SIG-018",
+      "interpretation": "Explosive plays create points without sustained drives.",
+      "kind": "UNAVAILABLE",
+      "markets": [],
+      "name": "EXPLOSIVE advantage",
+      "primary_market": null,
+      "reason": "CFBD 2014-2025 caches carry no explosive-play counts (production explosive metrics are None on every historical row; net.explosiveness is null). Only the 2026 ESPN log has them (weeks 1-6). Not tested; not imputed from CFBD PPA 'explosiveness', which is a different quantity."
+    },
+    {
+      "family": "FINISHING",
+      "id": "CFB-SIG-019",
+      "interpretation": "A team that converts scoring opportunities better but does not own efficiency: finishing is noisier and partly luck, so the market may over-weight points-based reputations (expected sign NEGATIVE for the finishing side vs the spread is equally plausible; test is two-sided, reported direction +).",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "FINISHING edge without efficiency edge -> ATS",
+      "population": {
+        "rule": "finishing_without_efficiency"
+      },
+      "primary_market": "ATS",
+      "side": "finishing"
+    },
+    {
+      "expected_sign": 1,
+      "family": "SUSTAINED_EFFICIENCY",
+      "feature": "net.sustained_efficiency",
+      "id": "CFB-SIG-020",
+      "interpretation": "The CONTROL quantity itself, continuous: does it carry margin information the closing spread lacks?",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "Sustained-efficiency net (continuous) -> margin / ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS"
+    },
+    {
+      "expected_sign": 1,
+      "family": "MARKET_DISAGREEMENT",
+      "feature": "gap.margin",
+      "id": "CFB-SIG-021",
+      "interpretation": "gap.margin = opponent-adjusted baseline home margin + closing home spread (positive = football likes home more than the market). If the football baseline holds information, the residual follows the gap.",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "Scoring-baseline margin vs closing spread disagreement -> ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS"
+    },
+    {
+      "expected_sign": 1,
+      "family": "MARKET_DISAGREEMENT",
+      "feature": "gap.total",
+      "id": "CFB-SIG-022",
+      "interpretation": "gap.total = baseline total - closing total.",
+      "kind": "SLOPE_TOTAL",
+      "markets": [
+        "TOTAL"
+      ],
+      "name": "Scoring-baseline total vs closing total disagreement -> total residual",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "TOTAL"
+    },
+    {
+      "family": "MARKET_DISAGREEMENT",
+      "id": "CFB-SIG-023",
+      "interpretation": "Football strong / market skeptical: who is right?",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "STRONG CONTROL, market skeptical (control side favoured < 3 or underdog)",
+      "population": {
+        "rule": "control_market_skeptical",
+        "strength": "STRONG",
+        "threshold": 3.0
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "family": "MARKET_DISAGREEMENT",
+      "id": "CFB-SIG-024",
+      "interpretation": "Football moderate / market skeptical: who is right?",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "MODERATE CONTROL, market skeptical (control side favoured < 3 or underdog)",
+      "population": {
+        "rule": "control_market_skeptical",
+        "strength": "MODERATE",
+        "threshold": 3.0
+      },
+      "primary_market": "ATS",
+      "side": "control"
+    },
+    {
+      "expected_sign": 1,
+      "family": "TEAM_TOTAL",
+      "feature": "gap.home_team_total",
+      "id": "CFB-SIG-025",
+      "interpretation": "No historical team-total line exists in CFBD; implied home team total = (total - home spread) / 2. gap = baseline home points - implied. DERIVED, not a traded line.",
+      "kind": "SLOPE_TEAMPTS",
+      "markets": [
+        "TEAM_TOTAL_DERIVED"
+      ],
+      "name": "Home offense scoring baseline vs DERIVED implied home team total",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "TEAM_TOTAL_DERIVED"
+    },
+    {
+      "family": "CONTROL",
+      "football_outcome": "margin_1h",
+      "id": "CFB-SIG-026",
+      "interpretation": "Does the efficiency edge already show by halftime? No historical 1H line exists in the cache.",
+      "kind": "FOOTBALL_ONLY",
+      "markets": [],
+      "name": "CONTROL -> first-half margin (football only)",
+      "population": {
+        "rule": "control",
+        "strength": null
+      },
+      "primary_market": null,
+      "side": "control"
+    },
+    {
+      "family": "TREND",
+      "id": "CFB-SIG-027",
+      "interpretation": "Form and QB changes should move a team's true level mid-season.",
+      "kind": "UNAVAILABLE",
+      "markets": [],
+      "name": "TREND / FORM (improving or declining opponent-adjusted efficiency)",
+      "primary_market": null,
+      "reason": "Not built in Wave 1. A leakage-free form signal needs a recency-weighted opponent adjustment, which would be a materially new adjustment method (prompt section 7 forbids introducing one without separate validation). Arbitrary last-3-game raw trends are excluded by the prompt. QB change is also unavailable (CFBD carries no primary passer)."
+    },
+    {
+      "family": "BASELINE",
+      "id": "CFB-BASE-001",
+      "interpretation": "Is home field priced? (reference, not a signal)",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "BASELINE: home team ATS",
+      "population": {
+        "rule": "not_neutral"
+      },
+      "primary_market": "ATS",
+      "side": "home"
+    },
+    {
+      "family": "BASELINE",
+      "id": "CFB-BASE-002",
+      "interpretation": "Favourite-longshot reference.",
+      "kind": "SIDE",
+      "markets": [
+        "ATS",
+        "ML"
+      ],
+      "name": "BASELINE: market favourite ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS",
+      "side": "market_favorite"
+    },
+    {
+      "expected_sign": 1,
+      "family": "BASELINE",
+      "feature": "raw.ypp_net",
+      "id": "CFB-BASE-003",
+      "interpretation": "Raw efficiency comparator for CFB-SIG-020 (raw stats cannot establish a signal; reference only).",
+      "kind": "SLOPE_SIDE",
+      "markets": [
+        "ATS"
+      ],
+      "name": "BASELINE: RAW yards/play net (unadjusted) -> margin / ATS",
+      "population": {
+        "rule": "all"
+      },
+      "primary_market": "ATS"
+    }
+  ],
+  "set": 1,
+  "status_rule": {
+    "blocks": {
+      "A": [
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "B": [
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ]
+    },
+    "efficient_ci_halfwidth_cover": 0.05,
+    "min_n_market": 100,
+    "min_seasons_same_sign_share": 0.6,
+    "q_football": 0.05,
+    "q_market": 0.05,
+    "q_market_watch": 0.1
+  },
+  "version": "cfb-signal-discovery-wave1/1.0.0",
+  "walk_forward": {
+    "WF-ATS": {
+      "features": [
+        "net.sustained_efficiency",
+        "net.passing",
+        "net.rushing",
+        "net.disruption",
+        "net.finishing",
+        "net.scoring",
+        "gap.margin"
+      ],
+      "first_test_season": 2017,
+      "pick_threshold_points": 2.0,
+      "target": "home_ats_resid"
+    },
+    "WF-ML": {
+      "features": [
+        "net.sustained_efficiency",
+        "baseline.home_margin"
+      ],
+      "first_test_season": 2022,
+      "market_feature": "logit.ml_home_novig",
+      "target": "home_win",
+      "train_first_season": 2021
+    },
+    "WF-TOTAL": {
+      "features": [
+        "gap.total",
+        "possession_environment",
+        "tempo_environment",
+        "def_quality_sum",
+        "off_quality_sum"
+      ],
+      "first_test_season": 2017,
+      "pick_threshold_points": 2.0,
+      "target": "total_resid"
+    }
+  }
+}
