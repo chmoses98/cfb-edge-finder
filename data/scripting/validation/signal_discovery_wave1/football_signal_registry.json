@@ -1,0 +1,2895 @@
+{
+ "edge_confirmed_assigned": false,
+ "generated_from": "data/scripting/validation/signal_discovery_wave1/evaluation_report.json",
+ "schema": "football_signal_registry/1.0.0",
+ "signals": [
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control",
+     "strength": null
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5075133301017936,
+     "covers": 2094,
+     "losses": 2032,
+     "n": 4207,
+     "pushes": 81,
+     "roi_assumed_110": -0.031110915260212417,
+     "roi_ci_boot": [
+      -0.061004101326444585,
+      -0.0031679197367134797
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 1637,
+     "roi_ci_boot": [
+      -0.023447583258506068,
+      0.03696924937740815
+     ],
+     "roi_provider_odds": 0.007003089630740414
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL",
+   "football_interpretation": "A team that owns the opponent-adjusted sustained-efficiency matchup moves the ball more reliably per snap than its opponent allows; over ~70 snaps that should convert into winning more often.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ML",
+    "ATS"
+   ],
+   "name": "CONTROL (any tier) -> winner / moneyline",
+   "primary_market": "ML",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-001",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=0 effect=0.304",
+    "market n=1637 q=0.0481 effect=0.0234 season-share=None blocks-agree=None",
+    "residual q < 0.10 but not stable/significant enough"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.0150451461389926,
+     "market_p_holm": 0.35098726327726393,
+     "market_q_bh": 0.04814446764477632
+    },
+    "football_effect": 0.3039685529112652,
+    "football_q_bh": 0.0,
+    "market_effect": 0.023413482640521777,
+    "market_q_bh": 0.04814446764477632
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control",
+     "strength": "MODERATE"
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5145251396648045,
+     "covers": 921,
+     "losses": 869,
+     "n": 1834,
+     "pushes": 44,
+     "roi_assumed_110": -0.01772473336719148,
+     "roi_ci_boot": [
+      -0.06143555283328248,
+      0.025752604896943337
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 798,
+     "roi_ci_boot": [
+      -0.026526353259412345,
+      0.0710854512600452
+     ],
+     "roi_provider_odds": 0.022299833642100635
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL",
+   "football_interpretation": "A moderate efficiency edge is a smaller, less visible advantage; if the market anchors on records, rankings or raw scoring it could under-rate it. Required study (prompt section 11).",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "MODERATE CONTROL -> closing spread (ATS)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-002",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=8.12e-117 effect=0.235",
+    "market n=1834 q=0.149 effect=0.692 season-share=0.75 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 2.9543446016567827e-117,
+     "football_p_holm": 6.499558123644922e-116,
+     "football_q_bh": 8.124447654556152e-117,
+     "market_p": 0.0603626883819312,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.1485850790939845
+    },
+    "football_effect": 0.23480224938253746,
+    "football_q_bh": 8.124447654556152e-117,
+    "market_effect": 0.691793893129771,
+    "market_q_bh": 0.1485850790939845
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control",
+     "strength": "STRONG"
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5021404109589042,
+     "covers": 1173,
+     "losses": 1163,
+     "n": 2373,
+     "pushes": 37,
+     "roi_assumed_110": -0.041368306351183076,
+     "roi_ci_boot": [
+      -0.07929861480161182,
+      -0.0018214316430776286
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 839,
+     "roi_ci_boot": [
+      -0.04007026877728814,
+      0.02499538185444157
+     ],
+     "roi_provider_odds": -0.007546137688765491
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL",
+   "football_interpretation": "A strong efficiency edge is the most visible kind; it should be well priced. Tests whether the market fully prices the separation.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "STRONG CONTROL -> closing spread (ATS)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-003",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=0 effect=0.357",
+    "market n=2373 q=0.369 effect=0.38 season-share=0.6666666666666666 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.2420710051953216,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.36887010315477575
+    },
+    "football_effect": 0.35722254143842175,
+    "football_q_bh": 0.0,
+    "market_effect": 0.3802149178255373,
+    "market_q_bh": 0.36887010315477575
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "possession_environment",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "control",
+     "strength": null
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5264367816091954,
+     "n": 1334,
+     "roi_assumed_110": 0.005015673981191206,
+     "roi_ci_boot": [
+      -0.0432636296312552,
+      0.05753870781759593
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "A per-play efficiency edge compounds over more snaps: more possessions should mean more separation for the CONTROL side. Spreads may scale with talent gaps but not with expected snap count.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "CONTROL x PACE (control-side margin and ATS vs possession environment)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-004",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=0.0757 effect=-0.532",
+    "market n=4207 q=0.0406 effect=0.631 season-share=0.6666666666666666 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.06885428777275734,
+     "football_p_holm": 0.2754171510910294,
+     "football_q_bh": 0.07573971655003307,
+     "market_p": 0.01013951157501241,
+     "market_p_holm": 0.25348778937531025,
+     "market_q_bh": 0.04055804630004964
+    },
+    "football_effect": -0.5320614321310251,
+    "football_q_bh": 0.07573971655003307,
+    "market_effect": 0.6314822090845646,
+    "market_q_bh": 0.04055804630004964
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control_opp_pass_suppressed",
+     "strength": null,
+     "threshold": -1.0
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.49364791288566245,
+     "covers": 1088,
+     "losses": 1116,
+     "n": 2250,
+     "pushes": 46,
+     "roi_assumed_110": -0.05758125721828082,
+     "roi_ci_boot": [
+      -0.09692652117128306,
+      -0.020303301859340303
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 827,
+     "roi_ci_boot": [
+      -0.03925646159995432,
+      0.04081962973033921
+     ],
+     "roi_provider_odds": 0.000915920966173239
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "Trailing teams come back through the air. When the CONTROL team's pass defense outclasses the opponent's pass offense (opponent passing direction edge <= -1.0), the weaker side has few fast comeback paths, so the CONTROL side should convert its edge into wins more reliably.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ML",
+    "ATS"
+   ],
+   "name": "CONTROL x DEFENSIVE SUPPRESSION (opponent passing offense outclassed) -> winner",
+   "primary_market": "ML",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-005",
+   "sport": "CFB",
+   "status": "FOOTBALL_VALIDATED",
+   "status_reasons": [
+    "football q=0 effect=0.326",
+    "market n=827 q=0.241 effect=0.0198 season-share=None blocks-agree=None",
+    "market residual inconclusive"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.12826020081656941,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.24143096624295418
+    },
+    "football_effect": 0.32550850541155857,
+    "football_q_bh": 0.0,
+    "market_effect": 0.01981708278859047,
+    "market_q_bh": 0.24143096624295418
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "closeness"
+    },
+    "side": "market_underdog"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5119182746878547,
+     "covers": 902,
+     "losses": 860,
+     "n": 1798,
+     "pushes": 36,
+     "roi_assumed_110": -0.02270147559591375,
+     "roi_ci_boot": [
+      -0.06763001345349189,
+      0.022612533246054365
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 850,
+     "roi_ci_boot": [
+      -0.09717710060419779,
+      0.0676977610128836
+     ],
+     "roi_provider_odds": -0.015405965592395564
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CLOSENESS",
+   "football_interpretation": "When neither offense owns the efficiency matchup (EVEN_MATCHUP resolves), the game should be closer than an average game; if the spread still reflects a talent/brand gap, the underdog should cover.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "CLOSENESS -> market underdog ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-006",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=1.88e-12 effect=-0.0815",
+    "market n=1798 q=0.777 effect=0.162 season-share=0.5 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.4787752041032031e-12,
+     "football_p_holm": 1.1830201632825625e-11,
+     "football_q_bh": 1.8769069898232965e-12,
+     "market_p": 0.6558273913918186,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.7772769083162294
+    },
+    "football_effect": -0.08152249221694347,
+    "football_q_bh": 1.8769069898232965e-12,
+    "market_effect": 0.16198553948832037,
+    "market_q_bh": 0.7772769083162294
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "closeness_low_pace",
+     "threshold": -0.5
+    },
+    "side": "market_underdog"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.47701149425287354,
+     "covers": 249,
+     "losses": 273,
+     "n": 532,
+     "pushes": 10,
+     "roi_assumed_110": -0.08934169278996867,
+     "roi_ci_boot": [
+      -0.17028355183715713,
+      -0.012539184952978052
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 235,
+     "roi_ci_boot": [
+      -0.32665332744481673,
+      -0.021013852786068085
+     ],
+     "roi_provider_odds": -0.17788002402270237
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CLOSENESS",
+   "football_interpretation": "Fewer possessions shrink the variance of the margin; an even matchup with few snaps favours the points.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "EVEN MATCHUP x LOW PACE -> market underdog ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-007",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=1.4e-10 effect=-0.132",
+    "market n=532 q=0.34 effect=-0.819 season-share=0.6666666666666666 blocks-agree=True",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.1486867023886402e-10,
+     "football_p_holm": 8.040806916720482e-10,
+     "football_q_bh": 1.40395041403056e-10,
+     "market_p": 0.2084504318753841,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.3398118162916154
+    },
+    "football_effect": -0.13245783888524315,
+    "football_q_bh": 1.40395041403056e-10,
+    "market_effect": -0.819078947368421,
+    "market_q_bh": 0.3398118162916154
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "direction": 1,
+    "kind": "TOTAL",
+    "population": {
+     "level": "HIGH",
+     "rule": "pace_claim"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "TOTAL_assumed_-110": {
+     "cover_rate": 0.4738372093023256,
+     "n": 1389,
+     "roi_assumed_110": -0.0954016913319239,
+     "roi_ci_boot": [
+      -0.1468873803987653,
+      -0.04614870998867308
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "PACE",
+   "football_interpretation": "More snaps -> more scoring opportunities, beyond what the scoring baseline already counts.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "PACE claim HIGH -> over",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-008",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=5.99e-43 effect=6.96",
+    "market n=1389 q=0.695 effect=0.271 season-share=0.5833333333333334 blocks-agree=False",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 3.811417389843685e-43,
+     "football_p_holm": 4.954842606796791e-42,
+     "football_q_bh": 5.989370184040077e-43,
+     "market_p": 0.5646896420117091,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.6950026363221036
+    },
+    "football_effect": 6.9554473757484185,
+    "football_q_bh": 5.989370184040077e-43,
+    "market_effect": 0.27141828653707706,
+    "market_q_bh": 0.6950026363221036
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "direction": -1,
+    "kind": "TOTAL",
+    "population": {
+     "level": "LOW",
+     "rule": "pace_claim"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "TOTAL_assumed_-110": {
+     "cover_rate": 0.515625,
+     "n": 1426,
+     "roi_assumed_110": -0.015625000000000014,
+     "roi_ci_boot": [
+      -0.06519946894675818,
+      0.03245647528535782
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "PACE",
+   "football_interpretation": "Fewer snaps -> fewer possessions -> fewer points.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "PACE claim LOW -> under",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-009",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=1.29e-48 effect=6.29",
+    "market n=1426 q=0.877 effect=0.0892 season-share=0.5 blocks-agree=False",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 7.455523006214293e-49,
+     "football_p_holm": 1.118328450932144e-47,
+     "football_q_bh": 1.294906627395114e-48,
+     "market_p": 0.8225602679168676,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.8773976191113255
+    },
+    "football_effect": 6.289697232071394,
+    "football_q_bh": 1.294906627395114e-48,
+    "market_effect": 0.08923562412342216,
+    "market_q_bh": 0.8773976191113255
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "possession_environment",
+    "kind": "SLOPE_TOTAL",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.4965290464011692,
+     "n": 2764,
+     "roi_assumed_110": -0.052080911415949796,
+     "roi_ci_boot": [
+      -0.08762399049814697,
+      -0.016105417276720352
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "PACE",
+   "football_interpretation": "As 008/009 on the continuous production pace measure.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "Possession environment (continuous) -> total residual",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-010",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=3.55e-110 effect=4.24",
+    "market n=8680 q=0.968 effect=-0.00714 season-share=0.41666666666666663 blocks-agree=False",
+    "football slope real; market residual slope indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.4002962622313614e-110,
+     "football_p_holm": 2.940622150685859e-109,
+     "football_q_bh": 3.554598204125764e-110,
+     "market_p": 0.9681048570330524,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.9681048570330524
+    },
+    "football_effect": 4.243526440581052,
+    "football_q_bh": 3.554598204125764e-110,
+    "market_effect": -0.007141230169197918,
+    "market_q_bh": 0.9681048570330524
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "direction": -1,
+    "kind": "TOTAL",
+    "population": {
+     "rule": "defensive_suppression"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "TOTAL_assumed_-110": {
+     "cover_rate": 0.4725897920604915,
+     "n": 533,
+     "roi_assumed_110": -0.09778312424815262,
+     "roi_ci_boot": [
+      -0.17308680020544426,
+      -0.014779171678982643
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "DEFENSIVE_SUPPRESSION",
+   "football_interpretation": "Both defenses out-rate the offenses they face; drives stall on both sides.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "DEFENSIVE SUPPRESSION claim -> under",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-011",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=7.69e-46 effect=9.88",
+    "market n=533 q=0.22 effect=-1.02 season-share=0.75 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 4.660455231210985e-46,
+     "football_p_holm": 6.524637323695379e-45,
+     "football_q_bh": 7.689751131498125e-46,
+     "market_p": 0.10993154740442246,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.21986309480884492
+    },
+    "football_effect": 9.881887886758156,
+    "football_q_bh": 7.689751131498125e-46,
+    "market_effect": -1.024859287054409,
+    "market_q_bh": 0.21986309480884492
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "direction": 1,
+    "kind": "TOTAL",
+    "population": {
+     "level": "ELEVATED",
+     "rule": "scoring_env"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "TOTAL_assumed_-110": {
+     "cover_rate": 0.4603729603729604,
+     "n": 1731,
+     "roi_assumed_110": -0.12110616656071203,
+     "roi_ci_boot": [
+      -0.16918284329786198,
+      -0.07498719819085094
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "SCORING_ENVIRONMENT",
+   "football_interpretation": "Both offenses efficient / high-scoring environment beyond the baseline (V2: incremental on holdout).",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "SCORING ENVIRONMENT ELEVATED -> over",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-012",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=2.19e-76 effect=8.3",
+    "market n=1731 q=0.598 effect=-0.312 season-share=0.5833333333333334 blocks-agree=False",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 9.934022008649891e-77,
+     "football_p_holm": 1.8874641816434792e-75,
+     "football_q_bh": 2.185484841902976e-76,
+     "market_p": 0.463894858609577,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.5979328618265645
+    },
+    "football_effect": 8.30203453064418,
+    "football_q_bh": 2.185484841902976e-76,
+    "market_effect": -0.3118139803581745,
+    "market_q_bh": 0.5979328618265645
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "direction": -1,
+    "kind": "TOTAL",
+    "population": {
+     "level": "SUPPRESSED",
+     "rule": "scoring_env"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "TOTAL_assumed_-110": {
+     "cover_rate": 0.49965823650034175,
+     "n": 1484,
+     "roi_assumed_110": -0.04610700304480211,
+     "roi_ci_boot": [
+      -0.0937694316627285,
+      0.002046610919598202
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "SCORING_ENVIRONMENT",
+   "football_interpretation": "Low-scoring environment (V2: NOT incremental over the baseline on holdout).",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "SCORING ENVIRONMENT SUPPRESSED -> under",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-013",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=2.38e-99 effect=8.93",
+    "market n=1484 q=0.22 effect=-0.651 season-share=0.6666666666666666 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.0099827500418953e-99,
+     "football_p_holm": 2.0199655000837907e-98,
+     "football_q_bh": 2.3806736250987533e-99,
+     "market_p": 0.10517050638590378,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.21986309480884492
+    },
+    "football_effect": 8.925427229781782,
+    "football_q_bh": 2.3806736250987533e-99,
+    "market_effect": -0.6507749326145552,
+    "market_q_bh": 0.21986309480884492
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "controls": [
+     "net.sustained_efficiency"
+    ],
+    "expected_sign": 1,
+    "feature": "net.passing",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5023584905660378,
+     "n": 2591,
+     "roi_assumed_110": -0.040951972555746154,
+     "roi_ci_boot": [
+      -0.07967331811837879,
+      -0.004771471622300348
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "PASSING",
+   "football_interpretation": "An aerial mismatch (pass offense vs pass defense) may separate games beyond generic efficiency.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Passing matchup net, beyond sustained efficiency -> margin / ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-014",
+   "sport": "CFB",
+   "status": "OVERPRICED",
+   "status_reasons": [
+    "football q=0.466 effect=-0.312",
+    "market n=8770 q=0.00575 effect=-1.24 season-share=0.8333333333333334 blocks-agree=True",
+    "significant, stable residual AGAINST the signal side"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.4661936478083297,
+     "football_p_holm": 0.7504700402140926,
+     "football_q_bh": 0.4661936478083297,
+     "market_p": 0.0008988378707831564,
+     "market_p_holm": 0.02516746038192838,
+     "market_q_bh": 0.005752562373012201
+    },
+    "football_effect": -0.3116863362978811,
+    "football_q_bh": 0.4661936478083297,
+    "market_effect": -1.2366371740914046,
+    "market_q_bh": 0.005752562373012201
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "controls": [
+     "net.sustained_efficiency"
+    ],
+    "expected_sign": 1,
+    "feature": "net.rushing",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5208825847123719,
+     "n": 2581,
+     "roi_assumed_110": -0.005587792821835391,
+     "roi_ci_boot": [
+      -0.04320713470533709,
+      0.03202540866523468
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "RUSHING",
+   "football_interpretation": "A ground mismatch controls clock and down-and-distance beyond generic efficiency.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Rushing matchup net, beyond sustained efficiency -> margin / ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-015",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=1.03e-06 effect=1.81",
+    "market n=8776 q=0.000278 effect=1.4 season-share=0.8333333333333334 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 8.764224740311802e-07,
+     "football_p_holm": 5.258534844187081e-06,
+     "football_q_bh": 1.0329264872510338e-06,
+     "market_p": 1.7359802727033103e-05,
+     "market_p_holm": 0.0005381538845380262,
+     "market_q_bh": 0.00027775684363252965
+    },
+    "football_effect": 1.8135214573448564,
+    "football_q_bh": 1.0329264872510338e-06,
+    "market_effect": 1.3957691226910682,
+    "market_q_bh": 0.00027775684363252965
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control_rush_aligned",
+     "threshold": 1.0
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5110902842861605,
+     "covers": 1636,
+     "losses": 1565,
+     "n": 3257,
+     "pushes": 56,
+     "roi_assumed_110": -0.024282184544602556,
+     "roi_ci_boot": [
+      -0.05858564505347593,
+      0.00961224101374264
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 1240,
+     "roi_ci_boot": [
+      -0.017391300961222683,
+      0.04903908841604633
+     ],
+     "roi_provider_odds": 0.015445599738422461
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "A team that owns efficiency AND the run game can shorten the game while ahead and finish drives.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "RUSH EDGE x CONTROL (same-side rushing net >= 1) -> ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-016",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=0 effect=0.324",
+    "market n=3257 q=0.0481 effect=0.673 season-share=0.8333333333333334 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.01462446930321933,
+     "market_p_holm": 0.35098726327726393,
+     "market_q_bh": 0.04814446764477632
+    },
+    "football_effect": 0.32441746468177624,
+    "football_q_bh": 0.0,
+    "market_effect": 0.6733957629720602,
+    "market_q_bh": 0.04814446764477632
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "disruption_weak_protection",
+     "threshold": -0.5
+    },
+    "side": "disruption"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.4961315280464217,
+     "covers": 513,
+     "losses": 521,
+     "n": 1051,
+     "pushes": 17,
+     "roi_assumed_110": -0.05283981009319502,
+     "roi_ci_boot": [
+      -0.11304117802662904,
+      0.0015833043172156685
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 549,
+     "roi_ci_boot": [
+      -0.05035437841528851,
+      0.07723399977354102
+     ],
+     "roi_provider_odds": 0.012154422308736165
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "DISRUPTION",
+   "football_interpretation": "A repeatable sack/TFL edge matters most against an offense that already allows sacks (opponent offense sack-rate quality <= -0.5 SD): drive-killing negative plays.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "DISRUPTION x WEAK PROTECTION -> disruption side ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-017",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=9.9e-74 effect=0.24",
+    "market n=1051 q=0.34 effect=0.586 season-share=0.7 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 5.098743263757967e-74,
+     "football_p_holm": 8.667863548388544e-73,
+     "football_q_bh": 9.89756045317723e-74,
+     "market_p": 0.21238238518225963,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.3398118162916154
+    },
+    "football_effect": 0.2403775455236317,
+    "football_q_bh": 9.89756045317723e-74,
+    "market_effect": 0.5863463368220743,
+    "market_q_bh": 0.3398118162916154
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "UNAVAILABLE"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {},
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "EXPLOSIVENESS",
+   "football_interpretation": "Explosive plays create points without sustained drives.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source",
+    "CFBD 2014-2025 caches carry no explosive-play counts (production explosive metrics are None on every historical row; net.explosiveness is null). Only the 2026 ESPN log has them (weeks 1-6). Not tested; not imputed from CFBD PPA 'explosiveness', which is a different quantity."
+   ],
+   "market_families": [],
+   "name": "EXPLOSIVE advantage",
+   "primary_market": null,
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-018",
+   "sport": "CFB",
+   "status": "DATA_UNAVAILABLE",
+   "status_reasons": [
+    "CFBD 2014-2025 caches carry no explosive-play counts (production explosive metrics are None on every historical row; net.explosiveness is null). Only the 2026 ESPN log has them (weeks 1-6). Not tested; not imputed from CFBD PPA 'explosiveness', which is a different quantity."
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": null,
+     "football_p_holm": null,
+     "football_q_bh": null,
+     "market_p": null,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": null,
+    "football_q_bh": null,
+    "market_effect": null,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "finishing_without_efficiency"
+    },
+    "side": "finishing"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.49898580121703856,
+     "covers": 492,
+     "losses": 494,
+     "n": 998,
+     "pushes": 12,
+     "roi_assumed_110": -0.047390743131108255,
+     "roi_ci_boot": [
+      -0.10445474419089708,
+      0.007762495046707936
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 399,
+     "roi_ci_boot": [
+      -0.10446436348198476,
+      0.052064178521101526
+     ],
+     "roi_provider_odds": -0.024296977338007616
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "FINISHING",
+   "football_interpretation": "A team that converts scoring opportunities better but does not own efficiency: finishing is noisier and partly luck, so the market may over-weight points-based reputations (expected sign NEGATIVE for the finishing side vs the spread is equally plausible; test is two-sided, reported direction +).",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "FINISHING edge without efficiency edge -> ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-019",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=2.53e-23 effect=0.149",
+    "market n=998 q=0.598 effect=0.361 season-share=0.6666666666666666 blocks-agree=False",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.7660180509914065e-23,
+     "football_p_holm": 1.9426198560905472e-22,
+     "football_q_bh": 2.5338519862050614e-23,
+     "market_p": 0.46713504830200353,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.5979328618265645
+    },
+    "football_effect": 0.14890835627266827,
+    "football_q_bh": 2.5338519862050614e-23,
+    "market_effect": 0.36097194388777554,
+    "market_q_bh": 0.5979328618265645
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "net.sustained_efficiency",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5106382978723404,
+     "n": 2389,
+     "roi_assumed_110": -0.025145067698259204,
+     "roi_ci_boot": [
+      -0.06374163664436437,
+      0.013136479888398044
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "SUSTAINED_EFFICIENCY",
+   "football_interpretation": "The CONTROL quantity itself, continuous: does it carry margin information the closing spread lacks?",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Sustained-efficiency net (continuous) -> margin / ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-020",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=0 effect=12.1",
+    "market n=8776 q=0.214 effect=0.282 season-share=0.5833333333333334 blocks-agree=True",
+    "football slope real; market residual slope indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.09377268187871884,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.21433755857992878
+    },
+    "football_effect": 12.073732079096768,
+    "football_q_bh": 0.0,
+    "market_effect": 0.2821628995314341,
+    "market_q_bh": 0.21433755857992878
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "gap.margin",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5026328386787937,
+     "n": 2130,
+     "roi_assumed_110": -0.04042821706775753,
+     "roi_ci_boot": [
+      -0.08013891778351455,
+      -0.0026834747552443817
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "MARKET_DISAGREEMENT",
+   "football_interpretation": "gap.margin = opponent-adjusted baseline home margin + closing home spread (positive = football likes home more than the market). If the football baseline holds information, the residual follows the gap.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Scoring-baseline margin vs closing spread disagreement -> ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-021",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=0 effect=-10.4",
+    "market n=8776 q=0.877 effect=-0.0426 season-share=0.5833333333333333 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.7972562212555329,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.8773976191113255
+    },
+    "football_effect": -10.433975029480946,
+    "football_q_bh": 0.0,
+    "market_effect": -0.04256768091055775,
+    "market_q_bh": 0.8773976191113255
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "gap.total",
+    "kind": "SLOPE_TOTAL",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.48517628205128205,
+     "n": 2530,
+     "roi_assumed_110": -0.07375437062937064,
+     "roi_ci_boot": [
+      -0.10914176482812847,
+      -0.03781787587412586
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "MARKET_DISAGREEMENT",
+   "football_interpretation": "gap.total = baseline total - closing total.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "Scoring-baseline total vs closing total disagreement -> total residual",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-022",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=4.54e-74 effect=-3.48",
+    "market n=8680 q=0.436 effect=0.185 season-share=0.5 blocks-agree=True",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 2.2005446720665994e-74,
+     "football_p_holm": 3.960980409719879e-73,
+     "football_q_bh": 4.538623386137361e-74,
+     "market_p": 0.2997128736604844,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.43594599805161366
+    },
+    "football_effect": -3.4828408786442178,
+    "football_q_bh": 4.538623386137361e-74,
+    "market_effect": 0.18506619256018825,
+    "market_q_bh": 0.43594599805161366
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control_market_skeptical",
+     "strength": "STRONG",
+     "threshold": 3.0
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.6086956521739131,
+     "covers": 42,
+     "losses": 27,
+     "n": 70,
+     "pushes": 1,
+     "roi_assumed_110": 0.16205533596837943,
+     "roi_ci_boot": [
+      -0.0592885375494071,
+      0.375668449197861
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 32,
+     "roi_ci_boot": [
+      -0.34022940120341616,
+      0.47416093879855215
+     ],
+     "roi_provider_odds": 0.05259613386842796
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "MARKET_DISAGREEMENT",
+   "football_interpretation": "Football strong / market skeptical: who is right?",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "STRONG CONTROL, market skeptical (control side favoured < 3 or underdog)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-023",
+   "sport": "CFB",
+   "status": "DISCOVERY_ONLY",
+   "status_reasons": [
+    "football q=0.173 effect=0.0849",
+    "market n=70 q=0.0406 effect=5.25 season-share=1.0 blocks-agree=True",
+    "market n below minimum"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.16223474725960713,
+     "football_p_holm": 0.4867042417788214,
+     "football_q_bh": 0.17270150514732371,
+     "market_p": 0.00927120341563155,
+     "market_p_holm": 0.24105128880642032,
+     "market_q_bh": 0.04055804630004964
+    },
+    "football_effect": 0.08487293323183054,
+    "football_q_bh": 0.17270150514732371,
+    "market_effect": 5.25,
+    "market_q_bh": 0.04055804630004964
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "control_market_skeptical",
+     "strength": "MODERATE",
+     "threshold": 3.0
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5196078431372549,
+     "covers": 106,
+     "losses": 98,
+     "n": 207,
+     "pushes": 3,
+     "roi_assumed_110": -0.008021390374331567,
+     "roi_ci_boot": [
+      -0.13903743315508021,
+      0.12467502185001104
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 98,
+     "roi_ci_boot": [
+      -0.15681692931245622,
+      0.2707075507720436
+     ],
+     "roi_provider_odds": 0.0597380620501521
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "MARKET_DISAGREEMENT",
+   "football_interpretation": "Football moderate / market skeptical: who is right?",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "MODERATE CONTROL, market skeptical (control side favoured < 3 or underdog)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-024",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=0.387 effect=0.031",
+    "market n=207 q=0.823 effect=0.368 season-share=0.6 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.3752350201070463,
+     "football_p_holm": 0.7504700402140926,
+     "football_q_bh": 0.3869611144853915,
+     "market_p": 0.7199776602311403,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.8228316116927318
+    },
+    "football_effect": 0.03096673475831942,
+    "football_q_bh": 0.3869611144853915,
+    "market_effect": 0.36835748792270534,
+    "market_q_bh": 0.8228316116927318
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "gap.home_team_total",
+    "kind": "SLOPE_TEAMPTS",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.4897959183673469,
+     "n": 2271,
+     "roi_assumed_110": -0.06493506493506496,
+     "roi_ci_boot": [
+      -0.1042452675222446,
+      -0.02642242410607791
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "TEAM_TOTAL",
+   "football_interpretation": "No historical team-total line exists in CFBD; implied home team total = (total - home spread) / 2. gap = baseline home points - implied. DERIVED, not a traded line.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TEAM_TOTAL_DERIVED"
+   ],
+   "name": "Home offense scoring baseline vs DERIVED implied home team total",
+   "primary_market": "TEAM_TOTAL_DERIVED",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-025",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=0 effect=-5.65",
+    "market n=8680 q=0.968 effect=0.00678 season-share=0.5 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.9572423929467914,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.9681048570330524
+    },
+    "football_effect": -5.653761183531243,
+    "football_q_bh": 0.0,
+    "market_effect": 0.006776143542366723,
+    "market_q_bh": 0.9681048570330524
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "FOOTBALL_ONLY",
+    "population": {
+     "rule": "control",
+     "strength": null
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5075133301017936,
+     "covers": 2094,
+     "losses": 2032,
+     "n": 4207,
+     "pushes": 81,
+     "roi_assumed_110": -0.031110915260212417,
+     "roi_ci_boot": [
+      -0.061004101326444585,
+      -0.0031679197367134797
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 1637,
+     "roi_ci_boot": [
+      -0.023447583258506068,
+      0.03696924937740815
+     ],
+     "roi_provider_odds": 0.007003089630740414
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL",
+   "football_interpretation": "Does the efficiency edge already show by halftime? No historical 1H line exists in the cache.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [],
+   "name": "CONTROL -> first-half margin (football only)",
+   "primary_market": null,
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-026",
+   "sport": "CFB",
+   "status": "FOOTBALL_VALIDATED",
+   "status_reasons": [
+    "football q=0 effect=9.06",
+    "no historical market for this outcome"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": null,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": 9.064970160810603,
+    "football_q_bh": 0.0,
+    "market_effect": null,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "UNAVAILABLE"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {},
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "TREND",
+   "football_interpretation": "Form and QB changes should move a team's true level mid-season.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source",
+    "Not built in Wave 1. A leakage-free form signal needs a recency-weighted opponent adjustment, which would be a materially new adjustment method (prompt section 7 forbids introducing one without separate validation). Arbitrary last-3-game raw trends are excluded by the prompt. QB change is also unavailable (CFBD carries no primary passer)."
+   ],
+   "market_families": [],
+   "name": "TREND / FORM (improving or declining opponent-adjusted efficiency)",
+   "primary_market": null,
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-SIG-027",
+   "sport": "CFB",
+   "status": "DATA_UNAVAILABLE",
+   "status_reasons": [
+    "Not built in Wave 1. A leakage-free form signal needs a recency-weighted opponent adjustment, which would be a materially new adjustment method (prompt section 7 forbids introducing one without separate validation). Arbitrary last-3-game raw trends are excluded by the prompt. QB change is also unavailable (CFBD carries no primary passer)."
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": null,
+     "football_p_holm": null,
+     "football_q_bh": null,
+     "market_p": null,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": null,
+    "football_q_bh": null,
+    "market_effect": null,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "not_neutral"
+    },
+    "side": "home"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.4861198341916845,
+     "covers": 3870,
+     "losses": 4091,
+     "n": 8115,
+     "pushes": 154,
+     "roi_assumed_110": -0.07195304381587514,
+     "roi_ci_boot": [
+      -0.09333068334624407,
+      -0.05108958154930478
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 3311,
+     "roi_ci_boot": [
+      -0.06851827799001216,
+      0.01222439017320909
+     ],
+     "roi_provider_odds": -0.029442453859638118
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "BASELINE",
+   "football_interpretation": "Is home field priced? (reference, not a signal)",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "BASELINE: home team ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-BASE-001",
+   "sport": "CFB",
+   "status": "BASELINE_REFERENCE",
+   "status_reasons": [
+    "reference comparator, not a candidate signal"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 1.0,
+     "football_p_holm": null,
+     "football_q_bh": null,
+     "market_p": 0.10294096560452937,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": -3.279428011200462e-19,
+    "football_q_bh": null,
+    "market_effect": -0.2825323475046211,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "rule": "all"
+    },
+    "side": "market_favorite"
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.495,
+     "covers": 4257,
+     "losses": 4343,
+     "n": 8762,
+     "pushes": 162,
+     "roi_assumed_110": -0.055000000000000014,
+     "roi_ci_boot": [
+      -0.07504209591777819,
+      -0.034135032946174974
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 3596,
+     "roi_ci_boot": [
+      -0.051469474777197585,
+      -0.007059290262142332
+     ],
+     "roi_provider_odds": -0.029211126817129205
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "BASELINE",
+   "football_interpretation": "Favourite-longshot reference.",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "BASELINE: market favourite ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-BASE-002",
+   "sport": "CFB",
+   "status": "BASELINE_REFERENCE",
+   "status_reasons": [
+    "reference comparator, not a candidate signal"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": null,
+     "football_q_bh": null,
+     "market_p": 0.3897636512111966,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": 0.22148881092016162,
+    "football_q_bh": null,
+    "market_effect": 0.14371718785665374,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "raw.ypp_net",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "pre-registered from football logic (prompt section 38)",
+    "set": 1
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.4989010989010989,
+     "n": 2321,
+     "roi_assumed_110": -0.047552447552447565,
+     "roi_ci_boot": [
+      -0.08755120558290967,
+      -0.007706404979472741
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "BASELINE",
+   "football_interpretation": "Raw efficiency comparator for CFB-SIG-020 (raw stats cannot establish a signal; reference only).",
+   "hypothesis_set_sha": "8854fbcdd55cbe458d2fe8c7ac44277a73d8bd054a2f7ace63da27e854600e77",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "BASELINE: RAW yards/play net (unadjusted) -> margin / ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-BASE-003",
+   "sport": "CFB",
+   "status": "BASELINE_REFERENCE",
+   "status_reasons": [
+    "reference comparator, not a candidate signal"
+   ],
+   "validation": {
+    "block_b_only": null,
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": null,
+     "football_q_bh": null,
+     "market_p": 0.6322703966484045,
+     "market_p_holm": null,
+     "market_q_bh": null
+    },
+    "football_effect": 9.827372523905371,
+    "football_q_bh": null,
+    "market_effect": 0.08001874961966174,
+    "market_q_bh": null
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "defdiff.rush_success_rate",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.527736131934033,
+     "n": 2713,
+     "roi_assumed_110": 0.007496251874062953,
+     "roi_ci_boot": [
+      -0.028388332486798305,
+      0.044576347941330564
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "RUSHING",
+   "football_interpretation": "The team whose run defense is better (opponent-adjusted rush success allowed) may be under-rated: run stopping is less visible than points/passing yards, yet it forces long down-and-distance.",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Rush-defense quality edge -> home ATS residual",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-001",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=7.57e-273 effect=7.64",
+    "market n=8761 q=0.00018 effect=0.762 season-share=1.0 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 7.13134235988085,
+     "football_q": 9.883952164937032e-124,
+     "id": "CFB-DSC-001",
+     "market_effect": 0.6914139147733336,
+     "market_q": 0.025789953472565005,
+     "name": "Rush-defense quality edge -> home ATS residual",
+     "status": "MARKET_WATCH"
+    },
+    "fdr": {
+     "football_p": 2.292954111207948e-273,
+     "football_p_holm": 5.5030898668990754e-272,
+     "football_q_bh": 7.566748566986229e-273,
+     "market_p": 5.617046938376445e-06,
+     "market_p_holm": 0.00017974550202804623,
+     "market_q_bh": 0.00017974550202804623
+    },
+    "football_effect": 7.638766075001689,
+    "football_q_bh": 7.566748566986229e-273,
+    "market_effect": 0.7621302070605456,
+    "market_q_bh": 0.00017974550202804623
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "net.rushing",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5208825847123719,
+     "n": 2581,
+     "roi_assumed_110": -0.005587792821835391,
+     "roi_ci_boot": [
+      -0.04320713470533709,
+      0.03202540866523468
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "RUSHING",
+   "football_interpretation": "Same theme on the production rushing dimension (offense rush efficiency vs run defense).",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Production rushing net (unconditional) -> home ATS residual",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-002",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=0 effect=10.8",
+    "market n=8776 q=0.00229 effect=0.619 season-share=0.9166666666666666 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 10.313102293007253,
+     "football_q": 4.8801013674045396e-287,
+     "id": "CFB-DSC-002",
+     "market_effect": 0.5605562952599151,
+     "market_q": 0.07256204924428371,
+     "name": "Production rushing net (unconditional) -> home ATS residual",
+     "status": "MARKET_WATCH"
+    },
+    "fdr": {
+     "football_p": 0.0,
+     "football_p_holm": 0.0,
+     "football_q_bh": 0.0,
+     "market_p": 0.0002862587192579136,
+     "market_p_holm": 0.008375063125481017,
+     "market_q_bh": 0.002290069754063309
+    },
+    "football_effect": 10.809344688359312,
+    "football_q_bh": 0.0,
+    "market_effect": 0.6186536283713061,
+    "market_q_bh": 0.002290069754063309
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": -1,
+    "feature": "pass_rate_diff_raw",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.520950323974082,
+     "n": 2361,
+     "roi_assumed_110": -0.005458472413116057,
+     "roi_ci_boot": [
+      -0.043818916472410666,
+      0.033714475914354995
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "STYLE",
+   "football_interpretation": "The more pass-heavy side may be over-rated (passing production is the most visible stat). Pass rate is a descriptive TENDENCY the production adjustment deliberately leaves raw (not a performance statistic).",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Pass-rate tendency difference -> home ATS residual (negative)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-003",
+   "sport": "CFB",
+   "status": "MARKET_WATCH",
+   "status_reasons": [
+    "football q=9.31e-19 effect=-1.99",
+    "market n=8776 q=0.00229 effect=-0.618 season-share=0.8333333333333334 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": -1.4728815046294252,
+     "football_q": 1.414633895896849e-06,
+     "id": "CFB-DSC-003",
+     "market_effect": -0.5018016513778182,
+     "market_q": 0.08218047850706967,
+     "name": "Pass-rate tendency difference -> home ATS residual (negative)",
+     "status": "MARKET_WATCH"
+    },
+    "fdr": {
+     "football_p": 7.056107934445537e-19,
+     "football_p_holm": 6.350497141000984e-18,
+     "football_q_bh": 9.31406247346811e-19,
+     "market_p": 0.0002791687708493672,
+     "market_p_holm": 0.008375063125481017,
+     "market_q_bh": 0.002290069754063309
+    },
+    "football_effect": -1.9890207240406523,
+    "football_q_bh": 9.31406247346811e-19,
+    "market_effect": -0.6180698149818906,
+    "market_q_bh": 0.002290069754063309
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": -1,
+    "feature": "ctrl.offdiff_ppg",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "control",
+     "strength": "STRONG"
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5362731152204836,
+     "n": 713,
+     "roi_assumed_110": 0.023794129057286936,
+     "roi_ci_boot": [
+      -0.04409682460634308,
+      0.09207625470107639
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "VISIBILITY: when a STRONG efficiency edge is also visible as a big adjusted points-per-game advantage of the control team's offense, the market prices it fully or over-prices it; when the edge is in efficiency but not yet in scoring, it may be under-priced.",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Within STRONG CONTROL: control-side scoring-offense advantage -> control-side ATS (negative)",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-004",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=6.98e-32 effect=4.28",
+    "market n=2373 q=0.0406 effect=-0.823 season-share=0.9166666666666666 blocks-agree=True",
+    "significant, stable residual; economics only at ASSUMED -110 or untimestamped provider odds"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 5.036614779672469,
+     "football_q": 1.1464692674039163e-22,
+     "id": "CFB-DSC-004",
+     "market_effect": -0.3051849647949114,
+     "market_q": 0.7231847683933933,
+     "name": "Within STRONG CONTROL: control-side scoring-offense advantage -> control-side ATS (negative)",
+     "status": "REJECTED"
+    },
+    "fdr": {
+     "football_p": 4.6520533301760906e-32,
+     "football_p_holm": 5.5824639962113086e-31,
+     "football_q_bh": 6.978079995264136e-32,
+     "market_p": 0.008700742089349945,
+     "market_p_holm": 0.23492003641244852,
+     "market_q_bh": 0.04055804630004964
+    },
+    "football_effect": 4.277785316108966,
+    "football_q_bh": 6.978079995264136e-32,
+    "market_effect": -0.8226081339219874,
+    "market_q_bh": 0.04055804630004964
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "kind": "SIDE",
+    "population": {
+     "and": [
+      {
+       "rule": "control",
+       "strength": "STRONG"
+      }
+     ],
+     "feature": "ctrl.offdiff_ppg",
+     "hi": 1.5,
+     "rule": "feature_range"
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "ATS_assumed_-110": {
+     "cover_rate": 0.5173410404624278,
+     "covers": 537,
+     "losses": 501,
+     "n": 1055,
+     "pushes": 17,
+     "roi_assumed_110": -0.012348922753547046,
+     "roi_ci_boot": [
+      -0.07021339995859666,
+      0.044704663332025406
+     ]
+    },
+    "ML_provider_odds": {
+     "econ_n": 416,
+     "roi_ci_boot": [
+      -0.040010723489157844,
+      0.06949568546221496
+     ],
+     "roi_provider_odds": 0.012302502222098288
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "Binary form of CFB-DSC-004: the less-visible half of STRONG CONTROL.",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS",
+    "ML"
+   ],
+   "name": "STRONG CONTROL with low scoring visibility (control offense ppg-quality edge <= 1.5 SD) -> ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-005",
+   "sport": "CFB",
+   "status": "APPROX_EFFICIENT",
+   "status_reasons": [
+    "football q=6.3e-208 effect=0.341",
+    "market n=1055 q=0.149 effect=0.915 season-share=0.75 blocks-agree=True",
+    "football signal real; closing market residual indistinguishable from zero"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 0.3283229942314244,
+     "football_q": 2.362482136108118e-85,
+     "id": "CFB-DSC-005",
+     "market_effect": 0.11198428290766209,
+     "market_q": 0.8726577920930572,
+     "name": "STRONG CONTROL with low scoring visibility (control offense ppg-quality edge <= 1.5 SD) -> ATS",
+     "status": "APPROX_EFFICIENT"
+    },
+    "fdr": {
+     "football_p": 2.099830446831198e-208,
+     "football_p_holm": 4.829610027711755e-207,
+     "football_q_bh": 6.299491340493593e-208,
+     "market_p": 0.05969042910025081,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.1485850790939845
+    },
+    "football_effect": 0.3411699201607123,
+    "football_q_bh": 6.299491340493593e-208,
+    "market_effect": 0.9151658767772511,
+    "market_q_bh": 0.1485850790939845
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "eff_minus_scoring_net",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5136157337367625,
+     "n": 2695,
+     "roi_assumed_110": -0.019460871957089825,
+     "roi_ci_boot": [
+      -0.05522844295663767,
+      0.017845424944989495
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "VISIBILITY",
+   "football_interpretation": "Efficiency that has not (yet) shown up in points may be under-priced by a points-anchored market.",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Efficiency net minus scoring net -> home ATS residual",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-006",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=4.57e-53 effect=-3.5",
+    "market n=8776 q=0.526 effect=0.146 season-share=0.5 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": -3.1475821282509457,
+     "football_q": 3.3754170994700087e-22,
+     "id": "CFB-DSC-006",
+     "market_effect": 0.43519096988817124,
+     "market_q": 0.11760555778480151,
+     "name": "Efficiency net minus scoring net -> home ATS residual",
+     "status": "REJECTED"
+    },
+    "fdr": {
+     "football_p": 2.495088588188199e-53,
+     "football_p_holm": 3.992141741101118e-52,
+     "football_q_bh": 4.574329078345031e-53,
+     "market_p": 0.37784699064975763,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.5257001609040106
+    },
+    "football_effect": -3.497843371086876,
+    "football_q_bh": 4.574329078345031e-53,
+    "market_effect": 0.14637087195669912,
+    "market_q_bh": 0.5257001609040106
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": -1,
+    "feature": "pass_rate_sum_raw",
+    "kind": "SLOPE_TOTAL",
+    "population": {
+     "rule": "all"
+    }
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.510840108401084,
+     "n": 2237,
+     "roi_assumed_110": -0.024759793052475998,
+     "roi_ci_boot": [
+      -0.06442473515644247,
+      0.014501708121018203
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "STYLE",
+   "football_interpretation": "Totals may over-weight pass-heavy matchups (incompletions stop the clock but also end drives).",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "TOTAL"
+   ],
+   "name": "Combined pass-rate tendency -> total residual (under)",
+   "primary_market": "TOTAL",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-007",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=2.17e-22 effect=1.9",
+    "market n=8680 q=0.34 effect=-0.23 season-share=0.6666666666666666 blocks-agree=False",
+    "neither the football nor the market test cleared its threshold"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 2.3749473423124687,
+     "football_q": 8.589942275057896e-19,
+     "id": "CFB-DSC-007",
+     "market_effect": 0.11848808238665413,
+     "market_q": 0.7231847683933933,
+     "name": "Combined pass-rate tendency -> total residual (under)",
+     "status": "REJECTED"
+    },
+    "fdr": {
+     "football_p": 1.5778943367067942e-22,
+     "football_p_holm": 1.5778943367067942e-21,
+     "football_q_bh": 2.169604712971842e-22,
+     "market_p": 0.19837536858997637,
+     "market_p_holm": 1.0,
+     "market_q_bh": 0.3398118162916154
+    },
+    "football_effect": 1.896547144532229,
+    "football_q_bh": 2.169604712971842e-22,
+    "market_effect": -0.23023739485909228,
+    "market_q_bh": 0.3398118162916154
+   }
+  },
+  {
+   "code_sha": "e525dde8cccad9e4f9220152fd5f2cc3c2b985b6",
+   "definition": {
+    "expected_sign": 1,
+    "feature": "ctrl.netq_success_rate",
+    "kind": "SLOPE_SIDE",
+    "population": {
+     "rule": "control",
+     "strength": "MODERATE"
+    },
+    "side": "control"
+   },
+   "discovery_sample": {
+    "discovered_on": "Stage A screen, block A 2014-2019",
+    "set": 2
+   },
+   "economic_results": {
+    "follow_rule_abs_z_ge_1_assumed_-110": {
+     "cover_rate": 0.5421245421245421,
+     "n": 556,
+     "roi_assumed_110": 0.03496503496503495,
+     "roi_ci_boot": [
+      -0.043759314456035765,
+      0.10987761947210165
+     ]
+    }
+   },
+   "evaluation_code_sha": "a3277a0e87a018345d73e9f378d2c14e6a83d343",
+   "family": "CONTROL_INTERACTION",
+   "football_interpretation": "Among MODERATE edges, the ones carried by success rate (the most stable efficiency stat) may be under-priced.",
+   "hypothesis_set_sha": "babd3650f0835b7ec60a7705ed49d71e7fd19d83797eb150075445d8294bd234",
+   "level": "GAME",
+   "limitations": [
+    "RETROSPECTIVE DISCOVERY / VALIDATION: every CFBD football season 2014-2025 had already been opened by the archetype studies",
+    "CFBD lines are untimestamped closing-or-near-closing provider values; spread/total economics at an ASSUMED -110",
+    "moneyline economics use one provider's untimestamped closing odds (2021-2025 only), not a Kalshi executable quote",
+    "no explosive-play counts, QB identity, injuries, 1H/1Q/team-total/winning-margin lines in the historical source"
+   ],
+   "market_families": [
+    "ATS"
+   ],
+   "name": "Within MODERATE CONTROL: success-rate matchup net -> control-side ATS",
+   "primary_market": "ATS",
+   "prospective": {
+    "note": "no Wave-1 signal is active; see RESULTS section Y for tracking candidates",
+    "status": "NOT_STARTED"
+   },
+   "protocol_sha": "70798e5dbdace3c4609e669699f83ce4190c941ada9f8bca62f3ad74ed49be5a",
+   "signal_id": "CFB-DSC-008",
+   "sport": "CFB",
+   "status": "REJECTED",
+   "status_reasons": [
+    "football q=0.0377 effect=0.812",
+    "market n=1834 q=0.0971 effect=0.754 season-share=0.8333333333333334 blocks-agree=True",
+    "residual q < 0.10 but not stable/significant enough"
+   ],
+   "validation": {
+    "block_b_only": {
+     "football_effect": 0.3021981188831502,
+     "football_q": 0.5744922867231251,
+     "id": "CFB-DSC-008",
+     "market_effect": 0.28403167107808414,
+     "market_q": 0.7231847683933933,
+     "name": "Within MODERATE CONTROL: success-rate matchup net -> control-side ATS",
+     "status": "REJECTED"
+    },
+    "fdr": {
+     "football_p": 0.03310708640347655,
+     "football_p_holm": 0.16553543201738274,
+     "football_q_bh": 0.03767358107981815,
+     "market_p": 0.03336836509719095,
+     "market_p_holm": 0.7341040321382009,
+     "market_q_bh": 0.09707160755546457
+    },
+    "football_effect": 0.8116479491321414,
+    "football_q_bh": 0.03767358107981815,
+    "market_effect": 0.753628638551107,
+    "market_q_bh": 0.09707160755546457
+   }
+  }
+ ],
+ "sport": "CFB",
+ "status_vocabulary": [
+  "DISCOVERY_ONLY",
+  "FOOTBALL_VALIDATED",
+  "MARKET_WATCH",
+  "VALUE_WATCH",
+  "APPROX_EFFICIENT",
+  "OVERPRICED",
+  "EDGE_CONFIRMED",
+  "REJECTED",
+  "DATA_UNAVAILABLE",
+  "BASELINE_REFERENCE"
+ ],
+ "wave": "football-signal-discovery-wave1"
+}

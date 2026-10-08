@@ -39,3 +39,8 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Markdown renderers for research docs: one f-string per table row is clearer than wrapped fragments.
+"scripts/signal_discovery_cfb_tables.py" = ["E501"]
+"scripts/signal_discovery_cfb_registry.py" = ["E501"]
