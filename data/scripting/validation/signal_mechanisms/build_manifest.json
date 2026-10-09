@@ -1,0 +1,183 @@
+{
+ "cfbd_cache": "research-data@292f3aac data/research_cache/v2",
+ "cfbd_digests": {
+  "2014": "f93eed152cde1d63f37d5267e7c0b6c04fbbff061712db984e82d611411dde9d",
+  "2015": "906f7c92e2b3b3b9235f5e0b4fad9805ce51b1830c49b63e62290b48e8b402e0",
+  "2016": "6fc52837865cda75edba30699b3e2f1f1da168efafe314cf7e1041bd58fbe3d0",
+  "2017": "77cf58b56986245e1ec98f247f58167e7c196e24194cb04c78b1d7a0b24fbbba",
+  "2018": "4fcd2133772f8af4b11eaa723948951bd563ba7e880e5e43d8885da77d215524",
+  "2019": "2d39490dfbf487ab8b5fc00267d56ad6c1101f2e7918c82ac1ebe0e2daafb965",
+  "2020": "2fec51ac79ba25d49277dcb55f64408fdcde199f842eb59979e939fc596592d3",
+  "2021": "ba144c4c9695fb45f7e0730eb188516dac4c46034f0015f25cce64342bc33a15",
+  "2022": "d723bc56235939abc6d165fdc7d682f51fcf43e567fc39de93487b530b6f59e5",
+  "2023": "e5879ea38b3b3b16b3e538fd82b6398fbea1450b2733b140ddf750a862385d26",
+  "2024": "9dab9092b47f2657459b980e4054b2afd16ede22d9c6a63e72a46d6d09ebd92c",
+  "2025": "87952f308949934171b8cee128df407902bc1ad64b222110c21f886c0666089a"
+ },
+ "cfbd_espn_parity_2026": {
+  "cfbd_games": 888,
+  "completed_both": 8,
+  "neutral_match": 522,
+  "orientation_match": 522,
+  "overlap_ids": 522,
+  "rows": [
+   {
+    "cfbd": [
+     10,
+     15
+    ],
+    "espn": [
+     "10",
+     "15"
+    ],
+    "game_id": "401856766",
+    "match": true
+   },
+   {
+    "cfbd": [
+     42,
+     26
+    ],
+    "espn": [
+     "42",
+     "26"
+    ],
+    "game_id": "401864494",
+    "match": true
+   },
+   {
+    "cfbd": [
+     34,
+     8
+    ],
+    "espn": [
+     "34",
+     "8"
+    ],
+    "game_id": "401858202",
+    "match": true
+   },
+   {
+    "cfbd": [
+     33,
+     7
+    ],
+    "espn": [
+     "33",
+     "7"
+    ],
+    "game_id": "401864577",
+    "match": true
+   },
+   {
+    "cfbd": [
+     28,
+     17
+    ],
+    "espn": [
+     "28",
+     "17"
+    ],
+    "game_id": "401866408",
+    "match": true
+   },
+   {
+    "cfbd": [
+     37,
+     27
+    ],
+    "espn": [
+     "37",
+     "27"
+    ],
+    "game_id": "401858201",
+    "match": true
+   },
+   {
+    "cfbd": [
+     34,
+     17
+    ],
+    "espn": [
+     "34",
+     "17"
+    ],
+    "game_id": "401864570",
+    "match": true
+   },
+   {
+    "cfbd": [
+     21,
+     27
+    ],
+    "espn": [
+     "21",
+     "27"
+    ],
+    "game_id": "401862693",
+    "match": true
+   }
+  ],
+  "score_match": 8
+ },
+ "code_sha": "202c9e91cff9b7b2d3be9efe03e0c512d07afc5e",
+ "hashes": {
+  "games_2014_2025": "cd83f437e3af2d0127af9b453cdf75a482676aaee5dc75aacfe04c01c57fd974",
+  "games_2026": "096de08fdc8f69452903c58a11a3d2137e5ff9c5cb44d31dc7500588cb27b276"
+ },
+ "historical": {
+  "anchor": {
+   "cover": 0.527736131934033,
+   "l": 1260,
+   "mean": 1.4003870254331,
+   "n": 2713,
+   "p": 45,
+   "w": 1408
+  },
+  "exclusions": {
+   "FEATURE_NO_PRIOR_HISTORY_AWAY": 553,
+   "FEATURE_NO_PRIOR_HISTORY_BOTH": 982,
+   "FEATURE_NO_PRIOR_HISTORY_HOME": 48
+  }
+ },
+ "log_pin": "8173fd5ea2b38a61ad429570fbb5cbcaa22cf7b7",
+ "log_sha256": "e37fe5ca7aacaf4adab3398912fc0ce11d2f60ec873529210b04c0ca32ed8d4b",
+ "n_2026": 397,
+ "n_hist": 8786,
+ "protocol": {
+  "commit": "202c9e91cff9b7b2d3be9efe03e0c512d07afc5e",
+  "sha256": "0106a1fb363430c14121d208d4a7cbf0ec932779a2f52b427281ce34e4822c90"
+ },
+ "residualisers": {
+  "passing": {
+   "a": -0.01729990928929165,
+   "b": 0.8726116667853815,
+   "n": 8780,
+   "sd": 0.9220036335623869
+  },
+  "rushing": {
+   "a": 0.020161006542193327,
+   "b": 0.8259469722808191,
+   "n": 8786,
+   "sd": 1.0375720528416614
+  }
+ },
+ "rows_2026": {
+  "control_check_wave2a": {
+   "compared": 89,
+   "disagreements": [],
+   "frozen_rows": 89,
+   "missing_in_replay": []
+  },
+  "feature_check": {
+   "compared": 397,
+   "mismatch": 0,
+   "mismatch_ids": []
+  },
+  "odds_games": 251
+ },
+ "schedule_sha256": "6b73c7a1fe46f713cea1aa90a06626a1f80be6d2f87c81435643198fc09df606",
+ "schema": "cfb_signal_mechanisms_build/1.0.0",
+ "sidecar_odds_sha256": "717218cda4a1c4e23c45c787ad128f1aa1468bdec80030b59a2f8d07fdb02ec1",
+ "version": "cfb_signal_mechanisms/1.0.0"
+}
