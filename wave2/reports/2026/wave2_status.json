@@ -10,13 +10,17 @@
   "system_failures": 0
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": null,
+ "last_ledger_row_at": "2026-10-09T21:42:22Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
  "pros001_feature_distribution": {
-  "display": "NO SETTLED SAMPLE",
-  "n": 0
+  "mean": 0.22299999999999995,
+  "n": 3,
+  "sd": 0.4485409680285625,
+  "share_abs_z_ge_1": 0.0,
+  "wave1_mean": 0.13804024626610417,
+  "wave1_sd": 1.4218539928759784
  },
  "schema": "cfb_signal_lab_wave2_status/1.0.0",
  "season": 2026,
@@ -30,8 +34,12 @@
     "remaining": 50,
     "state": "EARLY_READ"
    },
-   "observation_reasons": {},
-   "observations": {},
+   "observation_reasons": {
+    "ABS_Z_BELOW_1": 3
+   },
+   "observations": {
+    "EXCLUDED_PROTOCOL": 3
+   },
    "settlement_pending": 0,
    "summary": {
     "display": "NO SETTLED SAMPLE",
