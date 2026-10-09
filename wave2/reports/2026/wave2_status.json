@@ -1,0 +1,62 @@
+{
+ "activation_utc": "2026-10-10T00:00:00Z",
+ "candidates_sha256": "bf19c972bd230ff505c50ccd3a631dbc027d41b4900ad76c97248a4cfc6e1ce5",
+ "capture_health": {
+  "by_outcome": {},
+  "in_window_by_outcome": {},
+  "last_cycle_errors": [],
+  "spread_attempts": 0,
+  "spread_attempts_in_window": 0,
+  "system_failures": 0
+ },
+ "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
+ "last_ledger_row_at": null,
+ "never_emitted": [
+  "EDGE_CONFIRMED"
+ ],
+ "pros001_feature_distribution": {
+  "display": "NO SETTLED SAMPLE",
+  "n": 0
+ },
+ "schema": "cfb_signal_lab_wave2_status/1.0.0",
+ "season": 2026,
+ "streams": {
+  "CFB-PROS-001": {
+   "awaiting_entry": 0,
+   "entries": {},
+   "entry_reasons": {},
+   "next_read": {
+    "at_n": 50,
+    "remaining": 50,
+    "state": "EARLY_READ"
+   },
+   "observation_reasons": {},
+   "observations": {},
+   "settlement_pending": 0,
+   "summary": {
+    "display": "NO SETTLED SAMPLE",
+    "n": 0,
+    "verdict": "PROSPECTIVE_TRACKING"
+   }
+  },
+  "CFB-PROS-002": {
+   "awaiting_entry": 0,
+   "entries": {},
+   "entry_reasons": {},
+   "next_read": {
+    "at_n": 50,
+    "remaining": 50,
+    "state": "INTERIM"
+   },
+   "observation_reasons": {},
+   "observations": {},
+   "settlement_pending": 0,
+   "summary": {
+    "display": "NO SETTLED SAMPLE",
+    "n": 0,
+    "verdict": "PROSPECTIVE_TRACKING"
+   }
+  }
+ },
+ "version": "cfb-signal-discovery-wave2/1.0.0"
+}
