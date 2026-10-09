@@ -101,7 +101,8 @@ def prepare(hist: list[dict], fits: dict, sds: dict | None = None) -> tuple[list
             "control_mag",
         ):
             v = [x[k] for x in rows if x.get(k) is not None]
-            sds[k] = {"mean": float(np.mean(v)), "sd": float(np.std(v, ddof=1))}
+            sd = float(np.std(v, ddof=1)) if len(v) > 1 else 0.0
+            sds[k] = {"mean": float(np.mean(v)) if v else 0.0, "sd": sd if sd > 0 else 1.0}
     for d in rows:
         for k, z in (
             ("eff", "eff_z"),
@@ -576,6 +577,9 @@ def market_decomposition(H: list[dict]) -> dict[str, Any]:
     for name, xs in models.items():
         rs = [r for r in sp if all(r.get(x) is not None for x in xs)]
         res = {"features": xs, "n": len(rs)}
+        if len(rs) < 50:
+            out[name] = res
+            continue
         for tgt in ("exp_margin", "margin"):
             beta = M.ols([r[tgt] for r in rs], [[r[x] for x in xs] for r in rs])
             res[f"{tgt}_coef"] = dict(zip(["intercept"] + xs, [float(b) for b in beta], strict=True))
