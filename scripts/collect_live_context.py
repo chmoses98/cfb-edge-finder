@@ -72,7 +72,12 @@ from cfb_edge_finder.execution.context_sources import (  # noqa: E402
     scoring_field,
     team_names,
 )
+from cfb_edge_finder.teams.fcs_identity import (  # noqa: E402
+    KNOWN_NON_FBS_NAME_VARIANTS,
+    normalize_school_name,
+)
 from cfb_edge_finder.teams.registry import (  # noqa: E402
+    ALIASES,
     AmbiguousTeamAliasError,
     UnknownTeamAliasError,
     get_team,
@@ -334,6 +339,13 @@ def _stem_is_safe(raw: str) -> bool:
     return stem_team.team_id == full_team.team_id
 
 
+#: team_id -> every exact spelling the registry maps to it (aliases are
+#: exact-match and one-to-one, so each is that team and no other).
+_REGISTRY_SPELLINGS: dict[str, set[str]] = {}
+for _alias, _team_id in ALIASES.items():
+    _REGISTRY_SPELLINGS.setdefault(_team_id, set()).add(_alias)
+
+
 def _kalshi_team_keys(packet_teams: dict[str, Any]) -> dict[str, set[str]]:
     """Every spelling of each Kalshi team, normalised, for ESPN matching.
 
@@ -359,6 +371,17 @@ def _kalshi_team_keys(packet_teams: dict[str, Any]) -> dict[str, set[str]]:
         if team is not None:
             candidates.add(team.display_name)
             candidates.add(team.team_id.replace("-", " "))
+            # Every exact alias the registry ties to this ONE team: ESPN calls
+            # Appalachian State "App State", which no affix rule can derive.
+            candidates |= _REGISTRY_SPELLINGS.get(team.team_id, set())
+        else:
+            # A non-FBS program the FBS registry rightly does not know: its
+            # verified Kalshi -> CFBD/ESPN spelling ("Southeastern Louisiana"
+            # -> "SE Louisiana", "Tennessee-Martin" -> "UT Martin"), identity
+            # only -- nothing here can pull a game into pricing.
+            variant = KNOWN_NON_FBS_NAME_VARIANTS.get(normalize_school_name(str(raw)))
+            if variant:
+                candidates.add(variant)
         allow_stem = _stem_is_safe(str(raw))
         keys: set[str] = set()
         for candidate in candidates:

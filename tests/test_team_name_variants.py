@@ -103,11 +103,20 @@ def test_the_names_that_failed_the_live_run_now_match():
         assert _keys(kalshi) & _espn(*espn), kalshi
 
 
-def test_an_abbreviation_is_left_unmatched_rather_than_guessed():
+def test_an_abbreviation_comes_from_the_registry_never_from_an_affix_rule():
     """"App State" is Appalachian State, and that is a fact about a school --
-    not a punctuation rule. This function has no way to know it, so the game
-    stays honestly unenriched instead of being paired on a hunch."""
-    assert not (_keys("Appalachian St.") & _espn("App State Mountaineers", "App State"))
+    not a punctuation rule. No affix rewrite produces it; the team registry
+    records it as an exact alias (observed live from CFBD), and the matcher
+    reads the registry's aliases for the one team it resolved."""
+    assert not (collector.name_variants("Appalachian St.") & _espn("App State Mountaineers", "App State"))
+    assert _keys("Appalachian St.") & _espn("App State Mountaineers", "App State")
+
+
+def test_an_abbreviation_no_table_records_is_left_unmatched_rather_than_guessed():
+    """"SF Austin" is Stephen F. Austin, and nothing in the repository records
+    that, so the game stays honestly unenriched instead of being paired on a
+    hunch."""
+    assert not (_keys("Stephen F. Austin") & _espn("Stephen F. Austin Lumberjacks", "SF Austin"))
 
 
 def test_the_wrong_ohio_still_cannot_pair():

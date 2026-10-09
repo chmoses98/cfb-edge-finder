@@ -464,10 +464,12 @@ def test_one_side_matching_points_at_an_alias_for_the_other():
     The example is an ABBREVIATION, deliberately. "Morgan St." against ESPN's
     "Morgan State" used to land here and no longer does -- `name_variants`
     rewrites that affix. What remains is the class of mismatch no punctuation
-    rule can close: "App State" is Appalachian State because of a fact about
-    the school, not a fact about the string."""
+    rule can close: "SF Austin" is Stephen F. Austin because of a fact about
+    the school, not a fact about the string. ("App State" used to be the
+    example; the registry records that fact as an exact alias, and the
+    matcher now reads it -- tests/test_team_identity_spellings.py.)"""
     reason, detail = collector.classify_match_failure(
-        _packet("NC St.", "Appalachian St."), [_espn("NC State", "App State")]
+        _packet("NC St.", "Stephen F. Austin"), [_espn("NC State", "SF Austin")]
     )
     assert reason == collector.UNMATCHED_ONE_TEAM
     assert "matched home only" in detail
