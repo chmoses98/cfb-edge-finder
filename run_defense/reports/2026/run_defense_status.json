@@ -1,0 +1,119 @@
+{
+ "activation_utc": "2026-10-13T12:00:00Z",
+ "c2c_f3_shadow": {
+  "affects": "nothing (shadow only)",
+  "name": "UNCERTAINTY_SCALED_RUSH_SIGNAL",
+  "recorded": 0
+ },
+ "fcs_research_c2c_f4": {
+  "observed": 0,
+  "pooled_with_primary": false,
+  "settled": 0
+ },
+ "first_eligible": {
+  "game_id": "401871067",
+  "kickoff_utc": "2026-10-13T23:00:00Z"
+ },
+ "health": {
+  "feature_unavailable": 0,
+  "last_cycle_errors": [],
+  "missed": 0,
+  "observations": 0,
+  "p0_unavailable": 0,
+  "settlements": 0
+ },
+ "label": "PROSPECTIVE_RESEARCH_ONLY -- no bet, no stake, no badge, no production change",
+ "ledger_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "protocol": {
+  "commit": "c9ebeee2fab99844ee3e0f5a3385740fd74df47d",
+  "path": "docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md",
+  "sha256": "576eb022d6bbfea0022aa0f1153dc87eaeda251cf33233783bc09b49bf198239"
+ },
+ "schema": "cfb_run_defense_prospective/1.0.0",
+ "season": 2026,
+ "streams": {
+  "CFB-MECH-PROS-001": {
+   "eligible": 0,
+   "name": "RUSH_DEFENSE_FORCED_PASS_CHANNEL",
+   "next_review": 50,
+   "observed": 0,
+   "primary_metric": {
+    "name": "slopes_on_x_rd",
+    "value": {
+     "drives_diff": {
+      "n": 0,
+      "slope_per_sd": null
+     },
+     "opponent_ints_diff": {
+      "n": 0,
+      "slope_per_sd": null
+     },
+     "opponent_pass_att_diff": {
+      "n": 0,
+      "slope_per_sd": null
+     },
+     "possession_diff_home": {
+      "n": 0,
+      "slope_per_sd": null
+     },
+     "scoring_opps_diff": {
+      "n": 0,
+      "slope_per_sd": null
+     }
+    }
+   },
+   "settled": 0,
+   "status": "PROSPECTIVE_TRACKING"
+  },
+  "CFB-MODEL-PROS-001": {
+   "eligible": 0,
+   "name": "RUSH_PROJECTION_INCREMENT",
+   "next_review": 50,
+   "observed": 0,
+   "primary_metric": {
+    "ci95": null,
+    "name": "mean_abs_error_difference_p0_minus_p1",
+    "value": null
+   },
+   "secondary": {
+    "favourite_tail_bias": {
+     "0_7": {
+      "n": 0
+     },
+     "14_21": {
+      "n": 0
+     },
+     "21_inf": {
+      "n": 0
+     },
+     "7_14": {
+      "n": 0
+     }
+    },
+    "mean_sq_error_difference": null,
+    "p0_bias": null,
+    "p1_bias": null,
+    "winner_brier_p1_minus_p0": null
+   },
+   "settled": 0,
+   "status": "PROSPECTIVE_TRACKING"
+  },
+  "CFB-PROS-003": {
+   "eligible": 0,
+   "name": "RUSH_DEFENSE_RESIDUAL",
+   "next_review": 50,
+   "observed": 0,
+   "primary_metric": {
+    "ci95": null,
+    "name": "b1_points_per_sd_x_rd_given_efficiency_vs_p0",
+    "value": null
+   },
+   "secondary": {
+    "market_b1_vs_kalshi_centre": null,
+    "n_with_kalshi_centre": 0
+   },
+   "settled": 0,
+   "status": "PROSPECTIVE_TRACKING"
+  }
+ }
+}
