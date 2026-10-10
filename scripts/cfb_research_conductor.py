@@ -66,7 +66,7 @@ from cfb_edge_finder.control_prospective.tracking import (  # noqa: E402
     summarize,
 )
 from cfb_edge_finder.scripting.gamelog import TeamGame, read_jsonl  # noqa: E402
-from cfb_edge_finder.signal_discovery import wave2_cycle  # noqa: E402
+from cfb_edge_finder.signal_discovery import run_defense_cycle, wave2_cycle  # noqa: E402
 
 SEASON = 2026
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
@@ -335,6 +335,38 @@ def watchdog_needs(
 # --------------------------------------------------------------------------- one cycle
 
 
+def build_p0_provider(p0_dir: Path | None, season: int) -> Any:
+    """Wave 2D Track B: the literal live projection (P0) from READ-ONLY copies of the live football state and the
+    preseason talent cache. Returns None (P0 recorded UNAVAILABLE, fail closed) when the inputs are absent or corrupt;
+    nothing here can touch production capture or pricing."""
+    if p0_dir is None or not p0_dir.exists():
+        return None
+    import capture_kalshi_cfb_snapshot as milestone_d  # production version resolver, exactly as live
+    import research_scan_and_capture as live_scan  # production talent loader, exactly as live
+
+    from cfb_edge_finder.research import football_state as fs
+
+    state, verdict = fs.load_football_state(p0_dir, season)
+    if state is None:
+        return None
+    talent, talent_state = live_scan._load_talent_by_team(p0_dir, season)  # noqa: SLF001
+    inputs = state.to_scan_inputs(datetime.now(UTC))
+    return run_defense_cycle.LiveP0(
+        lines_loader=inputs.lines_loader,
+        talent_by_team=talent,
+        schedule_games=state.schedule_games,
+        model_version=milestone_d.resolve_model_version(bool(talent)),
+        provenance={
+            "football_state": verdict,
+            "history_seasons": list(state.history_seasons),
+            "history_fetched_at": state.history_fetched_at.isoformat(),
+            "talent_prior_state": talent_state,
+            "talent_teams": len(talent),
+            "ratings_component_version": milestone_d._ratings_component_version(),  # noqa: SLF001
+        },
+    )
+
+
 def run_cycle(
     *,
     main_dir: Path,
@@ -348,6 +380,8 @@ def run_cycle(
     dispatch: Any = None,
     busy: Any = None,
     run_id: str | None = None,
+    p0_dir: Path | None = None,
+    p0_provider: Any = None,
 ) -> dict[str, Any]:
     verify_protocol(load_protocol(ROOT))
     inputs = Inputs(main_dir, season)
@@ -421,6 +455,30 @@ def run_cycle(
         append_rows(
             store / "wave2" / season_dir / "cycles.jsonl",
             [{"at": now, "run_id": run_id, "system_failure": wave2["error"]}],
+        )
+
+    # 1c. Wave 2D Track B run-defense prospective streams (research only). Isolated exactly like Wave 2: a failure is
+    #     logged under run_defense/ and never stops CONTROL capture, Wave 2, the watchdog, settlement or SIFT.
+    try:
+        provider = p0_provider if p0_provider is not None else build_p0_provider(p0_dir, season)
+        run_defense = run_defense_cycle.run(
+            store_dir=store,
+            season=season,
+            now=now,
+            schedule=inputs.schedule,
+            team_rows=inputs.team_rows,
+            p0_provider=provider,
+            games=[sg for _, sg in games],
+            winner_quotes=quotes,
+            keys=market_keys,
+            code_sha=code_sha(),
+            run_id=run_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        run_defense = {"status": "SYSTEM_FAILURE", "error": f"{type(exc).__name__}: {exc}"}
+        append_rows(
+            store / "run_defense" / season_dir / "cycles.jsonl",
+            [{"at": now, "run_id": run_id, "system_failure": run_defense["error"]}],
         )
 
     # 2. watchdog
@@ -524,6 +582,7 @@ def run_cycle(
         "dispatched": dispatched,
         "settled": len(new_settled),
         "wave2": wave2,
+        "run_defense": run_defense,
         "published": bool(changed or stale),
         "capture_health": doc["capture_health"],
     }
@@ -540,6 +599,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offline", action="store_true", help="no Kalshi read (prices fall back to the catalog)")
     parser.add_argument("--dispatch", action="store_true", help="let the watchdog dispatch the Script Engine")
     parser.add_argument("--run-id", default=None)
+    parser.add_argument("--p0-dir", type=Path, default=None, help="read-only research-data copy (football state)")
     args = parser.parse_args(argv)
 
     def offline() -> list[dict[str, Any]]:
@@ -557,6 +617,7 @@ def main(argv: list[str] | None = None) -> int:
         dispatch=dispatch_script_engine if args.dispatch else None,
         busy=script_engine_busy if args.dispatch else None,
         run_id=args.run_id,
+        p0_dir=args.p0_dir,
     )
     print(json.dumps(result, sort_keys=True))
     return 0
