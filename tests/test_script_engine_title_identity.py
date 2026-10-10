@@ -99,3 +99,31 @@ def test_an_ordinary_title_is_matched_exactly_as_before():
     )
     assert event is not None and event["id"] == "401866659"
     assert (request.kalshi_away, request.kalshi_home) == ("Stony Brook", "Towson")
+
+
+# ------------------------------------------------------------------ " vs " titles (2026-10-10 catalog)
+#
+# Kalshi retitled the game "University at Albany vs Stony Brook". The title parser's " at " precedence reads it
+# "University" at "Albany vs Stony Brook", which no schedule event matches, and identity failed again. Every reading
+# from both separator families is now offered to the schedule; exactly one matching reading decides.
+
+VS_TITLE = "University at Albany vs Stony Brook"
+
+
+def test_a_vs_title_whose_school_holds_at_resolves_to_the_scheduled_game():
+    request, event, home_keys, away_keys = script_engine.resolve_request(
+        "26OCT17ALBYSTON", VS_TITLE, "2026-10-17T21:30:00Z", [STBK_ALB, TOW_STBK]
+    )
+    assert event is STBK_ALB
+    assert (request.kalshi_away, request.kalshi_home) == ("University at Albany", "Stony Brook")
+    from cfb_edge_finder.scripting.packets import identity_check
+
+    assert identity_check(request, event, home_keys, away_keys)["status"] == "PASS"
+
+
+def test_a_vs_title_with_no_scheduled_game_still_fails_identity():
+    request, event, *_ = script_engine.resolve_request(
+        "26OCT17ALBYSTON", VS_TITLE, "2026-10-17T21:30:00Z", [TOW_STBK]
+    )
+    assert event is None
+

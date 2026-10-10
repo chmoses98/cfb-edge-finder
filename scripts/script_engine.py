@@ -37,7 +37,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import collect_live_context as names_util  # noqa: E402  (name matching only; no network used here)
 
 from cfb_edge_finder.execution.disposition import DispositionConfig, parse_timestamp  # noqa: E402
-from cfb_edge_finder.execution.semantics import build_game_teams, title_readings  # noqa: E402
+from cfb_edge_finder.execution.semantics import (  # noqa: E402
+    _AT_SEPARATORS,
+    _VS_SEPARATORS,
+    _candidate_splits,
+    build_game_teams,
+    title_readings,
+)
 from cfb_edge_finder.execution.slate import build_packet, load_catalog  # noqa: E402
 from cfb_edge_finder.scripting import METHODOLOGY_V2_VERSION, METHODOLOGY_VERSION  # noqa: E402
 from cfb_edge_finder.scripting.calibration import CalibrationMismatch, load_calibration  # noqa: E402
@@ -217,6 +223,26 @@ def resolve_request(
         if len(found) == 1:
             return found[0]
     event, home_keys, away_keys = match_event(request, schedule)
+    if event is None and title:
+        # A school whose name holds the OTHER separator ("University at Albany vs Stony Brook") is split on the
+        # wrong one by the title parser's " at " precedence ("University" at "Albany vs Stony Brook"), which no
+        # schedule event matches. Every reading from both separator families is offered to the schedule; the
+        # one reading whose BOTH teams play a scheduled game near kickoff is the game. None or several: the
+        # request stays unmatched and identity fails as before -- never a guess. The contract-side title parser
+        # is not touched; identity_check still decides orientation by team identity.
+        found = []
+        seen: set[tuple[str, str]] = set()
+        for seps in (_AT_SEPARATORS, _VS_SEPARATORS):
+            for away, home in _candidate_splits(str(title), seps):
+                if (away, home) in seen:
+                    continue
+                seen.add((away, home))
+                reading = GameRequest(game_key, title, home, away, kickoff)
+                ev, hk, ak = match_event(reading, schedule)
+                if ev is not None:
+                    found.append((reading, ev, hk, ak))
+        if len({id(f[1]) for f in found}) == 1 and len(found) == 1:
+            return found[0]
     return request, event, home_keys, away_keys
 
 
