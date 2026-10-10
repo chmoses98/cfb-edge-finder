@@ -149,8 +149,8 @@
    "sample": "insufficient"
   },
   "AWAY_EXPLOSIVE_ADVANTAGE": {
-   "described": 1.0,
-   "games": 1,
+   "described": 0.5,
+   "games": 2,
    "sample": "insufficient"
   },
   "AWAY_PASS_ADVANTAGE": {
@@ -159,8 +159,8 @@
    "sample": "insufficient"
   },
   "AWAY_PASS_EXPLOSIVE_ADVANTAGE": {
-   "described": 0.3333,
-   "games": 3,
+   "described": 0.25,
+   "games": 4,
    "sample": "insufficient"
   },
   "AWAY_RUSH_ADVANTAGE": {
@@ -245,18 +245,18 @@
   },
   "LOW_POSSESSION_ENVIRONMENT": {
    "described": 1.0,
-   "games": 4,
+   "games": 5,
    "sample": "insufficient"
   }
  },
  "not_a_claim_of_edge": "Expression performance is research-unit bookkeeping at recorded entry prices. It is not evidence of an edge until the sample supports it, and no stake is implied.",
  "publications": {
   "games": 272,
-  "rows": 5765
+  "rows": 5961
  },
  "schema_version": "cfb_script_engine_report/1.0.0",
  "script_accuracy": {
-  "any_script_described": 0.2083,
+  "any_script_described": 0.2,
   "by_data_confidence": {
    "HIGH": {
     "described": 0.1667,
@@ -264,8 +264,8 @@
     "sample": "insufficient"
    },
    "LOW": {
-    "described": 0.5,
-    "games": 2,
+    "described": 0.3333,
+    "games": 3,
     "sample": "insufficient"
    },
    "MEDIUM": {
@@ -311,20 +311,20 @@
     "sample": "insufficient"
    }
   },
-  "games": 24,
-  "primary_described": 0.125,
-  "primary_or_secondary_described": 0.1667,
+  "games": 25,
+  "primary_described": 0.12,
+  "primary_or_secondary_described": 0.16,
   "realized_archetypes": {
    "AMBIGUOUS": 1,
    "AWAY_CONTROL": 4,
    "COMPETITIVE_GRIND": 2,
    "COMPETITIVE_SHOOTOUT": 2,
-   "COMPETITIVE_TOSSUP": 5,
+   "COMPETITIVE_TOSSUP": 6,
    "FAVORITE_PULLS_AWAY": 2,
    "HOME_CONTROL": 8
   }
  },
  "settled": {
-  "games": 24
+  "games": 25
  }
 }
