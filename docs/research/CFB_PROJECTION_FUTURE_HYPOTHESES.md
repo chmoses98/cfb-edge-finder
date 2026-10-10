@@ -164,3 +164,73 @@ Three possibilities:
 * Elo disagreement within STRONG CONTROL (C2C-F5).
 * Record over-reliance (C2C-F7).
 * Scoring-environment totals over-adjustment (C2C-F8).
+
+---
+
+# Wave 2E additions (observations only; untested)
+
+Source: `CFB_BASE_MODEL_REPAIR_RESULTS.md`. All are contaminated by the 2014–2025 walk-forward already examined. Each
+needs its own protocol.
+
+## C2E-PF1: in-season ingestion with C.2 retired
+
+**Observation**
+* B1 fixes ingestion (MAE −0.43 in all 8 folds) but stays over-extended (slope 0.84).
+* The post-hoc layer "B1 raw + talent" (C.2 removed, no new fit) had slope 0.93 and MAE 14.11. It was the best
+  uncalibrated stack, but it was not in the registry.
+
+**Proposed test**
+* Freeze B1 without the C.2 artifact as one candidate.
+* Gates as Wave 2E.
+
+**Sample**
+* Prospective season plus walk-forward.
+
+## C2E-PF2: talent decay by week
+
+**Observation**
+* Talent is applied at full weight all season.
+* The over-extension lives in weeks 4+ (slope ≈ 0.72–0.79); weeks 1–3 have slope ≈ 1.0.
+
+**Proposed test**
+* Pre-register a single weight schedule, w(gp) = k / (k + gp), tied to the existing carryover form.
+* No tuning on outcomes.
+
+## C2E-PF3: calibration drift / recency window
+
+**Observation**
+* B2's 4-season window over-shrinks recent seasons: 2023–2025 slope 1.15 (the G9 failure).
+* The C.2 refit a fell from 1.30 (2018) to 0.98 (2025).
+
+**Proposed test**
+* A shorter frozen window (e.g., 2 seasons), declared before results.
+
+## C2E-PF4: operational freshness
+
+**Observation**
+* The engine has been fail-closed since about 2026-09-17: the football state went hard-stale and the CFBD quota
+  (1,000 / month) ran out.
+
+**Proposed test**
+* A design decision, not a statistical test: refresh budget, cadence and current-season source (the ESPN bridge passed
+  the source-contract check).
+
+## C2E-PF5: joint base + rush recalibration
+
+**Observation**
+* `x_rd` still predicts error on a calibrated base (+3.54 points per SD).
+* Added additively, it over-extends favourites (G6).
+
+**Proposed test**
+* Only after PF1–PF3: one frozen joint fit of the margin scale and the rush coefficient.
+
+## Carried forward from the Wave 2E brief
+
+* Early-season total repair.
+* Uncertainty-scaled rush.
+* FCS-specific rush.
+* A turnover-risk structural component.
+* Elo disagreement.
+* Opener-specific signal.
+* Record over-reliance.
+* Scoring-environment totals adjustment.
