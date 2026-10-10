@@ -165,7 +165,7 @@
   },
   "AWAY_RUSH_ADVANTAGE": {
    "described": 1.0,
-   "games": 2,
+   "games": 3,
    "sample": "insufficient"
   },
   "AWAY_RUSH_EXPLOSIVE_ADVANTAGE": {
@@ -209,18 +209,18 @@
    "sample": "insufficient"
   },
   "HOME_FINISHING_ADVANTAGE": {
-   "described": 0.3333,
-   "games": 3,
+   "described": 0.25,
+   "games": 4,
    "sample": "insufficient"
   },
   "HOME_PASS_ADVANTAGE": {
    "described": 1.0,
-   "games": 4,
+   "games": 5,
    "sample": "insufficient"
   },
   "HOME_PASS_EXPLOSIVE_ADVANTAGE": {
-   "described": 1.0,
-   "games": 4,
+   "described": 0.8,
+   "games": 5,
    "sample": "insufficient"
   },
   "HOME_RUSH_ADVANTAGE": {
@@ -252,15 +252,15 @@
  "not_a_claim_of_edge": "Expression performance is research-unit bookkeeping at recorded entry prices. It is not evidence of an edge until the sample supports it, and no stake is implied.",
  "publications": {
   "games": 272,
-  "rows": 5567
+  "rows": 5765
  },
  "schema_version": "cfb_script_engine_report/1.0.0",
  "script_accuracy": {
-  "any_script_described": 0.2174,
+  "any_script_described": 0.2083,
   "by_data_confidence": {
    "HIGH": {
-    "described": 0.1818,
-    "games": 11,
+    "described": 0.1667,
+    "games": 12,
     "sample": "insufficient"
    },
    "LOW": {
@@ -285,6 +285,11 @@
     "games": 7,
     "sample": "insufficient"
    },
+   "COMPETITIVE_SHOOTOUT": {
+    "described": 0.0,
+    "games": 1,
+    "sample": "insufficient"
+   },
    "COMPETITIVE_TOSSUP": {
     "described": 0.5,
     "games": 2,
@@ -306,12 +311,12 @@
     "sample": "insufficient"
    }
   },
-  "games": 23,
-  "primary_described": 0.1304,
-  "primary_or_secondary_described": 0.1739,
+  "games": 24,
+  "primary_described": 0.125,
+  "primary_or_secondary_described": 0.1667,
   "realized_archetypes": {
    "AMBIGUOUS": 1,
-   "AWAY_CONTROL": 3,
+   "AWAY_CONTROL": 4,
    "COMPETITIVE_GRIND": 2,
    "COMPETITIVE_SHOOTOUT": 2,
    "COMPETITIVE_TOSSUP": 5,
@@ -320,6 +325,6 @@
   }
  },
  "settled": {
-  "games": 23
+  "games": 24
  }
 }
