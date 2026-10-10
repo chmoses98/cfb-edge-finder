@@ -1294,6 +1294,7 @@ def write_explorer_sources(app_root: Path, index: dict, payloads: dict[str, dict
             "payloads": len(payloads),
             "methodology_versions": versions,
             "excluded_run_clocks": list(SCRIPT_ENGINE_RUN_CLOCKS),
+            "research_sidecar_schema": SCRIPT_RESEARCH_SCHEMA,
         },
     }
     path = Path(app_root) / R.EXPLORER_DIR / SOURCES_NAME
@@ -1311,7 +1312,11 @@ def recorded_script_engine_fingerprint(app_root: Path) -> str | None:
         return None
     if doc.get("schema") != SOURCES_SCHEMA or doc.get("explorer_index_sha256") != _index_digest(app_root):
         return None
-    return (doc.get("script_engine") or {}).get("fingerprint")
+    engine = doc.get("script_engine") or {}
+    # a tree published before the research sidecars existed (or by another sidecar schema) rebuilds once
+    if engine.get("research_sidecar_schema") != SCRIPT_RESEARCH_SCHEMA:
+        return None
+    return engine.get("fingerprint")
 
 
 #: The script-engine payload's trim order when an event would exceed its byte budget, lowest-value
@@ -1433,6 +1438,109 @@ def fit_script_engine(
     return omitted, "script engine payload omitted: it does not fit the event budget even fully trimmed"
 
 
+#: Same-run research sidecar for an event whose Script Engine payload had to be trimmed to fit the
+#: event budget. The trim only removes *published* detail; the frozen football artifact already holds
+#: it, so the detail is published beside the event instead of being discarded: one compact document per
+#: trimmed event at ``explorer/script_research/<event_id>.json``, built from exactly the payload the
+#: event embeds (same artifact hash, same run), linked from the event's
+#: ``extensions.script_engine.research_sidecar`` with the sha256 of the file's bytes. Nothing is
+#: recomputed: every section is copied verbatim from the untrimmed payload. Written after the atomic
+#: explorer swap (like ``sources.json``), so a consumer that finds no sidecar or a digest mismatch shows
+#: the trimmed event and says why; the event itself never depends on it.
+SCRIPT_RESEARCH_DIR = "script_research"
+SCRIPT_RESEARCH_SCHEMA = "cfb_script_research/1.0.0"
+#: The payload sections the trim steps can shed, in the order a consumer would want them.
+SCRIPT_RESEARCH_SECTIONS = (
+    "metric_registry",
+    "matchup_profile",
+    "matchup_findings",
+    "theses",
+    "script_survivors",
+    "script_market_map",
+    "claims_v2",
+)
+#: A sidecar is lazy-loaded on demand, never on the event's first paint, so it has its own budget. If a
+#: payload's sections exceed it, the market map (the largest, and the one the event's contract list
+#: already covers) is left out and the sidecar says so; it is never split or rewritten.
+SCRIPT_RESEARCH_BUDGET = 400_000
+
+
+def _compact(doc: dict) -> str:
+    return json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def script_research_sidecar(
+    engine: dict, *, event_id: str, game_key: str, run_id: str, generated_at: str
+) -> tuple[dict, str]:
+    """The sidecar document for one event's UNTRIMMED Script Engine payload and its compact text.
+
+    Pure and deterministic. Each section is the payload's own value; ``sections_sha256`` lets a consumer
+    check any section independently of the file digest."""
+    gen = engine.get("script_generation") or {}
+    sections = {k: engine[k] for k in SCRIPT_RESEARCH_SECTIONS if engine.get(k) is not None}
+    omitted: list[str] = []
+
+    def build() -> dict:
+        return {
+            "schema": SCRIPT_RESEARCH_SCHEMA,
+            "kind": "script_research",
+            "sport": SPORT,
+            "run_id": run_id,
+            "generated_at": generated_at,
+            "event_id": event_id,
+            "game_key": game_key,
+            "artifact_hash": gen.get("artifact_hash"),
+            "methodology_version": gen.get("methodology_version"),
+            "script_generated_at": gen.get("generated_at"),
+            "engine_version": engine.get("version"),
+            "source": (
+                f"data/scripting/live/sift/{game_key}.json.gz -- the frozen, market-blind football artifact the "
+                "event document embeds (same run); sections are copied verbatim, never recomputed"
+            ),
+            "authority": "RESEARCH_ONLY",
+            "sections": sections,
+            "sections_sha256": {
+                k: hashlib.sha256(_compact({"v": v}).encode("utf-8")).hexdigest() for k, v in sections.items()
+            },
+            "omitted_sections": list(omitted),
+        }
+
+    doc = build()
+    text = _compact(doc)
+    if len(text.encode("utf-8")) > SCRIPT_RESEARCH_BUDGET and "script_market_map" in sections:
+        sections.pop("script_market_map")
+        omitted.append("script_market_map")
+        doc = build()
+        text = _compact(doc)
+    return doc, text
+
+
+def _sidecar_pointer(text: str, doc: dict) -> dict:
+    return {
+        "path": f"{SCRIPT_RESEARCH_DIR}/{doc['event_id']}.json",
+        "schema": SCRIPT_RESEARCH_SCHEMA,
+        "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "bytes": len(text.encode("utf-8")),
+        "artifact_hash": doc["artifact_hash"],
+        "sections": sorted(doc["sections"]),
+        "omitted_sections": doc["omitted_sections"],
+    }
+
+
+def write_script_research(app_root: Path, sidecars: dict[str, str]) -> int:
+    """Write the sidecar texts (event_id -> compact JSON) under ``explorer/script_research``. Called after
+    ``research.publish_explorer`` swapped the tree in (which pruned the previous run's sidecars); the
+    texts are written as built, so their bytes match the digests the events carry."""
+    base = Path(app_root) / R.EXPLORER_DIR / SCRIPT_RESEARCH_DIR
+    if sidecars:
+        base.mkdir(parents=True, exist_ok=True)
+    for eid, text in sorted(sidecars.items()):
+        tmp = base / f".{eid}.json.tmp"
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, base / f"{eid}.json")
+    return len(sidecars)
+
+
 def build_explorer(
     *,
     v1: dict[str, Any],
@@ -1440,6 +1548,7 @@ def build_explorer(
     history: dict[str, Any],
     generated_at: str | None = None,
     script_engine: dict[str, dict] | None = None,
+    sidecars_out: dict[str, str] | None = None,
 ) -> list[dict]:
     """Pure: the v1 bundle, the research-data tables and the catalog history in; contract documents out.
 
@@ -1874,7 +1983,26 @@ def build_explorer(
         engine = script_engine.get(game_key)
         extensions: dict[str, Any] = {}
         if engine is not None:
-            engine, engine_note = fit_script_engine(engine, common, matchup, notes)
+            full_engine = engine
+            engine, engine_note = fit_script_engine(full_engine, common, matchup, notes)
+            if "payload_trim" in engine and full_engine.get("script_generation"):
+                # The trim shed detail the frozen artifact holds: publish it beside the event (same run,
+                # verbatim) and link it, re-fitting with the pointer so the event stays in budget.
+                sc_doc, sc_text = script_research_sidecar(
+                    full_engine, event_id=eid, game_key=game_key, run_id=run_id, generated_at=now
+                )
+                pointer = _sidecar_pointer(sc_text, sc_doc)
+                engine, engine_note = fit_script_engine(
+                    {**full_engine, "research_sidecar": pointer}, common, matchup, notes
+                )
+                if engine.get("status") != ENGINE_OMITTED_STATUS and sidecars_out is not None:
+                    sidecars_out[eid] = sc_text
+                    engine_note = (engine_note or "") + (
+                        f"; the trimmed detail is published verbatim in the same-run sidecar {pointer['path']} "
+                        f"(sha256 {pointer['sha256'][:12]})"
+                    )
+                elif engine.get("status") != ENGINE_OMITTED_STATUS:
+                    engine.pop("research_sidecar", None)
             extensions["script_engine"] = engine
             gen = engine.get("script_generation") or {}
             notes = notes + [
@@ -2615,12 +2743,14 @@ def export_explorer(
     }
     history = load_catalog_history(Path(data_root), game_keys, max_commits=max_history_commits)
     script_engine = load_script_engine(script_engine_dir)
+    sidecars: dict[str, str] = {}
     documents = build_explorer(
         v1=v1,
         research=research,
         history=history,
         generated_at=generated_at,
         script_engine=script_engine,
+        sidecars_out=sidecars,
     )
     meta = publication_meta(v1=v1, research=research, history=history, generated_at=generated_at)
     caps = next(d for d in documents if d["kind"] == "capability_manifest")
@@ -2637,6 +2767,7 @@ def export_explorer(
         windows=caps["windows"],
         warnings=meta["warnings"],
     )
+    write_script_research(app_root, sidecars)
     # the fingerprint of exactly the payloads embedded above, recorded only once the tree is in place
     write_explorer_sources(app_root, index, script_engine)
     return index
