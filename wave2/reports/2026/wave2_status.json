@@ -14,15 +14,15 @@
   "system_failures": 0
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-09T22:57:20Z",
+ "last_ledger_row_at": "2026-10-10T12:44:07Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
  "pros001_feature_distribution": {
-  "mean": 0.5109999999999999,
-  "n": 4,
-  "sd": 0.6825701429157299,
-  "share_abs_z_ge_1": 0.0,
+  "mean": -0.32025000000000003,
+  "n": 16,
+  "sd": 1.3717860620373719,
+  "share_abs_z_ge_1": 0.3125,
   "wave1_mean": 0.13804024626610417,
   "wave1_sd": 1.4218539928759784
  },
@@ -30,7 +30,7 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 0,
+   "awaiting_entry": 5,
    "entries": {},
    "entry_reasons": {},
    "next_read": {
@@ -39,10 +39,14 @@
     "state": "EARLY_READ"
    },
    "observation_reasons": {
-    "ABS_Z_BELOW_1": 4
+    "ABS_Z_BELOW_1": 11,
+    "FEATURE_NO_PRIOR_HISTORY_AWAY": 2,
+    "FEATURE_NO_PRIOR_HISTORY_BOTH": 3,
+    "FEATURE_NO_PRIOR_HISTORY_HOME": 1
    },
    "observations": {
-    "EXCLUDED_PROTOCOL": 4
+    "EXCLUDED_PROTOCOL": 17,
+    "PENDING": 5
    },
    "settlement_pending": 0,
    "summary": {
