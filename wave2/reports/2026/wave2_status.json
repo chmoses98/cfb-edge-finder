@@ -14,7 +14,7 @@
   "system_failures": 5
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-10T19:15:46Z",
+ "last_ledger_row_at": "2026-10-10T19:25:44Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -37,7 +37,7 @@
    "entry_reasons": {},
    "next_read": {
     "at_n": 50,
-    "remaining": 50,
+    "remaining": 48,
     "state": "EARLY_READ"
    },
    "observation_reasons": {
@@ -50,15 +50,60 @@
     "EXCLUDED_PROTOCOL": 65,
     "PENDING": 10
    },
-   "settlement_pending": 7,
+   "settlement_pending": 5,
    "summary": {
-    "display": "NO SETTLED SAMPLE",
-    "n": 0,
+    "ats_like": {
+     "losses": 1,
+     "pushes": 0,
+     "rate": 0.5,
+     "rate_ci95": [
+      0.09453120573423074,
+      0.9054687942657693
+     ],
+     "wins": 1
+    },
+    "economics": {
+     "fee_adjusted_pnl": -0.04,
+     "hits": 1,
+     "mean_price": 0.5,
+     "n": 2,
+     "roi_ci95_bootstrap": [
+      -1.0,
+      0.8518518518518519
+     ],
+     "roi_on_outlay": -0.03846153846153844,
+     "unavailable": 0
+    },
+    "home_away": {
+     "away": 2
+    },
+    "n": 2,
+    "outright_win_rate": 0.0,
+    "residual": {
+     "ci95_bootstrap": [
+      -19.5,
+      1.125
+     ],
+     "mean": -9.1875,
+     "median": -9.1875,
+     "positive_rate": 0.5,
+     "positive_rate_ci95": [
+      0.09453120573423074,
+      0.9054687942657693
+     ],
+     "quantiles": {
+      "10": -17.4375,
+      "25": -14.34375,
+      "75": -4.03125,
+      "90": -0.9374999999999996
+     },
+     "sd": 14.584077361972543
+    },
     "verdict": "PROSPECTIVE_TRACKING"
    }
   },
   "CFB-PROS-002": {
-   "awaiting_entry": 0,
+   "awaiting_entry": 1,
    "entries": {
     "EXCLUDED_PROTOCOL": 4
    },
@@ -74,7 +119,7 @@
     "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 5
    },
    "observations": {
-    "PENDING": 4,
+    "PENDING": 5,
     "SYSTEM_FAILURE": 5
    },
    "settlement_pending": 0,
