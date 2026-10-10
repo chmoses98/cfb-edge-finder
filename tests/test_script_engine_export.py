@@ -294,3 +294,75 @@ def test_the_v2_shadow_claims_are_published_and_shed_only_before_v1_would_be_omi
             assert engine_doc["claims_v2"]["claims_artifact_hash"]
             carried += 1
     assert carried == 3
+
+
+# ------------------------------------------------------------------ same-run research sidecar
+
+
+def test_trimmed_events_link_a_verbatim_same_run_research_sidecar(published, sift_dir):
+    """Detail the budget trim sheds is published beside the event, never discarded: same run, same
+    artifact, sections copied verbatim from the frozen payload, bound by the sha256 of the file bytes."""
+    import hashlib
+
+    payloads = rx.load_script_engine(sift_dir)
+    linked = 0
+    for doc, path in _events(published):
+        engine = (doc.get("extensions") or {}).get("script_engine") or {}
+        if "payload_trim" not in engine or engine.get("status") == rx.ENGINE_OMITTED_STATUS:
+            assert "research_sidecar" not in engine
+            continue
+        pointer = engine["research_sidecar"]
+        assert path.stat().st_size <= rx.BUDGETS["event_research"], path.name
+        raw = (published / "explorer" / pointer["path"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == pointer["sha256"] and len(raw) == pointer["bytes"]
+        side = json.loads(raw)
+        assert side["schema"] == rx.SCRIPT_RESEARCH_SCHEMA and side["kind"] == "script_research"
+        assert side["event_id"] == doc["event"]["event_id"] and side["run_id"] == doc["run_id"]
+        assert side["artifact_hash"] == engine["script_generation"]["artifact_hash"] == pointer["artifact_hash"]
+        full = payloads[doc["event"]["source_ids"]["kalshi_game_key"]]
+        for name, value in side["sections"].items():
+            assert value == full[name], name
+        # what the trim removed from the event is exactly what the sidecar restores
+        mp = side["sections"]["matchup_profile"]
+        assert mp["teams"]["home"]["metrics"] and mp["teams"]["away"]["metrics"] and mp["dimensions"]
+        assert side["sections"]["metric_registry"]
+        assert mp["teams"]["home"]["name"] == engine["matchup_profile"]["teams"]["home"]["name"]
+        linked += 1
+    assert linked >= 1
+
+
+def test_untrimmed_events_carry_no_sidecar_and_no_orphans_are_written(published):
+    sidecars = {p.stem for p in (published / "explorer" / rx.SCRIPT_RESEARCH_DIR).glob("*.json")}
+    linked = set()
+    for doc, _ in _events(published):
+        engine = (doc.get("extensions") or {}).get("script_engine") or {}
+        if "research_sidecar" in engine:
+            linked.add(doc["event"]["event_id"])
+        else:
+            assert doc["event"]["event_id"] not in sidecars
+    assert sidecars == linked
+
+
+def test_sidecar_is_deterministic_and_drops_only_the_market_map_over_its_budget(boundary, monkeypatch):
+    engine, _, _ = boundary
+    kw = dict(event_id="evt_x", game_key="26OCT10LSUUK", run_id="run_x", generated_at="2026-10-10T00:00:00Z")
+    a = rx.script_research_sidecar(engine, **kw)
+    b = rx.script_research_sidecar(engine, **kw)
+    assert a[1] == b[1] and a[0]["omitted_sections"] == []
+    monkeypatch.setattr(rx, "SCRIPT_RESEARCH_BUDGET", 10)
+    doc, _ = rx.script_research_sidecar(engine, **kw)
+    assert doc["omitted_sections"] == ["script_market_map"] and "script_market_map" not in doc["sections"]
+    assert doc["sections"]["matchup_profile"] == engine["matchup_profile"]
+
+
+def test_a_tree_without_the_sidecar_schema_rebuilds_once(published):
+    src = published / "explorer" / rx.SOURCES_NAME
+    doc = json.loads(src.read_text())
+    assert rx.recorded_script_engine_fingerprint(published) == doc["script_engine"]["fingerprint"]
+    legacy = json.loads(src.read_text())
+    legacy["script_engine"].pop("research_sidecar_schema")
+    src.write_text(json.dumps(legacy))
+    try:
+        assert rx.recorded_script_engine_fingerprint(published) is None
+    finally:
+        src.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
