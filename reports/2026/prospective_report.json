@@ -25,7 +25,7 @@
  "population": {
   "awaiting_kickoff": {
    "AWAY_CONTROL_MODERATE": 1,
-   "NO_CONTROL": 9
+   "NO_CONTROL": 4
   },
   "by_strength": {
    "MODERATE": 10,
@@ -229,7 +229,7 @@
  },
  "summary": {
   "H1": {
-   "break_even": 0.82,
+   "break_even": 0.7167,
    "checkpoint": {
     "next": "EARLY_READ_ONLY",
     "next_at_n": 10,
@@ -240,52 +240,55 @@
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 1
+     "CAPTURE_OK": 6
     }
    },
-   "fee_adjusted_pnl": 0.18,
+   "fee_adjusted_pnl": 0.7,
    "football": {
-    "n": 1,
+    "n": 6,
     "wilson95": [
-     0.2065,
-     1.0
+     0.4365,
+     0.9699
     ],
-    "win_rate": 1.0,
-    "wins": 1
+    "win_rate": 0.8333,
+    "wins": 5
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
-   "losses": 0,
-   "mean_entry": 0.8,
-   "n": 1,
-   "roi": 0.2195,
-   "roi_ci95": null,
+   "losses": 1,
+   "mean_entry": 0.6983,
+   "n": 6,
+   "roi": 0.1628,
+   "roi_ci95": [
+    -0.3478,
+    0.6393
+   ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
-     "break_even": null,
-     "fee_adjusted_pnl": null,
-     "losses": 0,
-     "mean_entry": null,
-     "n": 0,
-     "roi": null,
+     "break_even": 0.69,
+     "fee_adjusted_pnl": -0.07,
+     "losses": 1,
+     "mean_entry": 0.67,
+     "n": 3,
+     "roi": -0.0338,
      "roi_ci95": null,
-     "win_rate": null,
-     "wins": 0
+     "win_rate": 0.6667,
+     "wins": 2
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.82,
-     "fee_adjusted_pnl": 0.18,
+     "break_even": 0.7433,
+     "fee_adjusted_pnl": 0.77,
      "losses": 0,
-     "mean_entry": 0.8,
-     "n": 1,
-     "roi": 0.2195,
+     "mean_entry": 0.7267,
+     "n": 3,
+     "roi": 0.3453,
      "roi_ci95": null,
      "win_rate": 1.0,
-     "wins": 1
+     "wins": 3
     }
    },
    "weeks": 1,
-   "win_rate": 1.0,
-   "wins": 1
+   "win_rate": 0.8333,
+   "wins": 5
   },
   "H2": {
    "break_even": null,
@@ -316,23 +319,26 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 1,
+  "settled_rows": 9,
   "strong": {
-   "break_even": null,
-   "fee_adjusted_pnl": null,
+   "break_even": 0.95,
+   "fee_adjusted_pnl": -0.9,
    "football": {
-    "n": 0,
-    "wilson95": null,
-    "win_rate": null,
-    "wins": 0
+    "n": 3,
+    "wilson95": [
+     0.2077,
+     0.9385
+    ],
+    "win_rate": 0.6667,
+    "wins": 2
    },
-   "losses": 0,
-   "mean_entry": null,
-   "n": 0,
-   "roi": null,
+   "losses": 1,
+   "mean_entry": 0.94,
+   "n": 2,
+   "roi": -0.4737,
    "roi_ci95": null,
-   "win_rate": null,
-   "wins": 0
+   "win_rate": 0.5,
+   "wins": 1
   }
  }
 }
