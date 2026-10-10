@@ -9,6 +9,13 @@ codes, every MAPPED expression's compatibility string, labels and survival,
 and the executable entry price at that moment. The full frozen envelope is
 stored once, content-addressed by its hash.
 
+*** SEGMENTS ***
+The V1 stream is one logical append-only file stored as segments, because a git host refuses any single
+file over 100 MiB (the 2026 file reached 96.5 MiB on 2026-10-10 and every later ledger push was refused).
+`publications.jsonl` is segment 1 and is never rewritten; once a segment reaches `SEGMENT_MAX_BYTES`, new
+rows go to `publications.part-0002.jsonl`, then `...-0003...`. Readers concatenate the segments in order,
+so the row sequence is exactly what a single file would hold.
+
 Nothing is ever rewritten. A row recorded after kickoff is refused
 (`LedgerOrderError`), so outcomes cannot be backfilled into "predictions",
 and a script cannot be edited after the fact: its hash is in the row.
@@ -47,11 +54,36 @@ def _season_dir(root: Path, season: int) -> Path:
     return root / str(season)
 
 
+#: A segment is closed once it holds this many bytes: half the git host's per-file limit, so a segment can never
+#: approach it however many rows one build appends.
+SEGMENT_MAX_BYTES = 50_000_000
+PUBLICATIONS = "publications.jsonl"
+
+
+def segment_paths(root: Path, season: int) -> list[Path]:
+    """The V1 stream's segments in row order: `publications.jsonl`, then `publications.part-NNNN.jsonl` (N >= 2)."""
+    base = _season_dir(root, season)
+    parts = sorted(base.glob("publications.part-*.jsonl")) if base.exists() else []
+    first = base / PUBLICATIONS
+    return ([first] if first.exists() else []) + parts
+
+
+def _segment_for_append(root: Path, season: int, nbytes: int) -> Path:
+    """The segment the next row goes to: the last one while it has room, else a new one. Never an earlier one."""
+    segments = segment_paths(root, season)
+    if not segments:
+        return _season_dir(root, season) / PUBLICATIONS
+    last = segments[-1]
+    if last.stat().st_size + nbytes <= SEGMENT_MAX_BYTES:
+        return last
+    return _season_dir(root, season) / f"publications.part-{len(segments) + 1:04d}.jsonl"
+
+
 def read_rows(root: Path, season: int) -> list[dict[str, Any]]:
-    path = _season_dir(root, season) / "publications.jsonl"
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows: list[dict[str, Any]] = []
+    for path in segment_paths(root, season):
+        rows.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+    return rows
 
 
 def store_artifact(root: Path, season: int, envelope: dict[str, Any]) -> Path:
@@ -156,10 +188,11 @@ def append(root: Path, season: int, row: dict[str, Any]) -> bool:
     key = (row["game_key"], row["artifact_hash"], row["kind"])
     if key in existing:
         return False
-    path = _season_dir(root, season) / "publications.jsonl"
+    line = json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
+    path = _segment_for_append(root, season, len(line.encode("utf-8")))
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+        fh.write(line)
     return True
 
 

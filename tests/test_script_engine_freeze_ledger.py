@@ -199,3 +199,41 @@ def test_a_previous_artifact_stamped_in_the_future_is_replaced_not_reused(season
     assert now["generated_at"] == "2026-10-23T12:00:00Z"
     assert now["artifact_hash"] == future["artifact_hash"]
     assert now["regeneration"]["reasons"][0] == "PREVIOUS_ARTIFACT_STAMPED_AFTER_NOW"
+
+
+# ------------------------------------------------------------------ segments (2026-10-10: the file hit 96.5 MiB)
+
+
+def test_the_v1_stream_rolls_to_a_new_segment_and_reads_back_in_order(tmp_path, monkeypatch):
+    from cfb_edge_finder.scripting import ledger as L
+
+    monkeypatch.setattr(L, "SEGMENT_MAX_BYTES", 300)
+    rows = [{"game_key": f"G{i}", "artifact_hash": f"h{i}", "kind": "PUBLICATION", "pad": "x" * 100} for i in range(7)]
+    for r in rows:
+        assert L.append(tmp_path, 2026, r) is True
+    segs = L.segment_paths(tmp_path, 2026)
+    assert segs[0].name == "publications.jsonl" and len(segs) > 1
+    assert [p.name for p in segs[1:]] == [f"publications.part-{i:04d}.jsonl" for i in range(2, len(segs) + 1)]
+    assert all(p.stat().st_size <= 300 for p in segs)
+    assert [r["game_key"] for r in L.read_rows(tmp_path, 2026)] == [r["game_key"] for r in rows]
+    # dedupe spans every segment; an earlier segment is never written again
+    first = segs[0].read_bytes()
+    assert L.append(tmp_path, 2026, rows[0]) is False
+    L.append(tmp_path, 2026, {"game_key": "G9", "artifact_hash": "h9", "kind": "PUBLICATION"})
+    assert segs[0].read_bytes() == first
+
+
+def test_an_existing_oversized_single_file_is_never_rewritten(tmp_path, monkeypatch):
+    from cfb_edge_finder.scripting import ledger as L
+
+    monkeypatch.setattr(L, "SEGMENT_MAX_BYTES", 1_000)
+    base = tmp_path / "2026"
+    base.mkdir()
+    big = base / "publications.jsonl"
+    old = json.dumps({"game_key": "OLD", "artifact_hash": "o", "kind": "PUBLICATION"})
+    big.write_text(old + "\n" + " " * 2_000 + "\n")
+    before = big.stat().st_size
+    assert L.append(tmp_path, 2026, {"game_key": "NEW", "artifact_hash": "n", "kind": "PUBLICATION"})
+    assert big.stat().st_size == before
+    assert (base / "publications.part-0002.jsonl").exists()
+    assert [r["game_key"] for r in L.read_rows(tmp_path, 2026)] == ["OLD", "NEW"]
