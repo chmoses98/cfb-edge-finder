@@ -3,18 +3,18 @@
  "candidates_sha256": "bf19c972bd230ff505c50ccd3a631dbc027d41b4900ad76c97248a4cfc6e1ce5",
  "capture_health": {
   "by_outcome": {
-   "OK": 376
+   "OK": 382
   },
   "in_window_by_outcome": {
-   "OK": 304
+   "OK": 310
   },
   "last_cycle_errors": [],
-  "spread_attempts": 376,
-  "spread_attempts_in_window": 304,
+  "spread_attempts": 382,
+  "spread_attempts_in_window": 310,
   "system_failures": 5
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-10T20:40:43Z",
+ "last_ledger_row_at": "2026-10-10T20:45:45Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -37,7 +37,7 @@
    "entry_reasons": {},
    "next_read": {
     "at_n": 50,
-    "remaining": 44,
+    "remaining": 43,
     "state": "EARLY_READ"
    },
    "observation_reasons": {
@@ -50,55 +50,55 @@
     "EXCLUDED_PROTOCOL": 80,
     "PENDING": 12
    },
-   "settlement_pending": 4,
+   "settlement_pending": 3,
    "summary": {
     "ats_like": {
      "losses": 3,
      "pushes": 0,
-     "rate": 0.5,
+     "rate": 0.5714285714285714,
      "rate_ci95": [
-      0.1876163064826506,
-      0.8123836935173494
+      0.2504583645276572,
+      0.8417801447485302
      ],
-     "wins": 3
+     "wins": 4
     },
     "economics": {
-     "fee_adjusted_pnl": -0.18,
-     "hits": 3,
-     "mean_price": 0.51,
-     "n": 6,
+     "fee_adjusted_pnl": 0.31,
+     "hits": 4,
+     "mean_price": 0.5071428571428571,
+     "n": 7,
      "roi_ci95_bootstrap": [
-      -0.6894409937888198,
-      0.5822784810126581
+      -0.7252747252747253,
+      0.6483516483516484
      ],
-     "roi_on_outlay": -0.05660377358490569,
+     "roi_on_outlay": 0.08401084010840104,
      "unavailable": 0
     },
     "home_away": {
-     "away": 5,
+     "away": 6,
      "home": 1
     },
-    "n": 6,
-    "outright_win_rate": 0.16666666666666666,
+    "n": 7,
+    "outright_win_rate": 0.2857142857142857,
     "residual": {
      "ci95_bootstrap": [
-      -10.195833333333333,
-      9.019033333333333
+      -7.7453571428571415,
+      10.796870714285717
      ],
-     "mean": -0.9006,
-     "median": -1.3375,
-     "positive_rate": 0.5,
+     "mean": 1.6280571428571429,
+     "median": 1.125,
+     "positive_rate": 0.5714285714285714,
      "positive_rate_ci95": [
-      0.1876163064826506,
-      0.8123836935173494
+      0.2504583645276572,
+      0.8417801447485302
      ],
      "quantiles": {
-      "10": -13.75,
-      "25": -6.95,
-      "75": 3.4312500000000004,
-      "90": 12.3857
+      "10": -12.599999999999998,
+      "25": -5.9,
+      "75": 10.5,
+      "90": 18.308560000000003
      },
-     "sd": 13.385900349248084
+     "sd": 13.931164898272403
     },
     "verdict": "PROSPECTIVE_TRACKING"
    }
