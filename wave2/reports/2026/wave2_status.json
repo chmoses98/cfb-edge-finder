@@ -3,18 +3,18 @@
  "candidates_sha256": "bf19c972bd230ff505c50ccd3a631dbc027d41b4900ad76c97248a4cfc6e1ce5",
  "capture_health": {
   "by_outcome": {
-   "OK": 289
+   "OK": 307
   },
   "in_window_by_outcome": {
-   "OK": 248
+   "OK": 266
   },
   "last_cycle_errors": [],
-  "spread_attempts": 289,
-  "spread_attempts_in_window": 248,
+  "spread_attempts": 307,
+  "spread_attempts_in_window": 266,
   "system_failures": 5
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-10T17:44:07Z",
+ "last_ledger_row_at": "2026-10-10T18:20:45Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -58,7 +58,7 @@
    }
   },
   "CFB-PROS-002": {
-   "awaiting_entry": 0,
+   "awaiting_entry": 4,
    "entries": {},
    "entry_reasons": {},
    "next_read": {
@@ -70,6 +70,7 @@
     "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 5
    },
    "observations": {
+    "PENDING": 4,
     "SYSTEM_FAILURE": 5
    },
    "settlement_pending": 0,
