@@ -1,20 +1,40 @@
 {
  "closeness": {
-  "n": 4,
-  "within_3": 0.5,
-  "within_7": 0.75,
-  "within_one_score_8": 0.75
+  "n": 5,
+  "within_3": 0.4,
+  "within_7": 0.6,
+  "within_one_score_8": 0.6
  },
  "control": {
+  "AWAY_CONTROL_MODERATE": {
+   "central_50_coverage": 0.0,
+   "central_80_coverage": 0.6667,
+   "in_central_50": 0,
+   "in_central_80": 2,
+   "n": 3,
+   "range_n": 3,
+   "win_rate": 0.6667,
+   "wins": 2
+  },
   "HOME_CONTROL_MODERATE": {
-   "central_50_coverage": 1.0,
+   "central_50_coverage": 0.6667,
    "central_80_coverage": 1.0,
-   "in_central_50": 1,
-   "in_central_80": 1,
-   "n": 1,
-   "range_n": 1,
+   "in_central_50": 2,
+   "in_central_80": 3,
+   "n": 3,
+   "range_n": 3,
    "win_rate": 1.0,
-   "wins": 1
+   "wins": 3
+  },
+  "HOME_CONTROL_STRONG": {
+   "central_50_coverage": 0.0,
+   "central_80_coverage": 0.3333,
+   "in_central_50": 0,
+   "in_central_80": 1,
+   "n": 3,
+   "range_n": 3,
+   "win_rate": 0.6667,
+   "wins": 2
   }
  },
  "defensive_suppression": {
@@ -25,16 +45,16 @@
  "methodology_version": "cfb-script-engine/2.0.0",
  "pace": {
   "HIGH": {
-   "direction_held": null,
-   "n": 0
+   "direction_held": 1.0,
+   "n": 1
   },
   "LOW": {
-   "direction_held": 1.0,
-   "n": 2
+   "direction_held": 0.6667,
+   "n": 3
   }
  },
  "schema": "cfb_script_engine_v2_report/1.0.0",
- "settled_games": 9,
+ "settled_games": 21,
  "unavailable_counts": {
   "defensive_suppression": 0,
   "pace": 0,
