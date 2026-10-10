@@ -43,6 +43,15 @@ keeps exactly one loop alive.
    * `signals/cfb_research_signals.json` (`cfb_research_signals/1.0.0`), which SIFT renders;
    * `reports/<season>/prospective_report.json`.
 
+**Research side-steps.** Two research-only steps run between capture and the watchdog. Each runs inside its own
+try/except, so a failure in either never stops the four steps above. SIFT reads neither.
+
+* **Wave 2** (`wave2/`): `docs/research/FOOTBALL_SIGNAL_DISCOVERY_WAVE2_PROTOCOL.md`.
+* **Wave 2D Track B** (`run_defense/`): `docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md`.
+  * Streams: CFB-MODEL-PROS-001, CFB-PROS-003, CFB-MECH-PROS-001.
+  * P0 is rebuilt from a read-only copy of research-data's football state and preseason cache, which the workflow
+    fetches once per job (`--p0-dir`). Without it, P0 is recorded UNAVAILABLE.
+
 ## Capture health (per game, per side)
 
 | Status | Meaning | Whose problem |

@@ -15,6 +15,10 @@ name: CFB Research Conductor
 #     KXNCAAFSPREAD ladder at the same PRIMARY_60_180 slots, frozen CFB-PROS-001/002 observations, entries and
 #     settlements under wave2/ (append-only). Isolated in a try/except: it can never stop the steps above, and
 #     SIFT does not read it.
+#   * WAVE 2D TRACK B (docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md): CFB-MODEL-PROS-001, CFB-PROS-003 and
+#     CFB-MECH-PROS-001 frozen pregame observations and settlements under run_defense/ (append-only). P0 is the live
+#     projection rebuilt from a READ-ONLY copy of research-data's football state and preseason cache, fetched once per
+#     job; if that copy is missing P0 is recorded UNAVAILABLE. Isolated in its own try/except, never read by SIFT.
 #
 # Keyless: Kalshi's public GET /markets only. It cannot place an order, and nothing it writes is a stake,
 # a probability or a recommendation.
@@ -40,6 +44,7 @@ on:
       - "scripts/cfb_research_conductor.py"
       - "src/cfb_edge_finder/control_prospective/**"
       - "src/cfb_edge_finder/signal_discovery/wave2*.py"
+      - "src/cfb_edge_finder/signal_discovery/run_defense_cycle.py"
   workflow_dispatch:
     inputs:
       minutes:
@@ -84,6 +89,18 @@ jobs:
           else
             git worktree add --orphan -b "$BRANCH" "$RUNNER_TEMP/store"
           fi
+          # Wave 2D Track B: read-only P0 inputs (live football state + preseason talent cache), once per job.
+          P0_DATA="$RUNNER_TEMP/p0"
+          echo "P0_DATA=$P0_DATA" >> "$GITHUB_ENV"
+          if git fetch -q --depth=1 --filter=blob:none origin research-data 2>/dev/null \
+             && mkdir -p "$P0_DATA" \
+             && git archive FETCH_HEAD data/research/football_state data/research_cache/preseason \
+                | tar -x -C "$P0_DATA"; then
+            echo "P0 inputs ready"
+          else
+            rm -rf "$P0_DATA"
+            echo "::warning::run-defense P0 inputs unavailable (P0 will be recorded UNAVAILABLE)"
+          fi
 
       - name: Conduct (one cycle every 5 minutes, ~5.5 hours)
         env:
@@ -124,6 +141,7 @@ jobs:
             if refresh || [ -d "$MAIN_DATA" ]; then
               if python scripts/cfb_research_conductor.py --main-dir "$MAIN_DATA" --ledger-dir "$LEDGER" \
                    --store-dir "$STORE" --season "$SEASON" --run-id "$GITHUB_RUN_ID" "${DISPATCH[@]}" \
+                   --p0-dir "$P0_DATA" \
                    > "$RUNNER_TEMP/cycle.json"; then
                 ok=$((ok + 1)); cat "$RUNNER_TEMP/cycle.json"
               else
