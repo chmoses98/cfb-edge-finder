@@ -1,7 +1,7 @@
 {
  "capture_health": {
-  "expected_games": 25,
-  "game_winner_markets_found": 10,
+  "expected_games": 22,
+  "game_winner_markets_found": 8,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 0,
@@ -9,16 +9,16 @@
   "price_1_00": 0,
   "primary_window_coverage": 1.0,
   "statuses": {
-   "CAPTURE_OK": 25
+   "CAPTURE_OK": 22
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 25,
+  "valid_primary_captures": 22,
   "window": {
-   "from": "2026-10-10T21:00:00Z",
+   "from": "2026-10-10T22:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 25
+  "windows_closed": 22
  },
  "population": {
   "awaiting_kickoff": {},
@@ -314,26 +314,29 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 12,
+  "settled_rows": 13,
   "strong": {
-   "break_even": 0.945,
-   "fee_adjusted_pnl": -0.78,
+   "break_even": 0.928,
+   "fee_adjusted_pnl": -0.64,
    "football": {
-    "n": 5,
+    "n": 6,
     "wilson95": [
-     0.3755,
-     0.9638
+     0.4365,
+     0.9699
     ],
-    "win_rate": 0.8,
-    "wins": 4
+    "win_rate": 0.8333,
+    "wins": 5
    },
    "losses": 1,
-   "mean_entry": 0.935,
-   "n": 4,
-   "roi": -0.2063,
-   "roi_ci95": null,
-   "win_rate": 0.75,
-   "wins": 3
+   "mean_entry": 0.918,
+   "n": 5,
+   "roi": -0.1379,
+   "roi_ci95": [
+    -0.569,
+    0.1211
+   ],
+   "win_rate": 0.8,
+   "wins": 4
   }
  }
 }
