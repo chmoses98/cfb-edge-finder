@@ -1,6 +1,6 @@
 # CFB Script Engine V2 — prospective claim settlement
 
-Methodology `cfb-script-engine/2.0.0`. FINAL_PREGAME games: 66; settled: 42. Frozen claims only; nothing re-derived. Historical counts are frequencies of past games, never chances.
+Methodology `cfb-script-engine/2.0.0`. FINAL_PREGAME games: 66; settled: 44. Frozen claims only; nothing re-derived. Historical counts are frequencies of past games, never chances.
 
 ## CONTROL
 
@@ -12,7 +12,7 @@ Methodology `cfb-script-engine/2.0.0`. FINAL_PREGAME games: 66; settled: 42. Fro
 
 ## CLOSENESS
 
-n = 11; |margin| <= 3: 0.5455; <= 7: 0.7273; <= 8: 0.8182
+n = 12; |margin| <= 3: 0.5833; <= 7: 0.75; <= 8: 0.8333
 
 ## Environment
 
