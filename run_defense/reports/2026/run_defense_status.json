@@ -20,10 +20,10 @@
   "missed": 0,
   "observations": 4,
   "p0_unavailable": 0,
-  "settlements": 2
+  "settlements": 4
  },
  "label": "PROSPECTIVE_RESEARCH_ONLY -- no bet, no stake, no badge, no production change",
- "ledger_sha256": "5dbe95175dc0e54141581df86b6d3d486adc2fc1b35ea31aa41a52c5057213a0",
+ "ledger_sha256": "b079e2ed56900f5a061cddd5d557cec5d9fd00c0a32b1d008b56b5b9b86ebfe1",
  "protocol": {
   "commit": "c9ebeee2fab99844ee3e0f5a3385740fd74df47d",
   "path": "docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md",
@@ -41,28 +41,28 @@
     "name": "slopes_on_x_rd",
     "value": {
      "drives_diff": {
-      "n": 2,
-      "slope_per_sd": null
+      "n": 4,
+      "slope_per_sd": 0.48638617678350515
      },
      "opponent_ints_diff": {
-      "n": 2,
-      "slope_per_sd": null
+      "n": 4,
+      "slope_per_sd": 0.6905567411963364
      },
      "opponent_pass_att_diff": {
-      "n": 2,
-      "slope_per_sd": null
+      "n": 4,
+      "slope_per_sd": -6.43897042898922
      },
      "possession_diff_home": {
-      "n": 2,
-      "slope_per_sd": null
+      "n": 4,
+      "slope_per_sd": 189.34332381414328
      },
      "scoring_opps_diff": {
-      "n": 2,
-      "slope_per_sd": null
+      "n": 4,
+      "slope_per_sd": -0.1463666261497906
      }
     }
    },
-   "settled": 2,
+   "settled": 4,
    "status": "PROSPECTIVE_TRACKING"
   },
   "CFB-MODEL-PROS-001": {
@@ -73,7 +73,7 @@
    "primary_metric": {
     "ci95": null,
     "name": "mean_abs_error_difference_p0_minus_p1",
-    "value": -0.18695874431683812
+    "value": 1.166016522944699
    },
    "secondary": {
     "favourite_tail_bias": {
@@ -91,15 +91,17 @@
       "n": 0
      },
      "7_14": {
-      "n": 0
+      "n": 2,
+      "p0": -1.6879188374345793,
+      "p1": -1.5565424225092341
      }
     },
-    "mean_sq_error_difference": 30.038193116439487,
-    "p0_bias": -6.132364727309944,
-    "p1_bias": -2.0191706713749964,
-    "winner_brier_p1_minus_p0": 0.06284553614144155
+    "mean_sq_error_difference": 27.99149973105404,
+    "p0_bias": -6.228546808428595,
+    "p1_bias": -2.912453885358003,
+    "winner_brier_p1_minus_p0": 0.03272592558657008
    },
-   "settled": 2,
+   "settled": 4,
    "status": "PROSPECTIVE_TRACKING"
   },
   "CFB-PROS-003": {
@@ -110,13 +112,13 @@
    "primary_metric": {
     "ci95": null,
     "name": "b1_points_per_sd_x_rd_given_efficiency_vs_p0",
-    "value": null
+    "value": 6.824993841042017
    },
    "secondary": {
-    "market_b1_vs_kalshi_centre": null,
-    "n_with_kalshi_centre": 2
+    "market_b1_vs_kalshi_centre": 1.530160934860678,
+    "n_with_kalshi_centre": 4
    },
-   "settled": 2,
+   "settled": 4,
    "status": "PROSPECTIVE_TRACKING"
   }
  }
