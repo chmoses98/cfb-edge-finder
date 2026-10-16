@@ -8,16 +8,16 @@
  "expression_performance": {
   "AGGRESSIVE": {
    "ALL": {
-    "expressions": 802,
-    "profit_per_contract": 0.0025,
+    "expressions": 874,
+    "profit_per_contract": 0.0004,
     "sample": "ok",
-    "win_rate": 0.5736
+    "win_rate": 0.5744
    },
    "HIGH": {
-    "expressions": 510,
-    "profit_per_contract": -0.0041,
+    "expressions": 582,
+    "profit_per_contract": -0.0063,
     "sample": "ok",
-    "win_rate": 0.5471
+    "win_rate": 0.5515
    },
    "LOW": {
     "expressions": 111,
@@ -34,16 +34,16 @@
   },
   "BEST_EXPRESSION": {
    "ALL": {
-    "expressions": 61,
-    "profit_per_contract": 0.0355,
+    "expressions": 67,
+    "profit_per_contract": 0.0172,
     "sample": "ok",
-    "win_rate": 0.8361
+    "win_rate": 0.8209
    },
    "HIGH": {
-    "expressions": 39,
-    "profit_per_contract": 0.0589,
+    "expressions": 45,
+    "profit_per_contract": 0.0286,
     "sample": "ok",
-    "win_rate": 0.8462
+    "win_rate": 0.8222
    },
    "LOW": {
     "expressions": 8,
@@ -60,16 +60,16 @@
   },
   "CONTRADICTED": {
    "ALL": {
-    "expressions": 766,
-    "profit_per_contract": -0.0604,
+    "expressions": 847,
+    "profit_per_contract": -0.0558,
     "sample": "ok",
-    "win_rate": 0.2206
+    "win_rate": 0.2243
    },
    "HIGH": {
-    "expressions": 495,
-    "profit_per_contract": -0.0611,
+    "expressions": 576,
+    "profit_per_contract": -0.0542,
     "sample": "ok",
-    "win_rate": 0.2303
+    "win_rate": 0.2344
    },
    "LOW": {
     "expressions": 114,
@@ -86,16 +86,16 @@
   },
   "MULTI_SCRIPT": {
    "ALL": {
-    "expressions": 259,
-    "profit_per_contract": 0.0172,
+    "expressions": 302,
+    "profit_per_contract": -0.0047,
     "sample": "ok",
-    "win_rate": 0.8263
+    "win_rate": 0.8113
    },
    "HIGH": {
-    "expressions": 200,
-    "profit_per_contract": 0.0072,
+    "expressions": 243,
+    "profit_per_contract": -0.0182,
     "sample": "ok",
-    "win_rate": 0.79
+    "win_rate": 0.7778
    },
    "LOW": {
     "expressions": 24,
@@ -112,16 +112,16 @@
   },
   "SINGLE_SCRIPT": {
    "ALL": {
-    "expressions": 505,
-    "profit_per_contract": 0.037,
+    "expressions": 535,
+    "profit_per_contract": 0.0387,
     "sample": "ok",
-    "win_rate": 0.7624
+    "win_rate": 0.7589
    },
    "HIGH": {
-    "expressions": 293,
-    "profit_per_contract": 0.0523,
+    "expressions": 323,
+    "profit_per_contract": 0.0537,
     "sample": "ok",
-    "win_rate": 0.7679
+    "win_rate": 0.7616
    },
    "LOW": {
     "expressions": 90,
@@ -139,18 +139,18 @@
  },
  "finding_direction_accuracy": {
   "AWAY_DEFENSIVE_CONTROL": {
-   "described": 0.5,
-   "games": 4,
-   "sample": "insufficient"
-  },
-  "AWAY_DISRUPTION_ADVANTAGE": {
    "described": 0.6667,
    "games": 6,
    "sample": "insufficient"
   },
+  "AWAY_DISRUPTION_ADVANTAGE": {
+   "described": 0.75,
+   "games": 8,
+   "sample": "insufficient"
+  },
   "AWAY_EARLY_DOWN_ADVANTAGE": {
-   "described": 0.7143,
-   "games": 7,
+   "described": 0.7778,
+   "games": 9,
    "sample": "insufficient"
   },
   "AWAY_EXPLOSIVE_ADVANTAGE": {
@@ -159,8 +159,8 @@
    "sample": "insufficient"
   },
   "AWAY_FINISHING_ADVANTAGE": {
-   "described": 0.875,
-   "games": 8,
+   "described": 0.8889,
+   "games": 9,
    "sample": "insufficient"
   },
   "AWAY_PASS_ADVANTAGE": {
@@ -184,18 +184,18 @@
    "sample": "insufficient"
   },
   "AWAY_SCORING_ADVANTAGE": {
-   "described": 0.4545,
-   "games": 11,
+   "described": 0.5,
+   "games": 12,
    "sample": "insufficient"
   },
   "AWAY_SUSTAINED_EFFICIENCY_ADVANTAGE": {
-   "described": 0.6667,
-   "games": 9,
+   "described": 0.7273,
+   "games": 11,
    "sample": "insufficient"
   },
   "HIGH_POSSESSION_ENVIRONMENT": {
    "described": 1.0,
-   "games": 5,
+   "games": 6,
    "sample": "insufficient"
   },
   "HOME_DEFENSIVE_CONTROL": {
@@ -209,13 +209,13 @@
    "sample": "insufficient"
   },
   "HOME_EARLY_DOWN_ADVANTAGE": {
-   "described": 0.9333,
-   "games": 15,
+   "described": 0.9375,
+   "games": 16,
    "sample": "insufficient"
   },
   "HOME_EXPLOSIVE_ADVANTAGE": {
-   "described": 0.9,
-   "games": 10,
+   "described": 0.9091,
+   "games": 11,
    "sample": "insufficient"
   },
   "HOME_FINISHING_ADVANTAGE": {
@@ -225,17 +225,17 @@
   },
   "HOME_PASS_ADVANTAGE": {
    "described": 1.0,
-   "games": 11,
+   "games": 12,
    "sample": "insufficient"
   },
   "HOME_PASS_EXPLOSIVE_ADVANTAGE": {
-   "described": 0.8333,
-   "games": 12,
+   "described": 0.8462,
+   "games": 13,
    "sample": "insufficient"
   },
   "HOME_RUSH_ADVANTAGE": {
    "described": 1.0,
-   "games": 6,
+   "games": 7,
    "sample": "insufficient"
   },
   "HOME_RUSH_EXPLOSIVE_ADVANTAGE": {
@@ -250,7 +250,7 @@
   },
   "HOME_SUSTAINED_EFFICIENCY_ADVANTAGE": {
    "described": 1.0,
-   "games": 12,
+   "games": 13,
    "sample": "insufficient"
   },
   "LOW_POSSESSION_ENVIRONMENT": {
@@ -261,16 +261,16 @@
  },
  "not_a_claim_of_edge": "Expression performance is research-unit bookkeeping at recorded entry prices. It is not evidence of an edge until the sample supports it, and no stake is implied.",
  "publications": {
-  "games": 360,
-  "rows": 22437
+  "games": 363,
+  "rows": 22663
  },
  "schema_version": "cfb_script_engine_report/1.0.0",
  "script_accuracy": {
-  "any_script_described": 0.2742,
+  "any_script_described": 0.2923,
   "by_data_confidence": {
    "HIGH": {
-    "described": 0.1818,
-    "games": 33,
+    "described": 0.1944,
+    "games": 36,
     "sample": "ok"
    },
    "LOW": {
@@ -286,8 +286,8 @@
   },
   "by_primary_archetype": {
    "AWAY_CONTROL": {
-    "described": 0.0,
-    "games": 8,
+    "described": 0.1,
+    "games": 10,
     "sample": "insufficient"
    },
    "COMPETITIVE_GRIND": {
@@ -306,8 +306,8 @@
     "sample": "insufficient"
    },
    "FAVORITE_PULLS_AWAY": {
-    "described": 0.25,
-    "games": 4,
+    "described": 0.2,
+    "games": 5,
     "sample": "insufficient"
    },
    "HOME_CONTROL": {
@@ -326,20 +326,21 @@
     "sample": "insufficient"
    }
   },
-  "games": 62,
-  "primary_described": 0.1452,
-  "primary_or_secondary_described": 0.2097,
+  "games": 65,
+  "primary_described": 0.1538,
+  "primary_or_secondary_described": 0.2308,
   "realized_archetypes": {
    "AMBIGUOUS": 3,
    "AWAY_CONTROL": 9,
    "COMPETITIVE_GRIND": 7,
    "COMPETITIVE_SHOOTOUT": 8,
-   "COMPETITIVE_TOSSUP": 15,
-   "FAVORITE_PULLS_AWAY": 9,
+   "COMPETITIVE_TOSSUP": 16,
+   "EXPLOSIVE_UPSET": 1,
+   "FAVORITE_PULLS_AWAY": 10,
    "HOME_CONTROL": 11
   }
  },
  "settled": {
-  "games": 62
+  "games": 65
  }
 }

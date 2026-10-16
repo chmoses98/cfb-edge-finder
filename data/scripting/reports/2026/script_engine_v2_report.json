@@ -8,13 +8,13 @@
  "control": {
   "AWAY_CONTROL_MODERATE": {
    "central_50_coverage": 0.5,
-   "central_80_coverage": 0.8333,
-   "in_central_50": 3,
-   "in_central_80": 5,
-   "n": 6,
-   "range_n": 6,
-   "win_rate": 0.6667,
-   "wins": 4
+   "central_80_coverage": 0.875,
+   "in_central_50": 4,
+   "in_central_80": 7,
+   "n": 8,
+   "range_n": 8,
+   "win_rate": 0.625,
+   "wins": 5
   },
   "HOME_CONTROL_MODERATE": {
    "central_50_coverage": 0.6667,
@@ -27,26 +27,26 @@
    "wins": 3
   },
   "HOME_CONTROL_STRONG": {
-   "central_50_coverage": 0.4286,
-   "central_80_coverage": 0.5714,
+   "central_50_coverage": 0.375,
+   "central_80_coverage": 0.625,
    "in_central_50": 3,
-   "in_central_80": 4,
-   "n": 7,
-   "range_n": 7,
-   "win_rate": 0.8571,
-   "wins": 6
+   "in_central_80": 5,
+   "n": 8,
+   "range_n": 8,
+   "win_rate": 0.875,
+   "wins": 7
   }
  },
  "defensive_suppression": {
-  "n": 3,
-  "realized_label": 0.6667
+  "n": 4,
+  "realized_label": 0.5
  },
  "final_pregame_games": 71,
  "methodology_version": "cfb-script-engine/2.0.0",
  "pace": {
   "HIGH": {
    "direction_held": 1.0,
-   "n": 4
+   "n": 5
   },
   "LOW": {
    "direction_held": 0.8,
@@ -54,7 +54,7 @@
   }
  },
  "schema": "cfb_script_engine_v2_report/1.0.0",
- "settled_games": 46,
+ "settled_games": 49,
  "unavailable_counts": {
   "defensive_suppression": 0,
   "pace": 0,
