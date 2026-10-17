@@ -89,8 +89,10 @@ def normalise_status(raw: str | None) -> str:
         return "DOUBTFUL"
     if any(k in s for k in ("question", "day-to-day", "day to day", "game-time", "game time", "gtd")):
         return "QUESTIONABLE"
-    if any(k in s for k in ("probable", "available", "active")):
+    if any(k in s for k in ("probable", "available")):
         return "PROBABLE"
+    if s == "active":
+        return "ACTIVE"          # ESPN keeps cleared records in the list with status "Active"
     return "UNKNOWN"
 
 

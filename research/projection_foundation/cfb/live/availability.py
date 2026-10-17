@@ -16,7 +16,9 @@ Observations (pf_core.availability.Observation, written write-once by `write_sna
 A player without any observation is UNVERIFIED (gate REVIEW, conditional on playing), never active. Empirical note
 (recorded sidecar payloads, 2026-09-02..17, 228 teams): ESPN listed an injury for only 5 teams in 16 days, so an
 absent listing carries almost no information; it is recorded anyway because it is free, immutable and the only
-keyless source.
+keyless source. Resolving those 5 recorded references on a GitHub runner (2026-10-17) returned records dated 2022 with status
+"Active": stale entries are kept as UNKNOWN observations (see STALE_DAYS) and never establish participation. ESPN serves no CFB
+depth chart (…/seasons/2026/teams/<id>/depthcharts answers HTTP 400), so no starter is ever CONFIRMED.
 """
 from __future__ import annotations
 
@@ -95,8 +97,12 @@ def qb_state(gamelog_rows: Iterable[dict], now: datetime, max_history: int = 4) 
 
 
 # --------------------------------------------------------------------------- observations
+STALE_DAYS = 14
+
+
 def build_observations(*, captured_utc: str, events: list[dict], injuries: dict[str, ei.TeamInjuries], qb: dict[str, dict],
-                       id_lookup: dict[tuple[str, str], str] | None = None, season: int = 2026) -> list[av.Observation]:
+                       id_lookup: dict[tuple[str, str], str] | None = None, season: int = 2026,
+                       stale_days: int = STALE_DAYS) -> list[av.Observation]:
     id_lookup = id_lookup or {}
     cap = datetime.fromisoformat(captured_utc.replace("Z", "+00:00"))
     obs: list[av.Observation] = []
@@ -114,20 +120,25 @@ def build_observations(*, captured_utc: str, events: list[dict], injuries: dict[
             for r in (inj.records if inj and inj.ok else []):
                 if not r.athlete_id:
                     continue
-                su = None
+                su, d = None, None
                 if r.date:
                     try:
                         d = datetime.fromisoformat(str(r.date).replace("Z", "+00:00"))
                         d = d if d.tzinfo else d.replace(tzinfo=timezone.utc)
                         su = iso(d) if d <= cap else None
                     except Exception:  # noqa: BLE001
-                        su = None
-                known = r.resolved and r.status != "UNKNOWN"      # an unreadable record proves only that ESPN lists SOME injury
+                        su, d = None, None
+                # ESPN's CFB list keeps old records: the live feed returned 2022-dated entries with status "Active" in 2026. A record
+                # whose own date is missing or older than `stale_days` before the capture establishes nothing about this game.
+                age_days = (cap - d).total_seconds() / 86400 if su else None
+                stale = age_days is None or age_days > stale_days
+                known = r.resolved and r.status != "UNKNOWN" and not stale   # an unreadable/stale record proves only that ESPN lists SOMETHING
                 obs.append(av.Observation(**common, entity_id=str(r.athlete_id), entity_name=r.athlete_name or str(r.athlete_id),
-                                          kind="injury", status=r.status, certainty="REPORTED" if known else "UNKNOWN", source=ei.SOURCE,
+                                          kind="injury", status=r.status if known else "UNKNOWN", certainty="REPORTED" if known else "UNKNOWN", source=ei.SOURCE,
                                           source_url=r.ref or ei.team_url(tid), source_updated_utc=su,
                                           detail={"status_raw": r.status_raw, "position": r.position, "injury_id": r.injury_id,
-                                                  "detail": r.detail, "record_resolved": r.resolved}))
+                                                  "detail": r.detail, "record_resolved": r.resolved, "record_date": r.date,
+                                                  "stale": bool(stale), "age_days": None if age_days is None else round(age_days, 1)}))
             q = qb.get(tid)
             if q:
                 pid = id_lookup.get((tid, q["name"])) or f"name:{tid}:{slug(q['name'])}"

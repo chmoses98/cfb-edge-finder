@@ -291,3 +291,22 @@ def test_repo_job_capture_is_reused_once_per_observed_at_and_a_resolved_qb_statu
     assert all(o.validate() == [] and o.captured_utc == "2026-09-17T10:00:00Z" for o in obs)
     assert la.repo_job_observations(avail, ev, "2026-09-17T10:00:00Z") == []        # already preserved: not repeated
     assert la.repo_job_observations(avail, ev, "2026-09-17T09:00:00Z")               # a newer observed_at is preserved
+
+
+def test_stale_records_from_the_live_feed_establish_nothing():
+    """Observed on the GitHub runner (run 39075772663): resolving three reference URLs recorded by the sidecar returned records
+    with keys [$ref, athlete, date, id, longComment, shortComment, source, status, team, type], status "Active" and dates in 2022.
+    Values below are those observed (date, status, key set); the ids are the real ones from the recorded list."""
+    body = {"$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2026/athletes/4869581/injuries/169675?lang=en&region=us",
+            "athlete": {"$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2026/athletes/4869581?lang=en&region=us"},
+            "date": "2022-11-26T22:30Z", "id": "169675", "status": "Active", "type": {"id": "1", "description": "active"}}
+    rec = ei.parse_record(body, body["$ref"])
+    assert rec.athlete_id == "4869581" and rec.status == "ACTIVE" and rec.date.startswith("2022")
+    ev = [{"event_id": "E", "start_utc": "2026-10-18T20:00:00Z", "home": {"team_id": "1", "location": "H"}, "away": {"team_id": "2", "location": "A"}}]
+    inj = {"1": ei.TeamInjuries("1", "u", True, None, 1, [rec])}
+    obs = [o for o in la.build_observations(captured_utc="2026-10-17T12:00:00Z", events=ev, injuries=inj, qb={}) if o.kind == "injury"]
+    assert len(obs) == 1 and obs[0].status == "UNKNOWN" and obs[0].certainty == "UNKNOWN" and obs[0].detail["stale"] is True
+    fresh = ei.InjuryRecord(rec.ref, "9", "1", "Out", "OUT", date="2026-10-16T12:00Z")
+    o2 = [o for o in la.build_observations(captured_utc="2026-10-17T12:00:00Z", events=ev, injuries={"1": ei.TeamInjuries("1", "u", True, None, 1, [fresh])}, qb={})
+          if o.kind == "injury"][0]
+    assert (o2.status, o2.certainty) == ("OUT", "REPORTED")
