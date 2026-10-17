@@ -628,6 +628,12 @@ def test_market_disagreement_needs_strong_and_an_executable_price_below_85():
 # --------------------------------------------------------------------------- the conductor cycle (offline)
 
 
+CONDUCTOR_FIXTURE = ROOT / "tests" / "fixtures" / "control_prospective"
+"""One real game (LSU at Kentucky, 2026-10-10) frozen as the records the conductor reads. The fixture used to read the
+live catalog, board and schedule, which stop carrying a game once it is played, so the three conductor tests errored
+(StopIteration) on `main` the day it left the catalog. Nothing here changes with the live publication."""
+
+
 @pytest.fixture()
 def main_dir(tmp_path):
     """A minimal main checkout: one catalog game with V2 claims, its frozen V2 artifact and event id."""
@@ -637,27 +643,22 @@ def main_dir(tmp_path):
     (root / "data" / "scripting" / "live" / "sift").mkdir(parents=True)
     (root / "data" / "scripting" / "live" / "frozen_v2").mkdir(parents=True)
     (root / "app" / "latest").mkdir(parents=True)
-    src = ROOT / "data" / "scripting" / "live"
+    fx = CONDUCTOR_FIXTURE
     key = "26OCT10LSUUK"
     for sub in ("sift", "frozen_v2"):
         (root / "data" / "scripting" / "live" / sub / f"{key}.json.gz").write_bytes(
-            (src / sub / f"{key}.json.gz").read_bytes()
+            (fx / f"{sub}_{key}.json.gz").read_bytes()
         )
-    catalog = json.loads((ROOT / "data" / "live" / "cfb_market_catalog.json").read_text())
-    game = next(g for g in catalog["games"] if g["game_key"] == key)
+    frozen = json.loads((fx / "catalog_game.json").read_text())
+    game = frozen["game"]
     (root / "data" / "live" / "cfb_market_catalog.json").write_text(
-        json.dumps({"capture": catalog["capture"], "games": [game]})
+        json.dumps({"capture": frozen["capture"], "games": [game]})
     )
-    detail = ROOT / "data" / "live" / game["markets_file"]
-    (root / "data" / "live" / game["markets_file"]).parent.mkdir(parents=True, exist_ok=True)
-    (root / "data" / "live" / game["markets_file"]).write_bytes(detail.read_bytes())
-    sched = json.loads((ROOT / "data" / "football" / "2026" / "schedule.json").read_text())
-    sched["events"] = [e for e in sched["events"] if e["id"] == "401856715"]
-    (root / "data" / "football" / "2026" / "schedule.json").write_text(json.dumps(sched))
+    (root / "data" / "live" / game["markets_file"]).write_bytes((fx / "game_detail.json").read_bytes())
+    (root / "data" / "football" / "2026" / "schedule.json").write_bytes((fx / "schedule.json").read_bytes())
     (root / "data" / "football" / "2026" / "team_games.jsonl").write_text("")
-    events = json.loads((ROOT / "app" / "latest" / "events.json").read_text())
-    events["items"] = [e for e in events["items"] if e["source_ids"].get("kalshi_game_key") == key]
-    (root / "app" / "latest" / "events.json").write_text(json.dumps(events))
+    item = json.loads((fx / "event_item.json").read_text())
+    (root / "app" / "latest" / "events.json").write_text(json.dumps({"items": [item]}))
     return root
 
 

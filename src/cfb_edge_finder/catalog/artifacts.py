@@ -64,6 +64,7 @@ from cfb_edge_finder.catalog.discovery import (
     CatalogGame,
     CatalogRun,
 )
+from cfb_edge_finder.catalog.identity import classify_event_ticker
 
 CATALOG_SCHEMA_VERSION = "cfb_market_catalog/1.0.0"
 FLAT_SCHEMA_VERSION = "cfb_markets_flat/1.0.0"
@@ -230,7 +231,14 @@ def build_catalog(run: CatalogRun, include_raw: bool = False, include_markets: b
             game_to_dict(g, include_raw=include_raw, include_markets=include_markets) for g in games
         ],
         "season_level_events": [
-            _event_summary(t, e) for t, e in sorted(run.season_level_events.items())
+            {
+                **_event_summary(t, e),
+                # Real inventory with no physical game (a championship winner, a poll, a
+                # playoff-format question): kept and named, never dropped and never a game.
+                "scope": "season_level",
+                "scope_reason": classify_event_ticker(t)[1],
+            }
+            for t, e in sorted(run.season_level_events.items())
         ],
     }
 

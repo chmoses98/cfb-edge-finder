@@ -70,13 +70,27 @@ def _grants_write(text: str) -> bool:
     return re.search(r"^\s+contents:\s*write\s*$", text, re.MULTILINE) is not None
 
 
+# Writers that commit ONLY to the ref they run on, ONLY under one path no
+# other workflow stages, through a rebase-retry push, and never reach the
+# research-data durable store. Such a writer cannot race anyone, so it gets
+# its OWN group: GitHub keeps one pending run per group, and inside the
+# shared group the Kalshi catalog's queued runs were replaced by App Export
+# and Script Engine runs before they started (3 of 9 on 2026-10-17, all with
+# zero jobs). Every property that makes the carve-out safe is pinned by the
+# MAIN-ONLY WRITERS tests at the bottom of this module.
+MAIN_ONLY_WRITERS = {"kalshi-market-catalog.yml": "data/live"}
+
+
 def _durable_store_writers() -> list[Path]:
     """Every writing workflow that is NOT an isolated-orphan-branch
-    sidecar -- i.e. anything that can reach the durable store."""
+    sidecar and NOT a pinned main-only writer -- i.e. anything that can
+    reach the durable store."""
     return [
         path
         for path in sorted(WORKFLOWS.glob("*.yml"))
-        if _grants_write(text := path.read_text(encoding="utf-8")) and _own_orphan_branch(text) is None
+        if _grants_write(text := path.read_text(encoding="utf-8"))
+        and _own_orphan_branch(text) is None
+        and path.name not in MAIN_ONLY_WRITERS
     ]
 
 
@@ -230,3 +244,91 @@ def test_no_other_workflow_pushes_to_research_data_with_raw_git():
     assert not offenders, (
         f"{offenders} push research-data with raw git and never check the maintenance window"
     )
+
+
+# =========================================================================
+# MAIN-ONLY WRITERS
+#
+# The carve-out above is only safe while every one of these holds. If one
+# stops holding, the workflow must go back into research-data-write.
+# =========================================================================
+
+
+def _executable(text: str) -> str:
+    """Non-comment lines, with backslash continuations joined."""
+    lines = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
+    return re.sub(r"\\\n\s*", " ", "\n".join(lines))
+
+
+def _staged_paths(text: str) -> list[str]:
+    """Paths passed to `git add`. A bare `git add -A` / `git add .` stages
+    everything and is reported as "."."""
+    paths: list[str] = []
+    for match in re.finditer(r"git add((?:\s+-\S+)*)([^\n;&|)]*)", _executable(text)):
+        named = [part for part in match.group(2).split() if not part.startswith("-")]
+        paths.extend(named or ["."])
+    return paths
+
+
+def _pushes_its_own_ref(text: str) -> bool:
+    """Pushes the ref it runs on (main in production) rather than a branch
+    of its own."""
+    return bool(re.search(r"HEAD:(\$\{GITHUB_REF_NAME\}|\$\{\{ github\.ref_name \}\}|main\b)", text))
+
+
+@pytest.mark.parametrize("name", sorted(MAIN_ONLY_WRITERS))
+def test_main_only_writer_has_its_own_group_and_queues(name: str):
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
+    assert _grants_write(text), f"{name} no longer writes; drop it from MAIN_ONLY_WRITERS"
+    group = _concurrency_group(text)
+    assert group is not None and group != EXPECTED_GROUP, f"{name} must hold its own group, not {group!r}"
+    assert _cancel_in_progress(text) == "false"
+
+
+@pytest.mark.parametrize("name", sorted(MAIN_ONLY_WRITERS))
+def test_main_only_writer_stages_only_its_own_path(name: str):
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
+    staged = _staged_paths(text)
+    assert staged, f"{name} stages nothing -- the scan is stale"
+    own = MAIN_ONLY_WRITERS[name]
+    assert all(path == own or path.startswith(own + "/") for path in staged), (
+        f"{name} stages {staged}, outside {own}"
+    )
+
+
+@pytest.mark.parametrize("name", sorted(MAIN_ONLY_WRITERS))
+def test_main_only_writer_pushes_its_own_ref_with_rebase_retry(name: str):
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
+    pushes = re.findall(r"git push[^\n]*", text)
+    assert pushes, f"{name} has no push -- the scan is stale"
+    for push in pushes:
+        assert 'HEAD:${GITHUB_REF_NAME}' in push, f"{name} pushes somewhere other than its own ref: {push}"
+    assert text.count("git pull --rebase") >= len(pushes), f"{name} has a push without a rebase before it"
+    assert f"HEAD:{DURABLE_BRANCH}" not in text and "git_durable_store" not in text
+
+
+def test_the_main_tree_scan_sees_the_other_main_writers():
+    """Guards the overlap test below against passing vacuously."""
+    main_writers = {
+        path.name for path in WORKFLOWS.glob("*.yml") if _pushes_its_own_ref(path.read_text(encoding="utf-8"))
+    }
+    assert {"app-export.yml", "script-engine.yml", "kalshi-market-catalog.yml"} <= main_writers
+    assert _staged_paths("git add -A && git commit") == ["."]
+    assert _staged_paths("git add data/a data/b\n# git add data/live") == ["data/a", "data/b"]
+
+
+@pytest.mark.parametrize("name", sorted(MAIN_ONLY_WRITERS))
+def test_no_other_workflow_stages_a_main_only_writers_path(name: str):
+    own = MAIN_ONLY_WRITERS[name]
+    offenders = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        if path.name == name:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not _pushes_its_own_ref(text):
+            continue  # writes a branch of its own, never main's tree
+        staged = _staged_paths(text)
+        if any(p == "." or p == own or p.startswith(own + "/") or own.startswith(p.rstrip("/") + "/")
+               for p in staged):
+            offenders.append(path.name)
+    assert not offenders, f"{offenders} stage {own}; {name} would race them outside a shared group"

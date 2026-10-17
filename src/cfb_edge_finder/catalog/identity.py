@@ -62,6 +62,16 @@ _MONTHS = {
 
 _DATE_PREFIX = re.compile(r"^(?P<yy>\d{2})(?P<mon>[A-Z]{3})(?P<dd>\d{2})(?P<teams>[A-Z0-9]*)$")
 
+MIN_MATCHUP_LETTERS = 4
+"""A game key's tail names two teams, so it carries at least four letters
+(two codes of at least two). `KXNCAAFCFPEXPAND-02DEC26T24` ("Will the CFP
+approve a 24-team playoff before Dec 2, 2026?") has the tail `T24`: the
+date grammar read `02DEC26` as YY=02 MON=DEC DD=26 and `T24` as a team code,
+so a policy question became a physical game with no teams that no football
+schedule could ever match (IDENTITY_FAIL in the Script Engine, a team-less
+card on the board). The event is real inventory; it is a season-level
+market, and `parse_event_ticker` says so by returning None."""
+
 # Game keys that parse as a date but are NOT a physical game. Weekly poll
 # and award events reuse the date grammar with a round/slot suffix
 # (KXNCAAFCFPPOLL-26NOV17R1, KXNCAAFSTADIUM-29APR01ALOHA), so the DATE
@@ -96,18 +106,19 @@ class EventTickerParts:
     game_date: datetime | None
 
 
-def parse_event_ticker(event_ticker: str) -> EventTickerParts | None:
-    """Split a game-level event ticker into series + physical game key.
-    Returns None for season-level inventory, which has no physical game."""
+def classify_event_ticker(event_ticker: str) -> tuple[EventTickerParts | None, str | None]:
+    """Parts when the ticker names a physical game; otherwise None and the
+    reason it does not, so season-level inventory is classified explicitly
+    instead of falling out of a regex."""
     if not event_ticker:
-        return None
+        return None, "empty_ticker"
     match = GAME_KEY_PATTERN.match(event_ticker.upper())
     if not match:
-        return None
+        return None, "no_game_key"
     series_ticker = match.group("series")
     game_key = match.group("game_key")
     if any(marker in series_ticker for marker in _NON_GAME_SERIES_MARKERS):
-        return None
+        return None, "season_level_series"
 
     date_match = _DATE_PREFIX.match(game_key)
     game_date: datetime | None = None
@@ -123,12 +134,20 @@ def parse_event_ticker(event_ticker: str) -> EventTickerParts | None:
             except ValueError:
                 game_date = None
     # A game key with no team codes at all (KXNCAAFCFPPOLL-26NOV17R1 style
-    # already excluded above) is not a matchup.
-    if not team_codes:
-        return None
-    return EventTickerParts(
-        series_ticker=series_ticker, game_key=game_key, team_codes=team_codes, game_date=game_date
+    # already excluded above) is not a matchup, and neither is a tail that is
+    # a slot or a threshold (`T24`, `R1`) rather than two team codes.
+    if sum(ch.isalpha() for ch in team_codes) < MIN_MATCHUP_LETTERS:
+        return None, "tail_is_not_two_team_codes"
+    return (
+        EventTickerParts(series_ticker=series_ticker, game_key=game_key, team_codes=team_codes, game_date=game_date),
+        None,
     )
+
+
+def parse_event_ticker(event_ticker: str) -> EventTickerParts | None:
+    """Split a game-level event ticker into series + physical game key.
+    Returns None for season-level inventory, which has no physical game."""
+    return classify_event_ticker(event_ticker)[0]
 
 
 CFB_COMPETITIONS = frozenset({"NCAA FOOTBALL", "COLLEGE FOOTBALL", "COLLEGE FOOTBALL PLAYOFFS"})

@@ -10,6 +10,137 @@ says **RUN CFB**.
 
 ---
 
+## RETRIEVAL — how a ChatGPT session gets the prices (read this first)
+
+**Never fetch `data/live/cfb_market_catalog.json` or `data/live/games/<game_key>.json`
+through the GitHub connector.** The catalog is ~1.5 MB and every marquee
+game file is ~1.27 MB. GitHub's Contents API returns a file's metadata and
+SHA with `"encoding": "none"` and an **empty `content`** for anything over
+1 MB, and GitHub code search does not index files over 384 KB. Neither is
+a sign the prices are missing; the files were too large to read through
+that path.
+
+Read the **execution index** instead. Every file in it is under 250 KB, its
+paths are deterministic, and you never need code search.
+
+| File | Size | What it gives you |
+|---|---|---|
+| `data/live/cfb_execution_index.json` | ~140 KB | capture timestamp + fingerprint, freshness rules, every slate, and one row per game with its quote-file paths |
+| `data/live/execution/slates/<YYYY-MM-DD>.json` | ≤ ~75 KB | one US/Eastern slate date: each game's teams, kickoff (UTC and ET), window, usability, quote-file paths |
+| `data/live/execution/games/<game_key>/quotes.json` | ≤ ~165 KB | **every contract** for that game: YES/NO bid & ask, quoted sizes, book state, buy-side executability and buy-side fee |
+| `data/live/execution/games/<game_key>/manifest.json` | ~20 KB | full identity, events, completeness diagnostics, and the list of detail shards |
+| `data/live/execution/games/<game_key>/events/<event_ticker>.json` | ≤ ~160 KB | the **verbatim** full contract records for one Kalshi event: `rules_primary`, `rules_secondary`, `settlement_sources`, full `fee` block, `mechanics` |
+
+If a file ever grows past the 250 KB shard budget, it is split into
+`quotes.part01of02.json`, `quotes.part02of02.json` (or
+`<event_ticker>.part01of02.json` …). The index, slate and manifest always
+list the exact paths, so **use the listed paths; never construct one.**
+
+### The procedure (e.g. “RUN CFB — afternoon games”)
+
+1. **Get the index.** Fetch `data/live/cfb_execution_index.json` from
+   `chmoses98/cfb-edge-finder` (ref `main`). Note `capture.captured_at` and
+   `capture.content_fingerprint`.
+2. **Identify the slate.** The slate date is the **US/Eastern calendar date
+   of kickoff**: today's ET date unless the operator names another. Find it
+   in `slates[]` and fetch its `path`. **Never pick games by the date inside
+   the game key.** Kalshi's key date is unreliable: Missouri at Ole Miss
+   (15:30 ET, Oct 17) is keyed `26OCT16MIZZMISS`.
+3. **Select the games.** Filter the slate's `games[]` by `window`:
+
+   | `window` | Kickoff (US/Eastern) |
+   |---|---|
+   | `early` | before 14:00 (noon window) |
+   | `afternoon` | 14:00–17:59 (the 3:30 window) |
+   | `evening` | 18:00 or later (primetime, late night) |
+
+   or by team name / `game_key` if the operator names games. Each row
+   carries `away_team`/`home_team` when Kalshi's title says “AWAY at HOME”;
+   for “A vs B” titles both are `null` (home field is not stated, so do not
+   infer it from the order).
+4. **Read each game's pointers.** `quote_files` (one or more paths) and
+   `manifest`.
+5. **Retrieve every quote file listed** for each selected game. Check, per
+   game:
+   - each file's `game_fingerprint` equals the slate row's
+     `game_fingerprint` (a mismatch means the collector committed between
+     your reads: re-fetch the index and slate, then retry);
+   - the sum of `market_count` over the parts equals the row's
+     `market_count`. Fewer rows than that means you do not have the full
+     menu. Say so, and do not treat the game as complete.
+6. **Verify freshness and completeness** (Step 1 and Step 4 below):
+   - fetch `data/live/cfb_catalog_status.json` (500 bytes); its
+     `content_fingerprint` must equal the index's `capture.content_fingerprint`,
+     otherwise **INCONSISTENT**: stop;
+   - check the latest successful `kalshi-market-catalog.yml` run **on
+     `main`** (Step 0/1) and apply the staleness table;
+   - a game is usable only if `usable == true`
+     (`native_game_markets_complete`); otherwise report it unavailable with
+     its `incomplete_diagnostics`.
+7. **Inspect executable prices.** Per contract in `quotes[]`:
+   - **buying YES** → price `yes_ask`, size `yes_ask_size`, fee
+     `buy_yes_fee`, executable iff `buy_yes_executable`;
+   - **buying NO** → price `no_ask`, size `yes_bid_size` (the NO ask *is*
+     the YES bid book), fee `buy_no_fee`, executable iff
+     `buy_no_executable`. **Never use `1 − yes_ask` as the NO price.**
+   - read `book_state` first; `empty_book` / `bid_only` / `ask_only` are not
+     two-sided markets.
+   - `title` states what YES means. Before recommending a contract, open its
+     event detail shard (`event_files[event_ticker]` in the quote file) and
+     read `rules_primary` / `rules_secondary`.
+8. **Return the inventory for independent handicapping.** Report what you
+   retrieved per game (contracts and families), then follow Steps 7–10. Label
+   every price **“captured at `<captured_at>`”**, never “live” or “current
+   executable”. Freshness verification (step 6) says the collector is alive.
+   It does not make a captured quote a live order-book quote, and a quote can
+   move after capture. Confirm on Kalshi before placing any order.
+
+### When a retrieval fails
+
+**One failed lookup never means “prices unavailable”.** Work down this list
+before reporting anything:
+
+| Symptom | Do this |
+|---|---|
+| A file returns empty `content` / `encoding: none` | You fetched an oversized legacy file. Use the execution-index path for the same game instead. |
+| A fetch errors or times out | Retry the same path once (or twice). Then try the same path at an explicit `ref` of `main`. |
+| The slate file fails | Use `games[]` in `cfb_execution_index.json`, which carries the same game rows with `slate_date`, `window` and `quote_files`. |
+| The index fails | Fetch `data/live/execution/slates/<today ET>.json` directly. The path is deterministic. |
+| A quote file fails | Retry. Then use the game's `manifest.json` → `detail_files[]`: the event shards together hold every contract with full prices. |
+| `game_fingerprint` mismatch between files | The collector committed between your reads. Re-fetch the index and slate, then the quote files. |
+| A game is not in the slate | Check the adjacent ET date's slate (late kickoffs, mis-keyed dates) and the index's `games[]`. Only then report the game as not listed by Kalshi in this capture. |
+| Run history (Actions API) is not reachable from the connector | Proceed, but state **freshness UNVERIFIED**: prices captured at `captured_at`, collector liveness not confirmed. Do not call the quotes current. |
+| Code search finds nothing | Expected. Do not use search. Every path is in the index. |
+
+Report “prices unavailable” for a game only when the index row, the slate
+row, the quote files **and** the detail shards for that game have all
+failed, and name each path that failed.
+
+### Not to be used as the price source
+
+- `data/live/cfb_market_catalog.json`, `data/live/games/*.json`: complete,
+  but over 1 MB for marquee games (unreadable through the connector).
+  Scripts and SIFT integrations still read them from disk.
+- `app/latest/board.json`: not the complete Kalshi inventory.
+- `kalshi-bet-router`: not required for any step.
+
+### Verifying the retrieval path yourself
+
+`scripts/simulate_connector_retrieval.py` retrieves a slate using only the
+Contents API's default JSON response (the connector's access path) and
+fails if any requested game's inventory comes back short:
+
+```bash
+python scripts/simulate_connector_retrieval.py --date 2026-10-17 --window afternoon
+python scripts/simulate_connector_retrieval.py --date 2026-10-17 --game 26OCT17AUBUGA --details
+```
+
+The execution layer is rebuilt by every catalog run and verified
+(`scripts/build_cfb_execution_index.py --verify-only`) before anything is
+committed. See `docs/KALSHI_MARKET_CATALOG.md` §4.
+
+---
+
 ## Step 0 — Preflight (never skip)
 
 ```bash
@@ -78,10 +209,12 @@ live.**
 
 ### 2 — Read the current slate index
 
-`data/live/cfb_market_catalog.json` (~1.4 MB, 239 games). Each entry carries
-identity (`division`, `conference`, `tier`, `season_week`), its Kalshi
-events, `market_count`, `family_distribution`, `completeness`, and
-`markets_file`.
+Through the GitHub connector: `data/live/cfb_execution_index.json` and the
+slate file it points to (see **RETRIEVAL** above). With local disk access
+only, `data/live/cfb_market_catalog.json` (~1.5 MB, over the connector's
+1 MB limit) carries the same per-game identity (`division`, `conference`,
+`tier`, `season_week`), events, `market_count`, `family_distribution`,
+`completeness` and `markets_file`.
 
 ### 3 — Identify games that have not started
 
@@ -127,10 +260,14 @@ verdict = require_usable_game(entry)   # raises IncompleteGameError with diagnos
 An `unknown` family does **not** block a game: that is a labelling gap, not
 a discovery gap — the contract was captured in full.
 
-### 5 — Open that game's detail file
+### 5 — Open that game's contracts
 
-`data/live/games/<game_key>.json` (14–701 KB). Same entry as the index, with
-`markets[]` inlined.
+Through the GitHub connector: every file in the game row's `quote_files`
+(all contracts, executable quotes), and, for full contract text, the event
+shards listed in `manifest.json` → `detail_files[]`. Those shards hold the
+game file's market records verbatim. With local disk access only,
+`data/live/games/<game_key>.json` (up to ~1.3 MB) has the same records
+inlined.
 
 ### 6 — Inspect every available contract
 
@@ -330,3 +467,15 @@ Kalshi credential is used on the live path.
 - **~10-day horizon.** Games beyond it are not published.
 - **78 of 15,314 contracts are `unknown`** — captured in full, just not
   labelled. Read their `rules_primary`.
+- **Captured, not live.** Every price is a capture from the last run that
+  changed the market surface. A session that cannot reach the Actions run
+  history cannot prove the collector is alive, and must say so.
+- **GitHub's scheduler is unreliable.** It creates only 2–8 of the catalog's
+  `*/30` cron runs a day. The CFB Research Conductor's 5-minute loop now
+  dispatches the catalog whenever a run is due (see
+  `docs/KALSHI_MARKET_CATALOG.md` §6), so the cadence no longer depends on
+  the cron. If the conductor's chain breaks, captures fall back to the
+  sparse cron and `CATALOG STALE` during a slate becomes likely again. Each
+  catalog run's summary lists missed capture windows
+  (`scripts/catalog_schedule.py report`). STALE is still STALE: dispatch the
+  workflow, never lower the bar.
