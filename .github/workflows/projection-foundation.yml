@@ -86,17 +86,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install research dependencies
-        run: pip install -q numpy pandas scipy scikit-learn statsmodels lightgbm pyarrow pytest
+        run: pip install -q -r research/projection_foundation/requirements-pf.txt
       - name: Restore the walk-forward cache
         uses: actions/cache@v4
         with:
           path: research/projection_foundation/.cache
-          key: pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-${{ github.run_id }}
+          key: pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py', 'research/projection_foundation/requirements-pf.txt') }}-${{ github.run_id }}
           restore-keys: |
-            pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-
-            pf-cfb-
+            pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py', 'research/projection_foundation/requirements-pf.txt') }}-
       - name: Fetch inputs (research-data cache, player box, closing lines)
         env:
           PF_CFB_REPO_URL: https://github.com/${{ github.repository }}
@@ -169,7 +168,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - uses: actions/download-artifact@v4
         with:
           name: pd-changes
