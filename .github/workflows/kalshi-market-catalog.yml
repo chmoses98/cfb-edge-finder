@@ -110,6 +110,16 @@ jobs:
             --horizon-days "${{ github.event.inputs.horizon_days || '10' }}" \
             ${{ github.event.inputs.include_raw == 'true' && '--include-raw' || '' }} \
             --print-summary
+      - name: Verify the RUN CFB execution index
+        # The builder also writes data/live/cfb_execution_index.json and
+        # data/live/execution/** -- the small files ChatGPT's GitHub
+        # connector can actually read (the catalog and marquee game files
+        # are over the 1 MB size at which GitHub's Contents API returns
+        # empty content). This re-reads them from disk and fails the job,
+        # before anything is committed, if any pointer is broken, any file
+        # is oversized, any contract is missing, or any fingerprint
+        # disagrees.
+        run: python3 scripts/build_cfb_execution_index.py --out-dir data/live --verify-only
       - name: Commit the catalog only if the market surface changed
         # Change detection is the whole storage/Actions budget story. The
         # builder writes a content fingerprint that deliberately EXCLUDES
@@ -121,7 +131,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # The whole tree: the slate index plus data/live/games/*.json.
+          # The whole tree: the slate index, data/live/games/*.json, and the
+          # execution index (cfb_execution_index.json + execution/**).
           # Per-game files mean a price move in one game rewrites one small
           # file rather than a 52 MB blob, and a game leaving the slate has
           # its file pruned -- both of which `git add data/live` records.
@@ -137,8 +148,28 @@ jobs:
           OLD_FP="${{ steps.previous.outputs.fingerprint }}"
           if [ -n "$OLD_FP" ] && [ "$NEW_FP" = "$OLD_FP" ]; then
             echo "market surface unchanged (fingerprint $NEW_FP); skipping commit to avoid timestamp churn"
-            git reset
-            exit 0
+            git reset -q
+            # Self-heal the derived execution index. Restore the committed
+            # catalog exactly, rebuild the execution files FROM IT, and
+            # commit only if they differ from what is committed (first
+            # deploy, or a builder fix). Over an in-sync tree the rebuild
+            # is byte-identical, so this commits nothing and never churns.
+            git checkout -- data/live
+            git clean -fdq data/live
+            python3 scripts/build_cfb_execution_index.py --out-dir data/live
+            git add -A data/live
+            if git diff --cached --quiet; then
+              echo "execution index in sync with the committed catalog"
+              exit 0
+            fi
+            git commit -m "kalshi cfb execution index: resync with committed catalog (fingerprint ${NEW_FP:0:12})"
+            for attempt in 1 2 3 4; do
+              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+                && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+              echo "push attempt ${attempt} failed; backing off"
+              sleep $((attempt * 4))
+            done
+            exit 1
           fi
 
           GAMES=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['physical_games'])")

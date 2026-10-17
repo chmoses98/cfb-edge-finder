@@ -44,6 +44,7 @@ from cfb_edge_finder.catalog.artifacts import (
     write_json,
 )
 from cfb_edge_finder.catalog.discovery import MarketDiscovery
+from cfb_edge_finder.catalog.execution import ExecutionBuildError, write_execution_artifacts
 from cfb_edge_finder.data.kalshi_client import KalshiClient
 
 
@@ -200,6 +201,23 @@ def main(argv: list[str] | None = None) -> int:
         f"{artifacts.game_bytes_total / 1e6:.2f} MB "
         f"({artifacts.game_files_written} written, {artifacts.game_files_unchanged} unchanged, "
         f"{artifacts.game_files_pruned} pruned)"
+    )
+
+    # The RUN CFB execution index: small (<250 KB) files derived from what
+    # was just written, because the catalog and the marquee game files are
+    # over the 1 MB size at which GitHub's Contents API -- ChatGPT's GitHub
+    # connector -- returns empty content. See catalog/execution.py.
+    try:
+        execution = write_execution_artifacts(out_dir, prefix=str(out_dir).strip("/").removeprefix("./"))
+    except ExecutionBuildError as exc:
+        print(f"::error title=Execution index build failed::{exc}")
+        print(f"FATAL: execution index build failed: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"  execution index: {execution.games} games / {execution.markets} contracts / "
+        f"{len(execution.slates)} slates ({execution.files_written} written, "
+        f"{execution.files_unchanged} unchanged, {execution.files_pruned} pruned; "
+        f"largest {execution.largest_file[1]:,} bytes)"
     )
 
     if args.print_summary:
