@@ -329,9 +329,52 @@ artifact is read: nobody asks "what can I bet across 239 games", they ask
 
 | Artifact | Live size | Contents |
 |---|---|---|
-| `data/live/cfb_market_catalog.json` | **0.71 MB** | Slate index: every game's identity, events, per-family counts, completeness, and a pointer to its detail file |
-| `data/live/games/<game_key>.json` | 14–701 KB (median 150 KB) | That game's complete contract inventory |
+| `data/live/cfb_market_catalog.json` | **1.50 MB** (2026-10-17, 311 games) | Slate index: every game's identity, events, per-family counts, completeness, and a pointer to its detail file |
+| `data/live/games/<game_key>.json` | up to **1.27 MB** (marquee games, ~300 contracts) | That game's complete contract inventory |
+| `data/live/cfb_execution_index.json` + `data/live/execution/**` | every file < 250 KB | **The RUN CFB retrieval path**: derived from the two above. See below |
 | `data/live/cfb_markets_flat.json` | ~50 MB | Optional (`--flat`), off by default: one row per contract slate-wide |
+
+### The execution index: why it exists
+
+The sizes above were measured on 2026-10-17. Earlier revisions of this
+document said 0.71 MB and 14–701 KB. The slate grew (two weekends inside
+the 10-day horizon) and marquee games gained quarter, half and team-stat
+ladders, so both files crossed **1 MB**. Above 1 MB, GitHub's Contents API,
+which is ChatGPT's GitHub connector's file path, returns `"encoding":
+"none"` and an empty `content` (reproduced on `cfb_market_catalog.json` and
+`games/26OCT17AUBUGA.json`; a 472 KB game file returned normally). GitHub
+code search also skips files over 384 KB. So the collector was healthy and
+the data correct, but the consumer could not read it.
+
+`src/cfb_edge_finder/catalog/execution.py` derives, from the files above
+and on every catalog run, a layer in which every file stays under a
+250 KB shard budget (hard limit 800 KB, checked before commit):
+
+```
+data/live/cfb_execution_index.json                 capture + freshness rules + every game row
+data/live/execution/slates/<YYYY-MM-DD>.json       one US/Eastern kickoff date, windows early/afternoon/evening
+data/live/execution/games/<key>/manifest.json      identity, events, completeness, detail_files[]
+data/live/execution/games/<key>/quotes.json        EVERY contract: bid/ask, sizes, book_state,
+                                                   buy_yes/buy_no executability and trade fee
+data/live/execution/games/<key>/events/<event>.json  the game file's market records, verbatim
+```
+
+- **Nothing is dropped.** The verifier fails the run unless the quote rows
+  and the detail-shard records each contain exactly the game file's
+  contracts.
+- **Consistency.** `game_fingerprint` is the SHA-256 of the published game
+  file, and is stamped on every quote and detail shard. The index carries
+  the catalog's `content_fingerprint`, which must equal
+  `cfb_catalog_status.json`'s.
+- **No churn.** Files are rewritten only when their bytes change. Slate and
+  game files carry no clock fields, so an unchanged game rewrites nothing.
+- **Self-healing.** When the market surface is unchanged, the workflow
+  restores the committed catalog, rebuilds the execution layer from it, and
+  commits only if that differs from what is committed (first deploy, or a
+  builder fix). Over an in-sync tree the rebuild is byte-identical.
+- `scripts/build_cfb_execution_index.py [--verify-only]` builds or
+  verifies it from disk. `scripts/simulate_connector_retrieval.py`
+  retrieves a slate through the Contents API exactly as the connector does.
 
 Measured at live scale: the index is **59× smaller** than the monolithic
 file. Re-publishing an unchanged slate rewrites **0** game files; a single

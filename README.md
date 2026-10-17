@@ -34,7 +34,8 @@ touches an order or portfolio endpoint, and has no ability to place a bet.
 
 | Artifact | What it is |
 |---|---|
-| `data/live/cfb_market_catalog.json` | **Primary product.** The slate index (~0.7 MB): every game's identity, events, per-family market counts, completeness diagnostics, and a pointer to its detail file. |
+| `data/live/cfb_market_catalog.json` | **Primary product.** The slate index (~1.5 MB): every game's identity, events, per-family market counts, completeness diagnostics, and a pointer to its detail file. |
+| `data/live/cfb_execution_index.json` | **The RUN CFB retrieval entry point.** Small (<250 KB per file) slate/quote/detail shards under `data/live/execution/` that ChatGPT's GitHub connector can read; the catalog and marquee game files are over its 1 MB limit. See `docs/RUN_CFB_CONTRACT.md` → RETRIEVAL. |
 | `data/live/games/<game_key>.json` | One game's complete inventory: every contract with raw settlement rules, executable prices, quoted sizes and liquidity. |
 | `data/live/cfb_catalog_status.json` | Counts and a content fingerprint, for change detection. |
 
