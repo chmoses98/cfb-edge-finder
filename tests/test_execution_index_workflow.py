@@ -10,10 +10,10 @@ never get repaired) without any test noticing.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "kalshi-market-catalog.yml"
@@ -23,10 +23,54 @@ VERIFY_CMD = "scripts/build_cfb_execution_index.py --out-dir data/live --verify-
 REBUILD_CMD = "scripts/build_cfb_execution_index.py --out-dir data/live"
 
 
+def _parse_steps(text: str) -> list[dict]:
+    """The catalog job's steps as ``{"name", "run"}`` dicts.
+
+    Stdlib only: CI installs the package's dependencies and PyYAML is not
+    one of them. Steps are the ``- `` items at the steps list's indent; a
+    ``run: |`` block is every following line indented deeper than ``run:``."""
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.strip() == "steps:")
+    item_indent = len(lines[start + 1]) - len(lines[start + 1].lstrip())
+    steps: list[dict] = []
+    i = start + 1
+    while i < len(lines):
+        line = lines[i]
+        indent = len(line) - len(line.lstrip())
+        if line.strip() and indent < item_indent:
+            break
+        stripped = line.strip()
+        if indent == item_indent and stripped.startswith("- "):
+            steps.append({})
+            stripped = stripped[2:]
+            indent += 2
+        if steps and stripped.startswith("name:"):
+            steps[-1]["name"] = stripped[5:].strip()
+        if steps and stripped.startswith("run:"):
+            value = stripped[4:].strip()
+            if value in ("|", ">"):
+                body: list[str] = []
+                i += 1
+                while i < len(lines) and (not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > indent):
+                    body.append(lines[i].strip())
+                    i += 1
+                steps[-1]["run"] = "\n".join(body)
+                continue
+            steps[-1]["run"] = value
+        i += 1
+    return steps
+
+
 @pytest.fixture(scope="module")
 def steps() -> list[dict]:
-    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    return doc["jobs"]["catalog"]["steps"]
+    return _parse_steps(WORKFLOW.read_text(encoding="utf-8"))
+
+
+def test_step_parser_sees_every_step(steps):
+    # guards the parser itself: the job has more than a handful of steps and
+    # the builder's multi-line run block is captured whole
+    assert len(steps) >= 7
+    assert any("--print-summary" in _run(s) for s in steps)
 
 
 def _index_of(steps: list[dict], predicate) -> int:
@@ -121,8 +165,7 @@ def test_catalog_builder_calls_write_execution_artifacts():
     assert source.count("write_execution_artifacts") >= 2
 
 
-def test_workflow_does_not_gain_secrets_or_a_new_concurrency_group():
+def test_workflow_does_not_gain_secrets_and_keeps_its_own_concurrency_group():
     text = WORKFLOW.read_text(encoding="utf-8")
-    doc = yaml.safe_load(text)
-    assert doc["concurrency"]["group"] == "research-data-write"
+    assert re.search(r"^concurrency:\n  group: kalshi-market-catalog$", text, re.MULTILINE)
     assert "secrets." not in text
