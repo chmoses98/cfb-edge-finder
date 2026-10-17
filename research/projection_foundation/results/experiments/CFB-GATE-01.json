@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-GATE-01",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "a5f2979923928020",
+  "hyperparameters": {},
+  "hypothesis": "REVIEW projections have larger errors.",
+  "limitations": [],
+  "model": "pf_core.gate + CFB checks",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 8664,
+  "n_obs": 8664,
+  "point": {
+    "result": "{\"by_check\": {\"validation\": {\"early_opponent:REVIEW\": {\"n_flagged\": 522, \"mae_flagged\": 8.753454770637441, \"mae_unflagged\": 9.402942447966078}, \"fcs:REVIEW\": {\"n_flagged\": 474, \"mae_flagged\": 10.11345002063347, \"mae_unflagged\": 9.172446828249198}, \"confidence:REVIEW\": {\"n_flagged\": 1021, \"mae_flagged\": 9.541241482358508, \"mae_unflagged\": 9.201585684158859}}, \"holdout\": {\"early_opponent:REVIEW\": {\"n_flagged\": 806, \"mae_flagged\": 8.875513795959423, \"mae_unflagged\": 8.935670042973626}, \"fcs:REVIEW\": {\"n_flagged\": 730, \"mae_flagged\": 8.968251262011364, \"mae_unflagged\": 8.919709304238864}, \"confide"
+  },
+  "python": "3.13.16",
+  "question": "Do gate flags identify larger errors?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

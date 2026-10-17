@@ -67,8 +67,8 @@ def experiments(S) -> list[dict]:
         "method": "A season avg shrunk; B EWMA + raw opponent-allowed; C plays x points/play (raw); D ridge off/def ratings "
                   "(pf_core.rolling_ridge_ratings, FCS pooled, prior seasons decayed 0.2/yr, alpha per target tuned on 2018-19); "
                   "D_C ridge plays x ridge points/play; E LightGBM on PIT ratings + context (refit each season); F NNLS stack "
-                  f"fitted on 2017-2019 (weights {', '.join(f'{k} {v:.2f}' for k, v in w.items() if v > 0.005)}). "
-                  "Validation 2021-22 selected F; holdout scored once.",
+                  f"fitted on 2017-2019 (weights {', '.join(f'{k} {v:.2f}' for k, v in w.items() if v > 0.005)}); "
+                  f"G game-level ridge (CFB-TP-02). Validation 2021-22 selected {best}; holdout scored for the frozen winner.",
         "data": f"FBS-vs-FBS regular season team-games; holdout n={h.get('n_obs')} ({h.get('n_clusters')} games)",
         "result": (f"Holdout MAE {_f(h.get('mae'))} vs A {_f(hA.get('mae'))}, retired engine {_f(hI.get('mae'))}, script-engine "
                    f"baseline {_f(hS.get('mae'))}, closing market {_f(hM.get('mae'))}. CRPS diff vs A {_ci(h.get('vs_baseline'))}, "
@@ -159,8 +159,8 @@ def experiments(S) -> list[dict]:
         lines = []
         for m, rs in cells.items():
             lines.append(m + ": " + "; ".join(f"{r['split'][:3]} wk{r['weeks']} {_ci(r)}" for r in rs))
-        best_w1 = sorted((r for r in pp if r.get("mean_diff") is not None and r["split"] == "development" and r["weeks"] == "1-1"),
-                         key=lambda r: r["mean_diff"])
+        best_w1 = sorted((r for r in pp if r.get("mean_diff") is not None and r["split"] == "development" and r["weeks"] == "1-1"
+                          and "talent" in r["model"]), key=lambda r: r["mean_diff"])
         bw = best_w1[0] if best_w1 else None
         vw = [r for r in pp if bw and r["model"] == bw["model"] and r["split"] == "validation"]
         E.append({"id": "CFB-EARLY-01-preseason-prior", "family": "team_points", "model": "D_prior",
@@ -171,8 +171,12 @@ def experiments(S) -> list[dict]:
                             "interaction, fitted on seasons before the target season only. Compared with the carry model D (diff = prior - D, MAE).",
                   "data": "FBS-vs-FBS team-games 2016-2022 (talent from 2015)",
                   "result": " | ".join(lines),
-                  "interpretation": (f"Best development week-1 variant {bw['model'] if bw else 'n/a'} ({_ci(bw)}); on validation "
-                                     + "; ".join(f"wk{r['weeks']} {sig(r)}" for r in vw) + "."),
+                  "interpretation": (f"Talent/returning-production prior ({bw['model'] if bw else 'n/a'}): week 1 development {_ci(bw)}; "
+                                     "validation " + "; ".join(f"wk{r['weeks']} {_ci(r)} ({sig(r)})" for r in vw)
+                                     + ". No detectable week-1 gain; the carry-only variants (current-season ridge shrunk to last "
+                                     "season's carried rating) are identical to D in week 1 by construction and slightly worse in "
+                                     "weeks 2-4 than D's joint multi-season fit. Offence-only returning production + talent do not "
+                                     "add information beyond last season's schedule-adjusted ratings at this sample size."),
                   "decision": "investigate" if bw and sig(bw) == "better" else "reject",
                   "n_obs": bw["n_obs"] if bw else 0})
     # garbage time
@@ -376,10 +380,11 @@ def calibration(S):
             out.append({"family": r["family"], "split": r["split"], "cover_80": r["cover_80"], "pit_var_ratio": r["pit_var_ratio"],
                         "line_brier": r["line_brier"], "line_ece": r["line_ece"],
                         "hit_rate_when_p_gt_0.6": r.get("line_hit_rate_when_p_gt_0.6"), "n_p_gt_0.6": r.get("line_n_p_gt_0.6")})
-    return {"summary": ("Distributions are fitted on development residuals only and then frozen. Coverage and PIT variance stay "
-                        "close to nominal on validation, holdout and 2026. Against the closing spread/total the model's cover/over "
-                        "probabilities are well calibrated in aggregate but the market is better: when the model is confident "
-                        "against the line it is not reliably right."),
+    return {"summary": ("Distributions are fitted on development residuals only and then frozen. Against OUTCOMES they are "
+                        "calibrated: 80% ranges cover 0.79-0.83 and PIT variance ratios are 0.93-1.03 on validation, holdout, 2025 "
+                        "and 2026. Against the CLOSING LINE they are not useful: the model's P(cover)/P(over) at the closing number "
+                        "has Brier 0.25-0.27 (a constant 50% scores 0.25) and the reliability tables are flat - when the model says "
+                        "60-70% against the spread the side wins ~49% (holdout). Model-vs-market disagreement is noise, not edge."),
             "results": out, "threshold_tables": GF.get("threshold", []), "script_engine_v2": S.get("script_engine_v2", {})}
 
 
@@ -434,8 +439,7 @@ def defense_summary(S):
             f"at week 2: {_f(w2.get('top10_adjusted'), 1)} (script engine) vs {_f(w2.get('top10_dcarry'), 1)} (carry).")
     return {"table": tab, "fcs_credit": fc, "pace": pace, "snapshots_2026": D.get("snapshots_2026", []), "headline": head,
             "pace_corr_rankgap_ownplays": pace_rho,
-            "cause": ("The rankings come from src/cfb_edge_finder/scripting/adjust.py (fit_metric, rank_in_universe) via matchup.unit_metric: "
-                      "a SEASON-TO-DATE ridge with lambda = 4 games and NO prior-season information, on points PER GAME, ranked across "
+            "cause": ("The model behind them is a SEASON-TO-DATE ridge with lambda = 4 games and NO prior-season information, on points PER GAME, ranked across "
                       "FBS and published even when the fit is flagged unstable (the FBS schedule graph has ~85 disconnected components "
                       "after week 1 and ~40 after week 2). Shrinkage toward the mean does not change an ordering when every team has "
                       "the same number of games, so early ranks are the order of 1-3 raw results against unconnected opponents."),
@@ -443,9 +447,13 @@ def defense_summary(S):
                        "ranks while the schedule graph is disconnected (weeks 1-3); show per-drive or per-play rather than per-game "
                        "points allowed. Production files were NOT modified (research-only); the replacement is "
                        "research/projection_foundation/cfb ratings + the team_points family."),
-            "interpretation": ("The defensive ranking problem is a sample/prior problem, not a pace or FCS problem first: the "
-                               "season-to-date method has little rank information until ~week 6, while the carried rating is "
-                               "informative from week 1.")}
+            "interpretation": ("The defensive ranking problem is first a sample/prior problem: in weeks 2-4 the season-to-date "
+                               "method is little better than raw points allowed (rank correlation ~0.36-0.49 with the rest of the "
+                               "season) while the carried rating is already ~0.6. Two secondary distortions are verified: defences "
+                               "that played an FCS team are flattered (next-game points allowed under-projected by 1.3 points in the "
+                               "script engine vs 0.2 with FCS pooling), and per-game points mix in the team's own pace (rank gap vs "
+                               "per-drive correlates +0.34 with own plays). From ~week 6 every method converges to ~0.52: even a good "
+                               "rating identifies only ~4 of the true top-10 defences, so any published rank needs an uncertainty band.")}
 
 
 # ============================================================================ markdown

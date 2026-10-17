@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-SOS-04-ridge-pooling-grid",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "2963e0747d711ade",
+  "hyperparameters": {},
+  "hypothesis": "Moderate ridge (5 games) and 0.5/season decay.",
+  "limitations": [],
+  "model": "D_ridge_sos",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 7292,
+  "n_obs": 7292,
+  "point": {
+    "result": "alpha 0.75 decay 0.2: 9.634; alpha 0.75 decay 0.35: 9.662; alpha 1.5 decay 0.2: 9.665; alpha 1.5 decay 0.35: 9.680; alpha 2.5 decay 0.35: 9.726; alpha 2.5 decay 0.2: 9.731; alpha 2.5 decay 0.5: 9.799; alpha 5 decay 0.35: 9.866. Within-season recency at alpha .75/decay .2: none 9.6335, 90-day halflife 10.1028, 45-day 10.2534."
+  },
+  "python": "3.13.16",
+  "question": "How much should team ratings be pooled, and how fast should last season fade?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

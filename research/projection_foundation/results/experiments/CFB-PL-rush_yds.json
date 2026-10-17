@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-PL-rush_yds",
+  "family": "rush_yds",
+  "features": [],
+  "fingerprint": "e957e74831c7bfa5",
+  "hyperparameters": {},
+  "hypothesis": "Team volume x share x efficiency with opponent adjustment beats player averages.",
+  "limitations": [],
+  "model": "F_stack",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 11766,
+  "n_obs": 11766,
+  "point": {
+    "result": "holdout MAE 25.36 vs A 27.40; CRPS diff vs A -0.998 [-1.101, -0.890]; 80% cover 0.819"
+  },
+  "python": "3.13.16",
+  "question": "Best walk-forward projection of player rush_yds?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

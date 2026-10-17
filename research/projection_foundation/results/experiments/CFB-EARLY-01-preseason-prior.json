@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-EARLY-01-preseason-prior",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "ead1e6182743a18a",
+  "hyperparameters": {},
+  "hypothesis": "Regressing last season's rating by returning production and talent improves weeks 1-4.",
+  "limitations": [],
+  "model": "D_prior",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 350,
+  "n_obs": 350,
+  "point": {
+    "result": "Dp_carry_prior_a2.5: dev wk1-1 +0.000 [+0.000, +0.000]; dev wk2-4 +0.152 [+0.062, +0.239]; dev wk5-20 +0.045 [+0.016, +0.075]; val wk1-1 +0.000 [+0.000, +0.000]; val wk2-4 +0.133 [-0.049, +0.320]; val wk5-20 +0.028 [-0.004, +0.060] | Dp_carry_prior_a5.0: dev wk1-1 +0.000 [+0.000, +0.000]; dev wk2-4 +0.092 [+0.006, +0.180]; dev wk5-20 +0.022 [-0.007, +0.051]; val wk1-1 +0.000 [+0.000, +0.000]; val wk2-4 +0.026 [-0.162, +0.226]; val wk5-20 -0.072 [-0.122, -0.021] | Dp_carry_prior_a10.0: dev wk1-1 +0.000 [+0.000, +0.000]; dev wk2-4 +0.227 [+0.092, +0.368]; dev wk5-20 +0.141 [+0.073, +0.211]; val wk1-1 +0.000 [+0.000, +0.000]; val wk2-4 +0.096 [-0.163, +0.365]; val wk5-20 -0.041 [-0.141, +0.057] | Dp_talent_returning_prior_a2.5: dev wk1-1 +0.010 [-0.348, +0.384]; dev wk2-4 +0.182 [+0.016, +0.359]; dev wk5-20 +0.007 [-0.046, +0.060]; val wk1-1 -0.089 [-0.544, +0.391]; val wk2-4 +0.131 [-0.100, +0.405]; val wk5-20 +0.033 [-0.030, +0.094] | Dp_talent_returning_prior_a5.0: dev wk1-1 +0.010 [-0.348, +0.384]; dev wk2-4 +0.084 [-0.098, +0.274]; dev wk5-20 -0.051 [-0.108, +0.009]; val wk1-1 -0.089 [-0.544, +0.391]; val wk2-4 +0.065 [-0.185, +0.362]; val wk5-20 -0.066 [-0.138, +0.009] | Dp_talent_returning_prior_a10.0: dev wk1-1 +0.010 [-0.348, +0.384]; dev wk2-4 +0.150 [-0.070, +0.365]; dev wk5-20 +0.019 [-0.067, +0.106]; val wk1-1 -0.089 [-0.544, +0.391]; val wk2-4 +0.137 [-0.173, +0.469]; val wk5-20 -0.060 [-0.169, +0.056]"
+  },
+  "python": "3.13.16",
+  "question": "Does a talent/returning-production preseason prior beat simply carrying last season's ratings?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "reject",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

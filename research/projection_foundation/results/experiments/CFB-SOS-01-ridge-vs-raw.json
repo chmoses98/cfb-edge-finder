@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-SOS-01-ridge-vs-raw",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "6fbd8d5139a23562",
+  "hyperparameters": {},
+  "hypothesis": "Yes: raw points-allowed credits defences that met weak offences.",
+  "limitations": [],
+  "model": "D_ridge_sos",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 1466,
+  "n_independent": 2932,
+  "n_obs": 2932,
+  "point": {
+    "result": "MAE D 9.33 vs raw 9.60 on validation, diff -0.272 [-0.402, -0.129]; development 9.62 vs 10.13 (-0.513 [-0.614, -0.411])."
+  },
+  "python": "3.13.16",
+  "question": "Does adjusting for strength of schedule beat raw opponent-allowed averages?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

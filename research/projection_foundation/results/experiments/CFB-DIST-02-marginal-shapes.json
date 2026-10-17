@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-DIST-02-marginal-shapes",
+  "family": "all team families",
+  "features": [],
+  "fingerprint": "363eaad0389a62af",
+  "hyperparameters": {},
+  "hypothesis": "Empirical residuals win for points (key numbers), NB for counts.",
+  "limitations": [],
+  "model": "-",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 0,
+  "n_obs": 0,
+  "point": {
+    "result": "team_points: normal 6.7650, empirical 6.7471, nb 6.8429; plays: normal 5.4888, empirical 5.4705, nb 5.4676; team_passing_yards: normal 48.0798, empirical 47.9067; team_rushing_yards: normal 43.8099, empirical 43.6021; points_per_play: normal 0.0981, empirical 0.0977; epa_per_play: normal 0.0922, empirical 0.0919; success_rate: normal 0.0426, empirical 0.0426"
+  },
+  "python": "3.13.16",
+  "question": "Discretised normal vs empirical residual vs negative binomial for team-level outcomes?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

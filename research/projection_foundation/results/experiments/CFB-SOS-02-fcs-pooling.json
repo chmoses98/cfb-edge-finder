@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-SOS-02-fcs-pooling",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "dda2bb497cf1855f",
+  "hyperparameters": {},
+  "hypothesis": "Yes: an individual FCS team has 1-3 games vs FBS, so ridge shrinks it to the league (FBS) average and its opponents' offence/defence absorb the gap.",
+  "limitations": [],
+  "model": "D_ridge_sos",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 2932,
+  "n_obs": 2932,
+  "point": {
+    "result": "development FBS-vs-FBS: 9.62 vs 9.63 (-0.016 [-0.048, +0.018], n=5844); development FBS-vs-FCS (FBS offence): 11.68 vs 12.21 (-0.532 [-1.222, +0.166], n=437); development FCS offence vs FBS: 8.70 vs 9.97 (-1.278 [-1.806, -0.730], n=437); validation FBS-vs-FBS: 9.33 vs 9.32 (+0.016 [-0.032, +0.070], n=2932); validation FBS-vs-FCS (FBS offence): 11.57 vs 12.95 (-1.376 [-2.231, -0.444], n=237); validation FCS offence vs FBS: 9.09 vs 11.09 (-2.003 [-2.783, -1.172], n=237)"
+  },
+  "python": "3.13.16",
+  "question": "Should FCS opponents be pooled into one rated entity?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

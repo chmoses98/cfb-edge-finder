@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "holdout 2023-2024",
+  "experiment_id": "CFB-TP-01-ladder",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "2dc7e81284d1626c",
+  "hyperparameters": {},
+  "hypothesis": "Schedule-adjusted ratings (D) beat raw averages (A/B); a development-fitted stack (F) adds a little.",
+  "limitations": [],
+  "model": "G_game_ridge",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 1502,
+  "n_independent": 3004,
+  "n_obs": 3004,
+  "point": {
+    "result": "Holdout MAE 8.99 vs A 10.50, retired engine 9.97, script-engine baseline 9.42, closing market 8.84. CRPS diff vs A -0.913 [-1.033, -0.783], vs retired engine -0.625 [-0.729, -0.523], vs market +0.103 [+0.050, +0.158]."
+  },
+  "python": "3.13.16",
+  "question": "Which projection of a team's points is most accurate out of sample?",
+  "split": "holdout 2023-2024",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

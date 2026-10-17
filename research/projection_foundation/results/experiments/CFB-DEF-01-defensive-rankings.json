@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-DEF-01-defensive-rankings",
+  "family": "team_points (defence)",
+  "features": [],
+  "fingerprint": "164b706c21e32f1d",
+  "hyperparameters": {},
+  "hypothesis": "Season-to-date-only ratings ranked before the schedule graph connects, with no prior.",
+  "limitations": [],
+  "model": "script engine replay",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 0,
+  "n_obs": 0,
+  "point": {
+    "result": "Rank correlation with rest-of-season defensive truth (mean 2016-2025): week 2 script engine 0.36 vs ridge-with-carry 0.62 vs raw 0.31; week 4 0.49 vs 0.57; week 8 0.53 vs 0.52. Top-10 overlap with the true top 10 at week 2: 2.0 (script engine) vs 4.4 (carry)."
+  },
+  "python": "3.13.16",
+  "question": "Why do the published defensive rankings look unrealistic, and what fixes them?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

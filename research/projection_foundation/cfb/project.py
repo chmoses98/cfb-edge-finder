@@ -233,7 +233,7 @@ def main():
     st = [t["gate"]["status"] for g in out["games"] for t in g["teams"]] + [p["gate"]["status"] for p in out["players"]]
     out["gate_summary"] = {s: st.count(s) for s in ("PASS", "REVIEW", "BLOCK")}
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
-    json.dump(out, open(a.out, "w"), indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
+    json.dump(out, open(a.out, "w"), separators=(",", ":"), default=lambda o: o.item() if hasattr(o, "item") else str(o))
     log(f"wrote {a.out}: {len(out['games'])} games, {len(out['players'])} player projections, gate {out['gate_summary']}")
 
 

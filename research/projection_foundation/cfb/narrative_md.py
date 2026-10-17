@@ -200,11 +200,12 @@ def render(S, summary) -> str:
                      + (f"; REVIEW minus PASS MAE {d.get('review_minus_pass_mae'):+.2f}" if d.get("review_minus_pass_mae") is not None else ""))
         for sp, d in G.get("error_by_status", {}).get("by_check", {}).items():
             L.append(f"* {sp}, by check: " + "; ".join(f"{k}: flagged n {v['n_flagged']}, MAE {v['mae_flagged']:.2f} vs unflagged {v['mae_unflagged']:.2f}" for k, v in d.items()))
-        L.append("\nA REVIEW flag means 'wider uncertainty / prior-driven', not 'wrong': the early-opponent flag marks week 1-4 "
-                 "games whose projections are mostly last season's ratings. Flagged projections have only slightly larger "
-                 "errors in points (the distribution is already widened by construction); the flags are informative about "
-                 "*why* a number is uncertain rather than strong error predictors. No coherence BLOCK occurred (the joint "
-                 "model makes totals and margins exact).")
+        L.append("\nREVIEW projections have somewhat larger errors overall (+0.5 MAE validation, +0.2 holdout), driven by the "
+                 "'confidence' flag (fewer than 3 current-season games). The CFB early-opponent flag does NOT pick out larger "
+                 "absolute errors (week 1-4 slates contain many lopsided, easier games); early-season weakness shows up as the "
+                 "gap to the market instead (section 8). The FCS flag marks larger errors on validation but not on holdout. "
+                 "No coherence BLOCK occurred: the joint model makes totals and margins exact. Flags therefore explain *why* "
+                 "a number is uncertain; they are weak predictors of the size of the miss.")
     L.append("\n## 12. Failed experiments\n")
     for f in summary["failed_experiments"]:
         L.append(f"* **{f['name']}** - {f['what_was_learned']} -> {f['changes_future_decisions']}")
@@ -221,6 +222,15 @@ def render(S, summary) -> str:
              "python -m cfb.run_walkforward  # full backtest -> results/summary.json, results/experiments/, RESULTS_CFB.md\n"
              "python -m cfb.project          # current week -> results/projections_latest.json (sift.projections.v1)\n"
              "python -m pytest -q tests\n```\n")
+    try:
+        import json as _json
+        from . import paths as _paths
+        pj = _json.load(open(_paths.RESULTS / "projections_latest.json"))
+        L.append(f"Example forward run in `results/projections_latest.json`: generated {pj['generated_utc']}, data as of "
+                 f"{pj['data_asof_utc']}, {len(pj['games'])} games (team points + joint total/margin ladders) and "
+                 f"{len(pj['players'])} player projections; gate {pj.get('gate_summary')}. Authority: {pj['model']['authority']}.\n")
+    except Exception:  # noqa: BLE001
+        pass
     L.append("`.github/workflows/projection-foundation.yml` runs the forward projection weekly in season (Tue/Fri) and on dispatch and "
              "publishes to the isolated `projection-data` orphan branch (projections/cfb/latest.json, timestamped copies, "
              "summary/cfb/latest.json). It is inert until merged to the default branch.\n")

@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-SE-01-control-ranges-2026",
+  "family": "margin",
+  "features": [],
+  "fingerprint": "15f5e3daf592b2d2",
+  "hyperparameters": {},
+  "hypothesis": "Historical tier ranges cover ~50%/80% of 2026 margins.",
+  "limitations": [],
+  "model": "script engine v2 CONTROL ranges",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 25,
+  "n_obs": 25,
+  "point": {
+    "result": "central-50 coverage 0.520, central-80 0.760; stated win rate 0.799 vs realised 0.760. Same games, PF joint model: 80% range coverage 0.800, winner Brier 0.177."
+  },
+  "python": "3.13.16",
+  "question": "Are the script engine's published CONTROL margin ranges / win rates calibrated on 2026 games?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "insufficient evidence",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

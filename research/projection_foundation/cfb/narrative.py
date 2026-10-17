@@ -28,7 +28,20 @@ INSUFFICIENT = {
 }
 
 # explicit overrides; every other family gets auto_readiness() from its holdout rows
+_PLAYER_WHY = ("Historical walk-forward accuracy and calibration pass (beats the season average on 2023-24 and 2025, 80% "
+               "coverage ~0.80-0.84), but participation cannot be verified pre-game: there is no historical injury/depth-chart "
+               "data, receivers/rushers absent from the box are scored as 0 (DNP and zero-catch games are indistinguishable), "
+               "and no prospective record exists yet. Display as research projections conditional on playing; build the "
+               "prospective record via projection-data.")
+_LINE_WHY = ("Point and distribution accuracy pass on holdout and 2025 (beats baseline and the retired engine, calibrated "
+             "coverage), and the model matches the archived v2 research models, but it stays behind the closing line and its "
+             "probabilities AT the closing number are less informative than the line itself (Brier ~0.26 vs 0.25 for a coin "
+             "flip). Show distributions; never present cover/over probabilities at market numbers as edges.")
 READINESS: dict[str, tuple[str, str]] = {
+    "margin": ("SHADOW VALIDATION", _LINE_WHY),
+    "game_total": ("SHADOW VALIDATION", _LINE_WHY),
+    **{f: ("SHADOW VALIDATION", _PLAYER_WHY) for f in ("passing_attempts", "passing_yards", "carries", "rushing_yards",
+                                                        "receptions", "receiving_yards")},
     "epa_per_play": ("INSUFFICIENT DATA",
                      "Validated 2016-2025 on CFBD EPA, but the live 2026 source (ESPN game log) carries no EPA, so it cannot be "
                      "projected forward. Remedy: compute EPA from the sportsdataverse espn_cfb_pbp release (has an EPA column) "

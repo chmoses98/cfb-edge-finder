@@ -108,7 +108,8 @@ def test_player_candidates_use_only_prior_games():
     U = pl.build_panel(P, T).set_index("game_id")
     assert not U.loc["g1", "passer"]          # no prior game -> not a candidate
     assert U.loc["g2", "passer"] and U.loc["g3", "passer"]
-    assert not U.loc["g3", "appeared"] and U.loc["g3", "pass_att"] == 0
+    # absent passer: not observed (NaN), never a zero in his history; QB props void when he does not play
+    assert not U.loc["g3", "appeared"] and np.isnan(U.loc["g3", "pass_att"])
 
 
 def test_projection_contract_example_if_present():

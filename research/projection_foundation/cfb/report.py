@@ -53,6 +53,29 @@ def _model_entry(r):
     return e
 
 
+def _split_market(rows):
+    keep = [r for r in rows if r["model"] != "market_close"]
+    mkt = [r for r in rows if r["model"] == "market_close"]
+    return keep, [{k: r.get(k) for k in ("split", "n_obs", "mae", "rmse", "bias", "crps", "cover_80", "pit_var_ratio")} for r in mkt]
+
+
+def _game_verdicts(rows, best):
+    for r in rows:
+        m = r["model"]
+        if m == best:
+            r["verdict"] = "best"
+        elif m == "A_season_avg":
+            r["verdict"] = "baseline"
+        elif m.startswith("incumbent") or m.startswith("v2_"):
+            r["verdict"] = "incumbent"
+        elif m == "market_close":
+            r["verdict"] = "market_benchmark"
+        else:
+            vb = r.get("vs_best")
+            r["verdict"] = "competitive" if (vb and not (vb["ci95"][1] < 0 or vb["ci95"][0] > 0)) else "rejected"
+    return rows
+
+
 def _holdout(rows, best):
     h = [r for r in rows if r["split"] == "holdout" and r["model"] == best]
     if not h:
@@ -81,9 +104,10 @@ def families(S) -> list[dict]:
     meta = nv.FAMILY_META
     for fam, F in S.get("team_families", {}).items():
         m = meta.get(fam, {})
+        keep, mkt = _split_market(F["rows"])
         fams.append({"family": fam, "unit": "team-game", "opportunity_family": m.get("opportunity"),
                      "population": m.get("population", "FBS-vs-FBS regular season team-games"),
-                     "models": [_model_entry(r) for r in F["rows"]], "best_model": F["best"],
+                     "models": [_model_entry(r) for r in keep], "market_benchmark": mkt, "best_model": F["best"],
                      "holdout": _holdout(F["rows"], F["best"]),
                      "distribution": {"kind": F["dist_kind"], "dev_crps_by_kind": F["dist_kind_dev_crps"]},
                      "stack_weights": F.get("stack_weights"),
@@ -91,11 +115,12 @@ def families(S) -> list[dict]:
     GF = S.get("game_families")
     if GF:
         for fam in ("game_total", "margin"):
-            rows = [r for r in GF["rows"] if r["family"] == fam]
+            rows = _game_verdicts([dict(r) for r in GF["rows"] if r["family"] == fam], GF["best"])
             m = meta.get(fam, {})
+            keep, mkt = _split_market(rows)
             fams.append({"family": fam, "unit": "game", "opportunity_family": "plays",
                          "population": "FBS-vs-FBS regular season games; derived from the joint team-score model",
-                         "models": [_model_entry(r) for r in rows], "best_model": GF["best"],
+                         "models": [_model_entry(r) for r in keep], "market_benchmark": mkt, "best_model": GF["best"],
                          "holdout": _holdout(rows, GF["best"]),
                          "distribution": {"kind": f"joint_{GF['kind']}", "dev_kinds": GF["kinds"]},
                          **_ready(fam, rows, GF["best"], True)})
