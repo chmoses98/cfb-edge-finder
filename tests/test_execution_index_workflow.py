@@ -102,7 +102,8 @@ def test_changed_surface_path_commits_via_the_same_diff_gate(commit_step):
     assert text.index("git add -A data/live") < first_gate
     assert "catalog byte-identical; nothing to commit" in text[first_gate : first_gate + 200]
     # the regular commit message path follows the unchanged branch
-    assert text.index('git commit -m "kalshi cfb catalog:') > text.index("git commit -m \"kalshi cfb execution index: resync")
+    resync_commit = text.index('git commit -m "kalshi cfb execution index: resync')
+    assert text.index('git commit -m "kalshi cfb catalog:') > resync_commit
 
 
 def test_commit_step_still_pushes_with_retries(commit_step):

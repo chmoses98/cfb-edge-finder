@@ -228,7 +228,11 @@ def game_row(out_dir: Path, key: str) -> dict[str, Any]:
 
 
 def exec_files(out_dir: Path) -> dict[str, bytes]:
-    files = {p.relative_to(out_dir).as_posix(): p.read_bytes() for p in (out_dir / EXECUTION_DIRNAME).rglob("*") if p.is_file()}
+    files = {
+        p.relative_to(out_dir).as_posix(): p.read_bytes()
+        for p in (out_dir / EXECUTION_DIRNAME).rglob("*")
+        if p.is_file()
+    }
     files[execution.INDEX_FILENAME] = (out_dir / execution.INDEX_FILENAME).read_bytes()
     return files
 
@@ -663,7 +667,8 @@ def test_large_game_splits_into_numbered_parts_without_losing_anything(tmp_path,
     multi = [d for d in manifest["detail_files"] if d["parts"] > 1]
     assert multi, "the 40-market event must split into detail parts"
     for detail in multi:
-        assert re.search(rf"/{detail['event_ticker']}\.part{detail['part']:02d}of{detail['parts']:02d}\.json$", detail["path"])
+        pattern = rf"/{detail['event_ticker']}\.part{detail['part']:02d}of{detail['parts']:02d}\.json$"
+        assert re.search(pattern, detail["path"])
 
 
 def test_unsplit_game_uses_plain_file_names(built):
@@ -972,7 +977,8 @@ def test_verify_catches_a_game_missing_from_or_extra_in_the_index(built):
 def test_verify_catches_a_slate_row_on_the_wrong_date(built):
     path = built / "execution" / "slates" / "2026-10-17.json"
     _rewrite(path, lambda d: d["games"][0].__setitem__("slate_date", "2026-10-18"))
-    assert any("listed on slate 2026-10-17 but dated 2026-10-18" in p for p in verify_execution_artifacts(built, PREFIX))
+    problems = verify_execution_artifacts(built, PREFIX)
+    assert any("listed on slate 2026-10-17 but dated 2026-10-18" in p for p in problems)
 
 
 def test_verify_catches_a_pointer_outside_the_prefix(built):
