@@ -46,7 +46,7 @@ def matrix(G: pd.DataFrame, T: pd.DataFrame, P: pd.DataFrame | None) -> list[dic
         {"dataset": "talent composite (247)", "seasons": "2015-2026", "rows": 0, "pit_class": "reconstructable",
          "notes": "2014 file empty. Published pre-season; may be revised in-season (low contamination risk)."},
         {"dataset": "recruiting class points", "seasons": "2014-2025", "rows": 0, "pit_class": "reconstructable",
-         "notes": "2026 class not cached (4-year average carried)."},
+         "notes": "2026 class not cached: 2026 uses the 2023-2025 classes (3-year average)."},
         {"dataset": "returning production (offence PPA/usage)", "seasons": "2014-2026", "rows": 0, "pit_class": "reconstructable",
          "notes": "Offence only (no defensive returning production in the source)."},
         {"dataset": "transfer portal", "seasons": "2025 only", "rows": 0, "pit_class": "missing",

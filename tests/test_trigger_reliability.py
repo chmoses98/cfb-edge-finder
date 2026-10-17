@@ -419,10 +419,14 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # pre-registered PRIMARY_60_180 window and publishes research state (docs/CFB_RESEARCH_CONDUCTOR.md). It
     # writes ONLY its own `research-signals` branch, consumes no secret, produces no projection, no fair value,
     # no stake and no recommendation; its cron merely revives a self-dispatching loop.
+    # projection-foundation.yml joined in 2026-10: research-only projections written ONLY to its own isolated
+    # `projection-data` orphan branch (own concurrency group). It consumes no secret, never touches main or
+    # research-data, and its output carries authority "research_only" -- no fair value, stake or recommendation.
     assert writers == [
         "app-export.yml",
         "cfb-research-conductor.yml",
         "kalshi-market-catalog.yml",
+        "projection-foundation.yml",
         "script-engine.yml",
     ], (
         f"unexpected scheduled writers: {writers}"

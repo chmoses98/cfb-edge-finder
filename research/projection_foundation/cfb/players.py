@@ -6,7 +6,8 @@ opportunity is completions (team) x reception share.
 
 Population (decided pre-game, from the team's previous 4 games of the SAME season):
   passing   the team's leading passer in its previous game (>= 10 attempts); evaluated conditional on
-            recording >= 1 attempt (a QB prop voids if he does not play); non-appearance reported.
+            recording >= 1 attempt (a QB prop voids if he does not play); non-appearance reported. Games without a
+            passing line are NOT zeros in the player's history (they are unobserved).
   rushing   >= 5 carries in at least one of the previous 3 team games
   receiving >= 1 reception in at least 2 of the previous 4 team games
   For rushing/receiving a candidate absent from the box is scored as 0: ESPN lists only players with a
@@ -80,6 +81,10 @@ def build_panel(P: pd.DataFrame, T: pd.DataFrame) -> pd.DataFrame:
     for c in ("pass_att", "pass_yds", "pass_cmp", "carries", "rush_yds", "receptions", "rec_yds"):
         U[c] = U[c].fillna(0.0)
     U["has_pass"] = U["has_pass"].fillna(False).astype(bool)
+    # passing is only OBSERVED when the player has a passing line: a QB prop voids if he does not play, so a missing
+    # passing line is 'not observed' (NaN), never a zero (rushing/receiving absences stay 0 - see module docstring)
+    for c in ("pass_att", "pass_yds", "pass_cmp"):
+        U.loc[~U["has_pass"], c] = np.nan
     U["name"] = U.groupby("player_id")["name"].transform(lambda s: s.ffill().bfill())
     return U
 
@@ -99,3 +104,66 @@ def player_features(U: pd.DataFrame) -> pd.DataFrame:
     d = pit.sort_chrono(U, "player_id", "kickoff", "game_id")
     d = pit.lagged_features(d, "player_id", cols, halflives=(HL,), season_col="season", prefix="p_")
     return d
+
+
+# ----------------------------------------------------------------------------- ladder
+GATE_FAMILY = {"pass_att": "passing_attempts", "pass_yds": "passing_yards", "carries": "carries",
+               "rush_yds": "rushing_yards", "receptions": "receptions", "rec_yds": "receiving_yards"}
+SHARE = {"passer": "sh_pass", "rusher": "sh_rush", "receiver": "sh_rec"}
+COUNT = {"passer": "pass_att", "rusher": "carries", "receiver": "receptions"}
+TEAM_OPP_D = {"passer": "D_pass_att_pred", "rusher": "D_rush_att_pred", "receiver": "D_pass_cmp_pred"}
+TEAM_OPP_B = {"passer": "Bt_pass_att", "rusher": "Bt_rush_att", "receiver": "Bt_pass_cmp"}
+OPP_EFF = {"passer": "ypa", "rusher": "ypc", "receiver": "ypc_rec"}
+
+
+def _ren(d: pd.DataFrame, col: str) -> pd.DataFrame:
+    m = {c: c[2:] for c in d.columns if c.startswith("p_" + col + "_")}
+    return d[list(m)].rename(columns=m)
+
+
+def attach_team(U: pd.DataFrame, X: pd.DataFrame) -> pd.DataFrame:
+    """Team opportunity (raw B and ridge D) and opponent efficiency factors, keyed by (game, team)."""
+    from . import team_models as tm
+    k = {c: tm.estimate_k(X, c) for c in ("pass_att", "rush_att", "pass_cmp")}
+    Xt = X[["game_id", "team_id", "D_pass_att_pred", "D_rush_att_pred", "D_pass_cmp_pred",
+            "D_ypa_def", "D_ypa_mu", "D_ypc_def", "D_ypc_mu", "D_ypc_rec_def", "D_ypc_rec_mu", "D_pts_pred"]].copy()
+    for c in ("pass_att", "rush_att", "pass_cmp"):
+        Xt[f"Bt_{c}"] = tm.model_B(X, c, k[c], k[c]).to_numpy() if f"o_{c}_ewm4" in X else np.nan
+    for e in ("ypa", "ypc", "ypc_rec"):
+        Xt[f"oppf_{e}"] = (Xt[f"D_{e}_mu"] + Xt[f"D_{e}_def"]) / Xt[f"D_{e}_mu"]
+    return U.merge(Xt, on=["game_id", "team_id"], how="left")
+
+
+def ladder(D: pd.DataFrame, fam: str, log=print) -> dict[str, pd.Series]:
+    role, opp, stat, _, _ = FAMILIES[fam]
+    cand = D[role]
+    prior = pm.group_prior_pit(D.assign(_role=cand), ["_role"], "kickoff", stat)
+    k = pit.estimate_shrinkage_k(D.loc[cand & D.season.between(2016, 2019), stat],
+                                 D.loc[cand & D.season.between(2016, 2019), "player_id"] + D.loc[cand & D.season.between(2016, 2019), "season"].astype(str))
+    out = {"A_season_avg": pm.est_A(_ren(D, stat), stat, prior, k),
+           "B_ewma": pm.est_B(_ren(D, stat), stat, prior, k, HL)}
+    sh = SHARE[role]
+    sh_prior = pm.group_prior_pit(D.assign(_role=cand), ["_role"], "kickoff", sh)
+    sh_hat = pm.est_B(_ren(D, sh), sh, sh_prior, 2.0, HL)
+    cnt = COUNT[role]
+    if opp is None:          # opportunity family itself: team volume x share
+        out["C_team_x_share"] = D[TEAM_OPP_B[role]] * sh_hat
+        out["D_ridge_team_x_share"] = D[TEAM_OPP_D[role]] * sh_hat
+    else:
+        # efficiency = yards per opportunity, shrunk toward the role's PIT rate (k in opportunity units)
+        num = _ren(D, stat).rename(columns=lambda c: "num" + c[len(stat):])
+        den = _ren(D, cnt).rename(columns=lambda c: "den" + c[len(cnt):])
+        rate_prior = pm.group_prior_pit(D.assign(_role=cand, _r=D[stat] / D[cnt].replace(0, np.nan)), ["_role"], "kickoff", "_r")
+        eff = pm.ratio_rate(pd.concat([num, den], axis=1), "num", "den", HL, rate_prior, {"passer": 60, "rusher": 40, "receiver": 15}[role])
+        out["C_team_x_share_x_eff"] = D[TEAM_OPP_B[role]] * sh_hat * eff
+        out["D_ridge_x_share_x_eff_x_opp"] = D[TEAM_OPP_D[role]] * sh_hat * eff * D[f"oppf_{OPP_EFF[role]}"].fillna(1.0)
+    feats = [c for c in D.columns if c.startswith("p_") and (c.endswith("_ewm4") or c.endswith("_std") or c.endswith("_n")
+                                                             or c.endswith("_prev"))]
+    feats += [TEAM_OPP_D[role], TEAM_OPP_B[role], f"oppf_{OPP_EFF[role]}", "D_pts_pred", "site", "week"]
+    train = cand & D["has_pass"] if role == "passer" else cand
+    E = pm.lgbm_walkforward(D.assign(_blk=D["season"], _tr=train), feats, stat, "_blk", objective="regression",
+                            min_train_blocks=1, train_mask_col="_tr",
+                            params=dict(num_leaves=15, n_estimators=300, learning_rate=0.04, min_child_samples=200, n_jobs=2))
+    out["E_lgbm"] = E
+    log(f"  player ladder {fam}: k={k:.2f}")
+    return out

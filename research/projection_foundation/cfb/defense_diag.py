@@ -145,7 +145,7 @@ def fcs_credit(T: pd.DataFrame, SE: pd.DataFrame, Xind: pd.DataFrame, Xpool: pd.
     """Does having played an FCS team flatter a defence's rating (weeks 2-4)? Measured as the bias of the
     NEXT FBS-vs-FBS game's points allowed: defence ratings that were flattered under-predict."""
     rows = []
-    for name, pred in (("script_engine", "se_pred"), ("ridge_fcs_individual", "Di_pred"), ("ridge_fcs_pooled", "D_pred")):
+    for name, pred in (("script_engine", "se_pred"), ("ridge_fcs_individual", "Di_pts_pred"), ("ridge_fcs_pooled", "D_pts_pred")):
         X = Xpool if name != "ridge_fcs_individual" else Xind
         d = X[X["season"].isin(seasons) & ~X["post"] & X["fbs_game"] & X["week"].between(2, 4) & X[pred].notna()].copy()
         played = T[(T["season"].isin(seasons)) & T["vs_fcs"]][["season", "team_id", "week"]].rename(

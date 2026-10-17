@@ -1,0 +1,129 @@
+# PROJECTION FOUNDATION -- COLLEGE FOOTBALL (research-only)
+#
+# Writes research projections for the current CFB week (sift.projections.v1) and the
+# backtest summary (sift.projection_foundation.sport_summary.v1) to the ISOLATED
+# `projection-data` orphan branch:
+#     projections/cfb/latest.json
+#     projections/cfb/<YYYY-MM-DDTHHMMZ>.json      (only when the content changed)
+#     summary/cfb/latest.json
+# SIFT reads raw.githubusercontent.com/<owner>/<repo>/projection-data/projections/cfb/latest.json.
+#
+# *** ISOLATION ***
+#   concurrency group  `projection-data-write` -- NOT `research-data-write`, so it can
+#                      never queue against (or cancel) the durable-store writers.
+#   storage            the `projection-data` orphan branch only. Never main, research-data
+#                      or any artifact a production path reads.
+#   authority          research_only. Projections never change betting authority; nothing
+#                      in the live catalog, execution or sizing path imports this code.
+#   cost               keyless public sources only (the repo's own research-data branch,
+#                      the committed ESPN game log on main, sportsdataverse GitHub releases).
+#                      No secrets, no paid services, zero CFBD calls.
+#   idempotent         the branch is only committed when the projection content (ignoring
+#                      generated_utc) changed; re-running an unchanged week writes nothing.
+#
+# A cron schedule only fires once this file is on the default branch; until it is merged the
+# workflow is inert and can be dispatched manually.
+name: Projection Foundation CFB (research-only)
+
+on:
+  schedule:
+    # In season (Aug-Jan): Tuesday after the weekend's games are in the ESPN log, and Friday
+    # morning before the weekend slate. Minutes jittered off the hour.
+    - cron: "41 10 * 8-12 2"
+    - cron: "41 10 * 8-12 5"
+    - cron: "41 10 * 1 2"
+  workflow_dispatch:
+    inputs:
+      asof:
+        description: "Project as of this UTC time (ISO 8601); blank = now"
+        required: false
+        default: ""
+      full_backtest:
+        description: "Re-run the full walk-forward backtest before projecting (slow, ~60 min)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: read
+
+jobs:
+  project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    concurrency:
+      group: projection-data-write
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: research/projection_foundation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install research dependencies
+        run: pip install -q numpy pandas scipy scikit-learn statsmodels lightgbm pyarrow pytest
+      - name: Restore the walk-forward cache
+        uses: actions/cache@v4
+        with:
+          path: research/projection_foundation/.cache
+          key: pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-${{ github.run_id }}
+          restore-keys: |
+            pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-
+      - name: Fetch inputs (research-data cache, player box, closing lines)
+        env:
+          PF_CFB_REPO_URL: https://github.com/${{ github.repository }}
+        run: python -m cfb.paths --refresh
+      - name: Unit tests
+        run: python -m pytest -q tests
+      - name: Full walk-forward backtest (optional)
+        if: github.event.inputs.full_backtest == 'true'
+        run: python -m cfb.run_walkforward --stages all
+      - name: Project the current week
+        run: |
+          set -euo pipefail
+          ASOF="${{ github.event.inputs.asof }}"
+          python -m cfb.project ${ASOF:+--asof "$ASOF"} --out /tmp/pf/latest.json
+      - name: Publish to the projection-data orphan branch (only if changed)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin projection-data --depth=1 2>/dev/null; then
+            git worktree add /tmp/pd FETCH_HEAD --detach
+          else
+            mkdir -p /tmp/pd && cd /tmp/pd && git init -q && git checkout -q --orphan projection-data && cd -
+          fi
+          mkdir -p /tmp/pd/projections/cfb /tmp/pd/summary/cfb
+          CHANGED=$(python3 - <<'PY'
+          import json, os
+          new = json.load(open("/tmp/pf/latest.json"))
+          p = "/tmp/pd/projections/cfb/latest.json"
+          old = json.load(open(p)) if os.path.exists(p) else None
+          strip = lambda d: {k: v for k, v in d.items() if k != "generated_utc"} if d else None
+          print("yes" if strip(old) != strip(new) else "no")
+          PY
+          )
+          cp research/projection_foundation/results/summary.json /tmp/pd/summary/cfb/latest.json
+          if [ "$CHANGED" = "yes" ]; then
+            STAMP=$(date -u +%Y-%m-%dT%H%MZ)
+            cp /tmp/pf/latest.json /tmp/pd/projections/cfb/latest.json
+            cp /tmp/pf/latest.json "/tmp/pd/projections/cfb/${STAMP}.json"
+          fi
+          cd /tmp/pd
+          git add -A projections summary
+          if git diff --cached --quiet; then echo "projection content unchanged; nothing to publish"; exit 0; fi
+          git commit -q -m "cfb projections $(date -u +%Y-%m-%dT%H:%MZ) (research-only)"
+          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          for attempt in 1 2 3 4; do
+            git push origin HEAD:projection-data && exit 0
+            echo "push attempt ${attempt} failed; backing off"
+            sleep $((2 ** attempt))
+            git fetch origin projection-data --depth=1 2>/dev/null && git rebase -q FETCH_HEAD || true
+          done
+          exit 1

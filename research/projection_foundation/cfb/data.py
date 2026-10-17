@@ -263,12 +263,14 @@ def preseason_inputs() -> pd.DataFrame:
         prev = coach.get((s - 1, team))
         if prev is not None:
             put(s, team, new_coach=float(prev != c))
-    for (s, team) in {k for k in rec}:
-        pts = [rec.get((y, team)) for y in range(s - 3, s + 1)]
-        pts = [p for p in pts if p is not None]
-        if pts:
-            put(s, team, recruit4=float(np.mean(pts)))
-    # 2026 recruiting is not cached: carry 2025's 4-year window forward (documented limitation)
+    teams_rec = {t for (_, t) in rec}
+    for s in paths.SEASONS + [paths.CURRENT]:
+        for team in teams_rec:
+            # 4 classes ending with season s; for 2026 (class not cached) the 3 classes 2023-2025 (documented)
+            pts = [rec.get((y, team)) for y in range(s - 3, s + 1)]
+            pts = [p for p in pts if p is not None]
+            if pts:
+                put(s, team, recruit4=float(np.mean(pts)))
     df = pd.DataFrame(list(rows.values()))
     return df
 
@@ -374,3 +376,52 @@ def load_players() -> pd.DataFrame:
         has_rec=("receptions", lambda s: s.notna().any()))
     agg.to_parquet(fp)
     return agg
+
+
+# --------------------------------------------------------------------------- upcoming (forward projections)
+def week_end(now: pd.Timestamp) -> pd.Timestamp:
+    """End of the current CFB week: the next Tuesday 08:00 UTC (weeks run Tuesday-Monday)."""
+    days = (1 - now.weekday()) % 7 or 7
+    return (now + pd.Timedelta(days=days)).normalize() + pd.Timedelta(hours=8)
+
+
+def upcoming(now: pd.Timestamp, T: pd.DataFrame, horizon_end: pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Not-yet-played games from data/football/2026/schedule.json kicking off before the end of the current week.
+    Outcome columns are NaN; division comes from the team's latest known division (unknown -> fcs);
+    games without an FBS participant are dropped. week = last completed 2026 week + 1."""
+    sched = json.load(open(paths.FOOTBALL_2026 / "schedule.json"))
+    div = (T.sort_values("kickoff").drop_duplicates("team_id", keep="last").set_index("team_id")["team_div"].to_dict())
+    last_week = int(T.loc[(T["season"] == 2026) & ~T["post"], "week"].max())
+    rows = []
+    for e in sched["events"]:
+        if e.get("completed") or e.get("state") == "post":
+            continue
+        ko = pd.Timestamp(e["date"])
+        ko = ko.tz_localize("UTC") if ko.tzinfo is None else ko.tz_convert("UTC")
+        if not (now - pd.Timedelta(hours=1) <= ko <= (horizon_end or week_end(now))):
+            continue
+        comp = {c["home_away"]: c for c in e.get("competitors", [])}
+        if "home" not in comp or "away" not in comp:
+            continue
+        h, a = comp["home"], comp["away"]
+        hd, ad = div.get(h["team_id"], "fcs"), div.get(a["team_id"], "fcs")
+        if hd != "fbs" and ad != "fbs":
+            continue
+        rows.append({"game_id": e["id"], "season": 2026, "week": last_week + 1, "season_type": "regular",
+                     "kickoff": ko.strftime("%Y-%m-%dT%H:%M:%SZ"), "home_id": h["team_id"], "away_id": a["team_id"],
+                     "home": h.get("location") or h["names"][0], "away": a.get("location") or a["names"][0],
+                     "home_div": hd, "away_div": ad, "home_conf": h.get("conference_id"), "away_conf": a.get("conference_id"),
+                     "neutral": bool(e.get("neutral_site")), "conf_game": bool(e.get("conference_game")),
+                     "home_pts": np.nan, "away_pts": np.nan, "venue_id": None, "src": "espn_schedule"})
+    Gu = pd.DataFrame(rows)
+    if Gu.empty:
+        return Gu, pd.DataFrame()
+    Tu = _team_rows(Gu)
+    for c in T.columns:
+        if c not in Tu.columns:
+            Tu[c] = np.nan
+    Tu = Tu[[c for c in T.columns if c in Tu.columns]].copy()
+    for c in ("close_spread", "close_total", "line_provider", "n_providers"):
+        Gu[c] = np.nan
+    Gu, Tu = _finish(Gu, Tu)
+    return Gu, Tu

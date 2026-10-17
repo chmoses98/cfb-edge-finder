@@ -16,8 +16,8 @@ from . import team_models as tm
 
 SEASONS = list(range(2015, 2027))
 # per-target ridge alpha (games of pull toward league average), chosen on development (see tune_alphas)
-DEFAULT_ALPHA = 5.0
-DECAY = 0.5
+DEFAULT_ALPHA = 0.75
+DECAY = 0.2
 HISTORY = 3
 
 RIDGE_TARGETS = ["pts", "plays", "ppp", "pass_att", "pass_yds", "rush_att", "rush_yds", "pass_cmp", "ypa", "ypc",
@@ -56,6 +56,25 @@ def tune_alphas(T: pd.DataFrame, targets, alphas=(2.5, 5.0, 10.0, 20.0), seasons
     return out
 
 
+def ratings_split(T: pd.DataFrame, y: str, **kw) -> pd.DataFrame:
+    """History (2015-2025, stable cache) and the live season (recomputed whenever its rows change)."""
+    hist = ratings.walkforward(T[T["season"] <= 2025], y, [s for s in SEASONS if s <= 2025], **kw)
+    live = ratings.walkforward(T, y, [s for s in SEASONS if s > 2025], **kw)
+    return pd.concat([hist, live], ignore_index=True)
+
+
+def features(T: pd.DataFrame, alphas: dict, log=print) -> pd.DataFrame:
+    """Raw lagged features + every ridge target's walk-forward prediction/components (used by build and project)."""
+    t0 = time.time()
+    X = tm.raw_features(T, RAW_COLS)
+    for y in RIDGE_TARGETS:
+        a = alphas.get(y, DEFAULT_ALPHA)
+        R = ratings_split(T, y, alpha=a, decay=DECAY, history=HISTORY, fcs_mode="pool")
+        X = ratings.attach(X, R, f"D_{y}")
+        log(f"ridge {y} alpha={a} done {time.time() - t0:.0f}s")
+    return X
+
+
 def build(force: bool = False, alphas: dict | None = None, log=print) -> pd.DataFrame:
     fp = paths.BUILT / "team_frame.parquet"
     G, T = data.load()
@@ -65,20 +84,15 @@ def build(force: bool = False, alphas: dict | None = None, log=print) -> pd.Data
     if fp.exists() and sp.exists() and not force and json.load(open(sp)) == stamp:
         return pd.read_parquet(fp)
     t0 = time.time()
-    X = tm.raw_features(T, RAW_COLS)
+    X = features(T, alphas or {}, log)
     alphas = alphas or {}
-    for y in RIDGE_TARGETS:
-        a = alphas.get(y, DEFAULT_ALPHA)
-        R = ratings.walkforward(T, y, SEASONS, alpha=a, decay=DECAY, history=HISTORY, fcs_mode="pool")
-        X = ratings.attach(X, R, f"D_{y}")
-        log(f"ridge {y} alpha={a} done {time.time() - t0:.0f}s")
     # FCS-individual comparator (points) for the FCS/SOS experiments
-    R = ratings.walkforward(T, "pts", SEASONS, alpha=alphas.get("pts", DEFAULT_ALPHA), decay=DECAY,
-                            history=HISTORY, fcs_mode="individual")
+    R = ratings_split(T, "pts", alpha=alphas.get("pts", DEFAULT_ALPHA), decay=DECAY, history=HISTORY,
+                      fcs_mode="individual")
     X = ratings.attach(X, R, "Di_pts", fcs_mode="individual")
     # current-season-only ridge (no carry) to isolate the value of prior-season information
-    R = ratings.walkforward(T, "pts", SEASONS, alpha=alphas.get("pts", DEFAULT_ALPHA), decay=0.0, history=0,
-                            fcs_mode="pool", use_prior_seasons=False)
+    R = ratings_split(T, "pts", alpha=alphas.get("pts", DEFAULT_ALPHA), decay=0.0, history=0,
+                      fcs_mode="pool", use_prior_seasons=False)
     X = ratings.attach(X, R, "Dcs_pts")
     # script-engine replay (production code) -> its scoring baseline and defensive ratings
     SE = defense_diag.replay_script_engine(T, SEASONS)
