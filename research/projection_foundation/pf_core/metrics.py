@@ -91,7 +91,14 @@ def ece(p, o, bins=10) -> float:
 def cluster_bootstrap_diff(loss_a, loss_b, clusters, n_boot: int = 2000, seed: int = 0) -> dict:
     """Mean of (loss_a - loss_b) with a 95% cluster-bootstrap CI. Negative = A better."""
     d = np.asarray(loss_a, float) - np.asarray(loss_b, float)
+    if len(d) == 0:
+        return {"mean_diff": float("nan"), "ci95": [float("nan"), float("nan")], "se": float("nan"), "z": float("nan"),
+                "n_obs": 0, "n_clusters": 0}
     cl = pd.factorize(np.asarray(clusters))[0]
+    if (cl < 0).any():  # missing cluster ids: each becomes its own cluster (1.0.0 crashed)
+        miss = cl < 0
+        cl = cl.copy()
+        cl[miss] = cl.max() + 1 + np.arange(miss.sum())
     k = cl.max() + 1
     sums = np.bincount(cl, weights=d, minlength=k)
     cnts = np.bincount(cl, minlength=k).astype(float)

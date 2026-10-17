@@ -78,16 +78,31 @@ class DistBatch:
         y = np.asarray(y, dtype=float)
         return np.clip(np.round(y).astype(int) - self.lo, 0, self.P.shape[1] - 1)
 
+    def _outside(self, y):
+        y = np.round(np.asarray(y, dtype=float))
+        hi = self.lo + self.P.shape[1] - 1
+        return y < self.lo, y > hi, hi
+
     def logpmf(self, y) -> np.ndarray:
+        """Log probability of the observed outcome; an outcome outside the support scores log(EPS) (1.0.0 clipped it
+        onto the edge cell, which understated the penalty)."""
         idx = self._index(y)
-        return np.log(np.maximum(self.P[np.arange(len(self)), idx], EPS))
+        below, above, _ = self._outside(y)
+        out = np.log(np.maximum(self.P[np.arange(len(self)), idx], EPS))
+        out[below | above] = np.log(EPS)
+        return out
 
     def crps(self, y) -> np.ndarray:
         """Discrete CRPS (= ranked probability score summed over the lattice)."""
         y = np.asarray(y, dtype=float)
         C = self.cdf_matrix
         H = (self.support[None, :] >= y[:, None]).astype(float)
-        return ((C - H) ** 2).sum(axis=1)
+        out = ((C - H) ** 2).sum(axis=1)
+        # lattice points outside the support: F = 0 below lo, 1 above hi
+        below, above, hi = self._outside(y)
+        yr = np.round(y)
+        out = out + np.where(above, yr - hi - 1, 0.0) + np.where(below, self.lo - yr, 0.0)
+        return out
 
     def pit(self, y, rng: np.random.Generator | None = None) -> np.ndarray:
         """Randomised PIT; uniform on [0,1] iff the forecast is calibrated."""
@@ -97,7 +112,11 @@ class DistBatch:
         rows = np.arange(len(self))
         upper = C[rows, idx]
         lower = np.where(idx > 0, C[rows, np.maximum(idx - 1, 0)], 0.0)
-        return lower + rng.uniform(size=len(self)) * (upper - lower)
+        out = lower + rng.uniform(size=len(self)) * (upper - lower)
+        below, above, _ = self._outside(y)
+        out[below] = 0.0
+        out[above] = 1.0
+        return out
 
     def subset(self, mask) -> "DistBatch":
         return DistBatch(self.lo, self.P[mask])

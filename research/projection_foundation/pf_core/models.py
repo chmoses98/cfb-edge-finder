@@ -33,9 +33,16 @@ def group_prior_pit(df: pd.DataFrame, group_cols: list[str], date_col: str, col:
     agg["_prior"] = agg["_cs"] / agg["_cc"].replace(0, np.nan)
     out = d.merge(agg[group_cols + [date_col, "_prior"]], on=group_cols + [date_col], how="left")["_prior"]
     out.index = df.index
-    if fallback is None:
-        fallback = float(df[col].mean())
-    return out.fillna(fallback)
+    # Rows whose group has no earlier dates fall back to the PIT mean of ALL groups on earlier dates, then to the
+    # caller's fallback, else stay NaN. (1.0.0 used the full-sample mean here, which includes future rows.)
+    tot = d.groupby(date_col)["_x"].agg(["sum", "count"]).sort_index()
+    cs = tot["sum"].cumsum() - tot["sum"]
+    cc = (tot["count"].cumsum() - tot["count"]).replace(0, np.nan)
+    glob = pd.Series((cs / cc).reindex(d[date_col]).to_numpy(), index=df.index)
+    out = out.fillna(glob)
+    if fallback is not None:
+        out = out.fillna(fallback)
+    return out
 
 
 def est_A(df: pd.DataFrame, col: str, prior: pd.Series, k: float, prev_weight: float = 0.5,
@@ -80,7 +87,11 @@ def fit_opponent_beta(y, base_mu, log_factor) -> float:
     Poisson-likelihood 1-D fit on development data. beta=0 means opponent adds nothing."""
     from scipy.optimize import minimize_scalar
     y = np.asarray(y, float)
-    b = np.maximum(np.asarray(base_mu, float), 1e-6)
+    b = np.asarray(base_mu, float)
+    if not (np.isfinite(y).all() and np.isfinite(b).all()):
+        # 1.0.0 silently returned the optimiser's first probe (0.4549) on NaN input [NBA]
+        raise ValueError("fit_opponent_beta: y and base_mu must be finite (drop or impute missing rows first)")
+    b = np.maximum(b, 1e-6)
     lf = np.nan_to_num(np.asarray(log_factor, float))
 
     def nll(beta):
@@ -165,12 +176,12 @@ def fit_dist_params(kind: str, y, mu, **kw) -> dict:
     y = np.asarray(y, float)
     mu = np.asarray(mu, float)
     if kind == "poisson":
-        return {"kind": kind}
+        return {"kind": kind, "K": kw.get("K")}
     if kind == "nb":
-        return {"kind": kind, "alpha": dists.fit_nb_alpha(y, mu)}
+        return {"kind": kind, "alpha": dists.fit_nb_alpha(y, mu), "K": kw.get("K")}
     if kind == "nb_binned":
         e, a = dists.fit_nb_alpha_binned(y, mu, kw.get("n_bins", 6))
-        return {"kind": kind, "edges": e.tolist(), "alphas": a.tolist()}
+        return {"kind": kind, "edges": e.tolist(), "alphas": a.tolist(), "K": kw.get("K")}
     if kind == "normal_binned":
         e, s = dists.fit_sd_binned(y, mu, kw.get("n_bins", 6))
         return {"kind": kind, "edges": e.tolist(), "sds": s.tolist(), "lo": kw.get("lo", 0), "K": kw["K"],

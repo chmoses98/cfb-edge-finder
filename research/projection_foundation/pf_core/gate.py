@@ -34,10 +34,17 @@ HARD_MAX_MEAN = {
     ("NBA", "threes"): 9, ("NBA", "team_points"): 145,
     ("MLB", "batters_faced"): 34, ("MLB", "pitcher_strikeouts"): 14, ("MLB", "outs"): 27,
     ("MLB", "hits"): 3.0, ("MLB", "total_bases"): 4.5, ("MLB", "home_runs"): 1.0,
-    ("MLB", "plate_appearances"): 6.0, ("MLB", "team_runs"): 12,
+    ("MLB", "plate_appearances"): 6.0, ("MLB", "team_runs"): 12, ("MLB", "runs"): 2.0, ("MLB", "rbis"): 2.5,
+    ("MLB", "hits_allowed"): 13, ("MLB", "walks"): 8, ("MLB", "earned_runs"): 10, ("MLB", "runs_allowed"): 10,
+    ("MLB", "game_total"): 20,
     ("NHL", "toi_minutes"): 32, ("NHL", "shots"): 7.5, ("NHL", "goals"): 1.2, ("NHL", "assists"): 1.6,
     ("NHL", "points"): 2.4, ("NHL", "saves"): 45, ("NHL", "team_goals"): 6.5,
 }
+
+# Opponent-adjustment reliability is sport-specific: CFB plays 12 games, so 2 games is already a sixth of a season and
+# its legitimate opponent factors are wider (FBS vs FCS); NBA/NHL/MLB play enough that 5 games is the floor.
+OPP_MIN_GAMES = {"NFL": 3, "CFB": 2, "NBA": 5, "MLB": 5, "NHL": 5}
+OPP_EXTREME_LOG = {"CFB": 0.6}
 
 # Max age (hours) of the newest input before the projection is considered stale.
 MAX_STALENESS_H = {"NFL": 24 * 8, "CFB": 24 * 8, "NBA": 48, "MLB": 36, "NHL": 48}
@@ -54,7 +61,7 @@ class GateInput:
     game_start_utc: str | None
     mean: float | None
     identity_confidence: float | None = 1.0      # 1.0 exact id join; <1 fuzzy name match
-    team_verified: bool | None = True             # roster/lineup confirms the team
+    team_verified: bool | None = True             # roster/lineup confirms the team (None = not checked; no finding)
     data_asof_utc: str | None = None              # newest input timestamp used
     injury_status: str | None = None              # ACTIVE/PROBABLE/QUESTIONABLE/DOUBTFUL/OUT/UNKNOWN
     expected_opportunity: float | None = None     # minutes, targets, TOI, PA, batters faced...
@@ -165,11 +172,11 @@ def evaluate(gi: GateInput, now_utc: str | None = None) -> dict[str, Any]:
                         "Confirm a reduced role or a stale/decayed input (cf. NFL defect D1).")
     # 8 opponent adjustment reliability
     if gi.opponent_factor is not None:
-        if gi.opponent_sample_games is not None and gi.opponent_sample_games < 3 and abs(math.log(max(gi.opponent_factor, 1e-6))) > 0.05:
+        if gi.opponent_sample_games is not None and gi.opponent_sample_games < OPP_MIN_GAMES.get(gi.sport, 3) and abs(math.log(max(gi.opponent_factor, 1e-6))) > 0.05:
             add("opponent", REVIEW, f"Opponent adjustment ×{gi.opponent_factor:.2f} rests on {gi.opponent_sample_games} games",
                 {"factor": gi.opponent_factor, "games": gi.opponent_sample_games}, "uncertainty",
                 "Shrink the opponent factor harder toward 1.0 early in the season.")
-        if abs(math.log(max(gi.opponent_factor, 1e-6))) > 0.35:
+        if abs(math.log(max(gi.opponent_factor, 1e-6))) > OPP_EXTREME_LOG.get(gi.sport, 0.35):
             add("opponent", REVIEW, f"Opponent adjustment ×{gi.opponent_factor:.2f} is extreme",
                 {"factor": gi.opponent_factor}, "model_assumption", "Check schedule adjustment and opponent data.")
     # 9 plausibility
@@ -198,9 +205,12 @@ def evaluate(gi: GateInput, now_utc: str | None = None) -> dict[str, Any]:
         elif gi.mean is not None and gi.support_lo is not None:
             dm = float(np.dot(np.arange(gi.support_lo, gi.support_lo + len(p)), p))
             tol = max(0.05 * abs(gi.mean), 0.15)
-            if abs(dm - gi.mean) > tol:
-                add("distribution", BLOCK, f"Distribution mean {dm:.2f} disagrees with published mean {gi.mean:.2f}",
-                    {"dist_mean": dm, "mean": gi.mean}, "mathematical", "Publish moments from the same distribution.")
+            gap = abs(dm - gi.mean)
+            if gap > tol:
+                # small gaps arise legitimately when a distribution is floored (e.g. at 0); large ones are a defect
+                sev = BLOCK if gap > max(0.15 * abs(gi.mean), 0.5) else REVIEW
+                add("distribution", sev, f"Distribution mean {dm:.2f} disagrees with published mean {gi.mean:.2f}",
+                    {"dist_mean": dm, "mean": gi.mean}, "mathematical", "Publish the mean of the published distribution.")
     if gi.thresholds:
         ks = sorted(gi.thresholds, key=lambda k: float(k))
         ps = [gi.thresholds[k] for k in ks]

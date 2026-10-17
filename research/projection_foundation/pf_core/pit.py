@@ -22,7 +22,8 @@ def lagged_features(df: pd.DataFrame, entity: str, cols: list[str], halflives=(3
 
     NaN values in col are treated as 'not observed' (e.g. did-not-play) and skipped.
     """
-    out = df
+    orig_index = df.index
+    out = df.reset_index(drop=True)
     for c in cols:
         x = out[c].astype(float)
         obs = x.notna().astype(float)
@@ -48,6 +49,7 @@ def lagged_features(df: pd.DataFrame, entity: str, cols: list[str], halflives=(3
             sm[season_col] = sm[season_col] + 1
             sm = sm.rename(columns={"_m": f"{prefix}{c}_prev", "_n": f"{prefix}{c}_prev_n"})
             out = out.merge(sm, on=[entity, season_col], how="left")
+    out.index = orig_index  # 1.0.0 returned a RangeIndex
     return out
 
 
@@ -80,7 +82,9 @@ def estimate_shrinkage_k(values: pd.Series, groups: pd.Series, min_n: int = 5) -
 def rolling_ridge_ratings(games: pd.DataFrame, block_col: str, off_col: str, def_col: str, y_col: str,
                           home_col: str | None = None, alpha: float = 5.0, date_col: str | None = None,
                           halflife_days: float | None = None, season_col: str | None = None,
-                          prior_season_decay: float = 0.5, min_rows: int = 20) -> pd.DataFrame:
+                          prior_season_decay: float = 0.5, min_rows: int = 20,
+                          pool_map: dict | None = None, window_seasons: int | None = None,
+                          halflife_within_season: bool = False, home_unpenalized: bool = False) -> pd.DataFrame:
     """Schedule-adjusted offence/defence ratings refitted before every block.
 
     Model: y = mu + off[o] + def[d] (+ home*h), ridge-penalised toward 0 (= league average).
@@ -90,17 +94,31 @@ def rolling_ridge_ratings(games: pd.DataFrame, block_col: str, off_col: str, def
 
     Returns rows (block, team, off_rating, def_rating, n_off, n_def, intercept) where ratings
     are in y units relative to league average, computed only from games with block < block.
+
+    1.1.0 options (defaults reproduce 1.0.0):
+      pool_map               team -> pooled entity (e.g. every FCS team -> "FCS") so thin teams share one rating;
+                             output rows are still per team, carrying their pool's rating.
+      window_seasons         fit only on the last N seasons (requires season_col) to bound compute.
+      halflife_within_season apply halflife_days only to current-season games; earlier seasons are discounted by
+                             prior_season_decay alone (1.0.0 applied both, double-discounting old seasons).
+      home_unpenalized       scale the home column so ridge leaves home advantage effectively unshrunk.
     """
     from sklearn.linear_model import Ridge
 
-    teams = pd.Index(sorted(set(games[off_col]).union(set(games[def_col]))))
+    raw_teams = pd.Index(sorted(set(games[off_col]).union(set(games[def_col]))))
+    pm = (lambda t: pool_map.get(t, t)) if pool_map else (lambda t: t)
+    teams = pd.Index(sorted(set(pm(t) for t in raw_teams)))
     T = len(teams)
-    oi = teams.get_indexer(games[off_col])
-    di = teams.get_indexer(games[def_col])
+    oi = teams.get_indexer(games[off_col].map(pm))
+    di = teams.get_indexer(games[def_col].map(pm))
+    HS = 100.0 if home_unpenalized else 1.0
     blocks = sorted(games[block_col].unique())
     res = []
     for b in blocks:
         m = (games[block_col] < b).to_numpy()
+        if window_seasons and season_col is not None:
+            cur_s = games.loc[games[block_col] == b, season_col].iloc[0]
+            m &= (games[season_col] > cur_s - window_seasons).to_numpy()
         if m.sum() < min_rows:
             continue
         sub = games.loc[m]
@@ -109,7 +127,7 @@ def rolling_ridge_ratings(games: pd.DataFrame, block_col: str, off_col: str, def
         X[np.arange(n), oi[m]] = 1.0
         X[np.arange(n), T + di[m]] = 1.0
         if home_col:
-            X[:, -1] = sub[home_col].astype(float).to_numpy()
+            X[:, -1] = sub[home_col].astype(float).to_numpy() * HS
         w = np.ones(n)
         if season_col is not None:
             cur = games.loc[games[block_col] == b, season_col].iloc[0]
@@ -117,21 +135,30 @@ def rolling_ridge_ratings(games: pd.DataFrame, block_col: str, off_col: str, def
         if halflife_days and date_col:
             cur_d = pd.to_datetime(games.loc[games[block_col] == b, date_col]).min()
             age = (cur_d - pd.to_datetime(sub[date_col])).dt.days.to_numpy()
-            w *= 0.5 ** (age / halflife_days)
+            decay = 0.5 ** (age / halflife_days)
+            if halflife_within_season and season_col is not None:
+                cur_s = games.loc[games[block_col] == b, season_col].iloc[0]
+                decay = np.where(sub[season_col].to_numpy() == cur_s, decay, 1.0)
+            w *= decay
         r = Ridge(alpha=alpha, fit_intercept=True)
         r.fit(X, sub[y_col].astype(float).to_numpy(), sample_weight=w)
         n_off = np.bincount(oi[m], minlength=T)
         n_def = np.bincount(di[m], minlength=T)
-        res.append(pd.DataFrame({
+        frame = pd.DataFrame({
             block_col: b, "team": teams, "off_rating": r.coef_[:T], "def_rating": r.coef_[T:2 * T],
             "n_off": n_off, "n_def": n_def, "intercept": r.intercept_,
-            "home_adv": r.coef_[-1] if home_col else 0.0,
-        }))
+            "home_adv": r.coef_[-1] * HS if home_col else 0.0,
+        })
+        if pool_map:
+            frame = frame.rename(columns={"team": "pool"})
+            frame = pd.DataFrame({"team": raw_teams, "pool": [pm(t) for t in raw_teams]}).merge(frame, on="pool", how="left")
+        res.append(frame)
     return pd.concat(res, ignore_index=True) if res else pd.DataFrame()
 
 
 def rolling_opponent_allowed(team_games: pd.DataFrame, def_col: str, date_col: str, y_col: str,
-                             k_prior: float, season_col: str | None = None, halflife: float | None = None) -> pd.DataFrame:
+                             k_prior: float, season_col: str | None = None, halflife: float | None = None,
+                             league_fallback: float | None = None) -> pd.DataFrame:
     """Raw (not schedule-adjusted) PIT opponent factor: shrunk prior-games mean allowed / PIT league mean.
 
     Provided as the simple comparator for rolling_ridge_ratings.
@@ -148,7 +175,9 @@ def rolling_opponent_allowed(team_games: pd.DataFrame, def_col: str, date_col: s
     by_date = d.groupby(date_col)[y_col].agg(["sum", "count"]).sort_index()
     lm = (by_date["sum"].cumsum() - by_date["sum"]) / (by_date["count"].cumsum() - by_date["count"]).replace(0, np.nan)
     d["_league"] = d[date_col].map(lm)
-    d["_league"] = d["_league"].fillna(d[y_col].mean() if len(d) else np.nan)
+    # first date(s): no earlier games. 1.0.0 filled with the full-sample mean (look-ahead); now caller-supplied or NaN.
+    if league_fallback is not None:
+        d["_league"] = d["_league"].fillna(league_fallback)
     shr = eb_shrink(prior_mean, n, d["_league"], k_prior)
     d["opp_allowed_shrunk"] = shr
     d["opp_factor_raw"] = shr / d["_league"]

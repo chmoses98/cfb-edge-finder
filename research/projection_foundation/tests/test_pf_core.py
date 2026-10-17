@@ -182,3 +182,42 @@ def test_vendored_copy_matches_manifest():
     man = json.load(open(os.path.join(base, "MANIFEST.json")))
     for name, sha in man["sha256"].items():
         assert hashlib.sha256(open(os.path.join(base, name), "rb").read()).hexdigest() == sha, name
+
+
+def test_110_group_prior_has_no_lookahead():
+    df = pd.DataFrame({"g": ["a", "a", "b", "b"], "d": [1, 2, 3, 4], "x": [1.0, 3.0, 100.0, 100.0]})
+    pr = models.group_prior_pit(df, ["g"], "d", "x")
+    assert np.isnan(pr.iloc[0])                 # nothing earlier at all
+    assert pr.iloc[1] == 1.0
+    assert pr.iloc[2] == 2.0                    # group b's first date -> all-group mean of earlier dates, not 51
+    future = df.assign(x=[1.0, 3.0, 100.0, 1e9])
+    assert models.group_prior_pit(future, ["g"], "d", "x").iloc[2] == 2.0
+
+
+def test_110_out_of_support_scoring():
+    d = dists.DistBatch(0, np.array([[0.5, 0.5]]))
+    assert d.logpmf([5])[0] < -20
+    assert d.pit([5])[0] == 1.0 and d.pit([-3])[0] == 0.0
+    assert np.isclose(d.crps([5])[0], d.crps([1])[0] + 4)
+
+
+def test_110_lagged_keeps_index_and_empty_bootstrap():
+    df = pd.DataFrame({"p": ["a", "a"], "x": [1.0, 2.0]}, index=[10, 20])
+    assert list(pit.lagged_features(df, "p", ["x"], halflives=(2,)).index) == [10, 20]
+    assert metrics.cluster_bootstrap_diff([], [], [])["n_obs"] == 0
+
+
+def test_110_ridge_pooling():
+    rows = [{"blk": w, "o": o, "d": d, "y": 20 + (5 if o == "S" else 0)} for w in range(6)
+            for o in ["S", "F1", "F2"] for d in ["S", "F1", "F2"] if o != d]
+    g = pd.DataFrame(rows)
+    r = pit.rolling_ridge_ratings(g, "blk", "o", "d", "y", alpha=1.0, pool_map={"F1": "FCS", "F2": "FCS"})
+    last = r[r.blk == r.blk.max()].set_index("team")
+    assert last.loc["F1", "off_rating"] == last.loc["F2", "off_rating"] and last.loc["F1", "pool"] == "FCS"
+
+
+def test_110_beta_rejects_nan_and_bootstrap_nan_clusters():
+    with pytest.raises(ValueError):
+        models.fit_opponent_beta([1.0, np.nan], [1.0, 1.0], [0.0, 0.0])
+    r = metrics.cluster_bootstrap_diff([1.0, 2.0, 3.0], [0.0, 0.0, 0.0], [1, None, None])
+    assert r["n_clusters"] == 3
