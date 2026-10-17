@@ -166,17 +166,50 @@ def stage_capture(ctx, get=ei.http_get_json) -> dict:
         prior = [r["captured_utc"] for r in av.load_snapshots(ctx.root, SPORT) if r.get("source") == la.REPO_SOURCE]
         repo_obs = la.repo_job_observations(json.load(open(ap)), events, max(prior) if prior else None, paths.CURRENT)
         obs += [o for o in repo_obs if o.captured_utc < cap]
+    probes = _probes(inj, team_ids, get)
     snap = av.write_snapshot(obs, ctx.root, SPORT, cap) if obs else {"written": 0, "rejected": 0, "duplicate": False, "path": None}
     stats = la.capture_stats([], events, {}, cap, inj)
     out = {"captured_utc": cap, "events": len(events), "teams": len(team_ids), "observations": len(obs),
            "snapshot": {k: snap.get(k) for k in ("written", "rejected", "duplicate")}, "snapshot_path": snap.get("path"),
-           "team_feed": stats["team_feed"], "repo_job_observations": len(repo_obs),
+           "team_feed": stats["team_feed"], "repo_job_observations": len(repo_obs), "probes": probes,
            "observations_by_kind": pd.Series([f"{o.source}:{o.kind}:{o.certainty}" for o in obs]).value_counts().to_dict() if obs else {}}
     if snap.get("errors"):
         out["snapshot_errors"] = snap["errors"]
     if team_ids and stats["team_feed"]["lists_read"] == 0:
         out["WARNING"] = "no injury list could be read for any team (source down or blocked); nothing is treated as 'no injuries'"
-    ctx.log("capture:", json.dumps({k: v for k, v in out.items() if k != "snapshot_path"}, default=str)[:600])
+    ctx.log("capture:", json.dumps({k: v for k, v in out.items() if k != "snapshot_path"}, default=str)[:2500])
+    return out
+
+
+def _probes(inj: dict, team_ids: list, get) -> dict:
+    """Diagnostics only (never archived): (a) when this run saw no injury record, resolve the REAL reference URLs recorded by the
+    sidecar (tests/fixtures) so the record parser is checked against a live payload; (b) does ESPN serve a CFB depth chart?"""
+    out: dict = {}
+    seen = next((v.sample_keys for v in inj.values() if v.sample_keys), None)
+    if seen:
+        out["record_keys_this_run"] = seen
+    else:
+        try:
+            fx = json.load(open(os.path.join(str(paths.PF_ROOT), "tests", "fixtures", "espn_injuries_2026-09-17T114253Z.json")))
+            refs = [u for r in fx["teams"].values() for u in r["parsed"]["items"]][:3]
+            res = []
+            for u in refs:
+                body, err = get(u)
+                if isinstance(body, dict):
+                    rec = ei.parse_record(body, u)
+                    res.append({"ref_tail": u.split("/athletes/")[-1][:40], "keys": sorted(body.keys())[:25], "status_raw": rec.status_raw,
+                                "status": rec.status, "has_athlete_ref": isinstance(body.get("athlete"), dict), "date": rec.date})
+                else:
+                    res.append({"ref_tail": u.split("/athletes/")[-1][:40], "error": err})
+            out["recorded_refs_resolved_now"] = res
+        except Exception as e:  # noqa: BLE001
+            out["recorded_refs_error"] = repr(e)
+    if team_ids:
+        url = f"{ei.CORE}/seasons/{paths.CURRENT}/teams/{team_ids[0]}/depthcharts"
+        body, err = get(url)
+        out["depthchart_probe"] = {"url_tail": url.split("/leagues/")[-1], "ok": isinstance(body, dict), "error": err,
+                                   "keys": sorted(body.keys())[:10] if isinstance(body, dict) else None,
+                                   "count": body.get("count") if isinstance(body, dict) else None}
     return out
 
 

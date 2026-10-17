@@ -121,6 +121,7 @@ CONFIRMED_OUT is gate BLOCK. A player is never presented as active without an ob
 | `scorecards/<sport>/{daily,weekly,season}.{json,md}` | `sift.prospective_scorecard.v1` | score step (rewritable views) |
 | `projections/<sport>/latest.json` | `sift.projections.v1` | publish step (rewritable view) |
 | `summary/<sport>/latest.json` | `sift.projection_foundation.sport_summary.v1` | publish step |
+| `ratings/cfb/defense_latest.json` | `sift.defense_ratings.v1` (CFB only; see DEFENSE_RATINGS.md) | publish step (shadow ratings next to the production engine's ranks) |
 
 Model roles in the forecast archive: `challenger` (Projection Foundation frozen model) and `incumbent` (today's production
 model, archived unchanged from its own output). Paired comparisons use only keys both roles forecast before the start.
