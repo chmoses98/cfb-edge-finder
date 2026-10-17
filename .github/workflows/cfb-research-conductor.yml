@@ -28,6 +28,8 @@ name: CFB Research Conductor
 # 2-6 hours, and an 18:41 Script Engine slot once ran at 23:17, after a 23:00 kickoff. So each run cycles every
 # 5 minutes for ~5.5 hours and then dispatches the next run (workflow_dispatch from GITHUB_TOKEN may start a
 # run). The cron below only restarts the chain if it ever breaks; the concurrency group keeps one loop alive.
+# Because it is the one dependable clock, each cycle also runs the Kalshi catalog keepalive
+# (scripts/catalog_schedule.py): it dispatches kalshi-market-catalog.yml whenever a catalog run is due.
 #
 # *** WHERE IT WRITES ***
 # Only its own branch, `research-signals` (`research-signals-dev` from any other ref, so a branch test can
@@ -150,6 +152,13 @@ jobs:
               publish || echo "::warning::publish failed (will retry next cycle)"
             else
               fail=$((fail + 1)); echo "::warning::could not read main"
+            fi
+            # Kalshi catalog keepalive: GitHub drops most of the catalog's */30 cron ticks, so this loop is its
+            # clock. Dispatches kalshi-market-catalog.yml when none is queued/running and the newest run is at
+            # least one cadence old (scripts/catalog_schedule.py). Main only; a failure never stops the cycle.
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              GH_REPO="$GITHUB_REPOSITORY" python scripts/catalog_schedule.py keepalive --dispatch \
+                || echo "::warning::catalog keepalive failed"
             fi
             now=$(date +%s)
             [ $(( now + CYCLE_SECONDS )) -lt "$end" ] || break
