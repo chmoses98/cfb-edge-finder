@@ -86,3 +86,41 @@ Development results may be iterated on; validation selects; holdout is run once 
 
 `authority` is always `research_only`: projections are informational and never change betting authority.
 A BLOCK projection is still written (so the app can explain why it is withheld) but SIFT must not display its numbers.
+
+---
+
+## 3. Live operation (pf_core 1.2.0)
+
+### 3.1 Player projection additions (`sift.projections.v1`, backward compatible)
+
+Every player row SHOULD carry:
+
+```jsonc
+"participation": {
+  "status": "CONFIRMED_ACTIVE | LIKELY_ACTIVE | UNCERTAIN | LIKELY_OUT | CONFIRMED_OUT | UNVERIFIED",
+  "certainty": "CONFIRMED | REPORTED | PROJECTED | UNKNOWN",
+  "source": "nba_official_injury_report",       // strongest source behind the call
+  "captured_utc": "2026-10-20T22:30:00Z",        // when we captured it (never after start)
+  "reasons": ["..."]
+},
+"role": "production | shadow"                     // "shadow" until the owner promotes the family
+```
+
+UNVERIFIED means no availability observation exists: the projection is conditional on playing and the gate marks it REVIEW.
+CONFIRMED_OUT is gate BLOCK. A player is never presented as active without an observation that says so.
+
+### 3.2 Archive (`projection-data` branch, write-once; `pf_core.archive_guard` enforces additions-only)
+
+| Path | Schema | Written by |
+|---|---|---|
+| `availability/<sport>/<date>/<HHMMSS>Z_<hash>.jsonl.gz` | `sift.availability.v1` (pf_core.availability.Observation) | capture step, every run |
+| `forecasts/<sport>/<game_date>/…jsonl.gz` | `sift.forecast_archive.v1` | project step; rejected if generated/archived at or after start |
+| `outcomes/<sport>/<game_date>/…jsonl.gz` | `sift.outcome.v1` | results step (final only) |
+| `settlements/<sport>/<game_date>/…jsonl.gz` | `sift.settlement.v1` | settle step; one row per forecast_id, ever |
+| `corrections/<sport>/<game_date>/…jsonl.gz` | `sift.correction.v1` | settle step when a final stat changes |
+| `scorecards/<sport>/{daily,weekly,season}.{json,md}` | `sift.prospective_scorecard.v1` | score step (rewritable views) |
+| `projections/<sport>/latest.json` | `sift.projections.v1` | publish step (rewritable view) |
+| `summary/<sport>/latest.json` | `sift.projection_foundation.sport_summary.v1` | publish step |
+
+Model roles in the forecast archive: `challenger` (Projection Foundation frozen model) and `incumbent` (today's production
+model, archived unchanged from its own output). Paired comparisons use only keys both roles forecast before the start.

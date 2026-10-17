@@ -8,9 +8,14 @@ Modules
   models    reusable candidate model builders (A..F) operating on PIT feature frames
   registry  immutable experiment records + markdown tables
   gate      Projection Quality Gate (PASS / REVIEW / BLOCK)
+  availability  point-in-time availability observations (sift.availability.v1), as-of resolution, coverage
+  prospective   pregame forecast archive, idempotent settlement, paired scoring, drift alerts, scorecards
+  archive_guard append-only check for the projection-data archive
 
 The canonical copy lives in sift-sports-intelligence/research/projection_foundation/pf_core.
 VERSION is bumped on every change; tests/test_pf_core.py pins behaviour.
+
+1.2.0 (2026-10-17) live operation: availability, prospective, archive_guard; gate participation check.
 
 1.1.0 (2026-10-17) fixes found by the sport studies:
   * models.group_prior_pit / pit.rolling_opponent_allowed: first-date fallback no longer uses the full-sample mean
@@ -23,4 +28,4 @@ VERSION is bumped on every change; tests/test_pf_core.py pins behaviour.
   * models.fit_dist_params records K for poisson/nb. [CFB]
   * gate: sport-aware opponent thresholds, pitcher-family ceilings, graded distribution-mean check. [CFB, MLB]
 """
-VERSION = "1.1.0"
+VERSION = "1.2.0"

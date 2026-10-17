@@ -74,6 +74,8 @@ class GateInput:
     thresholds: dict[str, float] | None = None    # {"k": P(X>=k)}
     sd: float | None = None
     model_n_obs: int | None = None                # games of this entity's own evidence
+    participation: str | None = None              # pf_core.availability participation class (None = not supplied)
+    participation_reasons: Sequence[str] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -148,6 +150,18 @@ def evaluate(gi: GateInput, now_utc: str | None = None) -> dict[str, Any]:
     elif st in ("", "UNKNOWN") and gi.sport in ("NFL", "NBA"):
         add("injury", REVIEW, "No point-in-time injury status available", {}, "uncertainty",
             "Attach injury report snapshot; until then label participation as assumed.")
+    # 4b participation (point-in-time availability feed)
+    if gi.participation == "CONFIRMED_OUT":
+        add("participation", BLOCK, "Confirmed out / inactive before the game", {"reasons": list(gi.participation_reasons or [])},
+            "data_quality", "Withhold; redistribute opportunity to teammates.")
+    elif gi.participation == "LIKELY_OUT":
+        add("participation", REVIEW, "Likely out (doubtful or stale exclusion)", {"reasons": list(gi.participation_reasons or [])},
+            "uncertainty", "Publish only as conditional on playing, with the participation probability.")
+    elif gi.participation in ("UNCERTAIN", "UNVERIFIED"):
+        add("participation", REVIEW, "Participation not confirmed" if gi.participation == "UNCERTAIN" else
+            "No availability observation: player is unverified, not assumed active",
+            {"reasons": list(gi.participation_reasons or [])}, "uncertainty",
+            "Label conditional on playing; refresh availability capture before start.")
     # 5/6 opportunity and role consistency
     if gi.expected_opportunity is not None:
         if not np.isfinite(gi.expected_opportunity) or gi.expected_opportunity <= 0:
