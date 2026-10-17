@@ -1,38 +1,582 @@
 {
  "capture_health": {
-  "expected_games": 94,
-  "game_winner_markets_found": 91,
+  "expected_games": 104,
+  "game_winner_markets_found": 70,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 0,
-  "pending": 90,
+  "pending": 11,
   "price_1_00": 0,
-  "primary_window_coverage": 0.0,
+  "primary_window_coverage": 0.2151,
   "statuses": {
-   "CAPTURE_PENDING": 90,
-   "CAPTURE_SYSTEM_FAILURE": 4
+   "CAPTURE_OK": 20,
+   "CAPTURE_PENDING": 11,
+   "CAPTURE_SYSTEM_FAILURE": 73
   },
-  "system_failures": 4,
+  "system_failures": 73,
   "unexecutable": 0,
-  "valid_primary_captures": 0,
+  "valid_primary_captures": 20,
   "window": {
-   "from": "2026-10-10T01:00:00Z",
+   "from": "2026-10-17T16:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 4
+  "windows_closed": 93
  },
  "population": {
-  "awaiting_kickoff": {},
+  "awaiting_kickoff": {
+   "HOME_CONTROL_STRONG": 1,
+   "NO_CONTROL": 1
+  },
   "by_strength": {
-   "MODERATE": 1,
-   "NO_CONTROL": 10
+   "MODERATE": 14,
+   "NO_CONTROL": 72,
+   "STRONG": 12
   },
   "by_tier": {
-   "HOME_CONTROL_MODERATE": 1,
-   "NO_CONTROL": 10
+   "AWAY_CONTROL_MODERATE": 9,
+   "AWAY_CONTROL_STRONG": 2,
+   "HOME_CONTROL_MODERATE": 5,
+   "HOME_CONTROL_STRONG": 10,
+   "NO_CONTROL": 72
   },
-  "final_pregame_games": 11,
-  "missing_final_pregame": []
+  "final_pregame_games": 98,
+  "missing_final_pregame": [
+   {
+    "event_id": "401856823",
+    "game_key": "26OCT10ARIZWVU",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401866662",
+    "game_key": "26OCT10BRYBRWN",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401867836",
+    "game_key": "26OCT10DARTYALE",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401868221",
+    "game_key": "26OCT10DAVPRE",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401868347",
+    "game_key": "26OCT10ETSUCIT",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401858481",
+    "game_key": "26OCT10INDNEB",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401868229",
+    "game_key": "26OCT10MOREDAY",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401867930",
+    "game_key": "26OCT10PRINWAG",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401867919",
+    "game_key": "26OCT10RMUMORG",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401866436",
+    "game_key": "26OCT10SACBGSU",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401867987",
+    "game_key": "26OCT10SCSTCHSO",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401866660",
+    "game_key": "26OCT10STNHSHU",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401862795",
+    "game_key": "26OCT10TULNARMY",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401856716",
+    "game_key": "26OCT10TXAMMIZZ",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401856824",
+    "game_key": "26OCT10UCFOKST",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401858256",
+    "game_key": "26OCT10UNCPITT",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401866658",
+    "game_key": "26OCT10UNHNCAT",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401858260",
+    "game_key": "26OCT10WAKENCST",
+    "kickoff_utc": "2026-10-10T16:00:00Z"
+   },
+   {
+    "event_id": "401858482",
+    "game_key": "26OCT10BALLNW",
+    "kickoff_utc": "2026-10-10T16:30:00Z"
+   },
+   {
+    "event_id": "401867992",
+    "game_key": "26OCT10BUCKGTWN",
+    "kickoff_utc": "2026-10-10T16:30:00Z"
+   },
+   {
+    "event_id": "401856714",
+    "game_key": "26OCT10SCARFLA",
+    "kickoff_utc": "2026-10-10T16:45:00Z"
+   },
+   {
+    "event_id": "401868300",
+    "game_key": "26OCT10COOKAAMU",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401867829",
+    "game_key": "26OCT10HARVCOR",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401867960",
+    "game_key": "26OCT10HOWPENN",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401867911",
+    "game_key": "26OCT10LIUDUQ",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401869843",
+    "game_key": "26OCT10ODUAPP",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401862797",
+    "game_key": "26OCT10RICEECU",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401868340",
+    "game_key": "26OCT10SAMCHAT",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401868212",
+    "game_key": "26OCT10USDBUT",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401867980",
+    "game_key": "26OCT10WMNCCU",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401867860",
+    "game_key": "26OCT10YSUINST",
+    "kickoff_utc": "2026-10-10T17:00:00Z"
+   },
+   {
+    "event_id": "401868256",
+    "game_key": "26OCT10DRKEVALP",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401866440",
+    "game_key": "26OCT10MOHMASS",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401871473",
+    "game_key": "26OCT10SEMOLINW",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401867886",
+    "game_key": "26OCT10SIUSDAK",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401868282",
+    "game_key": "26OCT10STETUST",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401866661",
+    "game_key": "26OCT10WOFELON",
+    "kickoff_utc": "2026-10-10T18:00:00Z"
+   },
+   {
+    "event_id": "401856833",
+    "game_key": "26OCT16UTAHCOLO",
+    "kickoff_utc": "2026-10-17T04:00:00Z"
+   },
+   {
+    "event_id": "401858269",
+    "game_key": "26OCT16WAKECAL",
+    "kickoff_utc": "2026-10-17T04:00:00Z"
+   },
+   {
+    "event_id": "401858494",
+    "game_key": "26OCT16WISUCLA",
+    "kickoff_utc": "2026-10-17T04:00:00Z"
+   },
+   {
+    "event_id": "401866441",
+    "game_key": "26OCT16BALLBGSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858261",
+    "game_key": "26OCT16CHSOCLEM",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856829",
+    "game_key": "26OCT16CINWVU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856724",
+    "game_key": "26OCT16FLATEX",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401869957",
+    "game_key": "26OCT16GASTJMU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856720",
+    "game_key": "26OCT16MSSTLSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858491",
+    "game_key": "26OCT16NWMSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858267",
+    "game_key": "26OCT16PITTBC",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858268",
+    "game_key": "26OCT16UVASMU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401866441",
+    "game_key": "26OCT17BALLBGSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401867807",
+    "game_key": "26OCT17BRWNPRIN",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401867901",
+    "game_key": "26OCT17CCSUMHU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401866668",
+    "game_key": "26OCT17CHSNCAT",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856829",
+    "game_key": "26OCT17CINWVU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401867925",
+    "game_key": "26OCT17DUQSTNH",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401862802",
+    "game_key": "26OCT17FAUARMY",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856724",
+    "game_key": "26OCT17FLATEX",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401869957",
+    "game_key": "26OCT17GASTJMU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401866663",
+    "game_key": "26OCT17HAMPSHU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856830",
+    "game_key": "26OCT17KUKSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401856720",
+    "game_key": "26OCT17MSSTLSU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401867920",
+    "game_key": "26OCT17NHCRMU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858488",
+    "game_key": "26OCT17OSUIND",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858267",
+    "game_key": "26OCT17PITTBC",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401866669",
+    "game_key": "26OCT17URIYALE",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858268",
+    "game_key": "26OCT17UVASMU",
+    "kickoff_utc": "2026-10-17T16:00:00Z"
+   },
+   {
+    "event_id": "401858489",
+    "game_key": "26OCT16RUTGMD",
+    "kickoff_utc": "2026-10-17T16:30:00Z"
+   },
+   {
+    "event_id": "401858489",
+    "game_key": "26OCT17RUTGMD",
+    "kickoff_utc": "2026-10-17T16:30:00Z"
+   },
+   {
+    "event_id": "401862803",
+    "game_key": "26OCT16CHARTEM",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401866442",
+    "game_key": "26OCT16MASSBUFF",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401866664",
+    "game_key": "26OCT17BRYME",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401862803",
+    "game_key": "26OCT17CHARTEM",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401856725",
+    "game_key": "26OCT17CITTXAM",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401868213",
+    "game_key": "26OCT17DAYBUT",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401868002",
+    "game_key": "26OCT17GTWNCOLG",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401867841",
+    "game_key": "26OCT17HCHARV",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401866442",
+    "game_key": "26OCT17MASSBUFF",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401869132",
+    "game_key": "26OCT17MCNSNWST",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401866665",
+    "game_key": "26OCT17MONMUNH",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401868222",
+    "game_key": "26OCT17MOREDAV",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401867837",
+    "game_key": "26OCT17MRMKDART",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401868257",
+    "game_key": "26OCT17MRSTDRKE",
+    "kickoff_utc": "2026-10-17T17:00:00Z"
+   },
+   {
+    "event_id": "401866443",
+    "game_key": "26OCT16WMUCMU",
+    "kickoff_utc": "2026-10-17T17:30:00Z"
+   },
+   {
+    "event_id": "401868398",
+    "game_key": "26OCT17VMIWOF",
+    "kickoff_utc": "2026-10-17T17:30:00Z"
+   },
+   {
+    "event_id": "401866443",
+    "game_key": "26OCT17WMUCMU",
+    "kickoff_utc": "2026-10-17T17:30:00Z"
+   },
+   {
+    "event_id": "401867830",
+    "game_key": "26OCT17LEHCOR",
+    "kickoff_utc": "2026-10-17T18:00:00Z"
+   },
+   {
+    "event_id": "401868066",
+    "game_key": "26OCT17PEAYUWGA",
+    "kickoff_utc": "2026-10-17T18:00:00Z"
+   },
+   {
+    "event_id": "401868277",
+    "game_key": "26OCT17PRESTET",
+    "kickoff_utc": "2026-10-17T18:00:00Z"
+   },
+   {
+    "event_id": "401867878",
+    "game_key": "26OCT17SDSTUND",
+    "kickoff_utc": "2026-10-17T18:00:00Z"
+   },
+   {
+    "event_id": "401866666",
+    "game_key": "26OCT17ALBYSTON",
+    "kickoff_utc": "2026-10-17T18:30:00Z"
+   },
+   {
+    "event_id": "401868145",
+    "game_key": "26OCT17EKYTNTC",
+    "kickoff_utc": "2026-10-17T18:30:00Z"
+   },
+   {
+    "event_id": "401868361",
+    "game_key": "26OCT17ALCNPV",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868330",
+    "game_key": "26OCT17ALSTARPB",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868943",
+    "game_key": "26OCT17COOKMVSU",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868949",
+    "game_key": "26OCT17FAMUJKST",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868301",
+    "game_key": "26OCT17GRAMAAMU",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868096",
+    "game_key": "26OCT17IDHOMONT",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868105",
+    "game_key": "26OCT17IDSTWEB",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401867993",
+    "game_key": "26OCT17LAFBUCK",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868181",
+    "game_key": "26OCT17LINWEIU",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868189",
+    "game_key": "26OCT17WEBBUTM",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401868207",
+    "game_key": "26OCT17WIUSEMO",
+    "kickoff_utc": "2026-10-17T19:00:00Z"
+   },
+   {
+    "event_id": "401866478",
+    "game_key": "26OCT17AKRMOH",
+    "kickoff_utc": "2026-10-17T19:30:00Z"
+   },
+   {
+    "event_id": "401858264",
+    "game_key": "26OCT17GTVT",
+    "kickoff_utc": "2026-10-17T19:30:00Z"
+   },
+   {
+    "event_id": "401856721",
+    "game_key": "26OCT17MIZZMISS",
+    "kickoff_utc": "2026-10-17T19:30:00Z"
+   },
+   {
+    "event_id": "401862805",
+    "game_key": "26OCT17TLSARICE",
+    "kickoff_utc": "2026-10-17T20:30:00Z"
+   },
+   {
+    "event_id": "401869966",
+    "game_key": "26OCT17TROYULL",
+    "kickoff_utc": "2026-10-17T21:00:00Z"
+   }
+  ]
  },
  "summary": {
   "H1": {
@@ -44,16 +588,21 @@
     "reached_at_n": null
    },
    "coverage": {
-    "healthy": null,
-    "pipeline_coverage": null,
-    "statuses": {}
+    "healthy": false,
+    "pipeline_coverage": 0.0,
+    "statuses": {
+     "CAPTURE_SYSTEM_FAILURE": 11
+    }
    },
    "fee_adjusted_pnl": null,
    "football": {
-    "n": 0,
-    "wilson95": null,
-    "win_rate": null,
-    "wins": 0
+    "n": 11,
+    "wilson95": [
+     0.4344,
+     0.9025
+    ],
+    "win_rate": 0.7273,
+    "wins": 8
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
    "losses": 0,
@@ -110,23 +659,26 @@
    "wins": 0
   },
   "moderate_status": {
-   "capture_coverage_healthy": null,
+   "capture_coverage_healthy": false,
    "decision": null,
    "edge_criteria_met": null,
-   "football_coherent": null,
+   "football_coherent": true,
    "review_reason": null,
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 0,
+  "settled_rows": 20,
   "strong": {
    "break_even": null,
    "fee_adjusted_pnl": null,
    "football": {
-    "n": 0,
-    "wilson95": null,
-    "win_rate": null,
-    "wins": 0
+    "n": 9,
+    "wilson95": [
+     0.4526,
+     0.9368
+    ],
+    "win_rate": 0.7778,
+    "wins": 7
    },
    "losses": 0,
    "mean_entry": null,
