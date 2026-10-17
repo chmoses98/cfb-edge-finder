@@ -470,9 +470,12 @@ Kalshi credential is used on the live path.
 - **Captured, not live.** Every price is a capture from the last run that
   changed the market surface. A session that cannot reach the Actions run
   history cannot prove the collector is alive, and must say so.
-- **GitHub's scheduler is late.** On 2026-10-17 the 30-minute slate
-  schedule actually produced successful runs at 13:32, 16:50 and 19:17 UTC
-  (the last dispatched by hand), with two runs cancelled in between. Gaps
-  that size exceed the 90-minute tolerance, so expect `CATALOG STALE` during
-  a slate even while the collector is working. Treat that as a reason to
-  dispatch the workflow, not to lower the bar.
+- **GitHub's scheduler is unreliable.** It creates only 2–8 of the catalog's
+  `*/30` cron runs a day. The CFB Research Conductor's 5-minute loop now
+  dispatches the catalog whenever a run is due (see
+  `docs/KALSHI_MARKET_CATALOG.md` §6), so the cadence no longer depends on
+  the cron. If the conductor's chain breaks, captures fall back to the
+  sparse cron and `CATALOG STALE` during a slate becomes likely again. Each
+  catalog run's summary lists missed capture windows
+  (`scripts/catalog_schedule.py report`). STALE is still STALE: dispatch the
+  workflow, never lower the bar.

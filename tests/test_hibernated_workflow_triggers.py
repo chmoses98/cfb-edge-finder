@@ -297,8 +297,9 @@ def test_the_collector_gate_forwards_the_declared_trigger_source():
 
 
 def test_a_refused_collector_run_never_takes_the_writer_lock():
-    """The live catalog holds research-data-write too. A refused dispatch
-    must not queue in that group, or displace a pending catalog run."""
+    """The writers (App Export, Script Engine) hold research-data-write. A
+    refused dispatch must not queue in that group, or displace a pending
+    writer run."""
     text = _workflow("research-capture.yml")
     top_level = re.search(r"^concurrency:", text, re.MULTILINE)
     assert top_level is None, "workflow-level concurrency puts the gate inside the writers' group"

@@ -781,9 +781,52 @@ uniform hourly schedule while spending a fraction of the runs.
 - **Refuses to publish an empty catalog** over a possibly-good one: zero
   games is far more likely to be a filter or API change than a genuinely
   empty college-football slate.
-- Shares the repository's single-writer concurrency group
-  (`research-data-write`, `cancel-in-progress: false`), which
-  `tests/test_research_workflow_concurrency.py` enforces.
+- **Its own concurrency group** (`kalshi-market-catalog`,
+  `cancel-in-progress: false`). It used to share `research-data-write`, but
+  GitHub keeps one *pending* run per group and a newly queued run cancels
+  the pending one. Queued catalog runs were being replaced by App Export and
+  Script Engine runs before they started: 3 of 9 on 2026-10-17, all with
+  zero jobs. The catalog commits only `data/live/**` on its own ref, through
+  a rebase-retry push, and never writes `research-data`. No other `main`
+  writer stages `data/live`. `tests/test_research_workflow_concurrency.py`
+  pins each of those facts (MAIN-ONLY WRITERS) so the carve-out cannot widen
+  silently.
+
+### Who keeps the 30-minute cadence
+
+Not the cron. From 2026-09-26 to 2026-10-17 GitHub created **2–8** catalog
+runs per day, slate days included. On 2026-10-17 it created scheduled runs
+at 00:53, 05:10, 09:31, 13:20, 16:31 and 18:55 UTC, against ~48 expected,
+and the missing ticks never existed. That produced **7 capture gaps over
+the 90-minute tolerance in 24 hours**.
+
+The CFB Research Conductor already loops every 5 minutes around the clock,
+because GitHub's scheduler is unreliable here. Each cycle on `main` now runs
+`scripts/catalog_schedule.py keepalive --dispatch`, which dispatches this
+workflow when:
+
+- no catalog run is queued or running, **and**
+- the newest catalog run (any outcome) was created at least one cadence ago:
+  30 min in the Thu 18:00 → Sun 06:00 UTC window, 6 h otherwise.
+
+Those are the same constants `freshness.py` uses for the RUN CFB staleness
+verdict. A failing collector is therefore retried once per cadence, never in
+a tight loop. The cron remains as the fallback if the conductor's chain
+breaks.
+
+**Diagnostics.** Every catalog run ends with `catalog_schedule.py report`. It
+writes a job-summary table of the last 24 h (runs created, scheduled vs
+dispatched, succeeded, cancelled while queued) and emits one
+`Missed Kalshi capture window` warning per gap between successful captures
+that exceeded the staleness tolerance. Run it anywhere with `gh` access:
+
+```bash
+python scripts/catalog_schedule.py report --hours 24
+python scripts/catalog_schedule.py keepalive          # what the conductor would decide now
+```
+
+The keepalive also emits a `Kalshi catalog capture overdue` warning in the
+conductor log whenever the last successful capture is past tolerance.
 
 ---
 
