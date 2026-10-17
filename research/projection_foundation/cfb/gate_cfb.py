@@ -57,3 +57,17 @@ def team_gate(*, team_id, team, game_id, start_utc, mean, dist_row_lo, dist_row_
 
 def thresholds_from(dist, row: int, ks) -> dict:
     return {str(k): float(dist.prob_ge(np.full(len(dist), k))[row]) for k in ks}
+
+
+def qb_finding(qb: dict):
+    """REVIEW finding when the projected starting quarterback is out/questionable/recently changed/unknown.
+
+    The study found (CFB error investigation 'Starting-QB change') that a changed starter over-projects the team by
+    2-3 points on average while the model cannot see it. A merely UNCONFIRMED but healthy-looking starter
+    (flag QB_NOT_CONFIRMED) is surfaced on the game as a flag, not a finding: CFB has no feed that ever confirms one."""
+    if not qb or qb.get("gate") != "REVIEW":
+        return None
+    return _finding("quarterback", REVIEW, f"Projected starting QB {qb.get('name') or 'unknown'}: {qb.get('flag')}",
+                    "uncertainty", "The team projection assumes the usual starter; a change historically over-projects the "
+                    "team by 2-3 points. Show as conditional on the quarterback.", flag=qb.get("flag"),
+                    status=qb.get("status"), reasons=list(qb.get("reasons") or []))

@@ -1,62 +1,84 @@
-# PROJECTION FOUNDATION -- COLLEGE FOOTBALL (research-only)
+# PROJECTION FOUNDATION -- COLLEGE FOOTBALL: live shadow operation (research-only)
 #
-# Writes research projections for the current CFB week (sift.projections.v1) and the
-# backtest summary (sift.projection_foundation.sport_summary.v1) to the ISOLATED
-# `projection-data` orphan branch:
-#     projections/cfb/latest.json
-#     projections/cfb/<YYYY-MM-DDTHHMMZ>.json      (only when the content changed)
-#     summary/cfb/latest.json
-# SIFT reads raw.githubusercontent.com/<owner>/<repo>/projection-data/projections/cfb/latest.json.
+# One idempotent chain per run (research/projection_foundation, `python -m cfb.live.run`):
+#   capture  ESPN injury lists + the projected starting QB  -> availability/cfb/<date>/*.jsonl.gz (write-once)
+#   project  frozen models for games that have NOT started   -> forecasts/cfb/<game_date>/*.jsonl.gz (challenger + incumbent)
+#   publish  projections/cfb/latest.json, summary/cfb/latest.json, ratings/cfb/defense_latest.json (shadow defensive ratings)
+#   results  FINAL results from the repo's ESPN game log      -> outcomes/cfb/<game_date>/*.jsonl.gz
+#   settle   settle-once; a later stat change becomes a correction record
+#   score    scorecards/cfb/{daily,weekly,season}.{json,md}
+#   guard    pf_core.archive_guard: additions only under forecasts/ outcomes/ settlements/ corrections/ availability/
+# to the ISOLATED `projection-data` orphan branch. SIFT reads raw.githubusercontent.com/<owner>/<repo>/projection-data/...
 #
 # *** ISOLATION ***
-#   concurrency group  `projection-data-write` -- NOT `research-data-write`, so it can
-#                      never queue against (or cancel) the durable-store writers.
-#   storage            the `projection-data` orphan branch only. Never main, research-data
-#                      or any artifact a production path reads.
-#   authority          research_only. Projections never change betting authority; nothing
-#                      in the live catalog, execution or sizing path imports this code.
-#   cost               keyless public sources only (the repo's own research-data branch,
-#                      the committed ESPN game log on main, sportsdataverse GitHub releases).
-#                      No secrets, no paid services, zero CFBD calls.
-#   idempotent         the branch is only committed when the projection content (ignoring
-#                      generated_utc) changed; re-running an unchanged week writes nothing.
+#   storage       the `projection-data` orphan branch only. Never main, research-data or any artifact a production path reads.
+#   authority     research_only / role shadow. Spreads and totals are SHADOW VALIDATION: distributions, never edges.
+#   production    src/cfb_edge_finder/scripting is IMPORTED read-only (the script engine's current ranks and scoring baseline
+#                 are recorded next to ours); nothing there is modified and nothing in the live catalog imports this code.
+#   cost          keyless public sources (ESPN core API, the repo's own game log, sportsdataverse releases). No secrets.
+#   pull_request  runs the WHOLE chain with --dry-run against a temp copy of the archive (live fetches, real projections,
+#                 gate, archive writes into the copy, settle and score) with read-only permissions: it cannot push.
+#   write path    job `run` (contents: read) produces the changed files; job `publish` (contents: write) runs only after
+#                 `run` succeeded, re-checks archive_guard and pushes. A failed stage fails the run and nothing is committed;
+#                 the next run redoes the idempotent stages.
 #
-# A cron schedule only fires once this file is on the default branch; until it is merged the
-# workflow is inert and can be dispatched manually.
+# A cron schedule only fires once this file is on the default branch; until then the pull_request run is the real execution.
 name: Projection Foundation CFB (research-only)
 
 on:
   schedule:
-    # In season (Aug-Jan): Tuesday after the weekend's games are in the ESPN log, and Friday
-    # morning before the weekend slate. Minutes jittered off the hour.
-    - cron: "41 10 * 8-12 2"
-    - cron: "41 10 * 8-12 5"
-    - cron: "41 10 * 1 2"
+    # Pregame runs land well BEFORE typical kickoffs (GitHub may delay a cron by up to ~1h): MAC Tue/Wed nights ~23:00 UTC,
+    # Thu/Fri nights ~23:00-02:00 UTC, Saturday 15:00-16:00 UTC (noon ET) then 19:30 and 23:30 UTC windows.
+    # Post-game settle runs follow when the ESPN game log has the finals (script-engine job, every 2h). Months Aug-Jan.
+    - cron: "41 10 * 8-12,1 2"   # Tue morning: settle last weekend, project the new week (incl. midweek games)
+    - cron: "41 17 * 8-12,1 3"   # Wed afternoon: midweek games
+    - cron: "11 18 * 8-12,1 4"   # Thu afternoon: Thursday night games, fresh availability
+    - cron: "41 18 * 8-12,1 5"   # Fri afternoon: Friday night games
+    - cron: "41 12 * 8-12,1 6"   # Sat morning: the full Saturday slate before the 16:00 UTC kickoffs
+    - cron: "41 18 * 8-12,1 6"   # Sat afternoon: refresh before the 19:30 and 23:30 UTC windows
+    - cron: "11 12 * 8-12,1 0"   # Sun: settle Saturday's finals
+    - cron: "11 12 * 8-12,1 1"   # Mon: late finals and stat corrections
   workflow_dispatch:
     inputs:
-      asof:
-        description: "Project as of this UTC time (ISO 8601); blank = now"
+      dry_run:
+        description: "Run the whole chain against a temp copy of the archive and push nothing"
         required: false
-        default: ""
+        default: "false"
+        type: choice
+        options: ["false", "true"]
       full_backtest:
         description: "Re-run the full walk-forward backtest before projecting (slow, ~60 min)"
         required: false
         default: "false"
         type: choice
         options: ["false", "true"]
+  pull_request:
+    paths:
+      - "research/projection_foundation/**"
+      - ".github/workflows/projection-foundation.yml"
 
 permissions:
   contents: read
 
+# One run of the chain at a time per sport (queued, never cancelled mid-write). Pull-request runs are dry runs in their own
+# group so they can neither cancel nor delay a scheduled write.
+concurrency:
+  group: projection-foundation-cfb-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'live' }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  OMP_NUM_THREADS: "2"
+  DRY: ${{ (github.event_name == 'pull_request' || github.event.inputs.dry_run == 'true') && '1' || '' }}
+
 jobs:
-  project:
+  run:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     permissions:
-      contents: write
-    concurrency:
-      group: projection-data-write
-      cancel-in-progress: false
+      contents: read
+    outputs:
+      changed: ${{ steps.pack.outputs.changed }}
     defaults:
       run:
         working-directory: research/projection_foundation
@@ -74,56 +96,112 @@ jobs:
           key: pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-${{ github.run_id }}
           restore-keys: |
             pf-cfb-${{ hashFiles('research/projection_foundation/cfb/*.py', 'research/projection_foundation/pf_core/*.py') }}-
+            pf-cfb-
       - name: Fetch inputs (research-data cache, player box, closing lines)
         env:
           PF_CFB_REPO_URL: https://github.com/${{ github.repository }}
-        run: python -m cfb.paths --refresh
-      - name: Unit tests
-        run: python -m pytest -q tests
-      - name: Full walk-forward backtest (optional)
-        if: github.event.inputs.full_backtest == 'true'
-        run: python -m cfb.run_walkforward --stages all
-      - name: Project the current week
         run: |
           set -euo pipefail
-          ASOF="${{ github.event.inputs.asof }}"
-          python -m cfb.project ${ASOF:+--asof "$ASOF"} --out /tmp/pf/latest.json
-      - name: Publish to the projection-data orphan branch (only if changed)
+          python -m cfb.paths --refresh
+      - name: Unit tests
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests
+      - name: Full walk-forward backtest (optional)
+        if: github.event.inputs.full_backtest == 'true'
+        run: |
+          set -euo pipefail
+          python -m cfb.run_walkforward --stages all
+      - name: Check out the projection-data archive
         working-directory: .
         run: |
           set -euo pipefail
+          PD="$RUNNER_TEMP/pd"
+          if git fetch --depth=1 origin projection-data 2>/dev/null; then
+            git worktree add --detach "$PD" FETCH_HEAD
+          else
+            echo "projection-data does not exist yet; starting an empty archive (the first non-PR run creates the branch)"
+            mkdir -p "$PD" && git -C "$PD" init -q
+          fi
+          echo "PD=$PD" >> "$GITHUB_ENV"
+      - name: Live chain (capture, project, publish, results, settle, score, guard)
+        run: |
+          set -euo pipefail
+          ARGS=(--stage all --archive "$PD" --work "$RUNNER_TEMP/pfwork")
+          if [ -n "$DRY" ]; then ARGS+=(--dry-run); fi
+          python -m cfb.live.run "${ARGS[@]}"
+      - name: Pack the changed archive files
+        id: pack
+        working-directory: .
+        run: |
+          set -euo pipefail
+          if [ -n "$DRY" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "dry run: nothing to publish"; exit 0; fi
+          git -C "$PD" add -A
+          if git -C "$PD" diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "archive unchanged"; exit 0; fi
+          git -C "$PD" diff --cached --name-only -z > "$RUNNER_TEMP/changed.lst"
+          tar czf "$RUNNER_TEMP/pd-changes.tgz" -C "$PD" --null -T "$RUNNER_TEMP/changed.lst"
+          git -C "$PD" diff --cached --stat | tail -5
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Upload the changed files for the publish job
+        if: steps.pack.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pd-changes
+          path: ${{ runner.temp }}/pd-changes.tgz
+          retention-days: 2
+      - name: Upload the run summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pf-cfb-run-summary
+          path: ${{ runner.temp }}/pfwork/*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    needs: run
+    if: needs.run.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: pd-changes
+          path: ${{ runner.temp }}/in
+      - name: Apply, re-check the guard, commit and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PD="$RUNNER_TEMP/pd"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git fetch origin projection-data --depth=1 2>/dev/null; then
-            git worktree add /tmp/pd FETCH_HEAD --detach
+          if git fetch --depth=1 origin projection-data 2>/dev/null; then
+            git worktree add --detach "$PD" FETCH_HEAD
           else
-            mkdir -p /tmp/pd && cd /tmp/pd && git init -q && git checkout -q --orphan projection-data && cd -
+            mkdir -p "$PD" && git -C "$PD" init -q && git -C "$PD" checkout -q --orphan projection-data
           fi
-          mkdir -p /tmp/pd/projections/cfb /tmp/pd/summary/cfb
-          CHANGED=$(python3 - <<'PY'
-          import json, os
-          new = json.load(open("/tmp/pf/latest.json"))
-          p = "/tmp/pd/projections/cfb/latest.json"
-          old = json.load(open(p)) if os.path.exists(p) else None
-          strip = lambda d: {k: v for k, v in d.items() if k != "generated_utc"} if d else None
-          print("yes" if strip(old) != strip(new) else "no")
-          PY
-          )
-          cp research/projection_foundation/results/summary.json /tmp/pd/summary/cfb/latest.json
-          if [ "$CHANGED" = "yes" ]; then
-            STAMP=$(date -u +%Y-%m-%dT%H%MZ)
-            cp /tmp/pf/latest.json /tmp/pd/projections/cfb/latest.json
-            cp /tmp/pf/latest.json "/tmp/pd/projections/cfb/${STAMP}.json"
-          fi
-          cd /tmp/pd
-          git add -A projections summary
-          if git diff --cached --quiet; then echo "projection content unchanged; nothing to publish"; exit 0; fi
-          git commit -q -m "cfb projections $(date -u +%Y-%m-%dT%H:%MZ) (research-only)"
-          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          tar xzf "$RUNNER_TEMP/in/pd-changes.tgz" -C "$PD"
+          export PYTHONPATH="$PWD/research/projection_foundation"
+          python -m pf_core.archive_guard "$PD"
+          git -C "$PD" add -A
+          if git -C "$PD" diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git -C "$PD" commit -q -m "cfb projection foundation shadow $(date -u +%Y-%m-%dT%H:%MZ) (research-only)"
+          URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           for attempt in 1 2 3 4; do
-            git push origin HEAD:projection-data && exit 0
+            if git -C "$PD" push "$URL" HEAD:projection-data; then exit 0; fi
             echo "push attempt ${attempt} failed; backing off"
             sleep $((2 ** attempt))
-            git fetch origin projection-data --depth=1 2>/dev/null && git rebase -q FETCH_HEAD || true
+            git -C "$PD" fetch "$URL" projection-data
+            # rebase is safe here only because this branch's immutable files are never rewritten; verify it
+            git -C "$PD" rebase FETCH_HEAD
+            python -m cfb.live.archive_check "$PD" FETCH_HEAD
           done
+          echo "push failed after 4 attempts" >&2
           exit 1

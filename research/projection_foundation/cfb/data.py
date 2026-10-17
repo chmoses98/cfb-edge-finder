@@ -385,7 +385,8 @@ def week_end(now: pd.Timestamp) -> pd.Timestamp:
     return (now + pd.Timedelta(days=days)).normalize() + pd.Timedelta(hours=8)
 
 
-def upcoming(now: pd.Timestamp, T: pd.DataFrame, horizon_end: pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+def upcoming(now: pd.Timestamp, T: pd.DataFrame, horizon_end: pd.Timestamp | None = None,
+             replay: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Not-yet-played games from data/football/2026/schedule.json kicking off before the end of the current week.
     Outcome columns are NaN; division comes from the team's latest known division (unknown -> fcs);
     games without an FBS participant are dropped. week = last completed 2026 week + 1."""
@@ -394,8 +395,8 @@ def upcoming(now: pd.Timestamp, T: pd.DataFrame, horizon_end: pd.Timestamp | Non
     last_week = int(T.loc[(T["season"] == 2026) & ~T["post"], "week"].max())
     rows = []
     for e in sched["events"]:
-        if e.get("completed") or e.get("state") == "post":
-            continue
+        if not replay and (e.get("completed") or e.get("state") == "post"):
+            continue            # replay (tests/smoke runs with a past `now`): the schedule file is newer than `now`
         ko = pd.Timestamp(e["date"])
         ko = ko.tz_localize("UTC") if ko.tzinfo is None else ko.tz_convert("UTC")
         if not (now - pd.Timedelta(hours=1) <= ko <= (horizon_end or week_end(now))):
