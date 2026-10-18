@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-OPP-01-team_passing_yards",
+  "family": "team_passing_yards",
+  "features": [],
+  "fingerprint": "c8893a69714ab318",
+  "hyperparameters": {},
+  "hypothesis": "Decomposing into volume (plays/attempts) and per-play efficiency isolates pace from quality.",
+  "limitations": [],
+  "model": "D_C_ridge_opp_x_eff",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 2930,
+  "n_obs": 2930,
+  "point": {
+    "result": "MAE C 69.49, D_C 68.52, D 67.89; CRPS C 48.493, D_C 47.917, D 47.754; bias D_C 4.31 vs D 1.60."
+  },
+  "python": "3.13.16",
+  "question": "Is team_passing_yards better projected as opportunity x efficiency than directly?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "investigate",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

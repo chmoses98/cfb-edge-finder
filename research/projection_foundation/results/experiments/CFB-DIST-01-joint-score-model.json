@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-DIST-01-joint-score-model",
+  "family": "game_total/margin",
+  "features": [],
+  "fingerprint": "2e1235909331ecaf",
+  "hyperparameters": {},
+  "hypothesis": "Empirical residual pairs (keeping football's lumpy scores and the within-game correlation) beat a bivariate normal and an independent model.",
+  "limitations": [],
+  "model": "joint_empirical",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 0,
+  "n_obs": 0,
+  "point": {
+    "result": "empirical: rho 0.047, CRPS total 9.559, margin 9.143; bivariate_normal: rho 0.047, CRPS total 9.575, margin 9.150; independent: rho 0.047, CRPS total 9.574, margin 9.152"
+  },
+  "python": "3.13.16",
+  "question": "How should total and margin distributions be built from team projections?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

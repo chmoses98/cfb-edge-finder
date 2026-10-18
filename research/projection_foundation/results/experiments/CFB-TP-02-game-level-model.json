@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "development (alpha) / validation (selection) / holdout",
+  "experiment_id": "CFB-TP-02-game-level-model",
+  "family": "team_points / margin / game_total",
+  "features": [],
+  "fingerprint": "a85b687531bc1a0f",
+  "hyperparameters": {},
+  "hypothesis": "Using the full matchup (both teams' offence AND defence ratings across points, EPA, success, pace, yards, plus talent/returning-production differences) beats summing two independent team projections.",
+  "limitations": [],
+  "model": "G_game_ridge",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 2932,
+  "n_obs": 2932,
+  "point": {
+    "result": "Validation team-points MAE G 9.17 vs F 9.29; margin MAE G 12.92 vs v2 12.75; total G 12.64 vs v2 12.71. Holdout margin CRPS vs v2 -0.010 [-0.100, +0.081], total vs v2 -0.041 [-0.098, +0.020], total vs market +0.071 [-0.021, +0.170]."
+  },
+  "python": "3.13.16",
+  "question": "Can a game-level model of margin and total beat the team-level stack and the archived 2026 'v2' research models?",
+  "split": "development (alpha) / validation (selection) / holdout",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

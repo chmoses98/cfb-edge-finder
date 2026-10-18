@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-GT-01-garbage-time",
+  "family": "epa_per_play",
+  "features": [],
+  "fingerprint": "ef35a6113f1c0cae",
+  "hyperparameters": {},
+  "hypothesis": "Filtering garbage time removes noise from blowouts and improves forecasts of future EPA and points.",
+  "limitations": [],
+  "model": "D_epa_ng vs D_epa",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 2932,
+  "n_obs": 2932,
+  "point": {
+    "result": "development target epa: no-garbage 0.1297 vs all 0.1291 (+0.001 [+0.000, +0.001]); development target pts: no-garbage 9.9080 vs all 9.9162 (-0.008 [-0.047, +0.032]); validation target epa: no-garbage 0.1348 vs all 0.1344 (+0.000 [-0.000, +0.001]); validation target pts: no-garbage 9.7626 vs all 9.8469 (-0.084 [-0.138, -0.025])"
+  },
+  "python": "3.13.16",
+  "question": "Do efficiency ratings built without garbage-time plays forecast better?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "insufficient evidence",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}

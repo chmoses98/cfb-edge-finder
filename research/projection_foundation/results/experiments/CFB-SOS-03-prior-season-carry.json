@@ -1,0 +1,35 @@
+{
+  "code_sha": "94c15a7e48d451c6ef84ef9496b276bd73e3deb1",
+  "compute_seconds": 0.0,
+  "created_utc": "2026-10-17T07:11:45Z",
+  "data_provenance": [
+    "research-data CFBD cache 2014-2025",
+    "data/football/2026 ESPN log",
+    "sportsdataverse-data releases"
+  ],
+  "distribution": {},
+  "eval_period": "",
+  "experiment_id": "CFB-SOS-03-prior-season-carry",
+  "family": "team_points",
+  "features": [],
+  "fingerprint": "b82468b30846dd91",
+  "hyperparameters": {},
+  "hypothesis": "Yes early in the season; small later.",
+  "limitations": [],
+  "model": "D_ridge_sos",
+  "model_version": "pf-cfb-1.0.0",
+  "n_clusters": 0,
+  "n_independent": 2726,
+  "n_obs": 2726,
+  "point": {
+    "result": "development FBS-vs-FBS: 9.61 vs 10.33 (-0.722 [-0.827, -0.610], n=5494); development FBS-vs-FCS (FBS offence): 11.61 vs 11.59 (+0.026 [-0.624, +0.577], n=261); development FCS offence vs FBS: 8.89 vs 9.68 (-0.790 [-1.288, -0.322], n=261); validation FBS-vs-FBS: 9.28 vs 9.98 (-0.701 [-0.851, -0.564], n=2726); validation FBS-vs-FCS (FBS offence): 11.61 vs 11.93 (-0.323 [-1.066, +0.393], n=157); validation FCS offence vs FBS: 9.58 vs 10.49 (-0.918 [-1.677, -0.277], n=157)"
+  },
+  "python": "3.13.16",
+  "question": "Does carrying prior seasons (decayed) help?",
+  "split": "development+validation",
+  "sport": "CFB",
+  "train_period": "walk-forward: every fit uses only games before the predicted block",
+  "verdict": "adopt",
+  "vs_baseline": {},
+  "vs_incumbent": {}
+}
