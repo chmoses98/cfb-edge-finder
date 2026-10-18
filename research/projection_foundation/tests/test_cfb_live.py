@@ -310,3 +310,27 @@ def test_stale_records_from_the_live_feed_establish_nothing():
     o2 = [o for o in la.build_observations(captured_utc="2026-10-17T12:00:00Z", events=ev, injuries={"1": ei.TeamInjuries("1", "u", True, None, 1, [fresh])}, qb={})
           if o.kind == "injury"][0]
     assert (o2.status, o2.certainty) == ("OUT", "REPORTED")
+
+
+def test_workflow_file_references_resolve_from_each_steps_working_directory():
+    """A `-r <file>` or `python <file>.py` path in a workflow step must exist relative to that step's working
+    directory (job default or step override). YAML parsing alone missed a requirements path that was resolved
+    twice under `defaults.run.working-directory` and failed on the runner."""
+    import re
+
+    import yaml
+    wf = yaml.safe_load(open(os.path.join(REPO, ".github", "workflows", "projection-foundation.yml")))
+    checked = 0
+    for name, job in wf["jobs"].items():
+        default = ((job.get("defaults") or {}).get("run") or {}).get("working-directory", ".")
+        for step in job.get("steps", []):
+            script = step.get("run")
+            if not script:
+                continue
+            wd = os.path.join(REPO, step.get("working-directory", default))
+            for ref in re.findall(r"(?:-r\s+|python\s+)([\w./-]+\.(?:txt|py))\b", script):
+                if "$" in ref:
+                    continue
+                checked += 1
+                assert os.path.isfile(os.path.join(wd, ref)), f"{name}/{step.get('name')}: {ref} not found from {wd}"
+    assert checked >= 1
