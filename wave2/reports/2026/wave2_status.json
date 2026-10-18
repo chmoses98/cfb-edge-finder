@@ -16,7 +16,7 @@
   "system_failures": 17
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-18T01:32:55Z",
+ "last_ledger_row_at": "2026-10-18T04:03:00Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -42,7 +42,7 @@
    },
    "next_read": {
     "at_n": 50,
-    "remaining": 29,
+    "remaining": 27,
     "state": "EARLY_READ"
    },
    "observation_reasons": {
@@ -55,55 +55,55 @@
     "EXCLUDED_PROTOCOL": 174,
     "PENDING": 36
    },
-   "settlement_pending": 2,
+   "settlement_pending": 0,
    "summary": {
     "ats_like": {
-     "losses": 14,
+     "losses": 16,
      "pushes": 0,
-     "rate": 0.3333333333333333,
+     "rate": 0.30434782608695654,
      "rate_ci95": [
-      0.17194752605083477,
-      0.5462654802574476
+      0.15604024453214022,
+      0.508657562687592
      ],
      "wins": 7
     },
     "economics": {
-     "fee_adjusted_pnl": -4.04,
+     "fee_adjusted_pnl": -5.09,
      "hits": 7,
-     "mean_price": 0.5057142857142857,
-     "n": 21,
+     "mean_price": 0.5056521739130434,
+     "n": 23,
      "roi_ci95_bootstrap": [
-      -0.7280145058930191,
-      0.0018443245612724864
+      -0.7516556291390729,
+      -0.08483951947974575
      ],
-     "roi_on_outlay": -0.3659420289855073,
+     "roi_on_outlay": -0.42100909842845335,
      "unavailable": 0
     },
     "home_away": {
-     "away": 15,
-     "home": 6
+     "away": 16,
+     "home": 7
     },
-    "n": 21,
-    "outright_win_rate": 0.2857142857142857,
+    "n": 23,
+    "outright_win_rate": 0.30434782608695654,
     "residual": {
      "ci95_bootstrap": [
-      -8.757831547619046,
-      3.6108023809523813
+      -9.23767945652174,
+      2.262261630434785
      ],
-     "mean": -2.492238095238095,
-     "median": -3.75,
-     "positive_rate": 0.3333333333333333,
+     "mean": -3.445813043478261,
+     "median": -3.8,
+     "positive_rate": 0.30434782608695654,
      "positive_rate_ci95": [
-      0.17194752605083477,
-      0.5462654802574476
+      0.15604024453214022,
+      0.508657562687592
      ],
      "quantiles": {
-      "10": -19.5,
-      "25": -8.0,
-      "75": 4.2,
-      "90": 16.8
+      "10": -19.2,
+      "25": -11.20835,
+      "75": 2.6625,
+      "90": 16.056660000000004
      },
-     "sd": 14.589787675510436
+     "sd": 14.26973196729562
     },
     "verdict": "PROSPECTIVE_TRACKING"
    }

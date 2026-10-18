@@ -8,7 +8,7 @@
  "fcs_research_c2c_f4": {
   "observed": 3,
   "pooled_with_primary": false,
-  "settled": 2
+  "settled": 3
  },
  "first_eligible": {
   "game_id": "401871067",
@@ -20,10 +20,10 @@
   "missed": 0,
   "observations": 62,
   "p0_unavailable": 1,
-  "settlements": 47
+  "settlements": 54
  },
  "label": "PROSPECTIVE_RESEARCH_ONLY -- no bet, no stake, no badge, no production change",
- "ledger_sha256": "d225406ea4f6073e80a0223698dd64cb69b8d31e4f378f0d03e1cc84f70cfd4a",
+ "ledger_sha256": "b7ff05a5a311baa00f31862615653e06794946673188a1c4fafeb52179f8914a",
  "protocol": {
   "commit": "c9ebeee2fab99844ee3e0f5a3385740fd74df47d",
   "path": "docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md",
@@ -35,60 +35,60 @@
   "CFB-MECH-PROS-001": {
    "eligible": 59,
    "name": "RUSH_DEFENSE_FORCED_PASS_CHANNEL",
-   "next_review": 50,
+   "next_review": 100,
    "observed": 59,
    "primary_metric": {
     "name": "slopes_on_x_rd",
     "value": {
      "drives_diff": {
-      "n": 45,
-      "slope_per_sd": -0.09893336440644827
+      "n": 51,
+      "slope_per_sd": -0.0764073438816104
      },
      "opponent_ints_diff": {
-      "n": 45,
-      "slope_per_sd": 0.051678513752185865
+      "n": 51,
+      "slope_per_sd": 0.10504208377542029
      },
      "opponent_pass_att_diff": {
-      "n": 45,
-      "slope_per_sd": 1.4094240837601888
+      "n": 51,
+      "slope_per_sd": 1.1883373796440222
      },
      "possession_diff_home": {
-      "n": 45,
-      "slope_per_sd": -77.82026757646234
+      "n": 51,
+      "slope_per_sd": -27.50120734689811
      },
      "scoring_opps_diff": {
-      "n": 45,
-      "slope_per_sd": -0.13460582594730308
+      "n": 51,
+      "slope_per_sd": 0.20384993363588425
      }
     }
    },
-   "settled": 45,
-   "status": "PROSPECTIVE_TRACKING"
+   "settled": 51,
+   "status": "EARLY_READ"
   },
   "CFB-MODEL-PROS-001": {
    "eligible": 58,
    "name": "RUSH_PROJECTION_INCREMENT",
-   "next_review": 50,
+   "next_review": 100,
    "observed": 58,
    "primary_metric": {
     "ci95": [
-     -1.3023950364233763,
-     2.534318347298854
+     -0.8669651190400116,
+     3.558896904642639
     ],
     "name": "mean_abs_error_difference_p0_minus_p1",
-    "value": -0.47319169643113307
+    "value": -0.38919022300892514
    },
    "secondary": {
     "favourite_tail_bias": {
      "0_7": {
-      "n": 17,
-      "p0": -2.087769941105245,
-      "p1": -2.627798085864997
+      "n": 19,
+      "p0": -0.4467069120359531,
+      "p1": -1.365905438865739
      },
      "14_21": {
-      "n": 9,
-      "p0": -0.19536875184354863,
-      "p1": -0.58775719418299
+      "n": 10,
+      "p0": -2.321489113593173,
+      "p1": -3.0632198916320093
      },
      "21_inf": {
       "n": 6,
@@ -96,38 +96,38 @@
       "p1": -11.001843996327906
      },
      "7_14": {
-      "n": 13,
-      "p0": -5.560660311715988,
-      "p1": -6.659215469824839
+      "n": 15,
+      "p0": -5.4759541853224745,
+      "p1": -6.59899309305428
      }
     },
-    "mean_sq_error_difference": -21.389913869617732,
-    "p0_bias": -2.0265962921828335,
-    "p1_bias": -2.0609107404273916,
-    "winner_brier_p1_minus_p0": 0.01539521248177757
+    "mean_sq_error_difference": -18.021044806273405,
+    "p0_bias": -1.8040368333211612,
+    "p1_bias": -1.6038892959376279,
+    "winner_brier_p1_minus_p0": 0.012617017379595339
    },
-   "settled": 45,
-   "status": "PROSPECTIVE_TRACKING"
+   "settled": 50,
+   "status": "EARLY_READ"
   },
   "CFB-PROS-003": {
    "eligible": 58,
    "name": "RUSH_DEFENSE_RESIDUAL",
-   "next_review": 50,
+   "next_review": 100,
    "observed": 58,
    "primary_metric": {
     "ci95": [
-     -5.92075342599955,
-     11.499313920208518
+     -4.057808550728946,
+     10.524536025474315
     ],
     "name": "b1_points_per_sd_x_rd_given_efficiency_vs_p0",
-    "value": -1.649950586417643
+    "value": -1.2224070034606238
    },
    "secondary": {
-    "market_b1_vs_kalshi_centre": -0.6740332957592265,
-    "n_with_kalshi_centre": 22
+    "market_b1_vs_kalshi_centre": -1.0621214087686683,
+    "n_with_kalshi_centre": 23
    },
-   "settled": 45,
-   "status": "PROSPECTIVE_TRACKING"
+   "settled": 50,
+   "status": "EARLY_READ"
   }
  }
 }
