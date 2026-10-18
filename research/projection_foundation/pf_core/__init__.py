@@ -16,6 +16,8 @@ The canonical copy lives in sift-sports-intelligence/research/projection_foundat
 VERSION is bumped on every change; tests/test_pf_core.py pins behaviour.
 
 1.2.0 (2026-10-17) live operation: availability, prospective, archive_guard; gate participation check.
+1.2.1 (2026-10-18) not-starting-only participation keeps the observation's certainty; one dated scorecard copy per
+      day; archive_outcomes skips unchanged outcomes; archive_guard can also check committed changes since a base ref.
 
 1.1.0 (2026-10-17) fixes found by the sport studies:
   * models.group_prior_pit / pit.rolling_opponent_allowed: first-date fallback no longer uses the full-sample mean
@@ -28,4 +30,4 @@ VERSION is bumped on every change; tests/test_pf_core.py pins behaviour.
   * models.fit_dist_params records K for poisson/nb. [CFB]
   * gate: sport-aware opponent thresholds, pitcher-family ceilings, graded distribution-mean check. [CFB, MLB]
 """
-VERSION = "1.2.0"
+VERSION = "1.2.1"

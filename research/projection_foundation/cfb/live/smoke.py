@@ -198,7 +198,7 @@ def scenario(name, sc, a):
     again = run.stage_settle(ctx)
     assert again["corrections"] == 0, again                           # the same correction is not recorded twice
     run.stage_guard(ctx)
-    assert archive_guard.violations(arch) == [] or True
+    assert archive_guard.violations(arch) == [], archive_guard.violations(arch)
     out = {k: res[k] for k in ("capture", "project", "results", "settle")}
     out["corrections_recorded"] = sc["corrections"]
     out["checks"] = "all assertions passed"

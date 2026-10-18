@@ -230,8 +230,11 @@ def resolve_participation(latest: dict[tuple, dict], event_id: str, entity_id: s
         st = LIKELY_ACTIVE if fresh(r) else UNCERTAIN
         return Participation(st, r["certainty"], r["source"], r["captured_utc"], age(r),
                              reasons + [f"{r['source']}: projected {r['status'].lower()} ({r['kind']})"])
-    if any(r["status"] == "NOT_STARTING" for r in obs):
-        return Participation(UNCERTAIN, "CONFIRMED", newest["source"], newest["captured_utc"], age(newest), reasons)
+    ns = [r for r in obs if r["status"] == "NOT_STARTING"]
+    if ns:
+        r = max(ns, key=lambda x: x["captured_utc"])
+        return Participation(UNCERTAIN, r["certainty"], r["source"], r["captured_utc"], age(r),
+                             reasons or [f"{r['source']}: not starting ({r['certainty'].lower()})"])
     return Participation(UNVERIFIED, newest["certainty"], newest["source"], newest["captured_utc"], age(newest),
                          reasons + ["observations do not establish participation"])
 

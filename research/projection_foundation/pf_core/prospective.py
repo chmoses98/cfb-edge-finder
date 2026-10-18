@@ -150,20 +150,44 @@ def latest_pregame(f: pd.DataFrame) -> pd.DataFrame:
 
 # --------------------------------------------------------------------------- 2. outcomes + settlement
 def archive_outcomes(rows: Iterable[dict], root: str, sport: str, now_utc: str | None = None) -> dict[str, Any]:
-    """Record final results as observed (game_id, entity_id, family, actual, participated, final, source, game_date)."""
+    """Record final results as observed (game_id, entity_id, family, actual, participated, final, source, game_date).
+    An outcome whose latest archived observation already has the same actual and participation is not written again,
+    so re-running results adds nothing; a changed value is appended (and settle() turns it into a correction)."""
     now = _ts(now_utc) or datetime.now(timezone.utc)
+    rows = [dict(r) for r in rows]
+    days = sorted({str(r.get("game_date")) for r in rows if r.get("game_date") not in (None, "")})
+    prev: dict[tuple, tuple] = {}
+    for r in sorted(_read(root, "outcomes", sport, days), key=lambda x: x.get("observed_utc", "")):
+        prev[(str(r["game_id"]), str(r["entity_id"]), r["family"])] = (_norm(r.get("actual")), _norm(r.get("participated")))
     by_day: dict[str, list] = {}
-    n_bad = 0
+    n_bad = n_same = 0
     for r in rows:
-        r = dict(r)
         if not r.get("final") or r.get("game_id") in (None, "") or r.get("entity_id") in (None, "") or not r.get("family"):
             n_bad += 1
+            continue
+        key = (str(r["game_id"]), str(r["entity_id"]), r["family"])
+        if prev.get(key) == (_norm(r.get("actual")), _norm(r.get("participated"))):
+            n_same += 1
             continue
         r["schema"] = OUTCOME_SCHEMA
         r["observed_utc"] = _iso(now)
         by_day.setdefault(str(r["game_date"]), []).append(r)
     paths = [_write_once(v, root, "outcomes", sport, d, now) for d, v in by_day.items()]
-    return {"written": sum(len(v) for v in by_day.values()), "rejected_not_final": n_bad, "paths": paths}
+    return {"written": sum(len(v) for v in by_day.values()), "unchanged": n_same, "rejected_not_final": n_bad,
+            "paths": paths}
+
+
+def _norm(v):
+    """Comparable form of an outcome value (NaN/None -> None, numbers -> float, bools kept)."""
+    if isinstance(v, np.generic):
+        v = v.item()
+    if v is None or (isinstance(v, float) and math.isnan(v)):
+        return None
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return float(v)
+    return v
 
 
 def settle(root: str, sport: str, now_utc: str | None = None, days: Iterable[str] | None = None) -> dict[str, Any]:
@@ -384,7 +408,7 @@ def write_scorecard(card: dict[str, Any], root: str, tag: str = "latest") -> str
     d = os.path.join(root, "scorecards", card["sport"].lower())
     os.makedirs(d, exist_ok=True)
     stamp = card["generated_utc"].replace(":", "").replace("-", "")
-    for name in (f"{tag}.json", f"{tag}_{stamp}.json"):
+    for name in (f"{tag}.json", f"{tag}_{stamp[:8]}.json"):  # one dated copy per UTC day (the day's last run wins)
         with open(os.path.join(d, name), "w") as f:
             json.dump(card, f, indent=1, sort_keys=True, default=float)
     with open(os.path.join(d, f"{tag}.md"), "w") as f:

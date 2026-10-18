@@ -150,3 +150,51 @@ def test_archive_guard(tmp_path):
     assert archive_guard.violations(d) == []
     open(os.path.join(d, "forecasts", "a.jsonl.gz"), "w").write("changed")
     assert archive_guard.violations(d)
+
+
+# ---------------------------------------------------------------- 1.2.1
+def test_not_starting_only_keeps_the_observations_certainty():
+    lat = av.asof([obs(kind="lineup", status="NOT_STARTING", certainty="PROJECTED", source="rotowire").__dict__], START)
+    p = av.resolve_participation(lat, "g1", "p1", START)
+    assert p.status == av.UNCERTAIN and p.certainty == "PROJECTED"     # a projection is not a confirmation
+    lat = av.asof([obs(kind="lineup", status="NOT_STARTING", certainty="CONFIRMED", source="mlb_statsapi_lineup").__dict__], START)
+    assert av.resolve_participation(lat, "g1", "p1", START).certainty == "CONFIRMED"
+
+
+def test_unchanged_outcomes_are_not_rewritten(tmp_path):
+    root = str(tmp_path)
+    out = [{"game_id": "g1", "entity_id": "p1", "family": "rebounds", "actual": 7, "participated": True, "final": True,
+            "source": "box", "game_date": "2026-10-20"}]
+    assert pr.archive_outcomes(out, root, "NBA", now_utc="2026-10-21T04:00:00Z")["written"] == 1
+    again = pr.archive_outcomes([{**out[0], "actual": np.int64(7), "participated": np.bool_(True)}], root, "NBA",
+                                now_utc="2026-10-21T08:00:00Z")
+    assert again["written"] == 0 and again["unchanged"] == 1
+    assert pr.archive_outcomes([{**out[0], "actual": 8}], root, "NBA", now_utc="2026-10-22T04:00:00Z")["written"] == 1
+    assert len(pr._read(root, "outcomes", "NBA")) == 2
+
+
+def test_one_dated_scorecard_per_day(tmp_path):
+    root = str(tmp_path)
+    for t in ("2026-10-21T06:00:00Z", "2026-10-21T18:00:00Z", "2026-10-22T06:00:00Z"):
+        pr.write_scorecard(pr.scorecard("NBA", root, {}, now_utc=t), root, "daily")
+    files = sorted(os.listdir(os.path.join(root, "scorecards", "nba")))
+    assert [f for f in files if f.startswith("daily_")] == ["daily_20261021.json", "daily_20261022.json"]
+
+
+def test_archive_guard_checks_committed_changes_since_base(tmp_path):
+    d = str(tmp_path)
+    git = lambda *a: subprocess.run(["git", "-C", d, "-c", "user.email=t@t", "-c", "user.name=t", *a], check=True,
+                                    capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "init", "-q", d], check=True)
+    os.makedirs(os.path.join(d, "forecasts"))
+    open(os.path.join(d, "forecasts", "a.jsonl.gz"), "w").write("x")
+    git("add", "."); git("commit", "-qm", "base")
+    base = git("rev-parse", "HEAD")
+    open(os.path.join(d, "forecasts", "b.jsonl.gz"), "w").write("y")
+    git("add", "."); git("commit", "-qm", "addition")
+    assert archive_guard.violations_since(d, base) == []
+    open(os.path.join(d, "forecasts", "a.jsonl.gz"), "w").write("edited")
+    git("add", "."); git("commit", "-qm", "edit")
+    assert archive_guard.violations(d) == []                  # nothing uncommitted ...
+    assert archive_guard.violations_since(d, base)            # ... but the committed edit is caught
+    assert archive_guard.main([d, base]) == 1 and archive_guard.main([d]) == 0
