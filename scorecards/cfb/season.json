@@ -2,16 +2,19 @@
  "alerts": [],
  "authority": "research_only",
  "capture": {
-  "forecasts_archived": 0,
-  "games": 0,
+  "forecasts_archived": 3456,
+  "games": 56,
   "projection": {
-   "availability_coverage": null,
-   "availability_newest_age_minutes": null,
-   "participation_counts_players": {}
+   "availability_coverage": 0.0961,
+   "availability_newest_age_minutes": 0.0,
+   "participation_counts_players": {
+    "LIKELY_ACTIVE": 412,
+    "UNVERIFIED": 2596
+   }
   }
  },
  "families": [],
- "generated_utc": "2026-10-18T04:51:15Z",
+ "generated_utc": "2026-10-20T15:28:10Z",
  "notes": [
   "game_total and margin are SHADOW VALIDATION families; nothing here is an edge claim.",
   "incumbent = script-engine scoring baseline (mean only): paired comparison uses MAE."
