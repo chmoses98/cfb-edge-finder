@@ -35,6 +35,15 @@ OUTCOME_SCHEMA = "sift.outcome.v1"
 SETTLEMENT_SCHEMA = "sift.settlement.v1"
 SCORECARD_SCHEMA = "sift.prospective_scorecard.v1"
 
+# Families whose outcome is yes/no (0/1) and whose forecast `mean` is the probability of "yes". They are scored as
+# probabilities: Brier score (primary; equals the CRPS of a Bernoulli forecast), log loss and calibration. MAE/bias on a
+# probability are not proper (MAE rewards pushing every probability toward 0 or 1) and never drive a verdict for them.
+# Continuous and count families keep their existing metrics unchanged.
+BINARY_FAMILIES = frozenset({"anytime_td", "participation"})
+SCORING_VERSION = "1.3.0"
+_P_EPS = 1e-6
+_CAL_BINS = (0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0)
+
 FORECAST_FIELDS = ("sport", "family", "model_id", "model_role", "model_version", "game_id", "game_start_utc",
                    "entity_id", "entity_name", "team", "generated_utc", "data_asof_utc", "mean", "lo", "probs",
                    "gate_status", "participation", "readiness")
@@ -260,7 +269,58 @@ def _dist(rows: pd.DataFrame) -> DistBatch:
     return DistBatch(lo, P)
 
 
-def _metrics(g: pd.DataFrame) -> dict[str, Any]:
+def is_binary(family: str) -> bool:
+    return family in BINARY_FAMILIES
+
+
+def _binary_y(g: pd.DataFrame) -> np.ndarray:
+    """The yes/no outcome: 1 when the settled actual is >= 1 (anytime TD: at least one touchdown; participation: played)."""
+    return (g["actual"].to_numpy(float) >= 1).astype(float)
+
+
+def _binary_p(g: pd.DataFrame) -> np.ndarray:
+    """P(yes) of each forecast: the forecast mean (mean-only incumbents publish exactly this), clipped to [0, 1]."""
+    return np.clip(g["mean"].to_numpy(float), 0.0, 1.0)
+
+
+def _brier(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+    return (p - y) ** 2
+
+
+def _log_loss(p: np.ndarray, y: np.ndarray) -> np.ndarray:
+    q = np.clip(p, _P_EPS, 1 - _P_EPS)
+    return -(y * np.log(q) + (1 - y) * np.log(1 - q))
+
+
+def _binary_metrics(g: pd.DataFrame) -> dict[str, Any]:
+    """Probability scores for a yes/no family. `crps` equals the Brier score (CRPS of a Bernoulli forecast), so frozen
+    holdout CRPS references stay comparable; interval coverage is undefined for a 0/1 outcome and is not reported."""
+    y, p = _binary_y(g), _binary_p(g)
+    cl = g["game_id"].to_numpy()
+    b = _brier(p, y)
+    out = {"n": int(len(g)), "n_games": int(g["game_id"].nunique()), "outcome_type": "binary", "primary_metric": "brier",
+           "brier": float(b.mean()), "log_loss": float(_log_loss(p, y).mean()), "crps": float(b.mean()),
+           "base_rate": float(y.mean()), "mean_prob": float(p.mean()), "mean_actual": float(y.mean()),
+           # calibration-in-the-large: mean forecast probability minus the observed rate (positive = over-forecasts "yes")
+           "bias": float(p.mean() - y.mean()),
+           # retained for continuity only; not a proper score for probabilities and never used for a verdict
+           "mae": float(np.mean(np.abs(p - y))), "rmse": float(np.sqrt(b.mean()))}
+    if len(g) > 1:
+        out["bias_ci95"] = cluster_bootstrap_diff(p, y, cl, n_boot=500)["ci95"]
+    rel = []
+    idx = np.digitize(p, _CAL_BINS[1:-1], right=True)
+    for i in range(len(_CAL_BINS) - 1):
+        m = idx == i
+        if m.any():
+            rel.append({"bin": [_CAL_BINS[i], _CAL_BINS[i + 1]], "n": int(m.sum()), "mean_prob": float(p[m].mean()),
+                        "observed_rate": float(y[m].mean())})
+    out["calibration"] = {"in_the_large": out["bias"], "reliability": rel}
+    return out
+
+
+def _metrics(g: pd.DataFrame, family: str | None = None) -> dict[str, Any]:
+    if family is not None and is_binary(family):
+        return _binary_metrics(g)
     y = g["actual"].to_numpy(float)
     mu = g["mean"].to_numpy(float)
     e = mu - y
@@ -278,6 +338,8 @@ def _metrics(g: pd.DataFrame) -> dict[str, Any]:
             a = (1 - lvl) / 2
             out[f"cover_{int(lvl * 100)}"] = float(np.mean((pit >= a) & (pit <= 1 - a)))
         out["pit_var_ratio"] = float(np.var(pit) / (1 / 12)) if len(pit) > 1 else None
+    out["outcome_type"] = "continuous_or_count"
+    out["primary_metric"] = "crps" if "crps" in out else "mae"
     return out
 
 
@@ -291,24 +353,64 @@ def score(settled: pd.DataFrame, challenger: str = "challenger", incumbent: str 
         s = s[pd.to_datetime(s["game_start_utc"], utc=True) >= pd.to_datetime(since_utc, utc=True)]
     out = []
     for fam, g in s.groupby("family"):
-        fam_row: dict[str, Any] = {"family": fam, "models": []}
+        binary = is_binary(fam)
+        fam_row: dict[str, Any] = {"family": fam, "models": [], "outcome_type": "binary" if binary else "continuous_or_count",
+                                   "scoring_version": SCORING_VERSION}
         for (mid, role), gm in g.groupby(["model_id", "model_role"], dropna=False):
-            fam_row["models"].append({"model_id": mid, "model_role": role, **_metrics(gm)})
+            fam_row["models"].append({"model_id": mid, "model_role": role, **_metrics(gm, fam)})
         roles = g.groupby("model_role")
         if challenger in roles.groups and incumbent in roles.groups:
-            a = roles.get_group(challenger).set_index(["game_id", "entity_id"])
-            b = roles.get_group(incumbent).set_index(["game_id", "entity_id"])
-            keys = a.index.intersection(b.index)
-            if len(keys):
-                a, b = a.loc[keys].reset_index(), b.loc[keys].reset_index()
-                y = a["actual"].to_numpy(float)
-                paired = {"n": int(len(keys)), "n_games": int(a["game_id"].nunique()),
-                          "mae_diff": cluster_bootstrap_diff(np.abs(a["mean"] - y), np.abs(b["mean"] - y), a["game_id"], n_boot=500)}
-                if a["probs"].map(bool).all() and b["probs"].map(bool).all():
-                    paired["crps_diff"] = cluster_bootstrap_diff(_dist(a).crps(y), _dist(b).crps(y), a["game_id"], n_boot=500)
+            paired = _paired(roles.get_group(challenger), roles.get_group(incumbent), binary)
+            if paired:
                 fam_row["paired"] = paired
         out.append(fam_row)
     return out
+
+
+def _paired(ga: pd.DataFrame, gb: pd.DataFrame, binary: bool) -> dict[str, Any] | None:
+    """Challenger (a) minus incumbent (b) on identical settled, non-void (game, entity) keys; game-clustered bootstrap CIs.
+    A key with more than one settled forecast under a role is ambiguous and is left out (and counted)."""
+    k = ["game_id", "entity_id"]
+    dup_a, dup_b = ga.duplicated(k, keep=False), gb.duplicated(k, keep=False)
+    ambiguous = set(map(tuple, ga.loc[dup_a, k].to_numpy())) | set(map(tuple, gb.loc[dup_b, k].to_numpy()))
+    a = ga[~dup_a].set_index(k)
+    b = gb[~dup_b].set_index(k)
+    keys = a.index.intersection(b.index)
+    if not len(keys):
+        return None
+    a, b = a.loc[keys].reset_index(), b.loc[keys].reset_index()
+    games = a["game_id"]
+    paired: dict[str, Any] = {"n": int(len(keys)), "n_games": int(games.nunique()), "ambiguous_keys": len(ambiguous)}
+    if binary:
+        y = _binary_y(a)
+        pa, pb = _binary_p(a), _binary_p(b)
+        paired["brier_diff"] = cluster_bootstrap_diff(_brier(pa, y), _brier(pb, y), games, n_boot=500)
+        paired["log_loss_diff"] = cluster_bootstrap_diff(_log_loss(pa, y), _log_loss(pb, y), games, n_boot=500)
+        paired["crps_diff"] = paired["brier_diff"]          # identical for a Bernoulli forecast
+        paired["primary_metric"] = "brier"
+        return paired
+    y = a["actual"].to_numpy(float)
+    paired["mae_diff"] = cluster_bootstrap_diff(np.abs(a["mean"] - y), np.abs(b["mean"] - y), games, n_boot=500)
+    if a["probs"].map(bool).all() and b["probs"].map(bool).all():
+        paired["crps_diff"] = cluster_bootstrap_diff(_dist(a).crps(y), _dist(b).crps(y), games, n_boot=500)
+    paired["primary_metric"] = "crps" if "crps_diff" in paired else "mae"
+    return paired
+
+
+def paired_verdict(paired: dict | None, min_games: int = 20) -> str:
+    """'challenger better' / 'challenger worse' only when the 95% CI of the primary difference excludes 0 AND the
+    comparison spans at least `min_games` games (a game-clustered bootstrap over a handful of games is not reliable)."""
+    if not paired:
+        return "no paired forecasts"
+    if paired.get("n_games", 0) < min_games:
+        return "too few games"
+    d = paired.get(f"{paired.get('primary_metric', 'mae')}_diff") or {}
+    lo, hi = (d.get("ci95") or [float("nan"), float("nan")])
+    if hi < 0:
+        return "challenger better"
+    if lo > 0:
+        return "challenger worse"
+    return "not distinguishable"
 
 
 # --------------------------------------------------------------------------- 4. drift
@@ -333,7 +435,7 @@ def drift_alerts(scores: list[dict], reference: dict[str, dict], role: str = "ch
         scale = max(abs(m.get("mean_actual") or 0) * 0.05, 1e-9)
         if lo is not None and (lo > 0 or hi < 0) and abs(m["bias"]) > scale:
             found.append(("ALERT", f"bias {m['bias']:+.3f} (95% CI {lo:+.3f}..{hi:+.3f}) exceeds 5% of the mean"))
-        c80 = m.get("cover_80")
+        c80 = m.get("cover_80") if m.get("outcome_type") != "binary" else None
         if c80 is not None:
             if m["n"] >= 200 and not (0.72 <= c80 <= 0.88):
                 found.append(("ALERT", f"80% range caught {c80:.0%} of outcomes (expected ~80%)"))
@@ -347,10 +449,12 @@ def drift_alerts(scores: list[dict], reference: dict[str, dict], role: str = "ch
                 found.append(("WATCH", f"CRPS {ratio:.0%} of historical holdout"))
         elif ref.get("mae") and m["mae"] / ref["mae"] > 1.15 and m["n"] >= 300:
             found.append(("ALERT", f"MAE {m['mae']:.3f} vs historical {ref['mae']:.3f}"))
-        p = fr.get("paired", {}).get("crps_diff") or fr.get("paired", {}).get("mae_diff")
+        pr_ = fr.get("paired") or {}
+        metric = pr_.get("primary_metric") or ("crps" if pr_.get("crps_diff") else "mae")
+        p = pr_.get(f"{metric}_diff")
         if p and p.get("n_obs", 0) >= min_n and p["ci95"][0] > 0:
-            found.append(("ALERT", f"challenger worse than incumbent on identical forecasts: {p['mean_diff']:+.4f} "
-                                   f"[{p['ci95'][0]:+.4f}, {p['ci95'][1]:+.4f}]"))
+            found.append(("ALERT", f"challenger worse than incumbent on identical forecasts ({metric.upper()}): "
+                                   f"{p['mean_diff']:+.4f} [{p['ci95'][0]:+.4f}, {p['ci95'][1]:+.4f}]"))
         status = "ALERT" if any(s == "ALERT" for s, _ in found) else "WATCH" if found else "OK"
         alerts.append({"family": fam, "status": status, "what": "; ".join(w for _, w in found) or "within expectations"})
     return alerts
@@ -372,7 +476,7 @@ def scorecard(sport: str, root: str, reference: dict[str, dict], now_utc: str | 
             "settlement": {"settled": int((~s["void"].astype(bool)).sum()) if len(s) else 0,
                            "void": int(s["void"].astype(bool).sum()) if len(s) else 0,
                            "corrections": len(_read(root, "corrections", sport))},
-            "families": scores, "alerts": alerts,
+            "families": scores, "alerts": alerts, "scoring_version": SCORING_VERSION,
             "authority": "research_only"}
 
 
@@ -392,6 +496,12 @@ def render_markdown(card: dict[str, Any], title: str | None = None) -> str:
     for fr in card["families"]:
         p = fr.get("paired", {}).get("crps_diff")
         ptxt = f"{p['mean_diff']:+.4f} [{p['ci95'][0]:+.4f}, {p['ci95'][1]:+.4f}] (n={p['n_obs']})" if p else "—"
+        if fr.get("outcome_type") == "binary":
+            for m in fr["models"]:
+                lines.append(f"| {fr['family']} (yes/no) | {m['model_id']} ({m['model_role']}) | {m['n']} ({m['n_games']}) | "
+                             f"Brier {m['brier']:.4f} | calib {m['bias']:+.3f} | log loss {m['log_loss']:.4f} | — | "
+                             f"{ptxt + ' (Brier)' if m['model_role'] == 'challenger' and p else ''} |")
+            continue
         for m in fr["models"]:
             c = m.get("crps")
             cov = m.get("cover_80")
@@ -404,12 +514,26 @@ def render_markdown(card: dict[str, Any], title: str | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def evaluation_name(card: dict[str, Any], tag: str) -> str:
+    """Versioned, write-once name of a scorecard evaluation: <tag>_<YYYYMMDD>_v<scoring version>_<content hash>.json.
+    The hash covers everything but the generation time, so an unchanged evaluation is not written twice and a changed
+    one (new settlements, new scoring version) is a new file; no evaluation is ever overwritten."""
+    body = {k: v for k, v in card.items() if k not in ("generated_utc", "window")}
+    h = hashlib.sha256(json.dumps(body, sort_keys=True, default=float).encode()).hexdigest()[:12]
+    day = card["generated_utc"][:10].replace("-", "")
+    return f"{tag}_{day}_v{card.get('scoring_version', SCORING_VERSION)}_{h}.json"
+
+
 def write_scorecard(card: dict[str, Any], root: str, tag: str = "latest") -> str:
+    """`<tag>.json` / `<tag>.md` are the rewritable current view; each distinct evaluation is also kept write-once
+    (`evaluation_name`), so historical scorecards are never overwritten (archive_guard enforces it)."""
     d = os.path.join(root, "scorecards", card["sport"].lower())
     os.makedirs(d, exist_ok=True)
-    stamp = card["generated_utc"].replace(":", "").replace("-", "")
-    for name in (f"{tag}.json", f"{tag}_{stamp[:8]}.json"):  # one dated copy per UTC day (the day's last run wins)
-        with open(os.path.join(d, name), "w") as f:
+    with open(os.path.join(d, f"{tag}.json"), "w") as f:
+        json.dump(card, f, indent=1, sort_keys=True, default=float)
+    ev = os.path.join(d, evaluation_name(card, tag))
+    if not os.path.exists(ev):
+        with open(ev, "x") as f:
             json.dump(card, f, indent=1, sort_keys=True, default=float)
     with open(os.path.join(d, f"{tag}.md"), "w") as f:
         f.write(render_markdown(card))
