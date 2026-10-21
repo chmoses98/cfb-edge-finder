@@ -435,11 +435,7 @@ def stage_score(ctx) -> dict:
             out[tag] = "unchanged"
             text = pr.render_markdown(card, title=f"CFB projection scorecard ({tag})")
         else:
-            pr.write_scorecard(card, ctx.root, tag=tag)
-            d = os.path.join(ctx.root, "scorecards", "cfb")
-            for fn in os.listdir(d):                      # drop the per-run dated copies: the tag file is the rewritable view
-                if fn.startswith(f"{tag}_") and fn.endswith(".json"):
-                    os.remove(os.path.join(d, fn))
+            pr.write_scorecard(card, ctx.root, tag=tag)   # dated evaluations are write-once history (pf_core 1.3.0)
             out[tag] = {"settled": card["settlement"]["settled"], "void": card["settlement"]["void"],
                         "families": [f["family"] for f in card["families"]], "alerts": {a["family"]: a["status"] for a in card["alerts"]}}
             text = pr.render_markdown(card, title=f"CFB projection scorecard ({tag})")

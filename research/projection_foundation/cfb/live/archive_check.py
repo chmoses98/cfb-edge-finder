@@ -11,7 +11,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from pf_core.archive_guard import IMMUTABLE
+from pf_core.archive_guard import is_immutable
 
 
 def violations(archive_dir: str, base: str) -> list[str]:
@@ -22,7 +22,7 @@ def violations(archive_dir: str, base: str) -> list[str]:
         code, paths = parts[0], parts[1:]
         if code.startswith("A"):
             continue
-        if any(p.startswith(IMMUTABLE) for p in paths):
+        if any(is_immutable(p) for p in paths):
             bad.append(f"{code} {' -> '.join(paths)}")
     return bad
 

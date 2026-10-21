@@ -1,4 +1,6 @@
 """pf_core 1.2.0 live-operation behaviour: availability as-of, forecast archive, settlement, scoring, drift."""
+import json
+import math
 import os
 import subprocess
 import sys
@@ -173,13 +175,101 @@ def test_unchanged_outcomes_are_not_rewritten(tmp_path):
     assert len(pr._read(root, "outcomes", "NBA")) == 2
 
 
-def test_one_dated_scorecard_per_day(tmp_path):
+def test_scorecard_evaluations_are_write_once_and_versioned(tmp_path):
+    """The current view is rewritten; every distinct evaluation is kept write-once under a versioned name, and an existing
+    evaluation file is never overwritten (a re-run with the same evidence writes nothing new)."""
     root = str(tmp_path)
-    for t in ("2026-10-21T06:00:00Z", "2026-10-21T18:00:00Z", "2026-10-22T06:00:00Z"):
-        pr.write_scorecard(pr.scorecard("NBA", root, {}, now_utc=t), root, "daily")
-    files = sorted(os.listdir(os.path.join(root, "scorecards", "nba")))
-    assert [f for f in files if f.startswith("daily_")] == ["daily_20261021.json", "daily_20261022.json"]
+    d = os.path.join(root, "scorecards", "nba")
+    c1 = pr.scorecard("NBA", root, {}, now_utc="2026-10-21T06:00:00Z")
+    pr.write_scorecard(c1, root, "daily")
+    first = {f: open(os.path.join(d, f), "rb").read() for f in os.listdir(d) if f.startswith("daily_")}
+    assert len(first) == 1 and next(iter(first)).startswith("daily_20261021_v" + pr.SCORING_VERSION + "_")
+    pr.write_scorecard(pr.scorecard("NBA", root, {}, now_utc="2026-10-21T18:00:00Z"), root, "daily")   # same evidence
+    assert sorted(f for f in os.listdir(d) if f.startswith("daily_")) == sorted(first)
+    changed = {**c1, "generated_utc": "2026-10-21T20:00:00Z", "settlement": {"settled": 5, "void": 0, "corrections": 0}}
+    pr.write_scorecard(changed, root, "daily")
+    now = sorted(f for f in os.listdir(d) if f.startswith("daily_"))
+    assert len(now) == 2 and all(open(os.path.join(d, f), "rb").read() == b for f, b in first.items())
+    assert json.load(open(os.path.join(d, "daily.json")))["generated_utc"] == "2026-10-21T20:00:00Z"
 
+
+def _settled(rows):
+    base = dict(sport="NFL", model_id="m", lo=0, probs=[], void=False, game_start_utc="2026-10-18T17:00:00Z")
+    return pd.DataFrame([{**base, **r} for r in rows])
+
+
+def _binary_rows(n_games=60, per=6, p_ch=0.23, p_inc=0.15, rate=0.23, seed=1):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for g in range(n_games):
+        for e in range(per):
+            y = float(rng.random() < rate)
+            rows.append(dict(family="anytime_td", model_role="challenger", model_id="ch", game_id=f"g{g}", entity_id=f"p{e}",
+                             actual=y, mean=p_ch, probs=[1 - p_ch, p_ch]))
+            rows.append(dict(family="anytime_td", model_role="incumbent", model_id="inc", game_id=f"g{g}", entity_id=f"p{e}",
+                             actual=y, mean=p_inc, probs=[]))
+    return rows
+
+
+def test_binary_family_is_scored_by_brier_not_mae():
+    """A calibrated challenger vs an incumbent that under-forecasts 'yes': MAE prefers the low forecaster (improper);
+    the Brier score does not. No coverage figures, no MAE-based comparison, verdict only when the CI excludes 0."""
+    sc = pr.score(_settled(_binary_rows()))[0]
+    assert sc["outcome_type"] == "binary"
+    ch = next(m for m in sc["models"] if m["model_role"] == "challenger")
+    inc = next(m for m in sc["models"] if m["model_role"] == "incumbent")
+    assert ch["primary_metric"] == "brier" and "cover_80" not in ch and "cover_80" not in inc
+    assert inc["mae"] < ch["mae"]                       # the improper score favours the under-forecaster ...
+    assert ch["brier"] < inc["brier"]                   # ... the proper one does not
+    assert ch["crps"] == ch["brier"] and inc["crps"] == inc["brier"]
+    assert abs(ch["calibration"]["in_the_large"]) < 0.05 and inc["calibration"]["in_the_large"] < -0.05
+    assert sum(b["n"] for b in ch["calibration"]["reliability"]) == ch["n"]
+    p = sc["paired"]
+    assert p["primary_metric"] == "brier" and "mae_diff" not in p and p["crps_diff"] == p["brier_diff"]
+    assert p["n"] == 360 and p["n_games"] == 60 and p["log_loss_diff"]["mean_diff"] < 0
+    alerts = pr.drift_alerts([sc], {"anytime_td": {"crps": 0.17}})
+    assert "worse than incumbent" not in alerts[0]["what"]
+
+
+def test_binary_verdict_is_not_forced_when_the_interval_includes_zero():
+    few = pr.score(_settled(_binary_rows(n_games=3, per=20, p_ch=0.23, p_inc=0.60)))[0]["paired"]
+    assert few["brier_diff"]["ci95"][1] < 0 and pr.paired_verdict(few) == "too few games"
+    tie = pr.score(_settled(_binary_rows(n_games=24, per=4, p_ch=0.20, p_inc=0.19)))[0]["paired"]
+    assert tie["brier_diff"]["ci95"][0] < 0 < tie["brier_diff"]["ci95"][1]
+    assert pr.paired_verdict(tie) == "not distinguishable"
+    worse = pr.score(_settled(_binary_rows(n_games=80, per=6, p_ch=0.60, p_inc=0.23)))[0]
+    assert pr.paired_verdict(worse["paired"]) == "challenger worse"
+    a = pr.drift_alerts([worse], {})[0]
+    assert a["status"] == "ALERT" and "(BRIER)" in a["what"]
+
+
+def test_count_families_keep_their_metrics():
+    rng = np.random.default_rng(3)
+    rows = []
+    for g in range(30):
+        for e in range(5):
+            y = float(rng.poisson(5))
+            pmf = list(np.exp(-5) * 5 ** np.arange(25) / np.array([math.factorial(k) for k in range(25)]))
+            rows.append(dict(family="receptions", model_role="challenger", game_id=f"g{g}", entity_id=f"p{e}", actual=y,
+                             mean=5.0, probs=pmf))
+            rows.append(dict(family="receptions", model_role="incumbent", game_id=f"g{g}", entity_id=f"p{e}", actual=y,
+                             mean=6.0, probs=[]))
+    sc = pr.score(_settled(rows))[0]
+    ch = next(m for m in sc["models"] if m["model_role"] == "challenger")
+    assert sc["outcome_type"] == "continuous_or_count" and "cover_80" in ch and "brier" not in ch
+    assert ch["primary_metric"] == "crps"
+    assert sc["paired"]["primary_metric"] == "mae" and "mae_diff" in sc["paired"] and "brier_diff" not in sc["paired"]
+
+
+def test_paired_uses_identical_non_void_keys_and_drops_ambiguous_ones():
+    rows = _binary_rows(n_games=4, per=3)
+    rows.append(dict(rows[1], mean=0.5))                                   # a second incumbent row for (g0, p0): ambiguous
+    rows.append(dict(family="anytime_td", model_role="challenger", model_id="ch", game_id="g9", entity_id="p9",
+                     actual=None, mean=0.3, probs=[0.7, 0.3], void=True))  # DNP: void, never paired
+    rows.append(dict(family="anytime_td", model_role="challenger", model_id="ch", game_id="g8", entity_id="p8",
+                     actual=1.0, mean=0.3, probs=[0.7, 0.3]))              # no incumbent twin
+    p = pr.score(_settled(rows))[0]["paired"]
+    assert p["n"] == 4 * 3 - 1 and p["ambiguous_keys"] == 1
 
 def test_archive_guard_checks_committed_changes_since_base(tmp_path):
     d = str(tmp_path)
@@ -198,3 +288,30 @@ def test_archive_guard_checks_committed_changes_since_base(tmp_path):
     assert archive_guard.violations(d) == []                  # nothing uncommitted ...
     assert archive_guard.violations_since(d, base)            # ... but the committed edit is caught
     assert archive_guard.main([d, base]) == 1 and archive_guard.main([d]) == 0
+
+
+def test_archive_guard_protects_dated_scorecard_evaluations(tmp_path):
+    d = str(tmp_path)
+    git = lambda *a: subprocess.run(["git", "-C", d, "-c", "user.email=t@t", "-c", "user.name=t", *a], check=True,  # noqa: E731
+                                    capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "init", "-q", d], check=True)
+    sc = os.path.join(d, "scorecards", "nfl")
+    os.makedirs(sc)
+    for fn in ("season.json", "season.md", "season_20261021.json", "season_20261021_v1.3.0_0123456789ab.json"):
+        open(os.path.join(sc, fn), "w").write("x")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    base = git("rev-parse", "HEAD")
+    open(os.path.join(sc, "season.json"), "w").write("current view")                    # rewritable view
+    open(os.path.join(sc, "season.md"), "w").write("current view")
+    open(os.path.join(sc, "season_20261022_v1.3.0_ba9876543210.json"), "w").write("new")  # a new evaluation
+    assert archive_guard.violations(d) == []
+    open(os.path.join(sc, "season_20261021_v1.3.0_0123456789ab.json"), "w").write("edited")
+    os.remove(os.path.join(sc, "season_20261021.json"))
+    bad = archive_guard.violations(d)
+    assert len(bad) == 2 and all("season_20261021" in b for b in bad)
+    git("add", "-A")
+    git("commit", "-qm", "edit")
+    assert len(archive_guard.violations_since(d, base)) == 2
+    assert archive_guard.is_immutable("scorecards/nhl/daily_20261021.json")
+    assert not archive_guard.is_immutable("scorecards/nhl/daily.json") and not archive_guard.is_immutable("projections/nhl/latest.json")

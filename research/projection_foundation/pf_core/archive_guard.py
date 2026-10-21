@@ -2,17 +2,25 @@
 
 Run inside the checked-out archive before committing:  python -m pf_core.archive_guard <archive_dir> [<base_ref>]
 Fails (exit 1) if any file under an immutable directory was modified, deleted or renamed. Only additions are allowed
-there; scorecards/ and projections/ (the "latest" views) may be rewritten.
+there and for dated scorecard evaluations; the current views (scorecards/<sport>/<tag>.json|.md, projections/) may be
+rewritten.
 
 Without a base ref only uncommitted changes are checked. With one (e.g. the projection-data commit the run started
 from), committed changes since that ref are checked too, so a commit made earlier in the same run cannot hide an edit.
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 
 IMMUTABLE = ("forecasts/", "outcomes/", "settlements/", "corrections/", "availability/")
+# Dated scorecard evaluations are history too (`<tag>_<YYYYMMDD>[...].json`); only `<tag>.json`/`.md` are rewritable views.
+_DATED_SCORECARD = re.compile(r"^scorecards/[^/]+/[A-Za-z0-9-]+_\d{8}(_[^/]*)?\.json$")
+
+
+def is_immutable(path: str) -> bool:
+    return path.startswith(IMMUTABLE) or bool(_DATED_SCORECARD.match(path))
 
 
 def violations(archive_dir: str) -> list[str]:
@@ -21,7 +29,7 @@ def violations(archive_dir: str) -> list[str]:
     for line in out.splitlines():
         code, path = line[:2], line[3:]
         path = path.split(" -> ")[-1]
-        if any(path.startswith(p) for p in IMMUTABLE) and code.strip() not in ("??", "A"):
+        if is_immutable(path) and code.strip() not in ("??", "A"):
             bad.append(f"{code.strip()} {path}")
     return bad
 
@@ -33,7 +41,7 @@ def violations_since(archive_dir: str, base_ref: str) -> list[str]:
     bad = []
     for line in out.splitlines():
         code, _, path = line.partition("\t")
-        if any(path.startswith(p) for p in IMMUTABLE) and code.strip() != "A":
+        if is_immutable(path) and code.strip() != "A":
             bad.append(f"{code.strip()} {path} (since {base_ref})")
     return bad
 
