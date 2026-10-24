@@ -3,20 +3,20 @@
  "candidates_sha256": "bf19c972bd230ff505c50ccd3a631dbc027d41b4900ad76c97248a4cfc6e1ce5",
  "capture_health": {
   "by_outcome": {
-   "NO_MARKET": 306,
-   "OK": 1274
+   "NO_MARKET": 309,
+   "OK": 1278
   },
   "in_window_by_outcome": {
-   "NO_MARKET": 250,
+   "NO_MARKET": 251,
    "OK": 1024
   },
   "last_cycle_errors": [],
-  "spread_attempts": 1580,
-  "spread_attempts_in_window": 1274,
-  "system_failures": 25
+  "spread_attempts": 1587,
+  "spread_attempts_in_window": 1275,
+  "system_failures": 26
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-24T22:03:00Z",
+ "last_ledger_row_at": "2026-10-24T22:33:00Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -32,9 +32,9 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 1,
+   "awaiting_entry": 0,
    "entries": {
-    "ELIGIBLE": 29,
+    "ELIGIBLE": 30,
     "MARKET_NOT_OFFERED": 23
    },
    "entry_reasons": {
@@ -122,11 +122,11 @@
     "state": "INTERIM"
    },
    "observation_reasons": {
-    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 25
+    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 26
    },
    "observations": {
     "PENDING": 10,
-    "SYSTEM_FAILURE": 25
+    "SYSTEM_FAILURE": 26
    },
    "settlement_pending": 0,
    "summary": {
