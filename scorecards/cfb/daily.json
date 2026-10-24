@@ -3,29 +3,29 @@
   {
    "family": "game_total",
    "status": "INSUFFICIENT",
-   "what": "7 settled forecasts (< 100)"
+   "what": "12 settled forecasts (< 100)"
   },
   {
    "family": "margin",
    "status": "INSUFFICIENT",
-   "what": "7 settled forecasts (< 100)"
+   "what": "12 settled forecasts (< 100)"
   },
   {
    "family": "team_points",
    "status": "INSUFFICIENT",
-   "what": "14 settled forecasts (< 100)"
+   "what": "24 settled forecasts (< 100)"
   }
  ],
  "authority": "research_only",
  "capture": {
-  "forecasts_archived": 8107,
+  "forecasts_archived": 9242,
   "games": 56,
   "projection": {
-   "availability_coverage": 0.0976,
+   "availability_coverage": 0.0964,
    "availability_newest_age_minutes": 0.0,
    "participation_counts_players": {
-    "UNCERTAIN": 360,
-    "UNVERIFIED": 2238
+    "LIKELY_ACTIVE": 266,
+    "UNVERIFIED": 1618
    }
   }
  },
@@ -34,41 +34,41 @@
    "family": "game_total",
    "models": [
     {
-     "bias": -5.8632860505472975,
+     "bias": -3.515072182835599,
      "bias_ci95": [
-      -19.223228738187238,
-      8.377867180133471
+      -13.27092110148097,
+      6.195483373025504
      ],
-     "cover_50": 0.5714285714285714,
-     "cover_80": 0.7142857142857143,
-     "cover_90": 0.7142857142857143,
-     "crps": 12.438202884447103,
-     "mae": 16.858111927913267,
-     "mean_actual": 59.285714285714285,
+     "cover_50": 0.5833333333333334,
+     "cover_80": 0.8333333333333334,
+     "cover_90": 0.8333333333333334,
+     "crps": 10.124046359719616,
+     "mae": 13.804839675207282,
+     "mean_actual": 56.25,
      "model_id": "pf-cfb",
      "model_role": "challenger",
-     "n": 7,
-     "n_games": 7,
+     "n": 12,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
-     "pit_var_ratio": 1.0978567207013772,
+     "pit_var_ratio": 0.9347835282246975,
      "primary_metric": "crps",
-     "rmse": 21.8692286453981
+     "rmse": 18.351149384249837
     },
     {
-     "bias": -8.442857142857145,
+     "bias": -5.583333333333333,
      "bias_ci95": [
-      -23.67964285714286,
-      8.967499999999994
+      -16.037083333333335,
+      5.09166666666665
      ],
-     "mae": 18.557142857142853,
-     "mean_actual": 59.285714285714285,
+     "mae": 13.783333333333333,
+     "mean_actual": 56.25,
      "model_id": "script-engine-scoring-baseline",
      "model_role": "incumbent",
-     "n": 7,
-     "n_games": 7,
+     "n": 12,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
      "primary_metric": "mae",
-     "rmse": 23.899103390235016
+     "rmse": 19.424040087822444
     }
    ],
    "outcome_type": "continuous_or_count",
@@ -76,17 +76,17 @@
     "ambiguous_keys": 0,
     "mae_diff": {
      "ci95": [
-      -4.196170465559891,
-      1.4022431636032486
+      -2.124886947222575,
+      1.7708254024492611
      ],
-     "mean_diff": -1.6990309292295873,
-     "n_clusters": 7,
-     "n_obs": 7,
-     "se": 1.4426230282448176,
-     "z": -1.177737285461699
+     "mean_diff": 0.02150634187394947,
+     "n_clusters": 12,
+     "n_obs": 12,
+     "se": 1.0194848023692524,
+     "z": 0.021095304043737946
     },
-    "n": 7,
-    "n_games": 7,
+    "n": 12,
+    "n_games": 12,
     "primary_metric": "mae"
    },
    "scoring_version": "1.3.0"
@@ -95,41 +95,41 @@
    "family": "margin",
    "models": [
     {
-     "bias": 3.100393105335008,
+     "bias": -0.22294206359892557,
      "bias_ci95": [
-      -6.361766536032025,
-      12.244604048157884
+      -6.959688716378399,
+      6.761582610573932
      ],
-     "cover_50": 0.2857142857142857,
+     "cover_50": 0.4166666666666667,
      "cover_80": 1.0,
      "cover_90": 1.0,
-     "crps": 7.598173818004976,
-     "mae": 11.564259943473283,
-     "mean_actual": 0.42857142857142855,
+     "crps": 7.169860105957473,
+     "mae": 10.257286360105415,
+     "mean_actual": 2.75,
      "model_id": "pf-cfb",
      "model_role": "challenger",
-     "n": 7,
-     "n_games": 7,
+     "n": 12,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
-     "pit_var_ratio": 0.9218775652590456,
+     "pit_var_ratio": 0.8380935784079262,
      "primary_metric": "crps",
-     "rmse": 12.876402773545246
+     "rmse": 12.214988268709297
     },
     {
-     "bias": 3.371428571428571,
+     "bias": 0.30833333333333307,
      "bias_ci95": [
-      -5.779642857142858,
-      13.114285714285714
+      -6.94375,
+      7.9743749999999896
      ],
-     "mae": 13.285714285714286,
-     "mean_actual": 0.42857142857142855,
+     "mae": 11.641666666666666,
+     "mean_actual": 2.75,
      "model_id": "script-engine-scoring-baseline",
      "model_role": "incumbent",
-     "n": 7,
-     "n_games": 7,
+     "n": 12,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
      "primary_metric": "mae",
-     "rmse": 14.23476629343002
+     "rmse": 12.661391445387562
     }
    ],
    "outcome_type": "continuous_or_count",
@@ -137,17 +137,17 @@
     "ambiguous_keys": 0,
     "mae_diff": {
      "ci95": [
-      -3.695266472768378,
-      0.23508563974646401
+      -3.38905437979515,
+      0.6046205883755869
      ],
-     "mean_diff": -1.7214543422410031,
-     "n_clusters": 7,
-     "n_obs": 7,
-     "se": 1.0249957619852614,
-     "z": -1.67947459500399
+     "mean_diff": -1.384380306561252,
+     "n_clusters": 12,
+     "n_obs": 12,
+     "se": 1.0173677748494836,
+     "z": -1.3607471563231566
     },
-    "n": 7,
-    "n_games": 7,
+    "n": 12,
+    "n_games": 12,
     "primary_metric": "mae"
    },
    "scoring_version": "1.3.0"
@@ -156,41 +156,41 @@
    "family": "team_points",
    "models": [
     {
-     "bias": -2.931453821158199,
+     "bias": -1.757422322933932,
      "bias_ci95": [
-      -11.166465630152132,
-      4.823526366548987
+      -7.279417003475378,
+      3.1702393800828004
      ],
-     "cover_50": 0.2857142857142857,
-     "cover_80": 0.7857142857142857,
-     "cover_90": 0.8571428571428571,
-     "crps": 7.367710534021414,
-     "mae": 10.902831301416215,
-     "mean_actual": 29.642857142857142,
+     "cover_50": 0.375,
+     "cover_80": 0.875,
+     "cover_90": 0.9166666666666666,
+     "crps": 6.316270382213943,
+     "mae": 9.356950007819128,
+     "mean_actual": 28.125,
      "model_id": "pf-cfb",
      "model_role": "challenger",
-     "n": 14,
-     "n_games": 7,
+     "n": 24,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
-     "pit_var_ratio": 1.1672554757741882,
+     "pit_var_ratio": 0.9889000267613991,
      "primary_metric": "crps",
-     "rmse": 12.689426200322433
+     "rmse": 11.022513448200662
     },
     {
-     "bias": -4.214285714285714,
+     "bias": -2.795833333333333,
      "bias_ci95": [
-      -11.764285714285714,
-      4.086607142857124
+      -7.858958333333333,
+      2.419687499999999
      ],
-     "mae": 11.628571428571428,
-     "mean_actual": 29.642857142857142,
+     "mae": 9.445833333333333,
+     "mean_actual": 28.125,
      "model_id": "script-engine-scoring-baseline",
      "model_role": "incumbent",
-     "n": 14,
-     "n_games": 7,
+     "n": 24,
+     "n_games": 12,
      "outcome_type": "continuous_or_count",
      "primary_metric": "mae",
-     "rmse": 13.912994953331525
+     "rmse": 11.598078145394032
     }
    ],
    "outcome_type": "continuous_or_count",
@@ -198,23 +198,23 @@
     "ambiguous_keys": 0,
     "mae_diff": {
      "ci95": [
-      -1.5243326321202069,
-      0.19052156659823258
+      -0.9830815144643936,
+      0.7321681649309764
      ],
-     "mean_diff": -0.7257401271552144,
-     "n_clusters": 7,
-     "n_obs": 14,
-     "se": 0.4509999870412074,
-     "z": -1.6091799290648412
+     "mean_diff": -0.08888332551420557,
+     "n_clusters": 12,
+     "n_obs": 24,
+     "se": 0.4594361914686764,
+     "z": -0.1934617410745829
     },
-    "n": 14,
-    "n_games": 7,
+    "n": 24,
+    "n_games": 12,
     "primary_metric": "mae"
    },
    "scoring_version": "1.3.0"
   }
  ],
- "generated_utc": "2026-10-23T21:53:11Z",
+ "generated_utc": "2026-10-24T16:49:41Z",
  "notes": [
   "game_total and margin are SHADOW VALIDATION families; nothing here is an edge claim.",
   "incumbent = script-engine scoring baseline (mean only): paired comparison uses MAE."
@@ -225,23 +225,23 @@
   "challenger": {
    "fcs_game": {
     "False": {
-     "bias": -2.931,
-     "mae": 10.903,
-     "n": 14,
+     "bias": -1.757,
+     "mae": 9.357,
+     "n": 24,
      "note": "n < 30: no interval"
     }
    },
    "qb_changed": {
     "False": {
-     "bias": -0.226,
-     "mae": 9.526,
-     "n": 12,
+     "bias": -0.92,
+     "mae": 8.584,
+     "n": 20,
      "note": "n < 30: no interval"
     },
     "True": {
-     "bias": -19.166,
-     "mae": 19.166,
-     "n": 2,
+     "bias": -5.947,
+     "mae": 13.22,
+     "n": 4,
      "note": "n < 30: no interval"
     }
    },
@@ -250,6 +250,12 @@
      "bias": -0.81,
      "mae": 8.848,
      "n": 11,
+     "note": "n < 30: no interval"
+    },
+    "QB_QUESTIONABLE": {
+     "bias": -0.114,
+     "mae": 7.193,
+     "n": 10,
      "note": "n < 30: no interval"
     },
     "QB_RECENT_CHANGE": {
@@ -268,15 +274,15 @@
   "incumbent": {
    "qb_changed": {
     "False": {
-     "bias": -1.142,
-     "mae": 9.792,
-     "n": 12,
+     "bias": -1.795,
+     "mae": 8.365,
+     "n": 20,
      "note": "n < 30: no interval"
     },
     "True": {
-     "bias": -22.65,
-     "mae": 22.65,
-     "n": 2,
+     "bias": -7.8,
+     "mae": 14.85,
+     "n": 4,
      "note": "n < 30: no interval"
     }
    }
@@ -284,12 +290,12 @@
  },
  "settlement": {
   "corrections": 0,
-  "settled": 56,
+  "settled": 96,
   "void": 0
  },
  "sport": "CFB",
  "window": {
   "days": 7,
-  "since_utc": "2026-10-16T21:53:11Z"
+  "since_utc": "2026-10-17T16:49:41Z"
  }
 }
