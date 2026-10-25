@@ -1,20 +1,20 @@
 ## CFB projection scorecard — season to date
 
-Generated 2026-10-24T21:42:00Z. Research only; nothing here is a betting signal.
+Generated 2026-10-25T16:44:00Z. Research only; nothing here is a betting signal.
 
-Archived pregame forecasts: 9724 across 56 games. Settled: 168 (void/DNP 0, stat corrections 0).
+Archived pregame forecasts: 9724 across 56 games. Settled: 448 (void/DNP 0, stat corrections 0).
 
 | Stat | Model | n (games) | MAE | Bias | CRPS | 80% range caught | vs incumbent (CRPS) |
 |---|---|---|---|---|---|---|---|
-| game_total | pf-cfb (challenger) | 21 (21) | 16.224 | -6.491 | 11.994 | 71% | — |
-| game_total | script-engine-scoring-baseline (incumbent) | 21 (21) | 15.919 | -7.576 | — | — |  |
-| margin | pf-cfb (challenger) | 21 (21) | 10.911 | -0.815 | 7.557 | 95% | — |
-| margin | script-engine-scoring-baseline (incumbent) | 21 (21) | 12.024 | -0.900 | — | — |  |
-| team_points | pf-cfb (challenger) | 42 (21) | 10.573 | -3.245 | 7.116 | 79% | — |
-| team_points | script-engine-scoring-baseline (incumbent) | 42 (21) | 10.357 | -3.790 | — | — |  |
+| game_total | pf-cfb (challenger) | 56 (56) | 15.050 | -2.840 | 10.595 | 71% | — |
+| game_total | script-engine-scoring-baseline (incumbent) | 56 (56) | 15.295 | -2.880 | — | — |  |
+| margin | pf-cfb (challenger) | 56 (56) | 11.424 | -0.267 | 8.026 | 84% | — |
+| margin | script-engine-scoring-baseline (incumbent) | 56 (56) | 10.904 | +0.771 | — | — |  |
+| team_points | pf-cfb (challenger) | 112 (56) | 9.209 | -1.420 | 6.573 | 79% | — |
+| team_points | script-engine-scoring-baseline (incumbent) | 112 (56) | 9.135 | -1.442 | — | — |  |
 
 **Drift checks**
 
-- game_total: **INSUFFICIENT** — 21 settled forecasts (< 100)
-- margin: **INSUFFICIENT** — 21 settled forecasts (< 100)
-- team_points: **INSUFFICIENT** — 42 settled forecasts (< 100)
+- game_total: **INSUFFICIENT** — 56 settled forecasts (< 100)
+- margin: **INSUFFICIENT** — 56 settled forecasts (< 100)
+- team_points: **OK** — within expectations
