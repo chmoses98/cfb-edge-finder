@@ -57,10 +57,12 @@ from cfb_edge_finder.scripting.gamelog import TeamGame, iso_utc, parse_utc, read
 from cfb_edge_finder.scripting.ledger import (  # noqa: E402
     LedgerOrderError,
     append,
+    append_stream_line,
     append_v2,
     checkpoint_for,
     load_artifact,
     read_rows,
+    read_stream,
     row_for,
     row_for_v2,
     store_artifact,
@@ -447,12 +449,8 @@ def cmd_settle(args: argparse.Namespace) -> int:
     for r in rows:
         by_game.setdefault(r.game_id, {})[r.site if r.site != "neutral" else r.team_id] = r
     ledger_rows = read_rows(args.ledger_dir, args.season)
-    out_path = args.ledger_dir / str(args.season) / "realized.jsonl"
-    done = (
-        {json.loads(line)["artifact_hash"] + json.loads(line)["kind"] for line in out_path.read_text().splitlines()}
-        if out_path.exists()
-        else set()
-    )
+    out_path = args.ledger_dir / str(args.season) / "realized.jsonl"  # first segment; later ones are realized.part-NNNN
+    done = {r["artifact_hash"] + r["kind"] for r in read_stream(out_path)}
     written = 0
     for row in ledger_rows:
         key = row["artifact_hash"] + row["kind"]
@@ -486,9 +484,8 @@ def cmd_settle(args: argparse.Namespace) -> int:
             }
             for e in row["expressions"]
         ]
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with out_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        append_stream_line(out_path, record)
+        done.add(key)
         written += 1
     print(f"settled {written} publication(s)")
     return 0
@@ -497,8 +494,7 @@ def cmd_settle(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     from cfb_edge_finder.scripting.report import build_report, render_markdown
 
-    path = args.ledger_dir / str(args.season) / "realized.jsonl"
-    realized = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+    realized = read_stream(args.ledger_dir / str(args.season) / "realized.jsonl")
     report = build_report(read_rows(args.ledger_dir, args.season), realized)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "script_engine_report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
@@ -509,13 +505,12 @@ def cmd_report(args: argparse.Namespace) -> int:
 
 def cmd_settle_v2(args: argparse.Namespace) -> int:
     """Settle V2 FINAL_PREGAME rows (frozen claims, never regenerated) against the game log. Append-only."""
-    from cfb_edge_finder.scripting.ledger import load_artifact, read_rows_v2
+    from cfb_edge_finder.scripting.ledger import read_rows_v2
     from cfb_edge_finder.scripting.realized_v2 import key_of, settle_rows
 
     rows, _, _, _ = load_football(args.football_dir)
     out_path = args.ledger_dir / str(args.season) / "realized_v2.jsonl"
-    existing = out_path.read_text().splitlines() if out_path.exists() else []
-    done = {key_of(json.loads(line)) for line in existing if line.strip()}
+    done = {key_of(r) for r in read_stream(out_path)}
 
     def load_claims(digest: str) -> dict | None:
         path = args.ledger_dir / str(args.season) / "artifacts_v2" / f"{digest}.json.gz"
@@ -525,11 +520,8 @@ def cmd_settle_v2(args: argparse.Namespace) -> int:
         return load_artifact(args.ledger_dir, args.season, digest) if digest else None
 
     new = settle_rows(read_rows_v2(args.ledger_dir, args.season), done, rows, load_claims, load_v1)
-    if new:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with out_path.open("a", encoding="utf-8") as fh:
-            for record in new:
-                fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+    for record in new:
+        append_stream_line(out_path, record)
     print(f"V2: settled {len(new)} FINAL_PREGAME row(s)")
     return 0
 
@@ -538,8 +530,7 @@ def cmd_report_v2(args: argparse.Namespace) -> int:
     from cfb_edge_finder.scripting.ledger import read_rows_v2
     from cfb_edge_finder.scripting.realized_v2 import build_report_v2, render_markdown_v2
 
-    path = args.ledger_dir / str(args.season) / "realized_v2.jsonl"
-    realized = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+    realized = read_stream(args.ledger_dir / str(args.season) / "realized_v2.jsonl")
     report = build_report_v2(read_rows_v2(args.ledger_dir, args.season), realized)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "script_engine_v2_report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
