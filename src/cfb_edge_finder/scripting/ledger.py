@@ -20,6 +20,11 @@ Nothing is ever rewritten. A row recorded after kickoff is refused
 (`LedgerOrderError`), so outcomes cannot be backfilled into "predictions",
 and a script cannot be edited after the fact: its hash is in the row.
 
+Every append-only stream on the ledger branch is stored this way (`publications`, `publications_v2`,
+`realized`, `realized_v2`): the realized V1 file is written once per settled publication and reached 212 MB in
+one run on 2026-10-28, after every ledger push from 2026-10-17 on had been refused. `read_stream` /
+`append_stream_line` are the only way to read or extend a stream; a stream's first file keeps its historical name.
+
 *** V2 (SHADOW) IS A SEPARATE STREAM ***
 V2 claims rows (`cfb-script-engine/2.0.0`) go to `publications_v2.jsonl`
 with their artifacts under `artifacts_v2/`. The V1 file, its schema and its
@@ -60,30 +65,56 @@ SEGMENT_MAX_BYTES = 50_000_000
 PUBLICATIONS = "publications.jsonl"
 
 
-def segment_paths(root: Path, season: int) -> list[Path]:
-    """The V1 stream's segments in row order: `publications.jsonl`, then `publications.part-NNNN.jsonl` (N >= 2)."""
-    base = _season_dir(root, season)
-    parts = sorted(base.glob("publications.part-*.jsonl")) if base.exists() else []
-    first = base / PUBLICATIONS
+def stream_segments(first: Path) -> list[Path]:
+    """A stream's segments in row order: `<stem>.jsonl`, then `<stem>.part-NNNN.jsonl` (N >= 2), numerically."""
+    stem = first.name[: -len(".jsonl")]
+    parts = sorted(
+        first.parent.glob(f"{stem}.part-*.jsonl") if first.parent.exists() else [],
+        key=lambda p: int(p.name[len(stem) + len(".part-") : -len(".jsonl")]),
+    )
     return ([first] if first.exists() else []) + parts
 
 
-def _segment_for_append(root: Path, season: int, nbytes: int) -> Path:
-    """The segment the next row goes to: the last one while it has room, else a new one. Never an earlier one."""
-    segments = segment_paths(root, season)
+def read_stream(first: Path) -> list[dict[str, Any]]:
+    """Every row of a segmented stream, in the order a single file would hold them."""
+    rows: list[dict[str, Any]] = []
+    for path in stream_segments(first):
+        rows.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+    return rows
+
+
+def _stream_segment_for_append(first: Path, nbytes: int) -> Path:
+    """The segment the next line goes to: the last one while it has room, else a new one. Never an earlier one."""
+    segments = stream_segments(first)
     if not segments:
-        return _season_dir(root, season) / PUBLICATIONS
+        return first
     last = segments[-1]
     if last.stat().st_size + nbytes <= SEGMENT_MAX_BYTES:
         return last
-    return _season_dir(root, season) / f"publications.part-{len(segments) + 1:04d}.jsonl"
+    stem = first.name[: -len(".jsonl")]
+    return first.parent / f"{stem}.part-{len(segments) + 1:04d}.jsonl"
+
+
+def append_stream_line(first: Path, row: dict[str, Any]) -> Path:
+    """Append one row (canonical compact JSON) to a segmented stream; returns the segment written."""
+    line = json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
+    nbytes = len(line.encode("utf-8"))
+    if nbytes > SEGMENT_MAX_BYTES:
+        raise ValueError(f"a single ledger row of {nbytes} bytes cannot fit a {SEGMENT_MAX_BYTES}-byte segment")
+    path = _stream_segment_for_append(first, nbytes)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(line)
+    return path
+
+
+def segment_paths(root: Path, season: int) -> list[Path]:
+    """The V1 stream's segments in row order: `publications.jsonl`, then `publications.part-NNNN.jsonl` (N >= 2)."""
+    return stream_segments(_season_dir(root, season) / PUBLICATIONS)
 
 
 def read_rows(root: Path, season: int) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for path in segment_paths(root, season):
-        rows.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
-    return rows
+    return read_stream(_season_dir(root, season) / PUBLICATIONS)
 
 
 def store_artifact(root: Path, season: int, envelope: dict[str, Any]) -> Path:
@@ -188,11 +219,7 @@ def append(root: Path, season: int, row: dict[str, Any]) -> bool:
     key = (row["game_key"], row["artifact_hash"], row["kind"])
     if key in existing:
         return False
-    line = json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
-    path = _segment_for_append(root, season, len(line.encode("utf-8")))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(line)
+    append_stream_line(_season_dir(root, season) / PUBLICATIONS, row)
     return True
 
 
@@ -202,10 +229,7 @@ PUBLICATIONS_V2 = "publications_v2.jsonl"
 
 
 def read_rows_v2(root: Path, season: int) -> list[dict[str, Any]]:
-    path = _season_dir(root, season) / PUBLICATIONS_V2
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return read_stream(_season_dir(root, season) / PUBLICATIONS_V2)
 
 
 def store_claims_artifact(root: Path, season: int, envelope: dict[str, Any]) -> Path:
@@ -294,8 +318,5 @@ def append_v2(root: Path, season: int, row: dict[str, Any]) -> bool:
     key = (row["game_key"], row["claims_artifact_hash"], row["kind"])
     if key in existing:
         return False
-    path = _season_dir(root, season) / PUBLICATIONS_V2
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+    append_stream_line(_season_dir(root, season) / PUBLICATIONS_V2, row)
     return True

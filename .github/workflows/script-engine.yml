@@ -95,7 +95,11 @@ jobs:
           done
           exit 1
 
+      - name: Ledger file-size guard (every stream is segmented; no file may approach the host's 100 MiB limit)
+        run: python scripts/check_ledger_file_sizes.py "$LEDGER/data/scripting"
+
       - name: Commit the prospective ledger (main only)
+        id: ledger_push
         if: github.ref_name == 'main'
         working-directory: ${{ runner.temp }}/ledger
         run: |
@@ -106,8 +110,27 @@ jobs:
           git commit -m "script ledger: prospective publications ($(date -u +%Y-%m-%dT%H:%MZ))"
           git push origin script-ledger
 
+      - name: Keep the unpushed ledger rows if the push failed (they cannot be re-recorded after kickoff)
+        if: failure() && github.ref_name == 'main' && steps.ledger_push.conclusion == 'failure'
+        working-directory: ${{ runner.temp }}/ledger
+        run: |
+          mkdir -p "$RUNNER_TEMP/unpushed"
+          git diff --name-only --diff-filter=AM origin/script-ledger HEAD -- data/scripting > "$RUNNER_TEMP/unpushed/files.txt" \
+            || git diff --name-only --diff-filter=AM HEAD~1 HEAD -- data/scripting > "$RUNNER_TEMP/unpushed/files.txt"
+          git bundle create "$RUNNER_TEMP/unpushed/script-ledger.bundle" origin/script-ledger..HEAD \
+            || git bundle create "$RUNNER_TEMP/unpushed/script-ledger.bundle" HEAD~1..HEAD
+          echo "::error::script-ledger push refused; the unpushed commit is kept as the run artifact script-ledger-unpushed-${{ github.run_id }}"
+
+      - name: Upload the unpushed ledger commit
+        if: failure() && github.ref_name == 'main' && steps.ledger_push.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: script-ledger-unpushed-${{ github.run_id }}
+          path: ${{ runner.temp }}/unpushed
+          retention-days: 90
+
       - name: Ledger dry-run summary (development branches)
         if: github.ref_name != 'main'
         run: |
           echo "Ledger NOT pushed from ${{ github.ref_name }}: prospective records come from main only."
-          wc -l "$LEDGER/data/scripting/ledger/$SEASON/publications.jsonl" || true
+          cat "$LEDGER"/data/scripting/ledger/"$SEASON"/publications.jsonl "$LEDGER"/data/scripting/ledger/"$SEASON"/publications.part-*.jsonl 2>/dev/null | wc -l || true

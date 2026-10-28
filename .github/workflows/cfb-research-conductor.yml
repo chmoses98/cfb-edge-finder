@@ -1,5 +1,8 @@
 name: CFB Research Conductor
 
+# Writes ONLY its own store branch: HEAD:research-signals (main) or HEAD:research-signals-dev (other refs), never
+# research-data, main or script-ledger (tests/test_research_workflow_concurrency.py classifies writers by this).
+#
 # *** WHAT THIS IS ***
 # The prospective research clock for CFB (scripts/cfb_research_conductor.py, docs/CFB_RESEARCH_CONDUCTOR.md):
 #
@@ -120,9 +123,14 @@ jobs:
             rm -rf "$MAIN_DATA" && mv "$MAIN_DATA.tmp" "$MAIN_DATA"
             mkdir -p "$LEDGER/$SEASON"
             if git fetch -q --depth=1 origin script-ledger; then
-              git show "FETCH_HEAD:data/scripting/ledger/$SEASON/publications_v2.jsonl" \
-                > "$LEDGER/$SEASON/publications_v2.jsonl.tmp" \
-                && mv "$LEDGER/$SEASON/publications_v2.jsonl.tmp" "$LEDGER/$SEASON/publications_v2.jsonl"
+              # the V2 stream is publications_v2.jsonl plus its publications_v2.part-NNNN.jsonl segments (each < 50 MB)
+              rm -rf "$LEDGER/$SEASON.tmp" && mkdir -p "$LEDGER/$SEASON.tmp" \
+                && git ls-tree --name-only FETCH_HEAD "data/scripting/ledger/$SEASON/" \
+                   | grep -E '/publications_v2(\.part-[0-9]+)?\.jsonl$' \
+                   | while read -r f; do git show "FETCH_HEAD:$f" > "$LEDGER/$SEASON.tmp/$(basename "$f")" || exit 1; done \
+                && rm -f "$LEDGER/$SEASON"/publications_v2*.jsonl \
+                && mv "$LEDGER/$SEASON.tmp"/publications_v2*.jsonl "$LEDGER/$SEASON/" \
+                && rm -rf "$LEDGER/$SEASON.tmp"
             fi
           }
           publish() {

@@ -66,6 +66,7 @@ from cfb_edge_finder.control_prospective.tracking import (  # noqa: E402
     summarize,
 )
 from cfb_edge_finder.scripting.gamelog import TeamGame, read_jsonl  # noqa: E402
+from cfb_edge_finder.scripting.ledger import read_stream  # noqa: E402
 from cfb_edge_finder.signal_discovery import run_defense_cycle, wave2_cycle  # noqa: E402
 
 SEASON = 2026
@@ -393,7 +394,7 @@ def run_cycle(
     dispatch_path = store / "conductor" / season_dir / "dispatches.jsonl"
     attempts = read_rows(attempts_path)
     quotes = read_rows(quotes_path)
-    ledger_v2 = read_rows(ledger_dir / season_dir / "publications_v2.jsonl")
+    ledger_v2 = read_stream(ledger_dir / season_dir / "publications_v2.jsonl")  # + its .part-NNNN segments
     games = slate_games(inputs, now)
 
     # 1. one Kalshi read for the whole series

@@ -33,6 +33,7 @@ import cfb_research_conductor as conductor  # noqa: E402
 from cfb_edge_finder.control_market.quotes import orient_markets, parse_utc  # noqa: E402
 from cfb_edge_finder.control_prospective.capture import normalize_market, to_quote  # noqa: E402
 from cfb_edge_finder.scripting.football import LeagueFitCache  # noqa: E402
+from cfb_edge_finder.scripting.ledger import read_stream  # noqa: E402
 from cfb_edge_finder.signal_discovery import wave2 as W  # noqa: E402
 from cfb_edge_finder.signal_discovery import wave2_cycle as C  # noqa: E402
 
@@ -66,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     W.load_candidates(ROOT)
     now = args.now or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     inputs = conductor.Inputs(args.main_dir, conductor.SEASON)
-    ledger = [json.loads(x) for x in args.ledger.read_text().splitlines() if x.strip()] if args.ledger else []
+    ledger = read_stream(args.ledger) if args.ledger else []  # the stream's first file; its .part-NNNN segments follow
     latest: dict[str, dict] = {}
     for r in ledger:
         if r.get("methodology_version") != "cfb-script-engine/2.0.0":
