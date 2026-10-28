@@ -1,49 +1,50 @@
 # CFB Script Engine — prospective report
 
-Publications: 413 game(s), 24936 ledger row(s). Settled: 71.
+Publications: 596 game(s), 25174 ledger row(s). Settled: 203.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.169
-- PRIMARY or SECONDARY: 0.2394
-- Any published script: 0.2958
+- PRIMARY described the game: 0.1576
+- PRIMARY or SECONDARY: 0.197
+- Any published script: 0.2512
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
-| AWAY_CONTROL | 11 | 0.0909 | insufficient |
-| COMPETITIVE_GRIND | 10 | 0.3 | insufficient |
-| COMPETITIVE_SHOOTOUT | 3 | 0.0 | insufficient |
-| COMPETITIVE_TOSSUP | 5 | 0.8 | insufficient |
-| FAVORITE_PULLS_AWAY | 6 | 0.1667 | insufficient |
-| HOME_CONTROL | 7 | 0.0 | insufficient |
-| TURNOVER_DISRUPTION | 5 | 0.6 | insufficient |
-| UNDERDOG_HANGS_AROUND | 2 | 0.0 | insufficient |
+| AWAY_CONTROL | 33 | 0.1515 | ok |
+| COMPETITIVE_GRIND | 22 | 0.3182 | insufficient |
+| COMPETITIVE_SHOOTOUT | 17 | 0.1176 | insufficient |
+| COMPETITIVE_TOSSUP | 18 | 0.6111 | insufficient |
+| FAVORITE_PULLS_AWAY | 12 | 0.1667 | insufficient |
+| HOME_CONTROL | 32 | 0.0312 | ok |
+| PACE_DRIVEN_OVER | 4 | 0.0 | insufficient |
+| TURNOVER_DISRUPTION | 10 | 0.4 | insufficient |
+| UNDERDOG_HANGS_AROUND | 3 | 0.0 | insufficient |
 
 ## Expression performance (research units)
 
 | group | tier | n | win rate | P/L per contract |
 |---|---|---|---|---|
-| MULTI_SCRIPT | ALL | 324 | 0.7654 | -0.0485 |
-| MULTI_SCRIPT | HIGH | 265 | 0.7245 | -0.0707 |
-| MULTI_SCRIPT | MEDIUM | 35 | 1.0 | 0.1116 |
-| MULTI_SCRIPT | LOW | 24 | 0.875 | -0.037 |
-| BEST_EXPRESSION | ALL | 72 | 0.8194 | 0.0156 |
-| BEST_EXPRESSION | HIGH | 50 | 0.82 | 0.025 |
-| BEST_EXPRESSION | MEDIUM | 14 | 0.7857 | -0.0368 |
-| BEST_EXPRESSION | LOW | 8 | 0.875 | 0.0478 |
-| SINGLE_SCRIPT | ALL | 564 | 0.7589 | 0.036 |
-| SINGLE_SCRIPT | HIGH | 352 | 0.7614 | 0.0482 |
-| SINGLE_SCRIPT | MEDIUM | 122 | 0.7541 | 0.0069 |
-| SINGLE_SCRIPT | LOW | 90 | 0.7556 | 0.0278 |
-| AGGRESSIVE | ALL | 933 | 0.567 | -0.0069 |
-| AGGRESSIVE | HIGH | 641 | 0.5429 | -0.0164 |
-| AGGRESSIVE | MEDIUM | 181 | 0.6133 | 0.0385 |
-| AGGRESSIVE | LOW | 111 | 0.6306 | -0.0261 |
-| CONTRADICTED | ALL | 891 | 0.2346 | -0.0451 |
-| CONTRADICTED | HIGH | 618 | 0.2492 | -0.039 |
-| CONTRADICTED | MEDIUM | 157 | 0.1911 | -0.0651 |
-| CONTRADICTED | LOW | 116 | 0.2155 | -0.0504 |
+| MULTI_SCRIPT | ALL | 518 | 0.749 | -0.1001 |
+| MULTI_SCRIPT | HIGH | 382 | 0.7618 | -0.0755 |
+| MULTI_SCRIPT | MEDIUM | 39 | 0.9487 | 0.0566 |
+| MULTI_SCRIPT | LOW | 97 | 0.6186 | -0.2599 |
+| BEST_EXPRESSION | ALL | 154 | 0.7597 | -0.0863 |
+| BEST_EXPRESSION | HIGH | 100 | 0.77 | -0.0731 |
+| BEST_EXPRESSION | MEDIUM | 28 | 0.6786 | -0.1743 |
+| BEST_EXPRESSION | LOW | 26 | 0.8077 | -0.0425 |
+| SINGLE_SCRIPT | ALL | 941 | 0.745 | -0.0219 |
+| SINGLE_SCRIPT | HIGH | 592 | 0.7601 | -0.0015 |
+| SINGLE_SCRIPT | MEDIUM | 144 | 0.7222 | -0.044 |
+| SINGLE_SCRIPT | LOW | 205 | 0.7171 | -0.0651 |
+| AGGRESSIVE | ALL | 1467 | 0.5828 | -0.0423 |
+| AGGRESSIVE | HIGH | 1013 | 0.5795 | -0.0309 |
+| AGGRESSIVE | MEDIUM | 190 | 0.6158 | 0.0259 |
+| AGGRESSIVE | LOW | 264 | 0.572 | -0.1353 |
+| CONTRADICTED | ALL | 1447 | 0.2474 | -0.1341 |
+| CONTRADICTED | HIGH | 973 | 0.2343 | -0.1303 |
+| CONTRADICTED | MEDIUM | 185 | 0.227 | -0.101 |
+| CONTRADICTED | LOW | 289 | 0.3045 | -0.1679 |
 
-Calibration ready: **False** (smallest archetype sample 2 of 30 required).
+Calibration ready: **False** (smallest archetype sample 3 of 30 required).
 
 Expression performance is research-unit bookkeeping at recorded entry prices. It is not evidence of an edge until the sample supports it, and no stake is implied.
