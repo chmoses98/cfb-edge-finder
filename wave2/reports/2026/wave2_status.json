@@ -16,7 +16,7 @@
   "system_failures": 3
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-17T21:42:13Z",
+ "last_ledger_row_at": "2026-10-28T05:06:15Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -32,12 +32,17 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 5,
-   "entries": {},
-   "entry_reasons": {},
+   "awaiting_entry": 0,
+   "entries": {
+    "ELIGIBLE": 2,
+    "MARKET_NOT_OFFERED": 3
+   },
+   "entry_reasons": {
+    "NO_SPREAD_LADDER_IN_WINDOW": 3
+   },
    "next_read": {
     "at_n": 50,
-    "remaining": 50,
+    "remaining": 48,
     "state": "EARLY_READ"
    },
    "observation_reasons": {
@@ -52,8 +57,54 @@
    },
    "settlement_pending": 0,
    "summary": {
-    "display": "NO SETTLED SAMPLE",
-    "n": 0,
+    "ats_like": {
+     "losses": 2,
+     "pushes": 0,
+     "rate": 0.0,
+     "rate_ci95": [
+      0.0,
+      0.6576197724933469
+     ],
+     "wins": 0
+    },
+    "economics": {
+     "fee_adjusted_pnl": -1.04,
+     "hits": 0,
+     "mean_price": 0.5,
+     "n": 2,
+     "roi_ci95_bootstrap": [
+      -1.0,
+      -1.0
+     ],
+     "roi_on_outlay": -1.0,
+     "unavailable": 0
+    },
+    "home_away": {
+     "away": 1,
+     "home": 1
+    },
+    "n": 2,
+    "outright_win_rate": 0.5,
+    "residual": {
+     "ci95_bootstrap": [
+      -14.4167,
+      -12.25
+     ],
+     "mean": -13.33335,
+     "median": -13.33335,
+     "positive_rate": 0.0,
+     "positive_rate_ci95": [
+      0.0,
+      0.6576197724933469
+     ],
+     "quantiles": {
+      "10": -14.20003,
+      "25": -13.875025,
+      "75": -12.791675,
+      "90": -12.46667
+     },
+     "sd": 1.5320882627968928
+    },
     "verdict": "PROSPECTIVE_TRACKING"
    }
   },
