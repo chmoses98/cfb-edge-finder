@@ -1,19 +1,19 @@
 # CFB Script Engine — prospective report
 
-Publications: 596 game(s), 25534 ledger row(s). Settled: 203.
+Publications: 599 game(s), 25773 ledger row(s). Settled: 205.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.1576
-- PRIMARY or SECONDARY: 0.197
-- Any published script: 0.2512
+- PRIMARY described the game: 0.1561
+- PRIMARY or SECONDARY: 0.1951
+- Any published script: 0.2488
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
-| AWAY_CONTROL | 33 | 0.1515 | ok |
+| AWAY_CONTROL | 34 | 0.1471 | ok |
 | COMPETITIVE_GRIND | 22 | 0.3182 | insufficient |
 | COMPETITIVE_SHOOTOUT | 17 | 0.1176 | insufficient |
-| COMPETITIVE_TOSSUP | 18 | 0.6111 | insufficient |
+| COMPETITIVE_TOSSUP | 19 | 0.5789 | insufficient |
 | FAVORITE_PULLS_AWAY | 12 | 0.1667 | insufficient |
 | HOME_CONTROL | 32 | 0.0312 | ok |
 | PACE_DRIVEN_OVER | 4 | 0.0 | insufficient |
@@ -28,22 +28,22 @@ Publications: 596 game(s), 25534 ledger row(s). Settled: 203.
 | MULTI_SCRIPT | HIGH | 382 | 0.7618 | -0.0755 |
 | MULTI_SCRIPT | MEDIUM | 39 | 0.9487 | 0.0566 |
 | MULTI_SCRIPT | LOW | 97 | 0.6186 | -0.2599 |
-| BEST_EXPRESSION | ALL | 154 | 0.7597 | -0.0863 |
-| BEST_EXPRESSION | HIGH | 100 | 0.77 | -0.0731 |
+| BEST_EXPRESSION | ALL | 157 | 0.758 | -0.0875 |
+| BEST_EXPRESSION | HIGH | 101 | 0.7723 | -0.0715 |
 | BEST_EXPRESSION | MEDIUM | 28 | 0.6786 | -0.1743 |
-| BEST_EXPRESSION | LOW | 26 | 0.8077 | -0.0425 |
-| SINGLE_SCRIPT | ALL | 941 | 0.745 | -0.0219 |
-| SINGLE_SCRIPT | HIGH | 592 | 0.7601 | -0.0015 |
+| BEST_EXPRESSION | LOW | 28 | 0.7857 | -0.0586 |
+| SINGLE_SCRIPT | ALL | 958 | 0.7411 | -0.0271 |
+| SINGLE_SCRIPT | HIGH | 594 | 0.7609 | -0.0012 |
 | SINGLE_SCRIPT | MEDIUM | 144 | 0.7222 | -0.044 |
-| SINGLE_SCRIPT | LOW | 205 | 0.7171 | -0.0651 |
-| AGGRESSIVE | ALL | 1467 | 0.5828 | -0.0423 |
-| AGGRESSIVE | HIGH | 1013 | 0.5795 | -0.0309 |
+| SINGLE_SCRIPT | LOW | 220 | 0.7 | -0.0859 |
+| AGGRESSIVE | ALL | 1500 | 0.5813 | -0.0418 |
+| AGGRESSIVE | HIGH | 1014 | 0.5799 | -0.0308 |
 | AGGRESSIVE | MEDIUM | 190 | 0.6158 | 0.0259 |
-| AGGRESSIVE | LOW | 264 | 0.572 | -0.1353 |
-| CONTRADICTED | ALL | 1447 | 0.2474 | -0.1341 |
-| CONTRADICTED | HIGH | 973 | 0.2343 | -0.1303 |
+| AGGRESSIVE | LOW | 296 | 0.5642 | -0.1229 |
+| CONTRADICTED | ALL | 1464 | 0.25 | -0.1303 |
+| CONTRADICTED | HIGH | 975 | 0.2338 | -0.1319 |
 | CONTRADICTED | MEDIUM | 185 | 0.227 | -0.101 |
-| CONTRADICTED | LOW | 289 | 0.3045 | -0.1679 |
+| CONTRADICTED | LOW | 304 | 0.3158 | -0.1429 |
 
 Calibration ready: **False** (smallest archetype sample 3 of 30 required).
 
