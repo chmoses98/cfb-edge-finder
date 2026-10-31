@@ -283,25 +283,47 @@ def open_meteo_environment(
 # ------------------------------------------- derived from prior scoreboards
 
 
-def completed_games_for(team_names_wanted: set[str], events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Every completed prior game one team played, newest first.
+def completed_games_for(
+    team_names_wanted: set[str],
+    events: list[dict[str, Any]],
+    *,
+    team_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Completed games for ONE team, joined by exact ESPN ID when available.
 
-    Matched on ESPN's own names, which is safe here because BOTH sides of the
-    comparison came from ESPN: the team names in the upcoming event and the
-    team names in the historical one. No cross-provider name mapping happens
-    in this function, which is why it can be exact.
+    Upcoming and historical scoreboard competitors expose ESPN team IDs. A
+    nickname match such as "Bulldogs" or "Tigers" is NOT a team identity and
+    previously attached other schools' results, scoring, and rest to a game.
+    Production MUST pass team_id; the legacy names-only path is retained for
+    synthetic callers that do not supply ESPN IDs.
     """
     out: list[dict[str, Any]] = []
+    seen_events: set[str] = set()
     for event in events:
         status = ((event.get("status") or {}).get("type") or {})
         if not status.get("completed"):
             continue
         competitors = competitors_of(event)
-        mine = next(
-            (c for c in competitors if set(team_names(c)) & team_names_wanted), None
-        )
+        if team_id is not None:
+            mine = next(
+                (
+                    c for c in competitors
+                    if str((c.get("team") or {}).get("id") or "") == str(team_id)
+                ),
+                None,
+            )
+        else:
+            mine = next(
+                (c for c in competitors if set(team_names(c)) & team_names_wanted),
+                None,
+            )
         if mine is None:
             continue
+        event_id = str(event.get("id") or "")
+        if event_id and event_id in seen_events:
+            continue
+        if event_id:
+            seen_events.add(event_id)
         theirs = next((c for c in competitors if c is not mine), None)
         out.append(
             {
