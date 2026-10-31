@@ -3,20 +3,20 @@
  "candidates_sha256": "bf19c972bd230ff505c50ccd3a631dbc027d41b4900ad76c97248a4cfc6e1ce5",
  "capture_health": {
   "by_outcome": {
-   "NO_MARKET": 436,
-   "OK": 1649
+   "NO_MARKET": 437,
+   "OK": 1653
   },
   "in_window_by_outcome": {
-   "NO_MARKET": 349,
-   "OK": 1320
+   "NO_MARKET": 350,
+   "OK": 1324
   },
   "last_cycle_errors": [],
-  "spread_attempts": 2085,
-  "spread_attempts_in_window": 1669,
+  "spread_attempts": 2090,
+  "spread_attempts_in_window": 1674,
   "system_failures": 38
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-10-31T20:10:56Z",
+ "last_ledger_row_at": "2026-10-31T20:16:00Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -42,7 +42,7 @@
    },
    "next_read": {
     "at_n": 50,
-    "remaining": 20,
+    "remaining": 18,
     "state": "EARLY_READ"
    },
    "observation_reasons": {
@@ -55,55 +55,55 @@
     "EXCLUDED_PROTOCOL": 359,
     "PENDING": 68
    },
-   "settlement_pending": 6,
+   "settlement_pending": 4,
    "summary": {
     "ats_like": {
-     "losses": 20,
+     "losses": 22,
      "pushes": 0,
-     "rate": 0.3333333333333333,
+     "rate": 0.3125,
      "rate_ci95": [
-      0.19230498083676134,
-      0.5121994835545616
+      0.17952541633609734,
+      0.4856667830095541
      ],
      "wins": 10
     },
     "economics": {
-     "fee_adjusted_pnl": -5.7,
+     "fee_adjusted_pnl": -6.73,
      "hits": 10,
-     "mean_price": 0.5033333333333333,
-     "n": 30,
+     "mean_price": 0.5028125,
+     "n": 32,
      "roi_ci95_bootstrap": [
-      -0.6809189534141672,
-      -0.03844611930724821
+      -0.7007779772591262,
+      -0.09855769230769232
      ],
-     "roi_on_outlay": -0.36305732484076436,
+     "roi_on_outlay": -0.40227136879856557,
      "unavailable": 0
     },
     "home_away": {
-     "away": 20,
-     "home": 10
+     "away": 21,
+     "home": 11
     },
-    "n": 30,
-    "outright_win_rate": 0.3333333333333333,
+    "n": 32,
+    "outright_win_rate": 0.34375,
     "residual": {
      "ci95_bootstrap": [
-      -8.225219833333334,
-      1.6213803333333343
+      -8.538117265625,
+      1.0588382031250005
      ],
-     "mean": -3.381093333333333,
+     "mean": -3.902196875,
      "median": -4.15,
-     "positive_rate": 0.3333333333333333,
+     "positive_rate": 0.3125,
      "positive_rate_ci95": [
-      0.19230498083676134,
-      0.5121994835545616
+      0.17952541633609734,
+      0.4856667830095541
      ],
      "quantiles": {
-      "10": -19.58333,
-      "25": -12.874975,
-      "75": 4.134375,
-      "90": 15.540000000000003
+      "10": -20.24997,
+      "25": -13.47915,
+      "75": 4.003125,
+      "90": 15.241250000000004
      },
-     "sd": 14.034907497058487
+     "sd": 13.983761493534365
     },
     "verdict": "PROSPECTIVE_TRACKING"
    }

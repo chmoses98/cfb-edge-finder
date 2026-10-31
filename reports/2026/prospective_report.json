@@ -1,41 +1,43 @@
 {
  "capture_health": {
-  "expected_games": 99,
-  "game_winner_markets_found": 72,
+  "expected_games": 97,
+  "game_winner_markets_found": 71,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 0,
-  "pending": 17,
+  "pending": 12,
   "price_1_00": 0,
   "primary_window_coverage": 1.0,
   "statuses": {
-   "CAPTURE_OK": 82,
-   "CAPTURE_PENDING": 17
+   "CAPTURE_OK": 85,
+   "CAPTURE_PENDING": 12
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 82,
+  "valid_primary_captures": 85,
   "window": {
    "from": "2026-10-31T16:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 82
+  "windows_closed": 85
  },
  "population": {
-  "awaiting_kickoff": {},
+  "awaiting_kickoff": {
+   "NO_CONTROL": 2
+  },
   "by_strength": {
-   "MODERATE": 14,
-   "NO_CONTROL": 73,
-   "STRONG": 12
+   "MODERATE": 15,
+   "NO_CONTROL": 83,
+   "STRONG": 15
   },
   "by_tier": {
    "AWAY_CONTROL_MODERATE": 9,
-   "AWAY_CONTROL_STRONG": 2,
-   "HOME_CONTROL_MODERATE": 5,
-   "HOME_CONTROL_STRONG": 10,
-   "NO_CONTROL": 73
+   "AWAY_CONTROL_STRONG": 4,
+   "HOME_CONTROL_MODERATE": 6,
+   "HOME_CONTROL_STRONG": 11,
+   "NO_CONTROL": 83
   },
-  "final_pregame_games": 99,
+  "final_pregame_games": 113,
   "missing_final_pregame": [
    {
     "event_id": "401856823",
@@ -1363,11 +1365,6 @@
     "kickoff_utc": "2026-10-31T02:30:00Z"
    },
    {
-    "event_id": "401869846",
-    "game_key": "26OCT30APPGASO",
-    "kickoff_utc": "2026-10-31T04:00:00Z"
-   },
-   {
     "event_id": "401862814",
     "game_key": "26OCT30ARMYMEM",
     "kickoff_utc": "2026-10-31T04:00:00Z"
@@ -1393,23 +1390,8 @@
     "kickoff_utc": "2026-10-31T04:00:00Z"
    },
    {
-    "event_id": "401858508",
-    "game_key": "26OCT30NEVUCLA",
-    "kickoff_utc": "2026-10-31T04:00:00Z"
-   },
-   {
     "event_id": "401856847",
     "game_key": "26OCT30OKSTISU",
-    "kickoff_utc": "2026-10-31T04:00:00Z"
-   },
-   {
-    "event_id": "401858506",
-    "game_key": "26OCT30PURPSU",
-    "kickoff_utc": "2026-10-31T04:00:00Z"
-   },
-   {
-    "event_id": "401856736",
-    "game_key": "26OCT30SCAROKLA",
     "kickoff_utc": "2026-10-31T04:00:00Z"
    },
    {
@@ -1776,51 +1758,6 @@
     "event_id": "401864531",
     "game_key": "26OCT31UTEPNDSU",
     "kickoff_utc": "2026-10-31T19:30:00Z"
-   },
-   {
-    "event_id": "401856848",
-    "game_key": "26OCT30UTAHCIN",
-    "kickoff_utc": "2026-10-31T19:45:00Z"
-   },
-   {
-    "event_id": "401858284",
-    "game_key": "26OCT30UVAWAKE",
-    "kickoff_utc": "2026-10-31T19:45:00Z"
-   },
-   {
-    "event_id": "401868098",
-    "game_key": "26OCT31IDHOPRST",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401868089",
-    "game_key": "26OCT31MONTEWU",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401868267",
-    "game_key": "26OCT31MRSTUSD",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401867887",
-    "game_key": "26OCT31SDAKSDST",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401868320",
-    "game_key": "26OCT31SELAETAM",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401864529",
-    "game_key": "26OCT31UNMSJSU",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
-   },
-   {
-    "event_id": "401868056",
-    "game_key": "26OCT31UWGAAC",
-    "kickoff_utc": "2026-10-31T20:00:00Z"
    }
   ]
  },
