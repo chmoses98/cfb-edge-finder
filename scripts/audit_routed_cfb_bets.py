@@ -79,7 +79,11 @@ def audit(base: Path, since: str, through: str | None = None, unit: Decimal = De
         ):
             raise ValueError("Orphan or contradictory settlement amendment")
         settlement = correction or original
-        pnl = Decimal(str(settlement["net_profit_loss"])) if settlement and settlement["net_profit_loss"] is not None else None
+        pnl = (
+            Decimal(str(settlement["net_profit_loss"]))
+            if settlement and settlement["net_profit_loss"] is not None
+            else None
+        )
         result = settlement["result"] if settlement else "PENDING"
         if settlement and pnl is None:
             raise ValueError("Settlement without established P&L")
