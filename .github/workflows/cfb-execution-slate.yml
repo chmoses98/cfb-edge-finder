@@ -36,6 +36,13 @@ name: CFB Execution Slate
 # rebuilding when a human is about to read one, and a dispatch is always
 # available for exactly that.
 on:
+  # Rebuild operational packets after an identity/source repair lands on main,
+  # instead of serving corrupted cached context until the next fixed cron.
+  push:
+    branches: [main]
+    paths:
+      - "scripts/collect_live_context.py"
+      - "src/cfb_edge_finder/execution/context_sources.py"
   schedule:
     # 11:00 and 15:00 UTC Saturday: before the noon and the 3.30 Eastern
     # windows. 22:00 UTC Saturday for the evening slate. 23:00 UTC Friday
