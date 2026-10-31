@@ -479,3 +479,8 @@ Kalshi credential is used on the live path.
   catalog run's summary lists missed capture windows
   (`scripts/catalog_schedule.py report`). STALE is still STALE: dispatch the
   workflow, never lower the bar.
+
+
+## Post-Oct-22 wager risk audit (required for betting recommendations)
+
+Before placing **stakes** or reporting any price as a calculated **bet-up-to**, also read [`docs/CFB_BET_RISK_PROTOCOL.md`](CFB_BET_RISK_PROTOCOL.md). Its factual retrospective is the Oct 22–30, 2026 Kalshi router ledger. It adds a recommendation-level risk review, same-game and cumulative-day gross exposure disclosure, amendment-aware loss reconciliation, and a prohibition on treating captured asks as fair-value price limits. It does **not** modify the authoritative Kalshi market-retrieval process, activate a model, or justify placing orders without a verified fee-adjusted value case. When a fair-probability range is not supportable, a matchup lean may be stated but must **not** be presented as a qualified positive-EV bet.
