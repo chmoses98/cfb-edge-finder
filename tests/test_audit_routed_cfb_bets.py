@@ -19,9 +19,30 @@ def test_loss_review_and_amendment(tmp_path):
     base = tmp_path
     shared = {"executed_at": "2026-10-24T22:00:00Z", "fees_paid": 1, "game_date": "2026-10-24"}
     wagers = [
-        dict(shared, source_bet_key="a", market_ticker="KXNCAAFSPREAD-26OCT24FOOBAR-FOO8", side="YES", stake=75, execution_price=.52),
-        dict(shared, source_bet_key="b", market_ticker="KXNCAAFTEAMTOTAL-26OCT24FOOBAR-BAR21", side="NO", stake=150, execution_price=.55),
-        dict(shared, source_bet_key="c", market_ticker="KXNCAAFGAME-26OCT24FOOBAR-FOO", side="YES", stake=75, execution_price=.5),
+        dict(
+            shared,
+            source_bet_key="a",
+            market_ticker="KXNCAAFSPREAD-26OCT24FOOBAR-FOO8",
+            side="YES",
+            stake=75,
+            execution_price=.52,
+        ),
+        dict(
+            shared,
+            source_bet_key="b",
+            market_ticker="KXNCAAFTEAMTOTAL-26OCT24FOOBAR-BAR21",
+            side="NO",
+            stake=150,
+            execution_price=.55,
+        ),
+        dict(
+            shared,
+            source_bet_key="c",
+            market_ticker="KXNCAAFGAME-26OCT24FOOBAR-FOO",
+            side="YES",
+            stake=75,
+            execution_price=.5,
+        ),
     ]
     settlements = [
         {"source_bet_key": "a", "settlement_id": "s1", "result": "LOST", "net_profit_loss": -75},
