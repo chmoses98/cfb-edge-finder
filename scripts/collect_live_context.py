@@ -917,14 +917,23 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 if competitor is None:
                     continue
-                names = set(team_names(competitor))
-                history[slot] = [
-                    row
-                    for row in completed_games_for(names, all_events)
-                    if row.get("date") and row["date"] < str(entry.get("kickoff"))
-                ]
+                # A nickname is not an identity: "Bulldogs" occurs across
+                # many opponents. Require the exact ESPN team ID that the
+                # upcoming event assigns to this competitor. Without one,
+                # history is MISSING rather than attributed to the wrong team.
+                team_id = _espn_team_id(event, slot)
+                history[slot] = (
+                    [
+                        row
+                        for row in completed_games_for(
+                            set(), all_events, team_id=team_id
+                        )
+                        if row.get("date") and row["date"] < str(entry.get("kickoff"))
+                    ]
+                    if team_id
+                    else []
+                )
                 if not args.skip_injuries:
-                    team_id = _espn_team_id(event, slot)
                     if team_id:
                         payload, _error = _get(
                             f"{ESPN_CORE}/seasons/"

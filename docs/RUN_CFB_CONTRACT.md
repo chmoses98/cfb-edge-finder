@@ -484,3 +484,63 @@ Kalshi credential is used on the live path.
 ## Post-Oct-22 wager risk audit (required for betting recommendations)
 
 Before placing **stakes** or reporting any price as a calculated **bet-up-to**, also read [`docs/CFB_BET_RISK_PROTOCOL.md`](CFB_BET_RISK_PROTOCOL.md). Its factual retrospective is the Oct 22–30, 2026 Kalshi router ledger. It adds a recommendation-level risk review, same-game and cumulative-day gross exposure disclosure, amendment-aware loss reconciliation, and a prohibition on treating captured asks as fair-value price limits. It does **not** modify the authoritative Kalshi market-retrieval process, activate a model, or justify placing orders without a verified fee-adjusted value case. When a fair-probability range is not supportable, a matchup lean may be stated but must **not** be presented as a qualified positive-EV bet.
+
+## ChatGPT full-slate handoff: no user uploads or manual CLI required
+
+**This is a separate operator path from the terminal-only workflow in
+`docs/LIVE_EXECUTION.md`.** When the operator says "RUN CFB -- afternoon",
+ChatGPT must perform the complete retrieval and handicap **within the session**
+rather than asking the operator to download `cfb-handicap-batches`, paste a
+handicap JSON, or run `evaluate`/`candidates` on a laptop.
+
+1. Query the repository's **latest successful `CFB Execution Slate` workflow
+   run on `main`**, using the repository Actions runs collection. Verify that
+   its `head_sha` and build time reflect the intended current source version.
+   Fetch the run's artifact list and download **both**
+   `cfb-handicap-batches` and `cfb-analysis-artifacts` through the GitHub
+   connector. The connector downloads ZIPs directly into the ChatGPT runtime;
+   inspect the extracted files there. Do not make the user upload them.
+2. The context artifact contains all games in batches of 5–8; read **every**
+   applicable batch. The analysis artifact contains the **complete market
+   menu with both asks, sizes and fees**. Check batch-manifest game and
+   eligible-contract reconciliation against the analysis artifact. The
+   `cfb_execution_index.json` and listed per-game quote/event files remain
+   the fallback, and are always valid for completeness checks.
+3. **Select by actual kickoff, not arbitrary batch name.** For a request about
+   "2 pm Central games", start with kickoff 15:00 Eastern (19:00 UTC
+   during daylight time on Oct 31, 2026), and include the rest of the
+   requested afternoon window if the operator says "afternoon slate".
+   Games already kicked off cannot receive a new pregame recommendation.
+4. **Audit factual histories before handicapping.** Historical scoreboard
+   opponents must belong to that team's exact ESPN team ID, not a nickname
+   such as "Tigers", "Bulldogs" or "Eagles". Reject any packet whose recent
+   results include competing opponents on the same day or an implausible
+   21-day scoring sample. Old artifacts created before this identity fix are
+   *not* repaired by a source-code merge; use a post-fix build or independently
+   verify/reconstruct those histories. Never price a wager from a corrupted
+   scoring statistic.
+5. Research opponent quality, QB/injuries, efficiency, tempo, weather, and
+   scripts independently. Form an explicit, explainable probability or score
+   distribution with uncertainty **without copying the market's implied
+   probability as a fair estimate**. If insufficient evidence exists, leave
+   the contract unqualified rather than filling it with a plausible guess.
+6. Compare *all* relevant listed contracts against their proper buy-side
+   ask + trade fee and payout condition. The repository's standalone
+   `evaluate`/`candidates` CLI may be used where available, but **is not
+   mandatory** for ChatGPT's in-session calculations: the terminal workflow
+   is not a reason to stop at the research packet. Account for liquidity,
+   independent game and correlated-thesis exposure. A calculated bet-up-to
+   must be derived from a defensible fair-value range and uncertainty.
+7. **Labels mean what they say:** a two-sided quote with a published
+   `buy_yes_executable` or `buy_no_executable` field was executable
+   *at capture*, not necessarily right now. Unless a new direct exchange
+   request successfully returns the same buy-side price and sufficient
+   size, report `captured reference`, not `live verified`. Continue the
+   handicap and provide conditional prices instead of pretending there were
+   no quotes or no betting opinions. Any unfounded probability is a football
+   lean, **not** a qualified positive-EV wager.
+
+**Output:** one complete game-coverage accounting plus one ranked betting
+table, clearly separating qualified bets and conditional candidates. No
+invented valuations, no fabricated live verification, no automatic orders,
+and no pregame wagers after kickoff.
