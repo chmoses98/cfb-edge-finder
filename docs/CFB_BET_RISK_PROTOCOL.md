@@ -6,11 +6,11 @@ Status: **analyst procedure**, not a claim of a profitable strategy. This protoc
 
 Source: the append-only \`accounting-data\` branch in this repository (\`wagers/2026.jsonl\`, \`settlements/2026.jsonl\`, \`settlement_amendments/2026.jsonl\`). For any settled wager, apply its canonical amendment if one exists. Group by **US/Eastern execution date**, not ticker date.
 
-- 67 executed bets; 60 settled, 7 pending; 30 won and 30 lost.
-- Settled stake $5,878.5074; realized P&L **-$684.1374**; realized ROI **-11.6379%**. Additional pending exposure $682.9741 is excluded from realized ROI.
+- 67 executed bets; **67 settled**, **32 won and 35 lost** (Friday, Oct 30 settled overnight on Oct 31).
+- Total settled stake **$6,561.48**, realized P&L **-$1,102.73**, and realized ROI approximately **-16.8%**. The original Oct 30 snapshot was 60 settled, 7 pending; those seven settled overnight with a further **-$418.5941**.
 - Oct 24: **44** wagers and $4,105.92 of recorded gross exposure.
-- Game spreads: 19 settled, 6 wins, 13 losses, **-$1,306.9190**, -57.56% ROI. Before Oct 22, 82 game-spread bets returned approximately +2.8% ROI; the reversal is a trigger for diagnosis, not proof spreads are unprofitable.
-- Team totals: 20 settled, 15 wins, 5 losses, **+$796.1430**, +36.93% ROI. This is *not* enough out-of-sample evidence to recommend blindly betting all team totals.
+- Game spreads through Oct 29: 19 settled, 6 wins, 13 losses, **-$1,306.9190**, -57.56% ROI. On Oct 30, Harvard +10.5 (NO) won +$57.1953 and Tulane -7.5 (YES) lost -$149.9980. Before Oct 22, 82 game-spread bets returned approximately +2.8% ROI; the reversal is a trigger for diagnosis, not proof spreads are unprofitable.
+- Team totals through Oct 29: 20 settled, 15 wins, 5 losses, **+$796.1430**, +36.93% ROI; Oct 30 added one win and two losses, including two correlated Sacramento State unders that both lost. This is *not* enough out-of-sample evidence to recommend blindly betting all team totals.
 - Oct 22 JMU had $375 correlated exposure in one game; Oct 24 Houston/Utah had $260 on related outcomes; the Oct 24 Texas A&M team-total ticker had bought YES and NO on the same underlying contract (inspect fill chronology before calling it a hedge).
 - Three highest-risk losing spreads, $300 JMU, $200 Air Force and $200 against Utah, lost approximately $700 together. Larger stakes were not supported by documented, validated fee-adjusted probabilities.
 
