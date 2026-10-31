@@ -3,7 +3,7 @@
  "c2c_f3_shadow": {
   "affects": "nothing (shadow only)",
   "name": "UNCERTAINTY_SCALED_RUSH_SIGNAL",
-  "recorded": 163
+  "recorded": 167
  },
  "fcs_research_c2c_f4": {
   "observed": 3,
@@ -18,12 +18,12 @@
   "feature_unavailable": 0,
   "last_cycle_errors": [],
   "missed": 0,
-  "observations": 164,
-  "p0_unavailable": 2,
+  "observations": 168,
+  "p0_unavailable": 3,
   "settlements": 122
  },
  "label": "PROSPECTIVE_RESEARCH_ONLY -- no bet, no stake, no badge, no production change",
- "ledger_sha256": "a1eb7c7a865066f4891faeb4dcfb2c4c2408c7b308e51cc0766145d8de0b7c6b",
+ "ledger_sha256": "b16ac2bbf4ea8c493a05aeeb047963e71f2136c018d8b532a7db8b5fc896387e",
  "protocol": {
   "commit": "c9ebeee2fab99844ee3e0f5a3385740fd74df47d",
   "path": "docs/research/CFB_RUN_DEFENSE_PROSPECTIVE_PROTOCOL.md",
@@ -33,10 +33,10 @@
  "season": 2026,
  "streams": {
   "CFB-MECH-PROS-001": {
-   "eligible": 161,
+   "eligible": 165,
    "name": "RUSH_DEFENSE_FORCED_PASS_CHANNEL",
    "next_review": 200,
-   "observed": 161,
+   "observed": 165,
    "primary_metric": {
     "name": "slopes_on_x_rd",
     "value": {
@@ -66,10 +66,10 @@
    "status": "INTERIM"
   },
   "CFB-MODEL-PROS-001": {
-   "eligible": 159,
+   "eligible": 162,
    "name": "RUSH_PROJECTION_INCREMENT",
    "next_review": 200,
-   "observed": 159,
+   "observed": 162,
    "primary_metric": {
     "ci95": [
      -0.6917056832343337,
@@ -110,10 +110,10 @@
    "status": "INTERIM"
   },
   "CFB-PROS-003": {
-   "eligible": 159,
+   "eligible": 162,
    "name": "RUSH_DEFENSE_RESIDUAL",
    "next_review": 200,
-   "observed": 159,
+   "observed": 162,
    "primary_metric": {
     "ci95": [
      -3.211087059083189,
