@@ -3,7 +3,7 @@
 
     python scripts/cfb_postmortem.py --base-dir /path/to/accounting-data --season 2026
     python scripts/cfb_postmortem.py --base-dir . --season 2026 \
-        --candidates data/execution/latest/candidates --unit 70
+        --candidates data/execution/latest/candidates --unit 75
 
 *** WHERE THE MONEY COMES FROM ***
 `wagers/<season>.jsonl` and `settlements/<season>.jsonl`, and nowhere else.

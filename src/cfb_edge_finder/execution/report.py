@@ -769,6 +769,25 @@ def build_report(
     }
 
 
+def _pit_lines(bet: dict[str, Any]) -> list[str]:
+    """Point-in-time review lines (execution/pit_review.py); empty for an artifact produced before it."""
+    review = bet.get("pit_review")
+    if not review:
+        return []
+    fair = bet.get("fair_value") or {}
+    fee = bet.get("fee_inclusive") or {}
+    lines = [
+        f"   POINT-IN-TIME: {'ACTIONABLE' if review['actionable'] else 'NOT ACTIONABLE'}"
+        + ("" if review["actionable"] else f" -- {', '.join(review['blocking_guards'])}"),
+        f"   fee-inclusive break-even {fee.get('break_even_probability')} "
+        f"(order fee {fee.get('order_fee_dollars')} on {fee.get('reference_contracts')} contracts)",
+        f"   conservative bet up to: {fair.get('conservative_bet_up_to')} "
+        f"[{fair.get('conservative_bet_up_to_basis') or fair.get('conservative_bet_up_to_missing_reason')}] "
+        f"| qualified +EV: {fair.get('qualified_positive_ev')}",
+    ]
+    return lines
+
+
 def render_report(report: dict[str, Any]) -> str:
     totals = report["totals"]
     lines = [
@@ -806,7 +825,8 @@ def render_report(report: dict[str, Any]) -> str:
                 f"vs fair {bet['fair_probability']}",
                 f"   raw edge {bet['raw_edge']} | fee {bet['fee']} | fee-adjusted {bet['fee_adjusted_edge']}",
                 f"   robustness: {bet['robustness']} (edge range {bet['fee_adjusted_edge_range']})",
-                f"   bet up to: {bet['bet_up_to_price']}",
+                f"   bet up to (legacy, base-case): {bet['bet_up_to_price']}",
+                *_pit_lines(bet),
                 f"   handicap confidence: {game.get('handicap_confidence', 'unstated')} | "
                 f"stake: {bet['stake_placeholder']}",
                 f"   thesis: {game.get('thesis', 'not supplied by the handicap')}",

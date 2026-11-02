@@ -151,6 +151,8 @@ def probe_safety_locks() -> dict[str, bool]:
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Read-only postmortem tooling (2026-11-02): reads stakes, so it must never size the next bet.
+    "postmortem",
     # Kept in step with tests/test_sizing_disconnection.py, which asserts the
     # two lists are identical. A package guarded there but missing here is a
     # probe that reports the lock healthy while it is broken.

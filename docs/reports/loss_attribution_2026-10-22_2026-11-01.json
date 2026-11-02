@@ -1,0 +1,934 @@
+{
+  "exposure": {
+    "days_over_15U": {
+      "2026-10-24": 49.67,
+      "2026-10-31": 31.72
+    },
+    "flags": [
+      "26OCT31OKSTISU:GAME_GROSS_OVER_5U",
+      "26OCT31OKSTISU:CORRELATED_VIEW_OVER_5U",
+      "2026-10-24:DAY_GROSS_OVER_15U",
+      "2026-10-31:DAY_GROSS_OVER_15U",
+      "UNDECODED_COMBO_EXPOSURE_PRESENT"
+    ],
+    "games_over_5U_correlated_view": [
+      "26OCT31OKSTISU"
+    ],
+    "games_over_5U_gross": [
+      "26OCT31OKSTISU"
+    ],
+    "undecoded_combo_units": 3.14,
+    "unit_dollars": 75.0
+  },
+  "family_performance": {
+    "1H_SPREAD": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 3,
+      "n_games": 3,
+      "net": -108.04,
+      "roi": -0.5541,
+      "roi_ci95_game_cluster_bootstrap": [
+        -1.0,
+        0.9324
+      ],
+      "stake": 194.99
+    },
+    "1H_TOTAL": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 1,
+      "n_games": 1,
+      "net": 90.98,
+      "roi": 0.9705,
+      "roi_ci95_game_cluster_bootstrap": [
+        0.9705,
+        0.9705
+      ],
+      "stake": 93.75
+    },
+    "1Q_SPREAD": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 3,
+      "n_games": 3,
+      "net": -214.36,
+      "roi": -0.2516,
+      "roi_ci95_game_cluster_bootstrap": [
+        -1.0,
+        0.9324
+      ],
+      "stake": 851.97
+    },
+    "1Q_TOTAL": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 3,
+      "n_games": 3,
+      "net": 62.21,
+      "roi": 0.1595,
+      "roi_ci95_game_cluster_bootstrap": [
+        -1.0,
+        1.4591
+      ],
+      "stake": 389.98
+    },
+    "COMBO_UNDECODED": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 8,
+      "n_games": 8,
+      "net": -120.0,
+      "roi": -0.5097,
+      "roi_ci95_game_cluster_bootstrap": [
+        -1.0,
+        0.3322
+      ],
+      "stake": 235.42
+    },
+    "GAME_MONEYLINE": {
+      "ci_excludes_zero": false,
+      "ci_reliable": true,
+      "n_bets": 11,
+      "n_games": 11,
+      "net": -279.49,
+      "roi": -0.2908,
+      "roi_ci95_game_cluster_bootstrap": [
+        -0.8599,
+        0.2398
+      ],
+      "stake": 960.97
+    },
+    "GAME_SPREAD": {
+      "ci_excludes_zero": true,
+      "ci_reliable": true,
+      "n_bets": 27,
+      "n_games": 26,
+      "net": -1706.3,
+      "roi": -0.5942,
+      "roi_ci95_game_cluster_bootstrap": [
+        -0.847,
+        -0.2722
+      ],
+      "stake": 2871.42
+    },
+    "GAME_TEAM_TOTAL": {
+      "ci_excludes_zero": false,
+      "ci_reliable": true,
+      "n_bets": 28,
+      "n_games": 25,
+      "net": 581.42,
+      "roi": 0.1975,
+      "roi_ci95_game_cluster_bootstrap": [
+        -0.1437,
+        0.523
+      ],
+      "stake": 2943.91
+    },
+    "GAME_TOTAL": {
+      "ci_excludes_zero": false,
+      "ci_reliable": false,
+      "n_bets": 6,
+      "n_games": 6,
+      "net": -154.46,
+      "roi": -0.328,
+      "roi_ci95_game_cluster_bootstrap": [
+        -1.0,
+        0.5307
+      ],
+      "stake": 470.98
+    }
+  },
+  "largest_game_concentrations": [
+    {
+      "game": "26OCT31OKSTISU",
+      "net": -511.99,
+      "stake": 511.99
+    },
+    {
+      "game": "26OCT22JMUAPP",
+      "net": -374.99,
+      "stake": 374.99
+    },
+    {
+      "game": "26OCT24TXAMALA",
+      "net": -88.59,
+      "stake": 266.59
+    },
+    {
+      "game": "26OCT31UTAHCIN",
+      "net": 247.07,
+      "stake": 265.0
+    },
+    {
+      "game": "26OCT24BAYKU",
+      "net": 2.59,
+      "stake": 261.24
+    },
+    {
+      "game": "26OCT24HOUUTAH",
+      "net": -260.0,
+      "stake": 260.0
+    },
+    {
+      "game": "26OCT24RUTGNW",
+      "net": 155.25,
+      "stake": 244.23
+    },
+    {
+      "game": "COMBO_UNDECODED",
+      "net": -120.0,
+      "stake": 235.42
+    },
+    {
+      "game": "26OCT27SHSUMOSU",
+      "net": 59.36,
+      "stake": 225.0
+    },
+    {
+      "game": "26OCT31MIAUNC",
+      "net": 221.45,
+      "stake": 224.99
+    }
+  ],
+  "ledger_totals": {
+    "fees_included_in_stake": 282.07,
+    "losses": 50,
+    "net_fee_inclusive": -1848.05,
+    "note": "net = gross - stake; fees are already inside stake and are not subtracted again",
+    "settled": 90,
+    "stake": 9013.4
+  },
+  "loss_attribution": {
+    "cause_counts": {
+      "INSUFFICIENT_EVIDENCE": 48,
+      "VARIANCE": 2
+    },
+    "missing_evidence_on_losses": {
+      "CALIBRATED_PREGAME_PROBABILITY": 44,
+      "CLOSE_QUOTE": 17,
+      "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY": 25,
+      "UNDECODED_COMBO_LEGS": 6
+    },
+    "per_loss": [
+      {
+        "all_in_cost_per_contract": 0.5970560840663933,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -299.9948,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT22JMUAPP-JMU8"
+      },
+      {
+        "all_in_cost_per_contract": 0.5871711899791231,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022171,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -112.4993,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT22ECUMEM-MEM8"
+      },
+      {
+        "all_in_cost_per_contract": 0.5971164716185017,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "1H_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9958,
+        "side": "YES",
+        "ticker": "KXNCAAF1HSPREAD-26OCT22JMUAPP-JMU5"
+      },
+      {
+        "all_in_cost_per_contract": 0.5772597916125495,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.02226,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -199.9992,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT23AFAWYO-AFA5"
+      },
+      {
+        "all_in_cost_per_contract": 0.5773183497536947,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022318,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9961,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT23NCSTSTAN-NCST31"
+      },
+      {
+        "all_in_cost_per_contract": 0.1568313085578518,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -34.9834,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026ADIRNR6EOGLEJODE-HSELTECMA"
+      },
+      {
+        "all_in_cost_per_contract": 0.47744999588443493,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -57.9979,
+        "side": "NO",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT24PITTMIA-PITT14"
+      },
+      {
+        "all_in_cost_per_contract": 0.4370940170940171,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022094,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -44.9989,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT24DARTCLMB-CLMB"
+      },
+      {
+        "all_in_cost_per_contract": 0.5873079894915778,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -37.995,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT24RICEFAU-FAU8"
+      },
+      {
+        "all_in_cost_per_contract": 0.14634492350486789,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -19.9898,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026ORT2TASZ6ATCSBGM-J7F3YAEXR"
+      },
+      {
+        "all_in_cost_per_contract": 0.5404940141770257,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.015494,
+        "family": "1Q_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -129.9952,
+        "side": "NO",
+        "ticker": "KXNCAAF1QTOTAL-26OCT24BAYKU-11"
+      },
+      {
+        "all_in_cost_per_contract": 0.6069337217771303,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.021934,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -99.9983,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT24BYUUCF-BYU7"
+      },
+      {
+        "all_in_cost_per_contract": 0.5175269113993928,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022527,
+        "family": "GAME_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9961,
+        "side": "YES",
+        "ticker": "KXNCAAFTOTAL-26OCT24BSUWSU-53"
+      },
+      {
+        "all_in_cost_per_contract": 0.6069539532248928,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.021954,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -149.9975,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT24ULMTROY-TROY10"
+      },
+      {
+        "all_in_cost_per_contract": 0.49747811090474925,
+        "basis": [
+          "closing price at least as good as fill after fees (CLV -0.0025)"
+        ],
+        "cause": "VARIANCE",
+        "clv_after_fee": -0.002478,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -149.9978,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT24ULLUSM-ULL32"
+      },
+      {
+        "all_in_cost_per_contract": 0.47740929344366645,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022409,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -149.9954,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT23TENNSCAR-TENN"
+      },
+      {
+        "all_in_cost_per_contract": 0.5773183497536947,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022318,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9961,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT24EMUOHIO-OHIO10"
+      },
+      {
+        "all_in_cost_per_contract": 0.3475728587319244,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -37.491,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026EMC25PMW3IN6JN3T-LEGLWRKGT"
+      },
+      {
+        "all_in_cost_per_contract": 0.08094107164553886,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -19.9789,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026WFVTUEPAF6WL53WK-6BRT3UTZW"
+      },
+      {
+        "all_in_cost_per_contract": 0.859,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.464,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -51.5355,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT24TXAMALA-TXAM21"
+      },
+      {
+        "all_in_cost_per_contract": 0.8691528305084745,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.474153,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -102.56,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT24TXAMALA-TXAM21"
+      },
+      {
+        "all_in_cost_per_contract": 0.33525310090512905,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.020253,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -59.9999,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT24HOUUTAH-HOU"
+      },
+      {
+        "all_in_cost_per_contract": 0.31990149856878264,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -37.9904,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026JXL7PBCXEJ7LOCII-R5RJ3YX2M"
+      },
+      {
+        "all_in_cost_per_contract": 0.5175261051566309,
+        "basis": [
+          "closing price at least as good as fill after fees (CLV -0.0025)"
+        ],
+        "cause": "VARIANCE",
+        "clv_after_fee": -0.002526,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -112.4994,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT24COLOOKST-OKST14"
+      },
+      {
+        "all_in_cost_per_contract": 0.5075086909081682,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.012509,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -199.998,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT24HOUUTAH-UTAH7"
+      },
+      {
+        "all_in_cost_per_contract": 0.5673750063319994,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -111.9957,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT24USUTXST-TXST14"
+      },
+      {
+        "all_in_cost_per_contract": 0.527522132012293,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.012522,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -114.9988,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT24NDSUUNM-UNM5"
+      },
+      {
+        "all_in_cost_per_contract": 0.5574009984974069,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -114.9948,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT24VANUK-UK12"
+      },
+      {
+        "all_in_cost_per_contract": 0.6069944161204176,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.021994,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9988,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT27SHSUMOSU-MOSU8"
+      },
+      {
+        "all_in_cost_per_contract": 0.386328422787679,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9996,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT28KENNMTU-MTU"
+      },
+      {
+        "all_in_cost_per_contract": 0.5275130116753411,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -149.998,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT30TULNCHAR-TULN8"
+      },
+      {
+        "all_in_cost_per_contract": 0.5871846864479762,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -149.9952,
+        "side": "NO",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT30KENTSAC-SAC21"
+      },
+      {
+        "all_in_cost_per_contract": 0.5277784308931796,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -37.9941,
+        "side": "NO",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT30KENTSAC-SAC20"
+      },
+      {
+        "all_in_cost_per_contract": 0.467353646758264,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.032354,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -149.9974,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT30BAYUCF-UCF"
+      },
+      {
+        "all_in_cost_per_contract": 0.1063071362766636,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "COMBO_UNDECODED",
+        "missing": [
+          "UNDECODED_COMBO_LEGS"
+        ],
+        "net_pnl": -45.0,
+        "side": "YES",
+        "ticker": "KXMVECROSSCATEGORY-S2026WIL4H5NN76JPPUU2-2JIBK2NZG"
+      },
+      {
+        "all_in_cost_per_contract": 0.5075198587819947,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -114.998,
+        "side": "YES",
+        "ticker": "KXNCAAFTOTAL-26OCT31ILLMD-55"
+      },
+      {
+        "all_in_cost_per_contract": 0.507526052239816,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9974,
+        "side": "NO",
+        "ticker": "KXNCAAFTOTAL-26OCT31ARIZTTU-55"
+      },
+      {
+        "all_in_cost_per_contract": 0.7534840372793972,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -37.9974,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT30SMUSYR-SMU"
+      },
+      {
+        "all_in_cost_per_contract": 0.5405042513692707,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9932,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT31BGSUWMU-WMU30"
+      },
+      {
+        "all_in_cost_per_contract": 0.5275130116753411,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022513,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.999,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT31CCARGAST-GAST4"
+      },
+      {
+        "all_in_cost_per_contract": 0.5075820192133406,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -55.9968,
+        "side": "YES",
+        "ticker": "KXNCAAFTOTAL-26OCT31CALNCST-58"
+      },
+      {
+        "all_in_cost_per_contract": 0.6069944161204176,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9988,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT31NDNAVY-ND42"
+      },
+      {
+        "all_in_cost_per_contract": 0.6069944161204176,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": null,
+        "family": "1H_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "CLOSE_QUOTE"
+        ],
+        "net_pnl": -74.9988,
+        "side": "YES",
+        "ticker": "KXNCAAF1HSPREAD-26OCT31NDNAVY-ND15"
+      },
+      {
+        "all_in_cost_per_contract": 0.4975112762005837,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022511,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9989,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT31CSUUSU-USU8"
+      },
+      {
+        "all_in_cost_per_contract": 0.3454985192497532,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.260499,
+        "family": "GAME_MONEYLINE",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -34.9969,
+        "side": "YES",
+        "ticker": "KXNCAAFGAME-26OCT30MINNIND-MINN"
+      },
+      {
+        "all_in_cost_per_contract": 0.5717138264957456,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.016714,
+        "family": "1Q_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -511.9872,
+        "side": "NO",
+        "ticker": "KXNCAAF1QSPREAD-26OCT31OKSTISU-OKST4"
+      },
+      {
+        "all_in_cost_per_contract": 0.4874470814624759,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.012447,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -37.9958,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT31LAMUTRGV-LAM6"
+      },
+      {
+        "all_in_cost_per_contract": 0.48748342649161575,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.022483,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.9971,
+        "side": "NO",
+        "ticker": "KXNCAAFSPREAD-26OCT31MIZZARK-MIZZ10"
+      },
+      {
+        "all_in_cost_per_contract": 0.5275130116753411,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.037513,
+        "family": "GAME_SPREAD",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -74.999,
+        "side": "YES",
+        "ticker": "KXNCAAFSPREAD-26OCT31WASHNEB-NEB8"
+      },
+      {
+        "all_in_cost_per_contract": 0.5474452554744526,
+        "basis": [],
+        "cause": "INSUFFICIENT_EVIDENCE",
+        "clv_after_fee": -0.032445,
+        "family": "GAME_TEAM_TOTAL",
+        "missing": [
+          "CALIBRATED_PREGAME_PROBABILITY",
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
+        ],
+        "net_pnl": -149.9978,
+        "side": "YES",
+        "ticker": "KXNCAAFTEAMTOTAL-26OCT31ORSTFRES-ORST32"
+      }
+    ]
+  },
+  "reconciliation": {
+    "contracts": 90,
+    "economics_issues": 0,
+    "fee_recompute_mismatches": [],
+    "missing_evidence_counts": {
+      "MISSING_CLOSE_QUOTE": 39,
+      "MISSING_FILL_IDS": 90,
+      "MISSING_INJURY_SNAPSHOT": 90,
+      "MISSING_MARKET_CAPTURED_AT": 90,
+      "MISSING_MODEL_INPUTS_AS_OF": 90,
+      "MISSING_MODEL_PRICE_ID": 90,
+      "MISSING_MODEL_RUN_ID": 90,
+      "MISSING_ORDER_ID": 90,
+      "MISSING_RECOMMENDATION_ID": 90,
+      "MISSING_RECOMMENDATION_TIME": 90,
+      "UNDECODED_COMBO_LEGS": 8
+    }
+  },
+  "window": [
+    "2026-10-22",
+    "2026-11-01"
+  ]
+}

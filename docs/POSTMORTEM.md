@@ -3,7 +3,7 @@
 ```bash
 python scripts/cfb_postmortem.py --base-dir <accounting-data checkout> --season 2026
 python scripts/cfb_postmortem.py --base-dir . --season 2026 \
-    --candidates data/execution/latest/candidates --unit 70
+    --candidates data/execution/latest/candidates --unit 75
 ```
 
 Exit 0 on a report (FINAL or PARTIAL — both are real answers), 2 if the ledger

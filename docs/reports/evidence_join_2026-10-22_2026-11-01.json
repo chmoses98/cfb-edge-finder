@@ -1,0 +1,121 @@
+{
+  "close_lag_seconds": {
+    "max": 25284,
+    "median": 1617,
+    "n": 82
+  },
+  "clv_vs_mid": {
+    "by_close_state": {
+      "NEAR_CLOSE_PROXY": {
+        "ci95": [
+          -0.05869,
+          -0.004424
+        ],
+        "mean": -0.031557,
+        "n": 51
+      },
+      "STALE_CLOSE_PROXY": {
+        "ci95": [
+          -0.025922,
+          0.008936
+        ],
+        "mean": -0.008493,
+        "n": 31
+      }
+    },
+    "by_family": {
+      "KXNCAAF1HSPREAD": {
+        "ci95": [
+          -0.006316,
+          0.016316
+        ],
+        "mean": 0.005,
+        "n": 3
+      },
+      "KXNCAAF1HTOTAL": {
+        "ci95": null,
+        "mean": -0.015,
+        "n": 1
+      },
+      "KXNCAAF1QSPREAD": {
+        "ci95": [
+          -0.113842,
+          0.034043
+        ],
+        "mean": -0.0399,
+        "n": 3
+      },
+      "KXNCAAF1QTOTAL": {
+        "ci95": [
+          -0.021506,
+          0.019167
+        ],
+        "mean": -0.00117,
+        "n": 3
+      },
+      "KXNCAAFGAME": {
+        "ci95": [
+          -0.06428,
+          0.037916
+        ],
+        "mean": -0.013182,
+        "n": 11
+      },
+      "KXNCAAFSPREAD": {
+        "ci95": [
+          -0.013834,
+          -0.002281
+        ],
+        "mean": -0.008058,
+        "n": 27
+      },
+      "KXNCAAFTEAMTOTAL": {
+        "ci95": [
+          -0.099186,
+          -0.006308
+        ],
+        "mean": -0.052747,
+        "n": 28
+      },
+      "KXNCAAFTOTAL": {
+        "ci95": [
+          -0.025168,
+          0.055168
+        ],
+        "mean": 0.015,
+        "n": 6
+      }
+    },
+    "ci95": [
+      -0.041034,
+      -0.004641
+    ],
+    "mean": -0.022837,
+    "n": 82,
+    "note": "closing PROXY (last pre-kickoff catalog capture), probability points; positive = market moved toward the position. Wager-level CLV is correlated within games and families; intervals here assume independence and are therefore too narrow."
+  },
+  "coverage": {
+    "close": {
+      "MISSING_MARKET_NOT_IN_CATALOG": 8,
+      "NEAR_CLOSE_PROXY": 51,
+      "STALE_CLOSE_PROXY": 31
+    },
+    "entry": {
+      "MISSING_NO_SNAPSHOT_BEFORE_ORDER": 8,
+      "SNAPSHOT_BEFORE_ORDER": 82
+    },
+    "fill_ids": {
+      "MISSING_NOT_IN_ROUTED_LEDGER": 90
+    },
+    "recommendation": {
+      "UNKNOWN_NO_DECISION_RECORDS": 90
+    }
+  },
+  "snapshots_available": 160,
+  "version": "cfb_evidence_join/1.0.0",
+  "wagers": 90,
+  "window": {
+    "from": "2026-10-22",
+    "to": "2026-11-01"
+  }
+}

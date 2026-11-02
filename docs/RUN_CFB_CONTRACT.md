@@ -441,6 +441,25 @@ of the same thesis is frequently not the obvious one.
 
 ### 10 — Return only wagers whose price justifies the thesis
 
+#### 10a — Point-in-time review is part of the artifact (mandatory reading)
+
+`python -m cfb_edge_finder.execution candidates` (and `report`) re-checks every candidate at the moment the artifact
+is produced (`--as-of`, default now) and attaches `pit_review`, `fee_inclusive`, `fair_value` and `exposure_context`
+to each candidate (schema `cfb_candidate_artifact/1.2.0`; see `src/cfb_edge_finder/execution/pit_review.py`).
+**It can only restrict.** It never adds, drops or re-ranks a candidate and never edits a legacy field.
+
+| Field | What a session must do with it |
+|---|---|
+| `pit_review.actionable` | Quote a candidate **only if `true`**. `false` lists the named guard(s): `QUOTE_STALE` (capture older than the slate's capture-age budget), `AFTER_KICKOFF_CUTOFF` (within 10 min of kickoff or later), `PROJECTION_STALE` / `MISSING_PROJECTION_AS_OF` (the handicap must carry `handicapped_at`, tz-aware, ≤12 h old), `AVAILABILITY_STALE` / `MISSING_AVAILABILITY` (injury/availability context observed ≤18 h before, and not after, the decision), `NON_EXECUTABLE_PRICE`. A missing input is a block, never a pass. |
+| `pit_review.notes` | `QB_STATUS_NOT_TRACKED`: this repository has no confirmed-starting-QB source for CFB. State it; do not claim a QB was confirmed. |
+| `fee_inclusive.break_even_probability` | Probability at which the order has zero EV: price + the Kalshi taker fee **rounded up once per order**, for a one-unit order (1U = **$75**). The captured ask is a *capture*, not a live quote (`price_provenance`). |
+| `fair_value.conservative_bet_up_to` | The price ceiling to quote: highest whole cent at which the handicap's **stated lower bound** still clears break-even + the required edge. `null` (with `conservative_bet_up_to_missing_reason`) when the handicap stated no uncertainty region — **never invent one**. The legacy `bet_up_to_price` is the base-case figure at the quoted-price fee and is kept only for history. |
+| `fair_value.qualified_positive_ev` | `true` only when the probability is **calibrated from settled outcomes** (a reliability table) *and* its lower bound clears break-even. No such table exists, so it is `false` today: a handicap's stated range is an opinion about uncertainty, not a measured one. Present such a candidate as a *football lean / conditional candidate*, not a qualified positive-EV bet (CFB_BET_RISK_PROTOCOL.md). |
+| `pit_review.exposure` (artifact level) | Units already held (from the committed ledger export) and, if `--proposed-stakes` is given, the proposal's. **Flags, not caps**: a game above **$375** (5U) or a day above **$1,125** (15U) must be disclosed; nothing is removed. Without stakes the proposal is `NOT_ASSESSED`. |
+
+Options: `--as-of`, `--unit-dollars` (default 75), `--existing-positions`, `--proposed-stakes`, `--reliability-table`,
+`--max-quote-age-minutes`. The review cannot be switched off.
+
 State, per recommendation: the contract ticker, exactly what YES means, the
 executable price and size, the fee, your probability, and why the price
 justifies it. If no price justifies the thesis, **return nothing** — that
@@ -452,7 +471,9 @@ is a correct outcome.
 
 No projection, no fair value, no expected score, no model edge, no Kelly
 stake, no recommendation — asserted by test
-(`test_catalog_schema_and_isolation.py`), not by convention. No bet
+(`test_catalog_schema_and_isolation.py`), not by convention. (The catalog and execution index remain model-free. The
+**candidate artifact** is a different file: its `fair_value` fields restate probabilities a session supplied, with
+fee-inclusive arithmetic and explicit calibration status; the repository still never originates a probability.) No bet
 placement and no order-writing capability exists. No `CFBD_API_KEY` and no
 Kalshi credential is used on the live path.
 

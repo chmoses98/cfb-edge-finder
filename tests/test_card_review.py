@@ -461,7 +461,7 @@ def test_the_artifact_states_the_contract_machine_readably(tmp_path):
     artifact = build_candidate_artifact(
         "early", [evaluation], {GAME_KEY: game}, {GAME_KEY: handicap()}, min_net_edge=0.02
     )
-    assert artifact["schema_version"] == CANDIDATE_SCHEMA_VERSION == "cfb_candidate_artifact/1.1.0"
+    assert artifact["schema_version"] == CANDIDATE_SCHEMA_VERSION == "cfb_candidate_artifact/1.2.0"
     review = artifact["card_review"]
     assert review["contract_version"] == CARD_REVIEW_VERSION
     assert review["required_before_final_card"] is True
@@ -518,7 +518,7 @@ def test_i_the_card_review_survives_into_the_decision_record_without_a_stake(tmp
     )
     assert validate_decision_record(record) == []
     assert record["card_review"] == artifact["card_review"]
-    assert record["candidate_schema_version"] == "cfb_candidate_artifact/1.1.0"
+    assert record["candidate_schema_version"] == "cfb_candidate_artifact/1.2.0"
     assert record["bankroll_context"] is None
     for candidate in record["candidates"]:
         assert candidate["card_role"] == CardRole.CORE_EXPRESSION.value
