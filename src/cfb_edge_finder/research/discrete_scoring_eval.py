@@ -51,6 +51,12 @@ KEY_MARGINS = (3, 7, 10, 14)
 _STD = NormalDist()
 
 FG_GRID = (0.10, 0.15, 0.20, 0.25, 0.30, 0.35)
+#: Calibration grids (fit on the calibration split ONLY). kappa=1 / lift=1 is the uncalibrated baseline.
+KAPPA_GRID = (1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4)
+LIFT_GRID = tuple(round(1.0 + 0.1 * i, 2) for i in range(16))  # 1.0 .. 2.5
+L3_GRID = tuple(round(1.0 + 0.1 * i, 2) for i in range(26))  # 1.0 .. 3.5   (margin of exactly 3)
+L7_GRID = tuple(round(1.0 + 0.1 * i, 2) for i in range(16))  # 1.0 .. 2.5   (margin of exactly 7)
+LX_GRID = tuple(round(0.6 + 0.1 * i, 2) for i in range(11))  # 0.6 .. 1.6   (margins of 10 and 14)
 SIGMA_COMMON_GRID = (0.0, 0.05, 0.12, 0.20)
 SIGMA_TEAM_GRID = (0.0, 0.05, 0.10, 0.20)
 
@@ -200,6 +206,134 @@ def fit_shape(cal: list[dict[str, Any]], means: list[tuple[float, float]]) -> tu
     return best[1], best[0] / len(cal)
 
 
+def fit_calibration(
+    cal: list[dict[str, Any]], means: list[tuple[float, float]], base: ShapeParams
+) -> tuple[ShapeParams, float]:
+    """Fit (fg_share, margin_shrink, key_lift) by joint log-likelihood on ``cal`` ONLY.
+
+    The sigmas are carried from ``base`` (the baseline fit chose the grid edge). ``key_lift`` has a closed
+    form once the pmf is built: a cell's lifted probability is ``q * w / (1 + (lift - 1) * M)`` where ``M`` is
+    the game's key-number mass, so the whole lift grid is evaluated without rebuilding any distribution.
+    This function never sees a held-out game; the signature is the guarantee.
+    """
+    best: tuple[float, ShapeParams] | None = None
+    for fg, kappa in itertools.product(FG_GRID, KAPPA_GRID):
+        sp = ShapeParams(fg, base.sigma_common, base.sigma_team, kappa, 1.0)
+        q, hit, mass = [], [], []
+        for g, (mh, ma) in zip(cal, means, strict=True):
+            d = build_distribution(mh, ma, sp)
+            h, a = min(g["home_pts"], MAX_POINTS), min(g["away_pts"], MAX_POINTS)
+            q.append(d.joint[h, a])
+            hit.append(abs(h - a) in KEY_MARGINS)
+            mass.append(sum(d.margin_prob(sgn * k) for k in KEY_MARGINS for sgn in (1, -1)))
+        qa, ha, ma_ = np.asarray(q), np.asarray(hit), np.asarray(mass)
+        for lift in LIFT_GRID:
+            ll = float(np.sum(np.log(np.maximum(qa * np.where(ha, lift, 1.0) / (1.0 + (lift - 1.0) * ma_), 1e-12))))
+            if best is None or ll > best[0]:
+                best = (ll, ShapeParams(fg, base.sigma_common, base.sigma_team, kappa, lift))
+    assert best is not None
+    return best[1], best[0] / len(cal)
+
+
+def fit_calibration_per_key(
+    cal: list[dict[str, Any]], means: list[tuple[float, float]], base: ShapeParams
+) -> tuple[ShapeParams, float]:
+    """Like ``fit_calibration`` but with separate lifts for margin==3, margin==7 and margins 10/14.
+
+    Motivated by the CALIBRATION-split per-number gaps (the uniform lift fixed the aggregate but over-allocated
+    10/14). Still fitted on ``cal`` only; closed-form in the lifts given the per-game group masses."""
+    best: tuple[float, ShapeParams] | None = None
+    l3, l7, lx = np.meshgrid(np.asarray(L3_GRID), np.asarray(L7_GRID), np.asarray(LX_GRID), indexing="ij")
+    l3, l7, lx = l3.ravel(), l7.ravel(), lx.ravel()
+    for fg, kappa in itertools.product(FG_GRID, KAPPA_GRID):
+        sp = ShapeParams(fg, base.sigma_common, base.sigma_team, kappa)
+        q, grp, m3, m7, mx = [], [], [], [], []
+        for g, (mh, ma) in zip(cal, means, strict=True):
+            d = build_distribution(mh, ma, sp)
+            h, a = min(g["home_pts"], MAX_POINTS), min(g["away_pts"], MAX_POINTS)
+            q.append(d.joint[h, a])
+            mm = abs(h - a)
+            grp.append(0 if mm == 3 else 1 if mm == 7 else 2 if mm in (10, 14) else -1)
+            m3.append(d.margin_prob(3) + d.margin_prob(-3))
+            m7.append(d.margin_prob(7) + d.margin_prob(-7))
+            mx.append(sum(d.margin_prob(sg * k) for k in (10, 14) for sg in (1, -1)))
+        qa, ga = np.asarray(q), np.asarray(grp)
+        m3a, m7a, mxa = np.asarray(m3), np.asarray(m7), np.asarray(mx)
+        # normaliser per (game, lift triple)
+        z = (
+            1.0
+            + (l3[:, None] - 1.0) * m3a[None, :]
+            + (l7[:, None] - 1.0) * m7a[None, :]
+            + (lx[:, None] - 1.0) * mxa[None, :]
+        )
+        w = np.ones((len(l3), len(qa)))
+        w = np.where(ga[None, :] == 0, l3[:, None], w)
+        w = np.where(ga[None, :] == 1, l7[:, None], w)
+        w = np.where(ga[None, :] == 2, lx[:, None], w)
+        ll = np.log(np.maximum(qa[None, :] * w / z, 1e-12)).sum(axis=1)
+        i = int(np.argmax(ll))
+        if best is None or ll[i] > best[0]:
+            lifts = ((3, float(l3[i])), (7, float(l7[i])), (10, float(lx[i])), (14, float(lx[i])))
+            best = (float(ll[i]), ShapeParams(fg, base.sigma_common, base.sigma_team, kappa, 1.0, lifts))
+    assert best is not None
+    return best[1], best[0] / len(cal)
+
+
+def _key_detail(dists_games: list[tuple[ScoreDistribution, dict[str, Any]]]) -> dict[str, Any]:
+    """Predicted (mean over games) vs observed mass at each key number and in total."""
+    n = len(dists_games)
+    per = {
+        str(k): {
+            "predicted": float(np.mean([d.margin_prob(k) + d.margin_prob(-k) for d, _ in dists_games])),
+            "observed": float(np.mean([abs(g["home_pts"] - g["away_pts"]) == k for _, g in dists_games])),
+        }
+        for k in KEY_MARGINS
+    }
+    pred = float(np.mean([sum(d.margin_prob(sg * k) for k in KEY_MARGINS for sg in (1, -1)) for d, _ in dists_games]))
+    obs = float(np.mean([abs(g["home_pts"] - g["away_pts"]) in KEY_MARGINS for _, g in dists_games]))
+    return {"games": n, "per_key_number": per, "all_key_numbers": {"predicted": pred, "observed": obs}}
+
+
+def key_number_verdict(
+    report_systems: dict[str, Any], paired: dict[str, Any], n_held: int, cand: str = "adjusted_discrete_cal"
+) -> dict[str, Any]:
+    """PRE-DECLARED rule (written before the held-out numbers were looked at). CALIBRATION_FIXED iff ALL hold:
+
+    A. held-out predicted key-number mass is within 1.96 binomial standard errors of the observed rate;
+    B. its absolute gap is smaller than the uncalibrated reference's gap;
+    C. paired held-out log-score gain vs the uncalibrated reference is positive on margin and NOT
+       significantly negative on total or team score (95% CI upper bound >= 0);
+    D. held-out event Brier is no worse than the reference's by more than 0.001.
+    """
+    ref = "adjusted_discrete"
+    k_c = report_systems[cand]["key_number_mass"]
+    k_r = report_systems[ref]["key_number_mass"]
+    obs = k_c["observed_rate_abs_margin_in_3_7_10_14"]
+    se = math.sqrt(obs * (1 - obs) / n_held)
+    gap_c, gap_r = abs(k_c["mean_predicted"] - obs), abs(k_r["mean_predicted"] - obs)
+    pb = paired[cand]["vs_adjusted_discrete"]
+    a = gap_c <= 1.96 * se
+    b = gap_c < gap_r
+    c = pb["margin"]["mean_diff_per_game"] > 0 and pb["total"]["ci95"][1] >= 0 and pb["team"]["ci95"][1] >= 0
+    d = report_systems[cand]["event_brier"] <= report_systems[ref]["event_brier"] + 0.001
+    return {
+        "verdict": "CALIBRATION_FIXED" if (a and b and c and d) else "NOT_FIXED",
+        "candidate": cand,
+        "reference": ref,
+        "observed_rate_heldout": obs,
+        "standard_error_observed": se,
+        "predicted_candidate": k_c["mean_predicted"],
+        "predicted_reference": k_r["mean_predicted"],
+        "criteria": {
+            "A_within_1.96_se_of_observed": bool(a),
+            "B_gap_smaller_than_reference": bool(b),
+            "C_logscore_not_degraded_margin_improved": bool(c),
+            "D_event_brier_not_worse": bool(d),
+        },
+        "promotion": "NOT_PROMOTED: single-season evidence (347 rated 2026 games); promotion is an owner decision",
+    }
+
+
 def _disc_logp(d: ScoreDistribution, g: dict[str, Any]) -> dict[str, float]:
     h, a = g["home_pts"], g["away_pts"]
     return {
@@ -269,6 +403,10 @@ def run_evaluation(games: list[dict[str, Any]], *, cal_fraction: float = 0.6) ->
         "adjusted_normal": ("adjusted", "normal"),
         "naive_discrete": ("naive", "discrete"),
         "adjusted_discrete": ("adjusted", "discrete"),
+        "naive_discrete_cal": ("naive", "discrete"),
+        "adjusted_discrete_cal": ("adjusted", "discrete"),
+        "naive_discrete_calk": ("naive", "discrete"),
+        "adjusted_discrete_calk": ("adjusted", "discrete"),
     }
     fitted: dict[str, Any] = {}
     for mean_kind in ("naive", "adjusted"):
@@ -277,6 +415,12 @@ def run_evaluation(games: list[dict[str, Any]], *, cal_fraction: float = 0.6) ->
         sp, ll = fit_shape(cal, cal_means)
         fitted[f"{mean_kind}_discrete"] = sp
         fitted[f"{mean_kind}_discrete_cal_loglik_per_game"] = ll
+        cal_sp, cal_ll = fit_calibration(cal, cal_means, sp)
+        fitted[f"{mean_kind}_discrete_cal"] = cal_sp
+        fitted[f"{mean_kind}_discrete_cal_cal_loglik_per_game"] = cal_ll
+        calk_sp, calk_ll = fit_calibration_per_key(cal, cal_means, sp)
+        fitted[f"{mean_kind}_discrete_calk"] = calk_sp
+        fitted[f"{mean_kind}_discrete_calk_cal_loglik_per_game"] = calk_ll
 
     per_game: dict[str, dict[str, list[float]]] = {s: defaultdict(list) for s in systems}
     events: dict[str, tuple[list[float], list[int]]] = {s: ([], []) for s in systems}
@@ -327,6 +471,17 @@ def run_evaluation(games: list[dict[str, Any]], *, cal_fraction: float = 0.6) ->
                     ev_o.append(int(a > s))
                 key_pred[name].append(sum(d.margin_prob(sg * k) for k in KEY_MARGINS for sg in (1, -1)))
 
+    key_detail: dict[str, Any] = {}
+    for name, (mean_kind, kind) in systems.items():
+        if kind != "discrete":
+            continue
+        key_detail[name] = {}
+        for split_name, split in (("calibration", cal), ("heldout", held)):
+            pairs = [
+                (build_distribution(*feats[g["game_id"]][mean_kind], fitted[name]), g) for g in split
+            ]
+            key_detail[name][split_name] = _key_detail(pairs)
+
     report: dict[str, Any] = {
         "status": "OK",
         "protocol": {
@@ -343,6 +498,7 @@ def run_evaluation(games: list[dict[str, Any]], *, cal_fraction: float = 0.6) ->
         },
         "fitted": {k: (v.__dict__ if hasattr(v, "__dict__") else v) for k, v in fitted.items()},
         "systems": {},
+        "key_number_detail": key_detail,
         "paired_bootstrap_logscore_vs_naive_normal": {},
         "unsupported": {
             "epa": "no play-level EPA in repo data (only drive summaries / success counts)",
@@ -380,4 +536,28 @@ def run_evaluation(games: list[dict[str, Any]], *, cal_fraction: float = 0.6) ->
                 "ci95": [lo, hi],
                 "ci_excludes_zero": bool(lo > 0 or hi < 0),
             }
+    # Paired comparison of the CALIBRATED systems against their UNCALIBRATED counterparts (the calibration effect).
+    report["paired_bootstrap_logscore_calibration_effect"] = {}
+    for base_name in ("naive_discrete", "adjusted_discrete"):
+        for suffix in ("cal", "calk"):
+            cal_name = f"{base_name}_{suffix}"
+            report["paired_bootstrap_logscore_calibration_effect"][cal_name] = {f"vs_{base_name}": {}}
+            for k in ("margin", "total", "team"):
+                diff = [x - y for x, y in zip(per_game[cal_name][k], per_game[base_name][k], strict=True)]
+                mean, lo, hi = _bootstrap(diff)
+                report["paired_bootstrap_logscore_calibration_effect"][cal_name][f"vs_{base_name}"][k] = {
+                    "mean_diff_per_game": mean,
+                    "ci95": [lo, hi],
+                    "ci_excludes_zero": bool(lo > 0 or hi < 0),
+                }
+    paired = report["paired_bootstrap_logscore_calibration_effect"]
+    report["key_number_calibration"] = {
+        "uniform_lift_v1": key_number_verdict(report["systems"], paired, len(held), "adjusted_discrete_cal"),
+        "per_key_lift_v2": key_number_verdict(report["systems"], paired, len(held), "adjusted_discrete_calk"),
+        "disclosure": (
+            "v2 was designed AFTER v1's held-out result was seen, motivated by the calibration-split per-number gaps "
+            "(margin 3 under-predicted ~2.5x; 10/14 over-allocated by the uniform lift). Both are reported under the "
+            "same pre-declared rule; v2's held-out numbers are therefore not fully clean evidence."
+        ),
+    }
     return report

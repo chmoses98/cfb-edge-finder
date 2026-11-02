@@ -63,6 +63,10 @@ class PitPolicy:
     max_availability_age: timedelta = DEFAULT_MAX_AVAILABILITY_AGE
     max_quote_age: timedelta = DEFAULT_MAX_QUOTE_AGE
     kickoff_buffer: timedelta = DEFAULT_KICKOFF_BUFFER
+    #: NFL has a confirmed-starting-QB source, so an unconfirmed QB blocks. CFB has none: requiring
+    #: confirmation there would block every bet forever, so CFB sets this False and the gap is
+    #: reported as a NOTE (``QB_STATUS_NOT_TRACKED``) rather than silently passed or blocking.
+    require_qb_confirmation: bool = True
 
 
 @dataclass(frozen=True)
@@ -78,9 +82,14 @@ class PitInputs:
     price_provenance: PriceProvenance
 
 
+QB_STATUS_NOT_TRACKED = "QB_STATUS_NOT_TRACKED"
+
+
 @dataclass(frozen=True)
 class GuardResult:
     blocking: tuple[Guard, ...] = field(default_factory=tuple)
+    #: Non-blocking disclosures (evidence this pipeline does not have, stated rather than hidden).
+    notes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def actionable(self) -> bool:
@@ -119,8 +128,12 @@ def evaluate_pit_guards(inputs: PitInputs, policy: PitPolicy | None = None) -> G
     elif t - inputs.availability_observed_at > pol.max_availability_age:
         out.append(Guard.AVAILABILITY_STALE)
 
+    notes: list[str] = []
     if inputs.qb_confirmed is not True:
-        out.append(Guard.QB_UNCONFIRMED)
+        if pol.require_qb_confirmation:
+            out.append(Guard.QB_UNCONFIRMED)
+        else:
+            notes.append(QB_STATUS_NOT_TRACKED)
 
     if inputs.quote_captured_at is None:
         out.append(Guard.MISSING_QUOTE_TIME)
@@ -137,4 +150,4 @@ def evaluate_pit_guards(inputs: PitInputs, policy: PitPolicy | None = None) -> G
     elif t >= inputs.kickoff - pol.kickoff_buffer:
         out.append(Guard.AFTER_KICKOFF_CUTOFF)
 
-    return GuardResult(tuple(out))
+    return GuardResult(tuple(out), tuple(notes))

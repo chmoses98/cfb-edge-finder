@@ -112,6 +112,40 @@ def _read(path: Path) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _pit_context(args: argparse.Namespace, out_dir: Path, packets, handicaps):
+    """Build the point-in-time review context for ``candidates`` / ``report`` from the run's own artifacts."""
+    from cfb_edge_finder.execution.pit_review import (
+        context_from_slate,
+        load_ledger_positions,
+        load_reliability_bins,
+    )
+
+    try:
+        slate_doc = _read(out_dir / "cfb_execution_slate.json")
+    except (OSError, ValueError):
+        slate_doc = {}
+    repo_root = Path(__file__).resolve().parents[3]
+    ledger = Path(args.existing_positions) if getattr(args, "existing_positions", None) else (
+        repo_root / "app" / "latest" / "wagers.json"
+    )
+    stakes = {}
+    if getattr(args, "proposed_stakes", None):
+        stakes = {str(k): float(v) for k, v in _read(Path(args.proposed_stakes)).items()}
+    bins_path = getattr(args, "reliability_table", None)
+    return context_from_slate(
+        slate=slate_doc,
+        packets=packets,
+        handicaps=handicaps,
+        decision_time=_as_of(getattr(args, "as_of", None)),
+        unit_dollars=float(args.unit_dollars),
+        max_quote_age_minutes=getattr(args, "max_quote_age_minutes", None),
+        existing_positions=load_ledger_positions(ledger),
+        proposed_stakes=stakes,
+        reliability_bins=load_reliability_bins(Path(bins_path)) if bins_path else None,
+        min_net_edge=args.min_edge,
+    )
+
+
 def _as_of(value: str | None) -> datetime:
     if not value:
         return datetime.now(UTC)
@@ -757,6 +791,9 @@ def cmd_report(args: argparse.Namespace) -> int:
         print(f"SHARD GATE CLOSED: {exc}", file=sys.stderr)
         return 3
 
+    from cfb_edge_finder.execution.pit_review import annotate_candidate_artifact
+
+    annotate_candidate_artifact(report, _pit_context(args, out_dir, packets, handicaps), key="final_bets")
     _write(out_dir / "reports" / f"{args.shard}.json", report)
     text = render_report(report)
     (out_dir / "reports" / f"{args.shard}.txt").write_text(text + "\n", encoding="utf-8")
@@ -874,6 +911,12 @@ def cmd_candidates(args: argparse.Namespace) -> int:
         print(f"GATE CLOSED: {exc}", file=sys.stderr)
         return 3
 
+    # POINT-IN-TIME REVIEW (restriction-only; see execution/pit_review.py). Default ON: it can only mark a
+    # candidate non-actionable, attach fee-inclusive pricing and exposure flags; it never adds or re-ranks.
+    from cfb_edge_finder.execution.pit_review import annotate_candidate_artifact
+
+    annotate_candidate_artifact(artifact, _pit_context(args, out_dir, packets, handicaps))
+
     path = out_dir / "candidates" / f"{label}.candidates.json"
     size = _write(path, artifact)
     # THE AUDIT IS WRITTEN IN THE SAME BREATH AS THE SHORTLIST, ALWAYS.
@@ -932,6 +975,13 @@ def cmd_candidates(args: argparse.Namespace) -> int:
 
     reconciliation = artifact["reconciliation"]
     reduction = artifact["reduction"]
+    pit = artifact["pit_review"]
+    print(
+        f"POINT-IN-TIME REVIEW at {pit['decision_time']}: {pit['actionable']} of {pit['candidates']} "
+        f"candidates actionable; blocked_by={pit['blocked_by'] or 'none'}"
+    )
+    for flag in pit["exposure"]["flags_with_proposal"]:
+        print(f"  EXPOSURE FLAG (review, not a cap; 1U=${pit['exposure']['unit_dollars']:g}): {flag}")
     print(f"{label}: {reconciliation['games']} games, "
           f"{reconciliation['eligible_contracts']} eligible contracts")
     print(f"  evaluated              {reconciliation['evaluated_contracts']}")
@@ -1030,6 +1080,35 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 
 # ----------------------------------------------------------------- CLI
+
+
+def pit_review_args(parser: argparse.ArgumentParser) -> None:
+    """Options of the point-in-time review (execution/pit_review.py). The review itself is always on."""
+    from cfb_edge_finder.decision.exposure_aggregation import STANDARD_UNIT_DOLLARS
+
+    parser.add_argument("--as-of", default=None, help="decision time (ISO, tz-aware); default: now")
+    parser.add_argument(
+        "--unit-dollars",
+        type=float,
+        default=STANDARD_UNIT_DOLLARS,
+        help="dollars per unit for exposure flags (owner-set 1U = $75 -> flags above $375/game, $1,125/day)",
+    )
+    parser.add_argument(
+        "--existing-positions",
+        default=None,
+        help="wagers export (app/latest/wagers.json shape) of positions already held; default: the committed export",
+    )
+    parser.add_argument(
+        "--proposed-stakes",
+        default=None,
+        help="JSON {recommendation_id|ticker: dollars}; without it the proposal's exposure is NOT_ASSESSED",
+    )
+    parser.add_argument(
+        "--reliability-table",
+        default=None,
+        help="JSON bins [{lo,hi,observations,hits}] from settled outcomes; without it nothing is 'calibrated'",
+    )
+    parser.add_argument("--max-quote-age-minutes", type=float, default=None)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1170,6 +1249,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     report.add_argument("--min-edge", type=float, default=DEFAULT_MIN_NET_EDGE)
+    pit_review_args(report)
     report.set_defaults(func=cmd_report)
 
     candidates = sub.add_parser(
@@ -1185,6 +1265,7 @@ def build_parser() -> argparse.ArgumentParser:
     cscope.add_argument("--batch", default=None)
     cscope.add_argument("--shard", default=None)
     candidates.add_argument("--min-edge", type=float, default=DEFAULT_MIN_NET_EDGE)
+    pit_review_args(candidates)
     candidates.add_argument(
         "--top",
         type=int,

@@ -79,7 +79,7 @@ Afterwards:
 
 ```bash
 python scripts/cfb_postmortem.py --base-dir <accounting-data checkout> \
-  --season 2026 --candidates data/execution/latest/candidates --unit 70
+  --season 2026 --candidates data/execution/latest/candidates --unit 75
 ```
 
 ---

@@ -1,12 +1,10 @@
 {
   "exposure": {
     "days_over_15U": {
-      "2026-10-24": 53.22,
-      "2026-10-31": 33.98
+      "2026-10-24": 49.67,
+      "2026-10-31": 31.72
     },
     "flags": [
-      "26OCT22JMUAPP:GAME_GROSS_OVER_5U",
-      "26OCT22JMUAPP:CORRELATED_VIEW_OVER_5U",
       "26OCT31OKSTISU:GAME_GROSS_OVER_5U",
       "26OCT31OKSTISU:CORRELATED_VIEW_OVER_5U",
       "2026-10-24:DAY_GROSS_OVER_15U",
@@ -14,15 +12,13 @@
       "UNDECODED_COMBO_EXPOSURE_PRESENT"
     ],
     "games_over_5U_correlated_view": [
-      "26OCT22JMUAPP",
       "26OCT31OKSTISU"
     ],
     "games_over_5U_gross": [
-      "26OCT22JMUAPP",
       "26OCT31OKSTISU"
     ],
-    "undecoded_combo_units": 3.36,
-    "unit_dollars": 70.0
+    "undecoded_combo_units": 3.14,
+    "unit_dollars": 75.0
   },
   "family_performance": {
     "1H_SPREAD": {
@@ -205,11 +201,13 @@
   },
   "loss_attribution": {
     "cause_counts": {
-      "INSUFFICIENT_EVIDENCE": 50
+      "INSUFFICIENT_EVIDENCE": 48,
+      "VARIANCE": 2
     },
     "missing_evidence_on_losses": {
       "CALIBRATED_PREGAME_PROBABILITY": 44,
-      "CLOSE_QUOTE": 44,
+      "CLOSE_QUOTE": 17,
+      "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY": 25,
       "UNDECODED_COMBO_LEGS": 6
     },
     "per_loss": [
@@ -231,11 +229,11 @@
         "all_in_cost_per_contract": 0.5871711899791231,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022171,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -112.4993,
         "side": "YES",
@@ -259,11 +257,11 @@
         "all_in_cost_per_contract": 0.5772597916125495,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.02226,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -199.9992,
         "side": "YES",
@@ -273,11 +271,11 @@
         "all_in_cost_per_contract": 0.5773183497536947,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022318,
         "family": "GAME_TEAM_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9961,
         "side": "YES",
@@ -314,11 +312,11 @@
         "all_in_cost_per_contract": 0.4370940170940171,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022094,
         "family": "GAME_MONEYLINE",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -44.9989,
         "side": "YES",
@@ -355,11 +353,11 @@
         "all_in_cost_per_contract": 0.5404940141770257,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.015494,
         "family": "1Q_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -129.9952,
         "side": "NO",
@@ -369,11 +367,11 @@
         "all_in_cost_per_contract": 0.6069337217771303,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.021934,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -99.9983,
         "side": "YES",
@@ -383,11 +381,11 @@
         "all_in_cost_per_contract": 0.5175269113993928,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022527,
         "family": "GAME_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9961,
         "side": "YES",
@@ -397,11 +395,11 @@
         "all_in_cost_per_contract": 0.6069539532248928,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.021954,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -149.9975,
         "side": "YES",
@@ -409,13 +407,14 @@
       },
       {
         "all_in_cost_per_contract": 0.49747811090474925,
-        "basis": [],
-        "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "basis": [
+          "closing price at least as good as fill after fees (CLV -0.0025)"
+        ],
+        "cause": "VARIANCE",
+        "clv_after_fee": -0.002478,
         "family": "GAME_TEAM_TOTAL",
         "missing": [
-          "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "CALIBRATED_PREGAME_PROBABILITY"
         ],
         "net_pnl": -149.9978,
         "side": "YES",
@@ -425,11 +424,11 @@
         "all_in_cost_per_contract": 0.47740929344366645,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022409,
         "family": "GAME_MONEYLINE",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -149.9954,
         "side": "YES",
@@ -439,11 +438,11 @@
         "all_in_cost_per_contract": 0.5773183497536947,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022318,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9961,
         "side": "YES",
@@ -479,11 +478,11 @@
         "all_in_cost_per_contract": 0.859,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.464,
         "family": "GAME_TEAM_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -51.5355,
         "side": "YES",
@@ -493,11 +492,11 @@
         "all_in_cost_per_contract": 0.8691528305084745,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.474153,
         "family": "GAME_TEAM_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -102.56,
         "side": "YES",
@@ -507,11 +506,11 @@
         "all_in_cost_per_contract": 0.33525310090512905,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.020253,
         "family": "GAME_MONEYLINE",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -59.9999,
         "side": "YES",
@@ -532,13 +531,14 @@
       },
       {
         "all_in_cost_per_contract": 0.5175261051566309,
-        "basis": [],
-        "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "basis": [
+          "closing price at least as good as fill after fees (CLV -0.0025)"
+        ],
+        "cause": "VARIANCE",
+        "clv_after_fee": -0.002526,
         "family": "GAME_SPREAD",
         "missing": [
-          "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "CALIBRATED_PREGAME_PROBABILITY"
         ],
         "net_pnl": -112.4994,
         "side": "NO",
@@ -548,11 +548,11 @@
         "all_in_cost_per_contract": 0.5075086909081682,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.012509,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -199.998,
         "side": "NO",
@@ -576,11 +576,11 @@
         "all_in_cost_per_contract": 0.527522132012293,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.012522,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -114.9988,
         "side": "NO",
@@ -604,11 +604,11 @@
         "all_in_cost_per_contract": 0.6069944161204176,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.021994,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9988,
         "side": "NO",
@@ -674,11 +674,11 @@
         "all_in_cost_per_contract": 0.467353646758264,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.032354,
         "family": "GAME_MONEYLINE",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -149.9974,
         "side": "YES",
@@ -757,11 +757,11 @@
         "all_in_cost_per_contract": 0.5275130116753411,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022513,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.999,
         "side": "YES",
@@ -813,11 +813,11 @@
         "all_in_cost_per_contract": 0.4975112762005837,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022511,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9989,
         "side": "NO",
@@ -827,11 +827,11 @@
         "all_in_cost_per_contract": 0.3454985192497532,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.260499,
         "family": "GAME_MONEYLINE",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -34.9969,
         "side": "YES",
@@ -841,11 +841,11 @@
         "all_in_cost_per_contract": 0.5717138264957456,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.016714,
         "family": "1Q_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -511.9872,
         "side": "NO",
@@ -855,11 +855,11 @@
         "all_in_cost_per_contract": 0.4874470814624759,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.012447,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -37.9958,
         "side": "NO",
@@ -869,11 +869,11 @@
         "all_in_cost_per_contract": 0.48748342649161575,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.022483,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.9971,
         "side": "NO",
@@ -883,11 +883,11 @@
         "all_in_cost_per_contract": 0.5275130116753411,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.037513,
         "family": "GAME_SPREAD",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -74.999,
         "side": "YES",
@@ -897,11 +897,11 @@
         "all_in_cost_per_contract": 0.5474452554744526,
         "basis": [],
         "cause": "INSUFFICIENT_EVIDENCE",
-        "clv_after_fee": null,
+        "clv_after_fee": -0.032445,
         "family": "GAME_TEAM_TOTAL",
         "missing": [
           "CALIBRATED_PREGAME_PROBABILITY",
-          "CLOSE_QUOTE"
+          "HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY"
         ],
         "net_pnl": -149.9978,
         "side": "YES",
@@ -914,7 +914,7 @@
     "economics_issues": 0,
     "fee_recompute_mismatches": [],
     "missing_evidence_counts": {
-      "MISSING_CLOSE_QUOTE": 90,
+      "MISSING_CLOSE_QUOTE": 39,
       "MISSING_FILL_IDS": 90,
       "MISSING_INJURY_SNAPSHOT": 90,
       "MISSING_MARKET_CAPTURED_AT": 90,

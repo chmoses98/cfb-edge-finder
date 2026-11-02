@@ -2,10 +2,48 @@
   "fitted": {
     "adjusted_discrete": {
       "fg_share": 0.15,
+      "key_lift": 1.0,
+      "key_lifts": [],
+      "margin_shrink": 1.0,
       "sigma_common": 0.0,
       "sigma_team": 0.0
     },
+    "adjusted_discrete_cal": {
+      "fg_share": 0.15,
+      "key_lift": 1.6,
+      "key_lifts": [],
+      "margin_shrink": 0.7,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "adjusted_discrete_cal_cal_loglik_per_game": -7.300812620477219,
     "adjusted_discrete_cal_loglik_per_game": -7.360562800115872,
+    "adjusted_discrete_calk": {
+      "fg_share": 0.15,
+      "key_lift": 1.0,
+      "key_lifts": [
+        [
+          3,
+          2.6
+        ],
+        [
+          7,
+          1.2
+        ],
+        [
+          10,
+          1.3
+        ],
+        [
+          14,
+          1.3
+        ]
+      ],
+      "margin_shrink": 0.7,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "adjusted_discrete_calk_cal_loglik_per_game": -7.281280225342612,
     "adjusted_normal": {
       "sd_margin": 19.0,
       "sd_team": 12.5,
@@ -13,14 +51,515 @@
     },
     "naive_discrete": {
       "fg_share": 0.15,
+      "key_lift": 1.0,
+      "key_lifts": [],
+      "margin_shrink": 1.0,
       "sigma_common": 0.0,
       "sigma_team": 0.0
     },
+    "naive_discrete_cal": {
+      "fg_share": 0.15,
+      "key_lift": 1.5,
+      "key_lifts": [],
+      "margin_shrink": 1.0,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "naive_discrete_cal_cal_loglik_per_game": -7.300120085872664,
     "naive_discrete_cal_loglik_per_game": -7.316175078638448,
+    "naive_discrete_calk": {
+      "fg_share": 0.15,
+      "key_lift": 1.0,
+      "key_lifts": [
+        [
+          3,
+          2.4
+        ],
+        [
+          7,
+          1.1
+        ],
+        [
+          10,
+          1.2
+        ],
+        [
+          14,
+          1.2
+        ]
+      ],
+      "margin_shrink": 1.0,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "naive_discrete_calk_cal_loglik_per_game": -7.281526442226584,
     "naive_normal": {
       "sd_margin": 18.5,
       "sd_team": 12.5,
       "sd_total": 16.5
+    }
+  },
+  "key_number_calibration": {
+    "disclosure": "v2 was designed AFTER v1's held-out result was seen, motivated by the calibration-split per-number gaps (margin 3 under-predicted ~2.5x; 10/14 over-allocated by the uniform lift). Both are reported under the same pre-declared rule; v2's held-out numbers are therefore not fully clean evidence.",
+    "per_key_lift_v2": {
+      "candidate": "adjusted_discrete_calk",
+      "criteria": {
+        "A_within_1.96_se_of_observed": true,
+        "B_gap_smaller_than_reference": true,
+        "C_logscore_not_degraded_margin_improved": true,
+        "D_event_brier_not_worse": false
+      },
+      "observed_rate_heldout": 0.302158273381295,
+      "predicted_candidate": 0.3190249608877105,
+      "predicted_reference": 0.21111951653234978,
+      "promotion": "NOT_PROMOTED: single-season evidence (347 rated 2026 games); promotion is an owner decision",
+      "reference": "adjusted_discrete",
+      "standard_error_observed": 0.03894828255174326,
+      "verdict": "NOT_FIXED"
+    },
+    "uniform_lift_v1": {
+      "candidate": "adjusted_discrete_cal",
+      "criteria": {
+        "A_within_1.96_se_of_observed": true,
+        "B_gap_smaller_than_reference": true,
+        "C_logscore_not_degraded_margin_improved": true,
+        "D_event_brier_not_worse": false
+      },
+      "observed_rate_heldout": 0.302158273381295,
+      "predicted_candidate": 0.31705979859479627,
+      "predicted_reference": 0.21111951653234978,
+      "promotion": "NOT_PROMOTED: single-season evidence (347 rated 2026 games); promotion is an owner decision",
+      "reference": "adjusted_discrete",
+      "standard_error_observed": 0.03894828255174326,
+      "verdict": "NOT_FIXED"
+    }
+  },
+  "key_number_detail": {
+    "adjusted_discrete": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.20007925382621597
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.042242606724171544
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.03935465645622735
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.052725802966211516
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.06575618767960555
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.21111951653234978
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.044192907291230384
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.04103454986380362
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.05590236793036018
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.0699896914469556
+          }
+        }
+      }
+    },
+    "adjusted_discrete_cal": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.30640716539469237
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.06393428899050685
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.05900737856652814
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.0818904207543767
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.10157507708328074
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.31705979859479627
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.06571034283783907
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.060533797724819816
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.08495493575899803
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.10586072227313938
+          }
+        }
+      }
+    },
+    "adjusted_discrete_calk": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.30824208199271447
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.051797076403728395
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.04780638944524907
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.13268126410875009
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.07595735203498685
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.3190249608877105
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.05322536658129077
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.04903320334930595
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.1376196162232554
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.0791467747338584
+          }
+        }
+      }
+    },
+    "naive_discrete": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.23405339050675256
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.04837754258427093
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.04415050519161822
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.06343027289714749
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.07809506983371593
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.23570727299560057
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.04866915461790638
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.04443985635757465
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.06382306974099498
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.07877519227912456
+          }
+        }
+      }
+    },
+    "naive_discrete_cal": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.31420432898974454
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.06494821022169613
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.05927413920541022
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.08515032074110869
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.10483165882152952
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.3161950559313264
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.06529223530609582
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.05961906151112759
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.08561578713641213
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.10566797197769093
+          }
+        }
+      }
+    },
+    "naive_discrete_calk": {
+      "calibration": {
+        "all_key_numbers": {
+          "observed": 0.3125,
+          "predicted": 0.31302935724951225
+        },
+        "games": 208,
+        "per_key_number": {
+          "10": {
+            "observed": 0.04326923076923077,
+            "predicted": 0.05204747915721794
+          },
+          "14": {
+            "observed": 0.057692307692307696,
+            "predicted": 0.047500514602740976
+          },
+          "3": {
+            "observed": 0.1346153846153846,
+            "predicted": 0.13647330504111463
+          },
+          "7": {
+            "observed": 0.07692307692307693,
+            "predicted": 0.07700805844843872
+          }
+        }
+      },
+      "heldout": {
+        "all_key_numbers": {
+          "observed": 0.302158273381295,
+          "predicted": 0.31496817003707794
+        },
+        "games": 139,
+        "per_key_number": {
+          "10": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.05232755086897052
+          },
+          "14": {
+            "observed": 0.03597122302158273,
+            "predicted": 0.047780950875273655
+          },
+          "3": {
+            "observed": 0.1223021582733813,
+            "predicted": 0.13723071111488327
+          },
+          "7": {
+            "observed": 0.1079136690647482,
+            "predicted": 0.07762895717795047
+          }
+        }
+      }
+    }
+  },
+  "paired_bootstrap_logscore_calibration_effect": {
+    "adjusted_discrete_cal": {
+      "vs_adjusted_discrete": {
+        "margin": {
+          "ci95": [
+            -0.026324191396684883,
+            0.0714060355478132
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.023517561677254935
+        },
+        "team": {
+          "ci95": [
+            -0.017277654728451938,
+            0.01759717161157222
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.00031378257311731367
+        },
+        "total": {
+          "ci95": [
+            -0.0047114217098423155,
+            0.01042710970078787
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.0026391901956579014
+        }
+      }
+    },
+    "adjusted_discrete_calk": {
+      "vs_adjusted_discrete": {
+        "margin": {
+          "ci95": [
+            -0.02566529095812764,
+            0.09780128295266523
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.033957755318077945
+        },
+        "team": {
+          "ci95": [
+            -0.01922799152074076,
+            0.016377050132170928
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": -0.001319188265349155
+        },
+        "total": {
+          "ci95": [
+            -0.02145221482797306,
+            0.01752893509834464
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": -0.0023592715004030307
+        }
+      }
+    },
+    "naive_discrete_cal": {
+      "vs_naive_discrete": {
+        "margin": {
+          "ci95": [
+            -0.020814938770516364,
+            0.043735690730870885
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.011121038268023102
+        },
+        "team": {
+          "ci95": [
+            -0.007592608105093648,
+            0.004648502720826747
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": -0.0014067038595540118
+        },
+        "total": {
+          "ci95": [
+            -0.0025977649312952916,
+            0.009002569526704512
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.0031762853891066957
+        }
+      }
+    },
+    "naive_discrete_calk": {
+      "vs_naive_discrete": {
+        "margin": {
+          "ci95": [
+            -0.021978991190241725,
+            0.07236920472801253
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": 0.02087266286779807
+        },
+        "team": {
+          "ci95": [
+            -0.008773341076940151,
+            0.0033868922652547664
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": -0.0026550544943081183
+        },
+        "total": {
+          "ci95": [
+            -0.019313089529026082,
+            0.01752520715446167
+          ],
+          "ci_excludes_zero": false,
+          "mean_diff_per_game": -0.001371481169849857
+        }
+      }
     }
   },
   "paired_bootstrap_logscore_vs_naive_normal": {
@@ -48,6 +587,58 @@
         ],
         "ci_excludes_zero": false,
         "mean_diff_per_game": 0.04706417083949546
+      }
+    },
+    "adjusted_discrete_cal": {
+      "margin": {
+        "ci95": [
+          0.08506766424034563,
+          0.2672918052060964
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.17291748849618818
+      },
+      "team": {
+        "ci95": [
+          0.11689180023868183,
+          0.30432244050179796
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.21622693736003562
+      },
+      "total": {
+        "ci95": [
+          -0.038628518040682173,
+          0.1348656678392815
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": 0.04970336103515336
+      }
+    },
+    "adjusted_discrete_calk": {
+      "margin": {
+        "ci95": [
+          0.09114454889136207,
+          0.28437603844264947
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.18335768213701117
+      },
+      "team": {
+        "ci95": [
+          0.11566281957268569,
+          0.3015050659339315
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.21459396652156915
+      },
+      "total": {
+        "ci95": [
+          -0.04955282922298643,
+          0.13587420189923022
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": 0.04470489933909243
       }
     },
     "adjusted_normal": {
@@ -101,6 +692,58 @@
         "ci_excludes_zero": true,
         "mean_diff_per_game": 0.08540268935017573
       }
+    },
+    "naive_discrete_cal": {
+      "margin": {
+        "ci95": [
+          0.05782701214141583,
+          0.2140611649951239
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.1348584506230654
+      },
+      "team": {
+        "ci95": [
+          0.12230310032676893,
+          0.30068208009192504
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.21624130293994573
+      },
+      "total": {
+        "ci95": [
+          0.026060562873859546,
+          0.15074225798107052
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.0885789747392824
+      }
+    },
+    "naive_discrete_calk": {
+      "margin": {
+        "ci95": [
+          0.06319879788185953,
+          0.23455015425083314
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.14461007522284036
+      },
+      "team": {
+        "ci95": [
+          0.1216355611645445,
+          0.29867289323169804
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.21499295230519164
+      },
+      "total": {
+        "ci95": [
+          0.014294284261666741,
+          0.15151966920044715
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.08403120818032586
+      }
     }
   },
   "protocol": {
@@ -138,6 +781,36 @@
       },
       "n_events": 2780
     },
+    "adjusted_discrete_cal": {
+      "event_brier": 0.24225732383449722,
+      "event_ece": 0.024125998758835192,
+      "event_logloss": 0.6781331889039132,
+      "key_number_mass": {
+        "mean_predicted": 0.31705979859479627,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.024321772995899,
+        "team": -3.668598050400244,
+        "total": -4.229782394391011
+      },
+      "n_events": 2780
+    },
+    "adjusted_discrete_calk": {
+      "event_brier": 0.2430815804785254,
+      "event_ece": 0.02590129397763849,
+      "event_logloss": 0.6799040700702551,
+      "key_number_mass": {
+        "mean_predicted": 0.3190249608877105,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.0138815793550755,
+        "team": -3.6702310212387106,
+        "total": -4.234780856087071
+      },
+      "n_events": 2780
+    },
     "adjusted_normal": {
       "event_brier": 0.24222145174166698,
       "event_ece": 0.05462724049045893,
@@ -165,6 +838,36 @@
         "margin": -4.073501849137045,
         "team": -3.6671769809607793,
         "total": -4.194083066075987
+      },
+      "n_events": 2780
+    },
+    "naive_discrete_cal": {
+      "event_brier": 0.24779200976294213,
+      "event_ece": 0.03793005015020587,
+      "event_logloss": 0.6887131171560341,
+      "key_number_mass": {
+        "mean_predicted": 0.3161950559313264,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.062380810869022,
+        "team": -3.6685836848203337,
+        "total": -4.190906780686881
+      },
+      "n_events": 2780
+    },
+    "naive_discrete_calk": {
+      "event_brier": 0.24860144716015617,
+      "event_ece": 0.03798217663469787,
+      "event_logloss": 0.6903428900812814,
+      "key_number_mass": {
+        "mean_predicted": 0.31496817003707794,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.052629186269247,
+        "team": -3.6698320354550877,
+        "total": -4.195454547245839
       },
       "n_events": 2780
     },

@@ -205,7 +205,7 @@ def test_exposure_hedges_count_as_gross_and_days_flag():
 
 
 def test_exposure_combo_reported_separately_and_unit_required():
-    rep = aggregate_exposure([Position("KXMVECROSSCATEGORY-S1-X", "YES", 70.0, "2026-10-26")], unit_dollars=70.0)
+    rep = aggregate_exposure([Position("KXMVECROSSCATEGORY-S1-X", "YES", 75.0, "2026-10-26")], unit_dollars=75.0)
     assert rep.games == {} and rep.undecoded_combo_units == pytest.approx(1.0)
     assert "UNDECODED_COMBO_EXPOSURE_PRESENT" in rep.flags
     with pytest.raises(ValueError):
@@ -464,3 +464,134 @@ def test_eval_harness_runs_and_is_point_in_time():
     assert p["calibration_games"] >= 30 and p["heldout_games"] >= 30
     assert set(report["unsupported"]) >= {"epa", "special_teams", "period_1q_1h", "market_prices"}
     assert "havoc" not in json.dumps(report).lower()
+
+
+# =================================================== key-number calibration (PR #249 follow-up)
+
+import inspect as _inspect  # noqa: E402
+
+import numpy as _np  # noqa: E402
+
+from cfb_edge_finder.projections import discrete_scoring as _ds  # noqa: E402
+from cfb_edge_finder.research import discrete_scoring_eval as _ev  # noqa: E402
+
+
+def _key_mass(d):
+    return sum(d.margin_prob(s * k) for k in _ds.KEY_MARGINS for s in (1, -1))
+
+
+def test_calibration_defaults_reproduce_the_uncalibrated_baseline_bit_for_bit():
+    base = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0))
+    explicit = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0, 1.0, 1.0, ()))
+    assert _np.array_equal(base.joint, explicit.joint)
+
+
+def test_key_lift_raises_key_number_mass_and_still_normalises():
+    base = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0))
+    lifted = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0, 1.0, 1.6))
+    assert _key_mass(lifted) > _key_mass(base)
+    assert lifted.joint.sum() == pytest.approx(1.0)
+    # exact pushes still come from the pmf: P(margin>2.5) - P(margin>3.5) == P(margin==3)
+    assert lifted.p_margin_gt(2.5) - lifted.p_margin_gt(3.5) == pytest.approx(lifted.margin_prob(3))
+
+
+def test_per_key_lift_moves_only_the_named_margins_relatively():
+    base = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0))
+    lifted = _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0, 1.0, 1.0, ((3, 2.5),)))
+    ratio3 = lifted.margin_prob(3) / base.margin_prob(3)
+    ratio5 = lifted.margin_prob(5) / base.margin_prob(5)
+    assert ratio3 > 2.0 > 1.0 > ratio5 > 0.9  # 3 is lifted; other margins shrink only through renormalisation
+    with pytest.raises(ValueError):
+        _ds.build_distribution(28.0, 24.0, _ds.ShapeParams(0.15, 0.0, 0.0, 1.0, 1.0, ((3, 0.0),)))
+
+
+def test_margin_shrink_preserves_the_total_and_pulls_the_spread_in():
+    # overtime resolution is off here: a closer matchup ties more often and overtime adds points, which would
+    # blur the property under test (shrinkage itself preserves the predicted total).
+    wide = _ds.build_distribution(34.0, 20.0, _ds.ShapeParams(0.15, 0.0, 0.0), resolve_overtime=False)
+    shrunk = _ds.build_distribution(34.0, 20.0, _ds.ShapeParams(0.15, 0.0, 0.0, 0.5, 1.0), resolve_overtime=False)
+    idx = _np.arange(len(wide._total))
+    # abs=0.05: the 90-point per-team truncation renormalises a wider spread slightly differently
+    assert float((idx * wide._total).sum()) == pytest.approx(float((idx * shrunk._total).sum()), abs=0.05)
+    midx = _np.arange(len(wide._margin)) - (wide._n - 1)
+    assert float((midx * shrunk._margin).sum()) < 0.6 * float((midx * wide._margin).sum())
+    with pytest.raises(ValueError):
+        _ds.build_distribution(30.0, 20.0, _ds.ShapeParams(0.15, 0.0, 0.0, 1.2, 1.0))
+
+
+def _synthetic_games(n=140, seed=7):
+    """Scores drawn from the model's own law with a PLANTED key-number lift, so the fit has a known answer."""
+    rng = _np.random.default_rng(seed)
+    planted = _ds.ShapeParams(0.15, 0.0, 0.0, 1.0, 1.0, ((3, 2.5), (7, 1.3), (10, 1.0), (14, 1.0)))
+    games, means = [], []
+    for _ in range(n):
+        mh, ma = float(rng.uniform(22, 34)), float(rng.uniform(20, 30))
+        d = _ds.build_distribution(mh, ma, planted)
+        flat = rng.choice(d.joint.size, p=d.joint.ravel())
+        h, a = divmod(int(flat), d.joint.shape[1])
+        games.append({"home_pts": h, "away_pts": a})
+        means.append((mh, ma))
+    return games, means
+
+
+def test_per_key_fit_recovers_a_planted_margin_three_lift_from_calibration_data_only():
+    games, means = _synthetic_games()
+    fitted, _ll = _ev.fit_calibration_per_key(games, means, _ds.ShapeParams(0.15, 0.0, 0.0))
+    lifts = dict(fitted.key_lifts)
+    assert lifts[3] > 1.6, "a planted 2.5x lift on margin 3 must be detected"
+    assert lifts[3] > lifts[10]
+
+
+def test_fit_functions_cannot_see_a_held_out_game_by_construction():
+    for fn in (_ev.fit_calibration, _ev.fit_calibration_per_key):
+        params = list(_inspect.signature(fn).parameters)
+        assert params == ["cal", "means", "base"], f"{fn.__name__} takes a held-out argument: {params}"
+    # and the harness splits chronologically: calibration is the earlier block of the rated games
+    src = _inspect.getsource(_ev.run_evaluation)
+    assert "cal, held = rated[:n_cal], rated[n_cal:]" in src
+
+
+def test_harness_key_margins_match_the_model_key_margins():
+    assert _ev.KEY_MARGINS == _ds.KEY_MARGINS
+
+
+def _verdict_inputs(pred, brier, margin_gain=0.03, total_ci_hi=0.02, team_ci_hi=0.02):
+    systems = {
+        "adjusted_discrete": {"event_brier": 0.2400,
+                              "key_number_mass": {"mean_predicted": 0.21,
+                                                  "observed_rate_abs_margin_in_3_7_10_14": 0.30}},
+        "adjusted_discrete_cal": {"event_brier": brier,
+                                  "key_number_mass": {"mean_predicted": pred,
+                                                      "observed_rate_abs_margin_in_3_7_10_14": 0.30}},
+    }
+    paired = {"adjusted_discrete_cal": {"vs_adjusted_discrete": {
+        "margin": {"mean_diff_per_game": margin_gain, "ci95": [-0.1, 0.1]},
+        "total": {"mean_diff_per_game": 0.0, "ci95": [-0.02, total_ci_hi]},
+        "team": {"mean_diff_per_game": 0.0, "ci95": [-0.02, team_ci_hi]}}}}
+    return systems, paired
+
+
+def test_verdict_rule_fixed_only_when_all_four_criteria_hold():
+    s, p = _verdict_inputs(pred=0.31, brier=0.2405)
+    assert _ev.key_number_verdict(s, p, 139)["verdict"] == "CALIBRATION_FIXED"
+    s, p = _verdict_inputs(pred=0.31, brier=0.2440)  # Brier worse by >0.001 -> D fails
+    v = _ev.key_number_verdict(s, p, 139)
+    assert v["verdict"] == "NOT_FIXED" and v["criteria"]["D_event_brier_not_worse"] is False
+    s, p = _verdict_inputs(pred=0.22, brier=0.2400)  # still far from observed -> A fails
+    assert _ev.key_number_verdict(s, p, 139)["criteria"]["A_within_1.96_se_of_observed"] is False
+    s, p = _verdict_inputs(pred=0.31, brier=0.2400, total_ci_hi=-0.01)  # significantly worse on total -> C fails
+    assert _ev.key_number_verdict(s, p, 139)["verdict"] == "NOT_FIXED"
+    assert "NOT_PROMOTED" in _ev.key_number_verdict(*_verdict_inputs(0.31, 0.2400), 139)["promotion"]
+
+
+def test_committed_report_records_the_not_fixed_verdict_and_stays_unpromoted():
+    import json
+    from pathlib import Path
+
+    report_path = Path(__file__).resolve().parents[1] / "docs/reports/discrete_scoring_eval_2026-11-02.json"
+    rep = json.loads(report_path.read_text())
+    for variant in ("uniform_lift_v1", "per_key_lift_v2"):
+        v = rep["key_number_calibration"][variant]
+        assert v["verdict"] in {"CALIBRATION_FIXED", "NOT_FIXED"}
+        assert "NOT_PROMOTED" in v["promotion"]
+    assert "AFTER v1's held-out result" in rep["key_number_calibration"]["disclosure"]

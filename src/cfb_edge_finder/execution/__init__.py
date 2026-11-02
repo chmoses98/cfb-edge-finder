@@ -45,8 +45,13 @@ schema."""
 
 CONTEXT_SCHEMA_VERSION = "cfb_game_context/1.0.0"
 HANDICAP_BATCH_SCHEMA_VERSION = "cfb_handicap_batch/1.0.0"
-CANDIDATE_SCHEMA_VERSION = "cfb_candidate_artifact/1.1.0"
-"""1.1.0 ADDS, and changes the meaning of nothing 1.0.0 carried: the
+CANDIDATE_SCHEMA_VERSION = "cfb_candidate_artifact/1.2.0"
+"""1.2.0 ADDS, and changes the meaning of nothing 1.1.0 carried: the top-level `pit_review` block and, per
+candidate, `pit_review`, `fee_inclusive`, `fair_value` and `exposure_context` (execution/pit_review.py;
+restriction-only, legacy fields such as `bet_up_to_price` are unchanged). A 1.1.0 reader reads a 1.2.0
+artifact unchanged.
+
+1.1.0 ADDS, and changes the meaning of nothing 1.0.0 carried: the
 `card_review` block (the final-review contract), `card_role` and the
 cash-path fields on every candidate and related alternative, and the matching
 fields on reduction-ledger entries. A 1.0.0 reader reads a 1.1.0 artifact

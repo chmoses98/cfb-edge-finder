@@ -35,7 +35,7 @@ Deliberately absent, because the repository's data cannot support it (see the ev
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
@@ -64,11 +64,28 @@ class MissingPeriodCalibration(ValueError):
     """A 1Q/1H pmf was requested without an evidenced period share. We refuse rather than guess."""
 
 
+KEY_MARGINS = (3, 7, 10, 14)
+
+
 @dataclass(frozen=True)
 class ShapeParams:
     fg_share: float
     sigma_common: float
     sigma_team: float
+    #: Calibration of the margin law (2026-11-02, PR #249). BOTH default to 1.0 = the uncalibrated baseline,
+    #: bit-for-bit. They are FITTED on a calibration split only (``research/discrete_scoring_eval``):
+    #:
+    #: ``margin_shrink`` (kappa in (0, 1]) scales the predicted home-minus-away mean difference toward zero while
+    #:     preserving the predicted total. Opponent-adjusted ratings from 3-6 games per team are noisy, so their
+    #:     raw spreads are over-dispersed; kappa is the regression-to-the-mean factor.
+    #: ``key_lift`` (>= 1) multiplies the joint mass of every score pair whose |margin| is a key number
+    #:     (3, 7, 10, 14), then renormalises. Compound-Poisson scoring puts correct LUMPS at key numbers but
+    #:     still too little TOTAL mass there versus what was observed; this is the one-parameter recalibration.
+    margin_shrink: float = 1.0
+    key_lift: float = 1.0
+    #: Per-margin lifts ``((3, l3), (7, l7), (10, lx), (14, lx))``: same mechanism as ``key_lift`` but each key
+    #: number gets its OWN weight (> 0; may be < 1). Empty = none. Applied multiplicatively with ``key_lift``.
+    key_lifts: tuple[tuple[int, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -250,6 +267,25 @@ class ScoreDistribution:
         return float(pmf[: max(0, int(np.ceil(strike)))].sum())
 
 
+def key_lift_weights(n: int, lift: float) -> np.ndarray:
+    """Cell weights: ``lift`` where |home - away| is a key number, else 1. (n x n)."""
+    idx = np.arange(n)
+    margin = np.abs(idx[:, None] - idx[None, :])
+    return np.where(np.isin(margin, KEY_MARGINS), lift, 1.0)
+
+
+def per_key_lift_weights(n: int, lifts: tuple[tuple[int, float], ...]) -> np.ndarray:
+    """Cell weights where |home - away| == m gets its own weight; every other cell is 1. (n x n)."""
+    idx = np.arange(n)
+    margin = np.abs(idx[:, None] - idx[None, :])
+    w = np.ones((n, n))
+    for m, lift in lifts:
+        if lift <= 0:
+            raise ValueError("per-margin lifts must be > 0")
+        w[margin == m] = lift
+    return w
+
+
 def _resolve_overtime(joint: np.ndarray) -> np.ndarray:
     out = joint.copy()
     n = joint.shape[0]
@@ -270,6 +306,12 @@ def build_distribution(
 ) -> ScoreDistribution:
     """Joint score pmf: independent compound-Poisson scores conditional on a shared environment factor
     and team-specific volatility factors, both integrated out exactly (Gauss-Hermite)."""
+    if not (0.0 < shape.margin_shrink <= 1.0) or shape.key_lift < 1.0:
+        raise ValueError("margin_shrink must be in (0, 1] and key_lift >= 1")
+    if shape.margin_shrink != 1.0:
+        total, diff = home_mean + away_mean, home_mean - away_mean
+        home_mean = (total + shape.margin_shrink * diff) / 2.0
+        away_mean = (total - shape.margin_shrink * diff) / 2.0
     cm, cw = _nodes(shape.sigma_common, _GH_COMMON)
     tm, tw = _nodes(shape.sigma_team, _GH_TEAM)
     n = MAX_POINTS + 1
@@ -289,6 +331,10 @@ def build_distribution(
         joint += cw[c] * np.outer(ph[c], pa[c])
     if resolve_overtime:
         joint = _resolve_overtime(joint)
+    if shape.key_lift != 1.0:
+        joint = joint * key_lift_weights(n, shape.key_lift)
+    if shape.key_lifts:
+        joint = joint * per_key_lift_weights(n, shape.key_lifts)
     return ScoreDistribution(joint, home_mean, away_mean)
 
 
@@ -308,5 +354,5 @@ def build_period_distribution(
             "period_share is required and must come from per-period scoring data; "
             "team_games.jsonl has none, so 1Q/1H distributions are not priced"
         )
-    s = shape if period_fg_share is None else ShapeParams(period_fg_share, shape.sigma_common, shape.sigma_team)
+    s = shape if period_fg_share is None else replace(shape, fg_share=period_fg_share)
     return build_distribution(home_mean * period_share, away_mean * period_share, s, resolve_overtime=resolve_overtime)

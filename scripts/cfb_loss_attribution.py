@@ -5,7 +5,7 @@
         --settlements app/latest/settlements.json --start 2026-10-22 --end 2026-11-01 \
         --json-out docs/reports/loss_attribution_2026-10-22_2026-11-01.json \
         --md-out   docs/reports/LOSS_ATTRIBUTION_DASHBOARD_2026-11-02.md \
-        [--closing-quotes closes.json] [--unit-dollars 70] [--records-out reconciliation.jsonl]
+        [--closing-quotes closes.json] [--unit-dollars 75] [--records-out reconciliation.jsonl]
 
 ``--closing-quotes`` is {ticker: {"yes_bid":..,"yes_ask":..,"captured_at":..}}, the LAST quote captured before
 kickoff. Without it CLV is reported as MISSING for every contract -- never estimated.
@@ -150,7 +150,7 @@ def render_md(rep):
         L += [
             f"## Exposure at unit=${e['unit_dollars']:g} (flags only, no caps)",
             "",
-            "The unit is a supplied parameter, never inferred; $70 is the illustrative value in docs/POSTMORTEM.md "
+            "The unit is a supplied parameter, never inferred; $75 is the owner-set value (1U = $75, PR #249 comment) "
             "and must be confirmed by the owner before these flags are read as policy.",
             f"- Games over 5U gross: {len(e['games_over_5U_gross'])}; "
             f"over 5U correlated view: {len(e['games_over_5U_correlated_view'])}",

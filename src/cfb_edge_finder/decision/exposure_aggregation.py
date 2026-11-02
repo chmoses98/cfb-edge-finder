@@ -32,6 +32,15 @@ from cfb_edge_finder.expression.ticker_ontology import Family, parse_ticker
 #: Owner-adjustable policy defaults (flags only).
 GAME_FLAG_UNITS = 5.0
 DAY_FLAG_UNITS = 15.0
+#: Owner-set 2026-11-02 (PR #249 comment): 1U = $75, so review flags fire above $375/game and
+#: $1,125/day. ``aggregate_exposure`` still REQUIRES the unit as an explicit argument; this constant is
+#: the one place the owner's value is written down for callers and CLIs to pass.
+STANDARD_UNIT_DOLLARS = 75.0
+
+
+def flag_thresholds_dollars(unit_dollars: float) -> dict[str, float]:
+    """The dollar equivalents of the unit flags, for display next to a flag."""
+    return {"per_game": GAME_FLAG_UNITS * unit_dollars, "per_day": DAY_FLAG_UNITS * unit_dollars}
 
 
 @dataclass(frozen=True)

@@ -5,12 +5,13 @@
 ## Completed
 
 - Reconciled 90 contracts; stake/fee/net identities violated: 0; per-order fee recompute mismatches: 0.
-- Loss causes: INSUFFICIENT_EVIDENCE=50
+- Loss causes: INSUFFICIENT_EVIDENCE=48, VARIANCE=2
 
 ## Unresolved (evidence missing — not inferred)
 
 - `CALIBRATED_PREGAME_PROBABILITY` on 44 losing contracts
-- `CLOSE_QUOTE` on 44 losing contracts
+- `CLOSE_QUOTE` on 17 losing contracts
+- `HANDICAP_VS_PRICING_NOT_SEPARABLE_WITHOUT_PREGAME_PROBABILITY` on 25 losing contracts
 - `UNDECODED_COMBO_LEGS` on 6 losing contracts
 
 ## Family performance (game-cluster bootstrap 95% CI on ROI)
@@ -29,10 +30,10 @@
 
 Families whose CI includes 0 are not distinguishable from break-even/variance on this sample. Families were examined AFTER seeing the losses (worst-of-9 selection), so an interval that excludes 0 is a lead to test prospectively, not a confirmed defect; and a positive family (team totals) is not shown to be profitable by a hot sample whose interval includes 0.
 
-## Exposure at unit=$70 (flags only, no caps)
+## Exposure at unit=$75 (flags only, no caps)
 
-The unit is a supplied parameter, never inferred; $70 is the illustrative value in docs/POSTMORTEM.md and must be confirmed by the owner before these flags are read as policy.
-- Games over 5U gross: 2; over 5U correlated view: 2
-- Days over 15U gross: {'2026-10-24': 53.22, '2026-10-31': 33.98}
-- Undecoded combo units: 3.36
+The unit is a supplied parameter, never inferred; $75 is the owner-set value (1U = $75, PR #249 comment) and must be confirmed by the owner before these flags are read as policy.
+- Games over 5U gross: 1; over 5U correlated view: 1
+- Days over 15U gross: {'2026-10-24': 49.67, '2026-10-31': 31.72}
+- Undecoded combo units: 3.14
 
