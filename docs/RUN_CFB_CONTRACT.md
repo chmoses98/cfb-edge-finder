@@ -460,6 +460,21 @@ to each candidate (schema `cfb_candidate_artifact/1.2.0`; see `src/cfb_edge_find
 Options: `--as-of`, `--unit-dollars` (default 75), `--existing-positions`, `--proposed-stakes`, `--reliability-table`,
 `--max-quote-age-minutes`. The review cannot be switched off.
 
+#### 10b — Owner rules (restriction-only, named on every candidate)
+
+Every candidate carries `owner_rules` (`cfb_pit_review/1.1.0`). These are the owner's explicit rules, applied **after**
+pricing, visible in the artifact, and unable to add, drop or re-rank a candidate or to change any probability:
+
+| Rule | Behaviour | Reason code |
+|---|---|---|
+| **Never recommend betting against Auburn** | A position whose payoff needs Auburn to lose or fail to cover is `pit_review.actionable: false`: Auburn NO / opponent YES on a moneyline (game or 1H), Auburn NO / opponent YES on a spread or alternate (game, 1H, 1Q), and the **Under on Auburn's own team total**. Not affected: game / 1Q / 1H totals, Auburn YES, opponent NO, the opponent's team total, games without Auburn. Team is matched on the exact ticker token `AUB`, with the game title ("… at Auburn") as corroboration that can only tighten. An Auburn game whose contract cannot be attributed fails closed. | `OWNER_EXCLUSION_AUBURN`, `OWNER_EXCLUSION_AUBURN_UNDETERMINED` |
+| **Max 5U on any single bet** (1U = $75, so **$375**) | A proposed stake above the ceiling is clamped to $375 and the clamp is disclosed in `owner_rules.sizing`. This is a per-bet ceiling only: game (>5U / $375) and day (>15U / $1,125) exposure remain **flags, never caps**. A missing proposal stays missing. | `PER_BET_CAP_5U_APPLIED` |
+| **Havoc is never a handicapping input** | `havoc_allowed` is excluded from the live script-engine edge table (`scripting/matchup.py`); a test fails if havoc appears outside its documented exclusions. | — |
+
+Interpretation to confirm: "against Auburn" includes the Under on Auburn's own team total. If the owner means win/cover
+markets only, remove the `TEAM_TOTAL` branch in `decision/owner_rules.py::auburn_exclusion` and its test.
+Combos (`KXMVECROSSCATEGORY`) have no recoverable legs and are not attributed to a team.
+
 State, per recommendation: the contract ticker, exactly what YES means, the
 executable price and size, the fee, your probability, and why the price
 justifies it. If no price justifies the thesis, **return nothing** — that
