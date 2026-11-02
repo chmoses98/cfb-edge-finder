@@ -21,6 +21,9 @@ SRC = REPO_ROOT / "src" / "cfb_edge_finder"
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Read-only postmortem tooling (2026-11-02): reconciles executed contracts and attributes losses. It reads
+    # stakes, so it is guarded for the same reason as accounting: it must never size the next bet.
+    "postmortem",
     # The wager ledger records bets the owner already placed. It is guarded
     # for exactly that reason: it is the one package that legitimately knows
     # stakes and outcomes, so it is the most natural place for someone to

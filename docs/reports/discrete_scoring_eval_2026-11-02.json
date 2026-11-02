@@ -1,0 +1,194 @@
+{
+  "fitted": {
+    "adjusted_discrete": {
+      "fg_share": 0.15,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "adjusted_discrete_cal_loglik_per_game": -7.360562800115872,
+    "adjusted_normal": {
+      "sd_margin": 19.0,
+      "sd_team": 12.5,
+      "sd_total": 16.5
+    },
+    "naive_discrete": {
+      "fg_share": 0.15,
+      "sigma_common": 0.0,
+      "sigma_team": 0.0
+    },
+    "naive_discrete_cal_loglik_per_game": -7.316175078638448,
+    "naive_normal": {
+      "sd_margin": 18.5,
+      "sd_team": 12.5,
+      "sd_total": 16.5
+    }
+  },
+  "paired_bootstrap_logscore_vs_naive_normal": {
+    "adjusted_discrete": {
+      "margin": {
+        "ci95": [
+          0.07279259469807767,
+          0.2332189016553305
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.14939992681893324
+      },
+      "team": {
+        "ci95": [
+          0.115620688304851,
+          0.3043720437681983
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.2159131547869183
+      },
+      "total": {
+        "ci95": [
+          -0.040056132851299005,
+          0.13222972734591218
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": 0.04706417083949546
+      }
+    },
+    "adjusted_normal": {
+      "margin": {
+        "ci95": [
+          -0.049320901294273384,
+          0.0817422541201826
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": 0.01417715652572103
+      },
+      "team": {
+        "ci95": [
+          -0.05171841329646067,
+          0.04106418824489674
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": -0.006622066277147805
+      },
+      "total": {
+        "ci95": [
+          -0.11807557167970134,
+          0.026687320483445003
+        ],
+        "ci_excludes_zero": false,
+        "mean_diff_per_game": -0.044539739240077786
+      }
+    },
+    "naive_discrete": {
+      "margin": {
+        "ci95": [
+          0.07267218475320239,
+          0.1770384198271595
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.12373741235504229
+      },
+      "team": {
+        "ci95": [
+          0.1263103713559968,
+          0.29861860318719213
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.21764800679949975
+      },
+      "total": {
+        "ci95": [
+          0.024474618520661677,
+          0.14565089808714507
+        ],
+        "ci_excludes_zero": true,
+        "mean_diff_per_game": 0.08540268935017573
+      }
+    }
+  },
+  "protocol": {
+    "calibration_games": 208,
+    "calibration_window": [
+      "2026-09-19",
+      "2026-10-17"
+    ],
+    "games_total": 500,
+    "heldout_games": 139,
+    "heldout_window": [
+      "2026-10-17",
+      "2026-11-01"
+    ],
+    "min_prior_games_per_team": 2,
+    "rated_games": 347,
+    "ratings": "refit per kickoff DATE using strictly earlier dates only",
+    "shared_strikes": "5 half-point strikes bracketing the NAIVE mean, identical for all systems",
+    "universe": "FBS-vs-FBS games in data/football/2026/team_games.jsonl"
+  },
+  "status": "OK",
+  "systems": {
+    "adjusted_discrete": {
+      "event_brier": 0.23980948226014678,
+      "event_ece": 0.044399599286547506,
+      "event_logloss": 0.6727727338815356,
+      "key_number_mass": {
+        "mean_predicted": 0.21111951653234978,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.047839334673154,
+        "team": -3.6689118329733605,
+        "total": -4.232421584586668
+      },
+      "n_events": 2780
+    },
+    "adjusted_normal": {
+      "event_brier": 0.24222145174166698,
+      "event_ece": 0.05462724049045893,
+      "event_logloss": 0.678467890000643,
+      "key_number_mass": {
+        "mean_predicted": 0.12872836645043564,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.183062104966366,
+        "team": -3.891447054037427,
+        "total": -4.324025494666242
+      },
+      "n_events": 2780
+    },
+    "naive_discrete": {
+      "event_brier": 0.24707938291184073,
+      "event_ece": 0.03239126341755578,
+      "event_logloss": 0.6872784483586464,
+      "key_number_mass": {
+        "mean_predicted": 0.23570727299560057,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.073501849137045,
+        "team": -3.6671769809607793,
+        "total": -4.194083066075987
+      },
+      "n_events": 2780
+    },
+    "naive_normal": {
+      "event_brier": 0.24819540666995835,
+      "event_ece": 0.014219872917936471,
+      "event_logloss": 0.6895305291962247,
+      "key_number_mass": {
+        "mean_predicted": 0.14895611868995473,
+        "observed_rate_abs_margin_in_3_7_10_14": 0.302158273381295
+      },
+      "mean_logscore": {
+        "margin": -4.197239261492087,
+        "team": -3.88482498776028,
+        "total": -4.279485755426164
+      },
+      "n_events": 2780
+    }
+  },
+  "unsupported": {
+    "epa": "no play-level EPA in repo data (only drive summaries / success counts)",
+    "injury_effect_sizes": "no calibrated injury magnitudes; injuries are not used to move means",
+    "market_prices": "no historical market lines in repo data; measures distribution quality, not profit",
+    "period_1q_1h": "no per-period scoring in team_games.jsonl; 1Q/1H distributions are refused, not guessed",
+    "special_teams": "no special-teams data"
+  }
+}
