@@ -29,6 +29,14 @@ A calibrated candidate is ``PROMOTABLE`` iff ALL of the following hold on BOTH t
 ``PROMOTABLE`` is a statement about evidence on these blocks only. Nothing here promotes anything: promotion is an
 owner decision and needs, in addition, market-price evidence that does not exist in this repository.
 
+*** PROTOCOL AMENDMENT (recorded before any result was seen) ***
+The first run computed everything and then crashed in the verdict step (an empty FINAL block) before printing a
+single number; nothing was read from it. Cause: ``records_2026`` ends 2026-10-04, so FINAL was empty. The 2026 games
+(TEST and FINAL) are therefore taken from ``data/football/2026/team_games.jsonl`` (the source PR #249 used, keyed by
+team id) so both blocks share one team identity and one point-in-time rating history. The acceptance rule, the
+candidates and the split dates are unchanged. The fits are also parallelised and checkpointed; that changes wall time,
+not results (a parity test pins ``fit_shape_parallel`` to ``fit_shape``).
+
 *** WHAT IS NOT USED ***
 Ratings are shrunk within-season team points for/against (``naive_means``). No havoc metric, no opponent-adjusted
 efficiency (these records carry no play counts), no market price. This tests the SHAPE of the score distribution.
@@ -36,19 +44,25 @@ efficiency (these records carry no play counts), no market price. This tests the
 
 from __future__ import annotations
 
+import concurrent.futures as cf
 import gzip
+import itertools
 import json
 import math
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from cfb_edge_finder.projections.discrete_scoring import ShapeParams, build_distribution
+from cfb_edge_finder.projections.discrete_scoring import MAX_POINTS, ShapeParams, build_distribution
 from cfb_edge_finder.research.discrete_scoring_eval import (
+    FG_GRID,
     KEY_MARGINS,
     MIN_PRIOR_GAMES,
+    SIGMA_COMMON_GRID,
+    SIGMA_TEAM_GRID,
     NormalSystem,
     _bootstrap,
     _disc_logp,
@@ -57,9 +71,9 @@ from cfb_edge_finder.research.discrete_scoring_eval import (
     fit_calibration,
     fit_calibration_per_key,
     fit_normal,
-    fit_shape,
     naive_means,
 )
+from cfb_edge_finder.research.discrete_scoring_eval import load_games as load_team_games_2026
 
 PROTOCOL_VERSION = "cfb_multiseason_calibration/1.0.0"
 
@@ -82,10 +96,33 @@ REFERENCE = "discrete_base"
 
 
 # ----------------------------------------------------------------------------------------------- loading
-def load_games(root: Path, seasons: tuple[int, ...] = (2024, 2025, 2026)) -> list[dict[str, Any]]:
-    """FBS-vs-FBS games with final scores from ``records_<season>.jsonl.gz`` under ``root`` (validation dir)."""
+def load_games(
+    root: Path, seasons: tuple[int, ...] = (2024, 2025, 2026), *, team_games_2026: Path | None = None
+) -> list[dict[str, Any]]:
+    """FBS-vs-FBS games with final scores.
+
+    2024/2025 come from ``records_<season>.jsonl.gz`` under ``root`` (team NAMES). 2026 comes from
+    ``team_games_2026`` (team IDS, through the latest completed game) when given, else from ``records_2026``
+    (which ends 2026-10-04). The two identities never mix inside one season, so ratings stay consistent.
+    """
     games: list[dict[str, Any]] = []
     for season in seasons:
+        if season == 2026 and team_games_2026 is not None:
+            for g in load_team_games_2026(Path(team_games_2026)):
+                games.append(
+                    {
+                        "game_id": g["game_id"],
+                        "season": 2026,
+                        "kickoff": g["kickoff"],
+                        "date": g["date"],
+                        "home": g["home"],
+                        "away": g["away"],
+                        "neutral": g["neutral"],
+                        "home_pts": g["home_pts"],
+                        "away_pts": g["away_pts"],
+                    }
+                )
+            continue
         path = Path(root) / f"records_{season}.jsonl.gz"
         if not path.exists():
             continue
@@ -189,24 +226,103 @@ def fit_empirical_lifts(
     return tuple((m, float(lifts[m])) for m in range(1, max_margin + 1))
 
 
-def fit_systems(train: list[tuple[dict[str, Any], tuple[float, float]]]) -> dict[str, Any]:
+def _ll_for_combo(args: tuple[list[tuple[int, int]], list[tuple[float, float]], tuple[float, float, float]]) -> float:
+    """Joint log-likelihood of ``games`` (home, away points) under one (fg, sigma_common, sigma_team) shape."""
+    pts, means, (fg, sc, st) = args
+    sp = ShapeParams(fg, sc, st)
+    ll = 0.0
+    for (h, a), (mh, ma) in zip(pts, means, strict=True):
+        d = build_distribution(mh, ma, sp)
+        ll += math.log(max(d.joint[min(h, MAX_POINTS), min(a, MAX_POINTS)], 1e-12))
+    return ll
+
+
+def fit_shape_parallel(
+    cal: list[dict[str, Any]], means: list[tuple[float, float]], *, workers: int | None = None
+) -> tuple[ShapeParams, float]:
+    """Same grid, same arithmetic and same tie-break (first maximum in grid order) as ``fit_shape``, over processes."""
+    combos = list(itertools.product(FG_GRID, SIGMA_COMMON_GRID, SIGMA_TEAM_GRID))
+    pts = [(g["home_pts"], g["away_pts"]) for g in cal]
+    jobs = [(pts, means, c) for c in combos]
+    n = workers or min(os.cpu_count() or 1, 8)
+    if n <= 1:
+        lls = [_ll_for_combo(j) for j in jobs]
+    else:
+        with cf.ProcessPoolExecutor(max_workers=n) as pool:
+            lls = list(pool.map(_ll_for_combo, jobs, chunksize=max(1, len(jobs) // (n * 4))))
+    best_i = 0
+    for i, ll in enumerate(lls):
+        if ll > lls[best_i]:
+            best_i = i
+    fg, sc, st = combos[best_i]
+    return ShapeParams(fg, sc, st), lls[best_i] / len(cal)
+
+
+def _fit_v1(args):  # picklable top-level wrappers so v1 and v2 fit in separate processes
+    cal, means, base = args
+    return fit_calibration(cal, means, base)[0]
+
+
+def _fit_v2(args):
+    cal, means, base = args
+    return fit_calibration_per_key(cal, means, base)[0]
+
+
+def _shape_to_json(sp: ShapeParams) -> dict[str, Any]:
+    return {
+        "fg_share": sp.fg_share,
+        "sigma_common": sp.sigma_common,
+        "sigma_team": sp.sigma_team,
+        "margin_shrink": sp.margin_shrink,
+        "key_lift": sp.key_lift,
+        "key_lifts": [list(x) for x in sp.key_lifts],
+    }
+
+
+def _shape_from_json(d: dict[str, Any]) -> ShapeParams:
+    return ShapeParams(
+        d["fg_share"],
+        d["sigma_common"],
+        d["sigma_team"],
+        d["margin_shrink"],
+        d["key_lift"],
+        tuple((int(m), float(v)) for m, v in d["key_lifts"]),
+    )
+
+
+def dump_fits(systems: dict[str, Any]) -> dict[str, Any]:
+    ns: NormalSystem = systems["normal"]
+    out: dict[str, Any] = {"normal": [ns.sd_margin, ns.sd_total, ns.sd_team]}
+    for k in (REFERENCE, *CANDIDATES):
+        out[k] = _shape_to_json(systems[k])
+    return out
+
+
+def load_fits(raw: dict[str, Any]) -> dict[str, Any]:
+    systems: dict[str, Any] = {"normal": NormalSystem(*raw["normal"])}
+    for k in (REFERENCE, *CANDIDATES):
+        systems[k] = _shape_from_json(raw[k])
+    return systems
+
+
+def fit_systems(
+    train: list[tuple[dict[str, Any], tuple[float, float]]], *, workers: int | None = None
+) -> dict[str, Any]:
     """Every system, fitted on ``train`` and nothing else. The signature is the leakage guarantee."""
     cal = [g for g, _ in train]
     means = [mu for _, mu in train]
     normal = fit_normal(cal, means)
-    base, base_ll = fit_shape(cal, means)
-    v1, _ = fit_calibration(cal, means, base)
-    v2, _ = fit_calibration_per_key(cal, means, base)
+    base, _ = fit_shape_parallel(cal, means, workers=workers)
+    n = workers or min(os.cpu_count() or 1, 8)
+    if n <= 1:
+        v1, v2 = _fit_v1((cal, means, base)), _fit_v2((cal, means, base))
+    else:
+        with cf.ProcessPoolExecutor(max_workers=2) as pool:
+            f1, f2 = pool.submit(_fit_v1, (cal, means, base)), pool.submit(_fit_v2, (cal, means, base))
+            v1, v2 = f1.result(), f2.result()
     emp_lifts = fit_empirical_lifts(train, base)
     emp = ShapeParams(base.fg_share, base.sigma_common, base.sigma_team, 1.0, 1.0, emp_lifts)
-    return {
-        "normal": normal,
-        REFERENCE: base,
-        "discrete_v1": v1,
-        "discrete_v2": v2,
-        "discrete_emp": emp,
-        "_train_loglik_per_game_base": base_ll,
-    }
+    return {"normal": normal, REFERENCE: base, "discrete_v1": v1, "discrete_v2": v2, "discrete_emp": emp}
 
 
 # ----------------------------------------------------------------------------------------------- scoring
@@ -335,15 +451,17 @@ def verdict(blocks: dict[str, dict[str, Any]], selected: str) -> dict[str, Any]:
         "selection_rule": "best VALIDATE (2025) margin log score among the candidates fitted on TRAIN (2024)",
         "criteria_validate": per_block["validate"],
         "criteria_test": per_block["test"],
-        "criteria_final_continuity_only": criteria_for(selected, blocks["final"]) if blocks["final"]["games"] else None,
+        "criteria_final_continuity_only": (
+            criteria_for(selected, blocks["final"]) if blocks.get("final") and blocks["final"]["games"] else None
+        ),
         "verdict": "PROMOTABLE" if promotable else "NOT_PROMOTABLE",
         "promotion": "NOT_PROMOTED in either case: promotion is an owner decision and needs market-price evidence "
         "(none exists in this repository)",
     }
 
 
-def run(root: Path) -> dict[str, Any]:
-    games = load_games(root)
+def run(root: Path, *, team_games_2026: Path | None = None, checkpoint: Path | None = None) -> dict[str, Any]:
+    games = load_games(root, team_games_2026=team_games_2026)
     rated = rate_games(games)
     parts = split_blocks(rated)
     if min(len(parts["train"]), len(parts["validate"]), len(parts["test"])) < 30:
@@ -352,7 +470,12 @@ def run(root: Path) -> dict[str, Any]:
             "protocol": PROTOCOL_VERSION,
             "counts": {k: len(v) for k, v in parts.items()},
         }
-    systems = fit_systems(parts["train"])
+    if checkpoint is not None and Path(checkpoint).exists():
+        systems = load_fits(json.loads(Path(checkpoint).read_text(encoding="utf-8")))
+    else:
+        systems = fit_systems(parts["train"])
+        if checkpoint is not None:
+            Path(checkpoint).write_text(json.dumps(dump_fits(systems), indent=1) + "\n", encoding="utf-8")
     blocks = {
         name: summarize_block(score_block(parts[name], systems))
         for name in ("train", "validate", "test", "final")

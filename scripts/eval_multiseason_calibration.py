@@ -23,9 +23,15 @@ from cfb_edge_finder.research.multiseason_calibration import run  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=str(ROOT / "data" / "scripting" / "validation"))
+    ap.add_argument("--team-games-2026", default=str(ROOT / "data" / "football" / "2026" / "team_games.jsonl"))
+    ap.add_argument("--checkpoint", default=None, help="write/reuse fitted parameters (TRAIN-only fits)")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    report = run(Path(args.root))
+    report = run(
+        Path(args.root),
+        team_games_2026=Path(args.team_games_2026),
+        checkpoint=Path(args.checkpoint) if args.checkpoint else None,
+    )
     Path(args.out).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({k: report.get(k) for k in ("status", "counts")}, indent=1))
     if report.get("status") == "OK":

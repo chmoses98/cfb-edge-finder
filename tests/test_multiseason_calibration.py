@@ -197,3 +197,72 @@ def test_empirical_lifts_recover_a_planted_margin_three_excess_and_leave_other_m
     others = [lifts[m] for m in range(11, 25)]
     assert all(0.4 < x < 1.6 for x in others), "margins with no planted excess stay near 1 (shrunk by the prior)"
     assert all(ms.LIFT_BOUNDS[0] <= v <= ms.LIFT_BOUNDS[1] for v in lifts.values())
+
+
+# ---- amendments: parallel fit parity, checkpoint, empty FINAL block, 2026 source -----------------------------
+def _tiny_train(n=12):
+    rng = np.random.default_rng(3)
+    out = []
+    for i in range(n):
+        h, a = int(rng.integers(10, 45)), int(rng.integers(7, 38))
+        out.append(
+            (g(str(i), 2024, "2024-09-01", "A", "B", h, a), (float(rng.integers(20, 33)), float(rng.integers(18, 30))))
+        )
+    return out
+
+
+def test_parallel_shape_fit_matches_the_serial_fit_exactly():
+    from cfb_edge_finder.research.discrete_scoring_eval import fit_shape
+
+    train = _tiny_train()
+    cal, means = [x[0] for x in train], [x[1] for x in train]
+    serial, serial_ll = fit_shape(cal, means)
+    par, par_ll = ms.fit_shape_parallel(cal, means, workers=2)
+    assert par == serial and abs(par_ll - serial_ll) < 1e-12
+
+
+def test_checkpoint_round_trip_preserves_every_fitted_parameter():
+    from cfb_edge_finder.research.discrete_scoring_eval import NormalSystem
+
+    systems = {
+        "normal": NormalSystem(13.5, 17.0, 10.5),
+        ms.REFERENCE: ShapeParams(0.15, 0.05, 0.1),
+        "discrete_v1": ShapeParams(0.2, 0.0, 0.0, 0.8, 1.6),
+        "discrete_v2": ShapeParams(0.2, 0.0, 0.0, 1.0, 1.0, ((3, 2.1), (7, 1.2), (10, 1.1), (14, 1.1))),
+        "discrete_emp": ShapeParams(0.15, 0.05, 0.1, 1.0, 1.0, ((3, 1.9), (4, 0.8))),
+    }
+    back = ms.load_fits(json.loads(json.dumps(ms.dump_fits(systems))))
+    for k in ("discrete_v1", "discrete_v2", "discrete_emp", ms.REFERENCE):
+        assert back[k] == systems[k]
+    assert (back["normal"].sd_margin, back["normal"].sd_total, back["normal"].sd_team) == (13.5, 17.0, 10.5)
+
+
+def test_an_empty_final_block_yields_a_verdict_and_no_continuity_criteria():
+    good = summary()
+    v = ms.verdict({"validate": good, "test": good}, "discrete_v1")  # no 'final' key at all: the first run's crash
+    assert v["verdict"] == "PROMOTABLE" and v["criteria_final_continuity_only"] is None
+    v2 = ms.verdict({"validate": good, "test": good, "final": {**good, "games": 0}}, "discrete_v1")
+    assert v2["criteria_final_continuity_only"] is None
+
+
+def test_2026_games_can_come_from_team_games_with_ids_and_records_stay_names(tmp_path):
+    tg = tmp_path / "team_games.jsonl"
+    rows = []
+    for gid, h, a, hp, ap in (("9", "T1", "T2", 31, 24), ("10", "T3", "T4", 20, 17)):
+        for site, tid, pf, pa in (("home", h, hp, ap), ("away", a, ap, hp)):
+            rows.append(
+                {
+                    "game_id": gid,
+                    "kickoff_utc": "2026-10-17T16:00:00Z",
+                    "team_id": tid,
+                    "site": site,
+                    "team_division": "fbs",
+                    "points_for": pf,
+                    "points_against": pa,
+                    "pbp": {"scrim_plays": 60.0},
+                }
+            )
+    tg.write_text("\n".join(json.dumps(r) for r in rows))
+    games = ms.load_games(tmp_path, team_games_2026=tg)
+    assert {x["home"] for x in games} == {"T1", "T3"} and all(x["season"] == 2026 for x in games)
+    assert {x["game_id"] for x in games} == {"9", "10"}
