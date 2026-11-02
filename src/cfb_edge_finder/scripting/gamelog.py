@@ -128,6 +128,10 @@ class TeamGame:
     observed_at: str | None = None
     schema_version: str = TEAM_GAME_SCHEMA_VERSION
     notes: tuple[str, ...] = field(default_factory=tuple)
+    #: Points scored per period as the venue's linescore states them: (Q1, Q2, Q3, Q4[, OT...]). ``None`` = not
+    #: captured (rows written before 2026-11-02, or a linescore that did not sum to the final score). It is NEVER
+    #: back-filled by inference: a missing period is missing, so 1Q/1H pricing stays refused until real data exists.
+    period_points: tuple[float, ...] | None = None
 
     def kickoff(self) -> datetime:
         return parse_utc(self.kickoff_utc)
@@ -135,12 +139,17 @@ class TeamGame:
     def as_dict(self) -> dict[str, Any]:
         out = asdict(self)
         out["notes"] = list(self.notes)
+        pp = out.pop("period_points", None)
+        if pp is not None:  # additive: rows without periods keep their historical byte shape
+            out["period_points"] = list(pp)
         return out
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> TeamGame:
         data = dict(raw)
         data["notes"] = tuple(data.get("notes") or ())
+        pp = data.get("period_points")
+        data["period_points"] = None if pp is None else tuple(float(x) for x in pp)
         data["box"] = {k: _num(data.get("box", {}).get(k)) for k in BOX_KEYS}
         pbp = data.get("pbp")
         data["pbp"] = None if pbp is None else {k: _num(pbp.get(k)) for k in PBP_KEYS}

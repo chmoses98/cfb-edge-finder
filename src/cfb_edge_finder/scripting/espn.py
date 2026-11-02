@@ -390,9 +390,33 @@ def team_games_from_summary(
                 pbp_source=SOURCE_PBP if team_pbp is not None else None,
                 observed_at=observed_at,
                 notes=tuple(notes),
+                period_points=period_points_from_competitor(by_side[side], scores[side]),
             )
         )
     return rows
+
+
+def period_points_from_competitor(competitor: dict[str, Any], final_score: int | None) -> tuple[float, ...] | None:
+    """Per-period points from a header competitor's ``linescores``, or None.
+
+    Accepted only if there are at least four periods, every value is a non-negative whole number, and the periods
+    SUM to the final score (so overtime periods, if any, are included and reconcile). Anything else is None: a
+    linescore that does not add up is not evidence, and a missing one is never filled in.
+    """
+    raw = competitor.get("linescores")
+    if not isinstance(raw, list) or len(raw) < 4 or final_score is None:
+        return None
+    values: list[float] = []
+    for entry in raw:
+        text = entry.get("displayValue") if isinstance(entry, dict) else entry
+        try:
+            number = float(text)
+        except (TypeError, ValueError):
+            return None
+        if number < 0 or number != int(number):
+            return None
+        values.append(number)
+    return tuple(values) if int(sum(values)) == int(final_score) else None
 
 
 def _team_name(team: dict[str, Any]) -> str:
