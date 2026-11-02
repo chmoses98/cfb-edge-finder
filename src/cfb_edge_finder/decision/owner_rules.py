@@ -97,8 +97,11 @@ def auburn_exclusion(ticker: str, side: str, *, game_title: str | None = None) -
 
     if not info.decoded or info.family in (Family.COMBO_UNDECODED, Family.UNKNOWN):
         if title_auburn:
-            return OwnerVerdict(True, OWNER_EXCLUSION_AUBURN_UNDETERMINED,
-                                "Auburn game, contract not decodable: direction cannot be shown not to be against Auburn")
+            return OwnerVerdict(
+                True,
+                OWNER_EXCLUSION_AUBURN_UNDETERMINED,
+                "Auburn game, contract not decodable: direction cannot be shown not to be against Auburn",
+            )
         return OwnerVerdict(False, None, "not an attributable single-game contract")
 
     if info.family is Family.TOTAL:
@@ -117,15 +120,21 @@ def auburn_exclusion(ticker: str, side: str, *, game_title: str | None = None) -
     if not (auburn_is_team or auburn_is_opponent):
         # Auburn is in the game (by title) but the ticker's team token is neither AUB nor derivable
         # as AUB's opponent: cannot tell which team the contract names.
-        return OwnerVerdict(True, OWNER_EXCLUSION_AUBURN_UNDETERMINED,
-                            "Auburn game by title, but the contract's team token is not attributable to Auburn or its opponent")
+        return OwnerVerdict(
+            True,
+            OWNER_EXCLUSION_AUBURN_UNDETERMINED,
+            "Auburn game by title, but the contract's team token is not attributable to Auburn or its opponent",
+        )
 
     # From here the contract names Auburn (as `team`) or Auburn's opponent (as `team`).
     if info.family in (Family.MONEYLINE, Family.SPREAD):
         against = (auburn_is_team and bought == "NO") or (auburn_is_opponent and bought == "YES")
         if against:
-            return OwnerVerdict(True, OWNER_EXCLUSION_AUBURN,
-                                f"{info.family.value}: {bought} on {team} requires Auburn to lose or fail to cover")
+            return OwnerVerdict(
+                True,
+                OWNER_EXCLUSION_AUBURN,
+                f"{info.family.value}: {bought} on {team} requires Auburn to lose or fail to cover",
+            )
         return OwnerVerdict(False, None, f"{info.family.value}: {bought} on {team} is not against Auburn")
 
     if info.family is Family.TEAM_TOTAL:
@@ -134,7 +143,9 @@ def auburn_exclusion(ticker: str, side: str, *, game_title: str | None = None) -
             return OwnerVerdict(True, OWNER_EXCLUSION_AUBURN, "TEAM_TOTAL: Under on Auburn's own score")
         return OwnerVerdict(False, None, "TEAM_TOTAL: not an Under on Auburn's own score")
 
-    return OwnerVerdict(True, OWNER_EXCLUSION_AUBURN_UNDETERMINED, f"unhandled family {info.family.value} in an Auburn game")
+    return OwnerVerdict(
+        True, OWNER_EXCLUSION_AUBURN_UNDETERMINED, f"unhandled family {info.family.value} in an Auburn game"
+    )
 
 
 @dataclass(frozen=True)

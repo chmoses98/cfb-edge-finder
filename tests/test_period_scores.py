@@ -53,17 +53,33 @@ def test_team_game_roundtrip_is_additive_and_old_rows_are_unchanged():
 
 def _row(gid, site, team, pts, periods):
     return TeamGame(
-        game_id=gid, season=2026, week=1, kickoff_utc="2026-09-05T16:00:00Z", team_id=team, team=team,
-        opponent_id="x", opponent="x", team_division="fbs", opponent_division="fbs", site=site,
-        points_for=pts, points_against=0, box={}, pbp=None, period_points=periods,
+        game_id=gid,
+        season=2026,
+        week=1,
+        kickoff_utc="2026-09-05T16:00:00Z",
+        team_id=team,
+        team=team,
+        opponent_id="x",
+        opponent="x",
+        team_division="fbs",
+        opponent_division="fbs",
+        site=site,
+        points_for=pts,
+        points_against=0,
+        box={},
+        pbp=None,
+        period_points=periods,
     )
 
 
 def test_period_games_and_coverage_never_estimate_a_missing_period():
     rows = [
-        _row("g1", "home", "H", 24, (7.0, 10.0, 0.0, 7.0)), _row("g1", "away", "A", 17, (3.0, 7.0, 7.0, 0.0)),
-        _row("g2", "home", "H2", 30, None), _row("g2", "away", "A2", 10, None),  # no periods: no record
-        _row("g3", "home", "H3", 27, (7.0, 7.0, 7.0, 3.0, 3.0)), _row("g3", "away", "A3", 24, (7.0, 7.0, 7.0, 3.0, 0.0)),
+        _row("g1", "home", "H", 24, (7.0, 10.0, 0.0, 7.0)),
+        _row("g1", "away", "A", 17, (3.0, 7.0, 7.0, 0.0)),
+        _row("g2", "home", "H2", 30, None),
+        _row("g2", "away", "A2", 10, None),  # no periods: no record
+        _row("g3", "home", "H3", 27, (7.0, 7.0, 7.0, 3.0, 3.0)),
+        _row("g3", "away", "A3", 24, (7.0, 7.0, 7.0, 3.0, 0.0)),
     ]
     games = {g["game_id"]: g for g in period_games(rows)}
     assert set(games) == {"g1", "g3"}  # g2 is absent, not zero-filled and not derived from the final score
@@ -75,7 +91,11 @@ def test_period_games_and_coverage_never_estimate_a_missing_period():
 
 
 def test_period_pricing_is_still_refused_without_a_fitted_validated_model():
-    from cfb_edge_finder.projections.discrete_scoring import MissingPeriodCalibration, ShapeParams, build_period_distribution
+    from cfb_edge_finder.projections.discrete_scoring import (
+        MissingPeriodCalibration,
+        ShapeParams,
+        build_period_distribution,
+    )
 
     with pytest.raises(MissingPeriodCalibration):
         build_period_distribution(28.0, 24.0, ShapeParams(0.15, 0.0, 0.0), period_share=None)

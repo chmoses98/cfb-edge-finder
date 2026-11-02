@@ -43,6 +43,7 @@ from cfb_edge_finder.decision.exposure_aggregation import (
     aggregate_exposure,
     flag_thresholds_dollars,
 )
+from cfb_edge_finder.decision.owner_rules import auburn_exclusion, clamp_stake
 from cfb_edge_finder.decision.pit_guards import (
     DEFAULT_KICKOFF_BUFFER,
     DEFAULT_MAX_PROJECTION_AGE,
@@ -51,7 +52,6 @@ from cfb_edge_finder.decision.pit_guards import (
     PriceProvenance,
     evaluate_pit_guards,
 )
-from cfb_edge_finder.decision.owner_rules import auburn_exclusion, clamp_stake
 from cfb_edge_finder.execution.context import FRESHNESS_BUDGET_SECONDS
 from cfb_edge_finder.execution.disposition import DEFAULT_MAX_CAPTURE_AGE_MINUTES
 from cfb_edge_finder.expression.fair_value import (

@@ -6,6 +6,7 @@
 Reads data/scripting/validation/records_{2024,2025,2026}.jsonl.gz. The acceptance rule is declared in
 src/cfb_edge_finder/research/multiseason_calibration.py and was committed BEFORE this script produced a result.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,7 +29,9 @@ def main() -> int:
     Path(args.out).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({k: report.get(k) for k in ("status", "counts")}, indent=1))
     if report.get("status") == "OK":
-        print("verdict:", json.dumps(report["verdict"]["verdict"]), "selected:", report["verdict"]["selected_candidate"])
+        print(
+            "verdict:", json.dumps(report["verdict"]["verdict"]), "selected:", report["verdict"]["selected_candidate"]
+        )
     return 0
 
 

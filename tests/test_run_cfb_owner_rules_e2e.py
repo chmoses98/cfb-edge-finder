@@ -13,7 +13,7 @@ from pathlib import Path
 
 from cfb_edge_finder.decision.owner_rules import OWNER_EXCLUSION_AUBURN, auburn_exclusion
 from cfb_edge_finder.execution.cli import main
-from tests.execution_fakes import CAPTURED_AT, NOW, catalog_dir, standard_markets
+from tests.execution_fakes import NOW, catalog_dir, standard_markets
 
 GAME = "26SEP19ARKAUB"
 
@@ -22,7 +22,13 @@ def auburn_markets():
     """standard_markets with LSU->Auburn (AUB, home) and Ole Miss->Arkansas (ARK, away)."""
     text = json.dumps(standard_markets(GAME))
     # names first (titles), then ticker tokens: LSU -> AUB (Auburn, home), MISS -> ARK (Arkansas, away)
-    for old, new in (("Ole Miss", "Arkansas"), ("26SEP19LSUMISS", GAME), ("-LSU", "-AUB"), ("-MISS", "-ARK"), ("LSU", "Auburn")):
+    for old, new in (
+        ("Ole Miss", "Arkansas"),
+        ("26SEP19LSUMISS", GAME),
+        ("-LSU", "-AUB"),
+        ("-MISS", "-ARK"),
+        ("LSU", "Auburn"),
+    ):
         text = text.replace(old, new)
     return json.loads(text)
 
@@ -30,23 +36,73 @@ def auburn_markets():
 def walk(tmp_path: Path, *, home_mean: float, away_mean: float, extra=()):
     catalog = catalog_dir(tmp_path, auburn_markets(), title="Arkansas at Auburn", game_key=GAME)
     out = tmp_path / "exec"
-    assert main(["prepare-live", "--catalog-dir", str(catalog), "--out-dir", str(out),
-                 "--as-of", NOW.isoformat(), "--date", "all"]) == 0
+    assert (
+        main(
+            [
+                "prepare-live",
+                "--catalog-dir",
+                str(catalog),
+                "--out-dir",
+                str(out),
+                "--as-of",
+                NOW.isoformat(),
+                "--date",
+                "all",
+            ]
+        )
+        == 0
+    )
     manifest = json.loads((out / "shard_manifest.json").read_text())
     shard = manifest["shards"][0]["shard"]
     pk = json.loads((out / "shards" / f"{shard}.json").read_text())["games"][0]
     hc = tmp_path / "hc.json"
-    hc.write_text(json.dumps([{
-        "schema_version": "cfb_handicap_payload/2.0.0", "game_key": pk["game_key"], "packet_hash": pk["packet_hash"],
-        "teams": {"home": "Auburn", "away": "Arkansas"}, "confidence": "test", "thesis": "t", "opposing_case": "o",
-        "period_distributions": {"full_game": {
-            "home_mean": home_mean, "away_mean": away_mean, "home_sd": 10.5, "away_sd": 10.0, "correlation": 0.1,
-            "uncertainty": {"margin_points": 3.0, "total_points": 5.0}}},
-        "explicit_probabilities": {},
-    }]))
-    assert main(["evaluate", "--shard", shard, "--out-dir", str(out), "--handicaps", str(hc), "--min-edge", "0.02"]) == 0
-    assert main(["candidates", "--shard", shard, "--out-dir", str(out), "--min-edge", "0.02", "--no-decision-record",
-                 "--as-of", (NOW + timedelta(minutes=5)).isoformat(), *extra]) == 0
+    hc.write_text(
+        json.dumps(
+            [
+                {
+                    "schema_version": "cfb_handicap_payload/2.0.0",
+                    "game_key": pk["game_key"],
+                    "packet_hash": pk["packet_hash"],
+                    "teams": {"home": "Auburn", "away": "Arkansas"},
+                    "confidence": "test",
+                    "thesis": "t",
+                    "opposing_case": "o",
+                    "period_distributions": {
+                        "full_game": {
+                            "home_mean": home_mean,
+                            "away_mean": away_mean,
+                            "home_sd": 10.5,
+                            "away_sd": 10.0,
+                            "correlation": 0.1,
+                            "uncertainty": {"margin_points": 3.0, "total_points": 5.0},
+                        }
+                    },
+                    "explicit_probabilities": {},
+                }
+            ]
+        )
+    )
+    assert (
+        main(["evaluate", "--shard", shard, "--out-dir", str(out), "--handicaps", str(hc), "--min-edge", "0.02"]) == 0
+    )
+    assert (
+        main(
+            [
+                "candidates",
+                "--shard",
+                shard,
+                "--out-dir",
+                str(out),
+                "--min-edge",
+                "0.02",
+                "--no-decision-record",
+                "--as-of",
+                (NOW + timedelta(minutes=5)).isoformat(),
+                *extra,
+            ]
+        )
+        == 0
+    )
     return json.loads((out / "candidates" / f"{shard}.candidates.json").read_text())
 
 
@@ -76,7 +132,9 @@ def test_auburn_favoured_handicap_does_not_trip_the_owner_rule(tmp_path):
     art = walk(tmp_path, home_mean=33.0, away_mean=17.0)  # Auburn heavily favoured
     for c in art["candidates"]:
         if c["owner_rules"]["auburn"]["blocked"]:
-            raise AssertionError(f"a pro-Auburn handicap produced an against-Auburn candidate: {c['market']} {c['side']}")
+            raise AssertionError(
+                f"a pro-Auburn handicap produced an against-Auburn candidate: {c['market']} {c['side']}"
+            )
     assert OWNER_EXCLUSION_AUBURN not in art["pit_review"]["blocked_by"]
 
 

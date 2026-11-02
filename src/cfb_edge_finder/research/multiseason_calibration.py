@@ -139,7 +139,9 @@ def rate_games(games: list[dict[str, Any]]) -> list[tuple[dict[str, Any], tuple[
     return out
 
 
-def split_blocks(rated: list[tuple[dict[str, Any], tuple[float, float]]]) -> dict[str, list[tuple[dict[str, Any], tuple[float, float]]]]:
+def split_blocks(
+    rated: list[tuple[dict[str, Any], tuple[float, float]]],
+) -> dict[str, list[tuple[dict[str, Any], tuple[float, float]]]]:
     train = [x for x in rated if x[0]["season"] == TRAIN_SEASON]
     validate = [x for x in rated if x[0]["season"] == VALIDATE_SEASON]
     test = [x for x in rated if x[0]["season"] == TEST_SEASON and x[0]["date"] < FINAL_START]
@@ -170,7 +172,11 @@ def fit_empirical_lifts(
             obs[m] += 1
     for _ in range(rounds):
         shape = ShapeParams(
-            base.fg_share, base.sigma_common, base.sigma_team, base.margin_shrink, base.key_lift,
+            base.fg_share,
+            base.sigma_common,
+            base.sigma_team,
+            base.margin_shrink,
+            base.key_lift,
             tuple((m, float(lifts[m])) for m in range(1, max_margin + 1)),
         )
         pred = np.zeros(max_margin + 1)
@@ -204,9 +210,7 @@ def fit_systems(train: list[tuple[dict[str, Any], tuple[float, float]]]) -> dict
 
 
 # ----------------------------------------------------------------------------------------------- scoring
-def score_block(
-    block: list[tuple[dict[str, Any], tuple[float, float]]], systems: dict[str, Any]
-) -> dict[str, Any]:
+def score_block(block: list[tuple[dict[str, Any], tuple[float, float]]], systems: dict[str, Any]) -> dict[str, Any]:
     names = ["normal", REFERENCE, *CANDIDATES]
     per_game: dict[str, dict[str, list[float]]] = {n: defaultdict(list) for n in names}
     events: dict[str, tuple[list[float], list[int]]] = {n: ([], []) for n in names}
@@ -225,30 +229,43 @@ def score_block(
                 per_game[name]["total"].append(ns.logp_total(mh, ma, h + a))
                 per_game[name]["team"].append(0.5 * (ns.logp_team(mh, h) + ns.logp_team(ma, a)))
                 for s in mstrikes:
-                    ev_p.append(ns.p_margin_gt(mh, ma, s)); ev_o.append(int(h - a > s))  # noqa: E702
+                    ev_p.append(ns.p_margin_gt(mh, ma, s))
+                    ev_o.append(int(h - a > s))  # noqa: E702
                 for s in tstrikes:
-                    ev_p.append(ns.p_total_gt(mh, ma, s)); ev_o.append(int(h + a > s))  # noqa: E702
+                    ev_p.append(ns.p_total_gt(mh, ma, s))
+                    ev_o.append(int(h + a > s))  # noqa: E702
                 for s in hstrikes:
-                    ev_p.append(ns.p_team_gt(mh, s)); ev_o.append(int(h > s))  # noqa: E702
+                    ev_p.append(ns.p_team_gt(mh, s))
+                    ev_o.append(int(h > s))  # noqa: E702
                 for s in astrikes:
-                    ev_p.append(ns.p_team_gt(ma, s)); ev_o.append(int(a > s))  # noqa: E702
+                    ev_p.append(ns.p_team_gt(ma, s))
+                    ev_o.append(int(a > s))  # noqa: E702
                 key_pred[name].append(ns.key_mass(mh, ma))
             else:
                 d = build_distribution(mh, ma, systems[name])
                 for k, v in _disc_logp(d, g).items():
                     per_game[name][k].append(v)
                 for s in mstrikes:
-                    ev_p.append(d.p_margin_gt(s)); ev_o.append(int(h - a > s))  # noqa: E702
+                    ev_p.append(d.p_margin_gt(s))
+                    ev_o.append(int(h - a > s))  # noqa: E702
                 for s in tstrikes:
-                    ev_p.append(d.p_total_gt(s)); ev_o.append(int(h + a > s))  # noqa: E702
+                    ev_p.append(d.p_total_gt(s))
+                    ev_o.append(int(h + a > s))  # noqa: E702
                 for s in hstrikes:
-                    ev_p.append(d.p_team_gt(True, s)); ev_o.append(int(h > s))  # noqa: E702
+                    ev_p.append(d.p_team_gt(True, s))
+                    ev_o.append(int(h > s))  # noqa: E702
                 for s in astrikes:
-                    ev_p.append(d.p_team_gt(False, s)); ev_o.append(int(a > s))  # noqa: E702
-                key_pred[name].append(
-                    sum(d.margin_prob(sg * k) for k in KEY_MARGINS for sg in (1, -1))
-                )
-    return {"names": names, "per_game": per_game, "events": events, "key_pred": key_pred, "key_obs": key_obs, "n": len(block)}
+                    ev_p.append(d.p_team_gt(False, s))
+                    ev_o.append(int(a > s))  # noqa: E702
+                key_pred[name].append(sum(d.margin_prob(sg * k) for k in KEY_MARGINS for sg in (1, -1)))
+    return {
+        "names": names,
+        "per_game": per_game,
+        "events": events,
+        "key_pred": key_pred,
+        "key_obs": key_obs,
+        "n": len(block),
+    }
 
 
 def summarize_block(scored: dict[str, Any]) -> dict[str, Any]:
@@ -304,8 +321,10 @@ def criteria_for(candidate: str, summary: dict[str, Any]) -> dict[str, bool]:
 
 
 def select_candidate(validate_summary: dict[str, Any]) -> str:
-    """Pre-declared selection: the candidate with the best VALIDATE margin log score. Ties -> list order (simplest first)."""
-    return max(CANDIDATES, key=lambda c: (round(validate_summary["systems"][c]["margin_logscore"], 9), -CANDIDATES.index(c)))
+    """Pre-declared selection: best VALIDATE margin log score; ties go to the simplest (list order)."""
+    return max(
+        CANDIDATES, key=lambda c: (round(validate_summary["systems"][c]["margin_logscore"], 9), -CANDIDATES.index(c))
+    )
 
 
 def verdict(blocks: dict[str, dict[str, Any]], selected: str) -> dict[str, Any]:
@@ -328,17 +347,26 @@ def run(root: Path) -> dict[str, Any]:
     rated = rate_games(games)
     parts = split_blocks(rated)
     if min(len(parts["train"]), len(parts["validate"]), len(parts["test"])) < 30:
-        return {"status": "INSUFFICIENT_DATA", "protocol": PROTOCOL_VERSION, "counts": {k: len(v) for k, v in parts.items()}}
+        return {
+            "status": "INSUFFICIENT_DATA",
+            "protocol": PROTOCOL_VERSION,
+            "counts": {k: len(v) for k, v in parts.items()},
+        }
     systems = fit_systems(parts["train"])
-    blocks = {name: summarize_block(score_block(parts[name], systems)) for name in ("train", "validate", "test", "final")
-              if parts[name]}
+    blocks = {
+        name: summarize_block(score_block(parts[name], systems))
+        for name in ("train", "validate", "test", "final")
+        if parts[name]
+    }
     selected = select_candidate(blocks["validate"])
     return {
         "status": "OK",
         "protocol": PROTOCOL_VERSION,
         "split": {
-            "train": f"season {TRAIN_SEASON}", "validate": f"season {VALIDATE_SEASON}",
-            "test": f"{TEST_SEASON} kickoffs before {FINAL_START}", "final": f"{FINAL_START}..{FINAL_END}",
+            "train": f"season {TRAIN_SEASON}",
+            "validate": f"season {VALIDATE_SEASON}",
+            "test": f"{TEST_SEASON} kickoffs before {FINAL_START}",
+            "final": f"{FINAL_START}..{FINAL_END}",
         },
         "counts": {k: len(v) for k, v in parts.items()},
         "fitted": {
@@ -355,6 +383,18 @@ def run(root: Path) -> dict[str, Any]:
 
 
 __all__ = [
-    "CANDIDATES", "PROTOCOL_VERSION", "REFERENCE", "criteria_for", "fit_empirical_lifts", "fit_systems",
-    "load_games", "rate_games", "run", "score_block", "select_candidate", "split_blocks", "summarize_block", "verdict",
+    "CANDIDATES",
+    "PROTOCOL_VERSION",
+    "REFERENCE",
+    "criteria_for",
+    "fit_empirical_lifts",
+    "fit_systems",
+    "load_games",
+    "rate_games",
+    "run",
+    "score_block",
+    "select_candidate",
+    "split_blocks",
+    "summarize_block",
+    "verdict",
 ]
