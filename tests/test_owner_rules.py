@@ -205,6 +205,7 @@ def test_live_script_engine_edge_and_context_tables_contain_no_havoc():
 #: Havoc appears here ONLY as documented exclusions or in frozen/vendored research that no live path imports.
 _HAVOC_ALLOWED = {
     "decision/owner_rules.py": "the rule itself",
+    "research/multiseason_calibration.py": "docstring: 'No havoc metric' (states the exclusion)",
     "projections/discrete_scoring.py": "docstring: 'havoc metrics: excluded by owner instruction'",
     "scripting/metrics.py": "computed research proxy kept as-filed; excluded from every edge (matchup.py)",
     "scripting/matchup.py": "comment documenting the exclusion",
