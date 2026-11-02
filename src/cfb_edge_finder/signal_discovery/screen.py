@@ -35,7 +35,6 @@ UNIT_METRICS = (
     "yards_per_pass_attempt",
     "interception_rate",
     "sack_rate_allowed",
-    "havoc_allowed",
     "turnovers_per_game",
     "points_per_opportunity",
     "points_per_drive",

@@ -51,6 +51,7 @@ from cfb_edge_finder.decision.pit_guards import (
     PriceProvenance,
     evaluate_pit_guards,
 )
+from cfb_edge_finder.decision.owner_rules import auburn_exclusion, clamp_stake
 from cfb_edge_finder.execution.context import FRESHNESS_BUDGET_SECONDS
 from cfb_edge_finder.execution.disposition import DEFAULT_MAX_CAPTURE_AGE_MINUTES
 from cfb_edge_finder.expression.fair_value import (
@@ -63,7 +64,7 @@ from cfb_edge_finder.expression.fair_value import (
     order_fee_dollars,
 )
 
-PIT_REVIEW_VERSION = "cfb_pit_review/1.0.0"
+PIT_REVIEW_VERSION = "cfb_pit_review/1.1.0"
 
 #: Basis string stamped beside the legacy ``bet_up_to_price`` so a reader can see what it is and is not.
 LEGACY_BET_UP_TO_BASIS = (
@@ -232,6 +233,10 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
         ctx.policy,
     )
     blocking = [g.value for g in guard.blocking]
+    # ---- owner rules (restriction-only, named, visible): never against Auburn ------------------------
+    owner = auburn_exclusion(ticker, str(candidate.get("side") or ""), game_title=packet.get("title"))
+    if owner.blocked and owner.reason:
+        blocking.append(owner.reason)
     quote_age = (
         round((ctx.decision_time - ctx.quote_captured_at).total_seconds())
         if ctx.quote_captured_at is not None
@@ -305,10 +310,13 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
         ),
     }
 
+    proposed = ctx.proposed_stakes.get(str(candidate.get("recommendation_id"))) or ctx.proposed_stakes.get(ticker)
+    sizing = clamp_stake(float(proposed) if proposed else None, unit_dollars=ctx.unit_dollars).as_dict()
     return {
+        "owner_rules": {"auburn": owner.as_dict(), "sizing": sizing},
         "pit_review": {
             "version": PIT_REVIEW_VERSION,
-            "actionable": guard.actionable,
+            "actionable": bool(guard.actionable and not owner.blocked),
             "blocking_guards": blocking,
             "notes": list(guard.notes),
             "decision_time": ctx.decision_time.isoformat(),
@@ -330,11 +338,12 @@ def exposure_review(ctx: ReviewContext, candidates: list[dict[str, Any]]) -> dic
             str(cand.get("market"))
         )
         if stake:
+            effective = clamp_stake(float(stake), unit_dollars=ctx.unit_dollars).effective_dollars
             proposed.append(
                 Position(
                     str(cand["market"]),
                     str(cand["side"]).upper(),
-                    float(stake),
+                    float(effective),
                     ctx.decision_time.date().isoformat(),
                 )
             )
