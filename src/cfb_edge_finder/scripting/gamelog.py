@@ -132,6 +132,10 @@ class TeamGame:
     #: captured (rows written before 2026-11-02, or a linescore that did not sum to the final score). It is NEVER
     #: back-filled by inference: a missing period is missing, so 1Q/1H pricing stays refused until real data exists.
     period_points: tuple[float, ...] | None = None
+    #: Special-teams counts for THIS team from the venue's box score (field goals, extra points, punts, returns).
+    #: ``None`` = not captured (rows written before 2026-11-03, or the summary carried no kicking/punting/returns
+    #: categories). A captured empty category is a real zero; an absent category is missing. Never estimated.
+    special_teams: dict[str, float] | None = None
 
     def kickoff(self) -> datetime:
         return parse_utc(self.kickoff_utc)
@@ -142,6 +146,8 @@ class TeamGame:
         pp = out.pop("period_points", None)
         if pp is not None:  # additive: rows without periods keep their historical byte shape
             out["period_points"] = list(pp)
+        if out.get("special_teams") is None:
+            out.pop("special_teams", None)  # additive: historical rows keep their byte shape
         return out
 
     @classmethod
@@ -150,6 +156,8 @@ class TeamGame:
         data["notes"] = tuple(data.get("notes") or ())
         pp = data.get("period_points")
         data["period_points"] = None if pp is None else tuple(float(x) for x in pp)
+        st = data.get("special_teams")
+        data["special_teams"] = None if st is None else {str(k): float(v) for k, v in st.items() if v is not None}
         data["box"] = {k: _num(data.get("box", {}).get(k)) for k in BOX_KEYS}
         pbp = data.get("pbp")
         data["pbp"] = None if pbp is None else {k: _num(pbp.get(k)) for k in PBP_KEYS}

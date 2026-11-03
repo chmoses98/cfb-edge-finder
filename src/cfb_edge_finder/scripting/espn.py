@@ -391,9 +391,72 @@ def team_games_from_summary(
                 observed_at=observed_at,
                 notes=tuple(notes),
                 period_points=period_points_from_competitor(by_side[side], scores[side]),
+                special_teams=special_teams_from_categories(categories.get(team_id, {})),
             )
         )
     return rows
+
+
+def _split(value: Any) -> tuple[float, float] | None:
+    """'2/3' -> (2.0, 3.0); anything else None."""
+    if not isinstance(value, str) or "/" not in value:
+        return None
+    a, _, b = value.partition("/")
+    try:
+        return float(a), float(b)
+    except ValueError:
+        return None
+
+
+def special_teams_from_categories(categories: dict[str, Any]) -> dict[str, float] | None:
+    """Special-teams counts from a team's box-score player categories, or None if NONE of them is present.
+
+    ESPN lists ``kicking`` / ``punting`` / ``kickReturns`` / ``puntReturns`` for every team, with an empty
+    ``totals`` when the team had no such events: an empty present category is a genuine zero. A category that is
+    absent from the payload is left out of the result, never zero-filled, and a payload with none of the four
+    returns None.
+    """
+    out: dict[str, float] = {}
+
+    def totals(name: str) -> list[Any] | None:
+        block = categories.get(name)
+        if not isinstance(block, dict):
+            return None
+        t = block.get("totals")
+        return list(t) if isinstance(t, list) else []
+
+    kicking = totals("kicking")  # labels: FG, PCT, LONG, XP, PTS
+    if kicking is not None:
+        fg = _split(kicking[0]) if len(kicking) > 0 else (0.0, 0.0)
+        xp = _split(kicking[3]) if len(kicking) > 3 else (0.0, 0.0)
+        if fg is not None:
+            out["fg_made"], out["fg_att"] = fg
+        if xp is not None:
+            out["xp_made"], out["xp_att"] = xp
+    punting = totals("punting")  # labels: NO, YDS, AVG, TB, In 20, LONG
+    if punting is not None:
+        if punting:
+            vals = [_int(v) for v in punting]
+            for key, idx in (("punts", 0), ("punt_yards", 1), ("punt_touchbacks", 3), ("punts_inside_20", 4)):
+                if len(vals) > idx and vals[idx] is not None:
+                    out[key] = vals[idx]
+        else:
+            out.update({"punts": 0.0, "punt_yards": 0.0, "punt_touchbacks": 0.0, "punts_inside_20": 0.0})
+    for name, prefix in (("kickReturns", "kr"), ("puntReturns", "pr")):  # labels: NO, YDS, AVG, LONG, TD
+        t = totals(name)
+        if t is None:
+            continue
+        if t:
+            n, y, td = _int(t[0]), _int(t[1]) if len(t) > 1 else None, _int(t[4]) if len(t) > 4 else None
+            if n is not None:
+                out[f"{prefix}_n"] = n
+            if y is not None:
+                out[f"{prefix}_yards"] = y
+            if td is not None:
+                out[f"{prefix}_td"] = td
+        else:
+            out.update({f"{prefix}_n": 0.0, f"{prefix}_yards": 0.0, f"{prefix}_td": 0.0})
+    return out or None
 
 
 def period_points_from_competitor(competitor: dict[str, Any], final_score: int | None) -> tuple[float, ...] | None:

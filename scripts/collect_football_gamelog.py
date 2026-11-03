@@ -185,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=0,
         help="re-fetch up to N completed games already in the log whose rows carry no period_points (per-quarter "
-        "scoring), oldest first. 0 (default) = off, so the scheduled run's behaviour and cost are unchanged.",
+        "scoring) or no special_teams counts, oldest first. 0 (default) = off, so the scheduled run's behaviour and cost are unchanged.",
     )
     args = parser.parse_args(argv)
 
@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         kickoff = datetime.fromisoformat(str(row["date"]).replace("Z", "+00:00"))
         if event_id in by_game and kickoff < refetch_after:
-            needs_periods = any(r.period_points is None for r in by_game[event_id])
+            needs_periods = any(r.period_points is None or r.special_teams is None for r in by_game[event_id])
             if not (needs_periods and backfilled < args.backfill_periods):
                 continue
             backfilled += 1
