@@ -460,6 +460,40 @@ to each candidate (schema `cfb_candidate_artifact/1.2.0`; see `src/cfb_edge_find
 Options: `--as-of`, `--unit-dollars` (default 75), `--existing-positions`, `--proposed-stakes`, `--reliability-table`,
 `--max-quote-age-minutes`. The review cannot be switched off.
 
+#### 10b — Owner rules (restriction-only, named on every candidate)
+
+Every candidate carries `owner_rules` (`cfb_pit_review/1.1.0`). These are the owner's explicit rules, applied **after**
+pricing, visible in the artifact, and unable to add, drop or re-rank a candidate or to change any probability:
+
+| Rule | Behaviour | Reason code |
+|---|---|---|
+| **Never recommend betting against Auburn** | A position whose payoff needs Auburn to lose or fail to cover is `pit_review.actionable: false`: Auburn NO / opponent YES on a moneyline (game or 1H), Auburn NO / opponent YES on a spread or alternate (game, 1H, 1Q), and the **Under on Auburn's own team total**. Not affected: game / 1Q / 1H totals, Auburn YES, opponent NO, the opponent's team total, games without Auburn. Team is matched on the exact ticker token `AUB`, with the game title ("… at Auburn") as corroboration that can only tighten. An Auburn game whose contract cannot be attributed fails closed. | `OWNER_EXCLUSION_AUBURN`, `OWNER_EXCLUSION_AUBURN_UNDETERMINED` |
+| **Max 5U on any single bet** (1U = $75, so **$375**) | A proposed stake above the ceiling is clamped to $375 and the clamp is disclosed in `owner_rules.sizing`. This is a per-bet ceiling only: game (>5U / $375) and day (>15U / $1,125) exposure remain **flags, never caps**. A missing proposal stays missing. | `PER_BET_CAP_5U_APPLIED` |
+| **Havoc is never a handicapping input** | `havoc_allowed` is excluded from the live script-engine edge table (`scripting/matchup.py`); a test fails if havoc appears outside its documented exclusions. | — |
+
+**Owner-confirmed (2026-11-03):** "against Auburn" includes the Under on Auburn's own team total; **game, 1Q and 1H
+total Unders are evaluated independently and are not blocked.**
+
+The rule is enforced in three places so no path can bypass it: the artifact review (`execution/pit_review.py`),
+expression selection (`decision/expression_selection.build_option` rejects the option with
+`OWNER_EXCLUSION_AUBURN`), and the actionable branch of `recommendation/eligibility.py`. A ticker whose series is not
+known, in a game whose key has `AUB` at either end of its team string, fails closed (`..._UNDETERMINED`).
+
+Combos (`KXMVECROSSCATEGORY`): legs are not in the ticker. `combo_auburn_exclusion` blocks a combo when a known leg is
+against Auburn (YES) or involves Auburn at all (NO, whose payoff may depend on Auburn failing), and blocks fail-closed
+when the legs are unknown but the available text names Auburn. A combo with no Auburn evidence is not attributable and
+is reported `COMBO_UNDECODED`.
+
+#### 10c — Decision evidence for later attribution (digest-only)
+
+`candidates` also writes `<batch>.decision_candidates.jsonl` beside the artifact: per candidate, the market, side, a
+decision time, a **digest** of the recommendation id and the handicap's stated `handicapped_at` as `model_as_of`.
+A candidate without a recommendation id or a stated `handicapped_at` is skipped and counted (`gaps` on stdout), never
+guessed. These rows are what the vendored execution-evidence ledger's `link_recommendation` consumes to attach a
+recommendation to a later fill: exact market + side, created before the first fill, inside
+`LINK_WINDOW_SECONDS`; one distinct recommendation -> LINKED, none -> MISSING, several -> AMBIGUOUS. Raw ids never
+leave the private decision store.
+
 State, per recommendation: the contract ticker, exactly what YES means, the
 executable price and size, the fee, your probability, and why the price
 justifies it. If no price justifies the thesis, **return nothing** — that

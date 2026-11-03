@@ -302,10 +302,17 @@ def test_proposal_without_stakes_is_not_assessed_and_with_stakes_reports_new_fla
     ctx, hc = make_ctx(pk)
     art, cand = first_candidate(pk, hc)
     assert exposure_review(ctx, art["candidates"])["proposal_assessed"] is False
+    # One $450 bet is clamped to the 5U per-bet ceiling ($375), which is not over the >$375 game flag by itself.
     ctx2, _ = make_ctx(pk, proposed_stakes={cand["market"]: 450.0})
     rep = exposure_review(ctx2, art["candidates"])
     assert rep["proposal_assessed"] is True
-    assert rep["flags_introduced_by_proposal"], "a $450 proposal on one game must raise the >$375 game flag"
+    assert not rep["flags_introduced_by_proposal"]
+    # Two bets on one game, each within the per-bet ceiling, together exceed $375 -> a FLAG (never a cap).
+    others = [c for c in art["candidates"] if c["market"] != cand["market"]]
+    if others:
+        ctx3, _ = make_ctx(pk, proposed_stakes={cand["market"]: 300.0, others[0]["market"]: 300.0})
+        rep3 = exposure_review(ctx3, art["candidates"])
+        assert rep3["flags_introduced_by_proposal"], "$600 across one game must raise the >$375 game flag"
 
 
 def test_ledger_loader_reads_the_committed_export_shape(tmp_path):

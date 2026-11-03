@@ -1,0 +1,78 @@
+name: CFB Period Score Backfill
+
+# Per-quarter scoring, with provenance, for games whose team-game rows carry no period_points.
+#
+# Reads ESPN's summary header linescores (keyless, read-only). Writes ONLY to the `period-scores` data branch
+# (append-only period_scores.jsonl + period_scores_quarantine.jsonl). Never edits data/football or main.
+# dry_run defaults to TRUE: it fetches, validates and reports counts without writing anything.
+#
+# NOTE: GitHub dispatches a workflow only from the default branch, so this file cannot be run until it is merged.
+# No credential is used or needed. Nothing here can place an order.
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Season whose game log is read"
+        required: false
+        default: "2026"
+      dry_run:
+        description: "true = validate and count only, write nothing"
+        required: false
+        default: "true"
+      limit:
+        description: "Max games to fetch this run (0 = all)"
+        required: false
+        default: "200"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: research-data-write
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Check out the period-scores data branch
+        run: |
+          STORE="$RUNNER_TEMP/period-scores"
+          echo "STORE=$STORE" >> "$GITHUB_ENV"
+          if git fetch --depth=1 origin period-scores 2>/dev/null; then
+            git worktree add -B period-scores "$STORE" FETCH_HEAD
+          else
+            git worktree add --orphan -b period-scores "$STORE"
+          fi
+
+      - name: Fetch, validate, and ingest (dry run unless dry_run=false)
+        env:
+          SEASON: ${{ inputs.season }}
+          DRY: ${{ inputs.dry_run }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          FLAGS="--fetch --limit $LIMIT"
+          if [ "$DRY" != "false" ]; then FLAGS="$FLAGS --dry-run"; fi
+          python scripts/backfill_period_scores.py \
+            --team-games "data/football/$SEASON/team_games.jsonl" \
+            --store-dir "$STORE/data/football/$SEASON" $FLAGS | tee "$RUNNER_TEMP/backfill.json"
+          cat "$RUNNER_TEMP/backfill.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit to the data branch (only when dry_run=false)
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          cd "$STORE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "period scores: ingest (append-only)"
+          git push origin period-scores

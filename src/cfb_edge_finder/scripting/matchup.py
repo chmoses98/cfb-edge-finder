@@ -48,7 +48,10 @@ DIMENSION_EDGE_METRICS: dict[str, tuple[str, ...]] = {
     "rushing": ("rush_success_rate", "yards_per_designed_rush", "yards_per_rush"),
     "passing": ("pass_success_rate", "net_yards_per_dropback", "yards_per_pass_attempt"),
     "explosiveness": ("explosive_play_rate", "explosive_rush_rate", "explosive_pass_rate"),
-    "disruption": ("sack_rate_allowed", "havoc_allowed"),
+    # Owner rule 2026-11-02: havoc is NEVER a handicapping input. `havoc_allowed` stays defined in metrics.py
+    # as a computed research proxy (frozen artifacts and history keep it as filed) but it is excluded from
+    # every edge, finding and confidence calculation built from this table. See decision/owner_rules.py.
+    "disruption": ("sack_rate_allowed",),
     "finishing": ("points_per_opportunity", "points_per_drive"),
 }
 

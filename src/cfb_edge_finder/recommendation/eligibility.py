@@ -232,7 +232,11 @@ def evaluate_eligibility(
     # future artifact must satisfy is explicit: even WITH a compatible
     # approved artifact, data-quality failures and an unvalidated evidence
     # slice each independently block actionability.
-    blocked = bool(quality_failures) or evidence_state is not EvidenceState.VALIDATED
+    from cfb_edge_finder.decision.owner_rules import auburn_exclusion  # owner rule: never against Auburn
+
+    side = getattr(candidate.executable_side, "value", candidate.executable_side)
+    auburn_blocked = auburn_exclusion(candidate.market_ticker, str(side)).blocked
+    blocked = bool(quality_failures) or evidence_state is not EvidenceState.VALIDATED or auburn_blocked
     return EligibilityResult(
         candidate_ticker=candidate.market_ticker,
         executable_side=candidate.executable_side,
