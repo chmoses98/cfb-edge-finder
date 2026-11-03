@@ -54,6 +54,12 @@ from cfb_edge_finder.decision.pit_guards import (
 )
 from cfb_edge_finder.execution.context import FRESHNESS_BUDGET_SECONDS
 from cfb_edge_finder.execution.disposition import DEFAULT_MAX_CAPTURE_AGE_MINUTES
+from cfb_edge_finder.execution.evidence import (
+    EvidenceItem,
+    classify_availability,
+    classify_projection,
+    classify_quote,
+)
 from cfb_edge_finder.expression.fair_value import (
     CalibrationStatus,
     ProbabilityEstimate,
@@ -162,12 +168,24 @@ def _series(ticker: str) -> str:
     return ticker.split("-", 1)[0]
 
 
-def _availability_observed_at(packet: dict[str, Any]) -> datetime | None:
-    domains = ((packet.get("factual_context") or {}).get("domains") or {})
-    field_ = domains.get("availability") or {}
-    if field_.get("quality") == "missing":
-        return None
-    return parse_dt(field_.get("observed_at"))
+def _evidence_items(
+    packet: dict[str, Any], handicap: Any, ctx: ReviewContext
+) -> dict[str, EvidenceItem]:
+    """Availability / projection / quote evidence for one game, each with its provenance and status."""
+    domains = (packet.get("factual_context") or {}).get("domains") or {}
+    return {
+        "availability": classify_availability(
+            domains.get("availability"),
+            decision_time=ctx.decision_time,
+            max_age=ctx.policy.max_availability_age,
+        ),
+        "projection": classify_projection(
+            handicap, decision_time=ctx.decision_time, max_age=ctx.policy.max_projection_age
+        ),
+        "quote": classify_quote(
+            ctx.quote_captured_at, decision_time=ctx.decision_time, max_age=ctx.policy.max_quote_age
+        ),
+    }
 
 
 def _estimate(candidate: dict[str, Any], ctx: ReviewContext) -> tuple[ProbabilityEstimate, dict[str, Any]]:
@@ -220,12 +238,13 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
 
     # ---- point-in-time guards ------------------------------------------------------------------------
     provenance = PriceProvenance.EXECUTABLE_ASK if isinstance(entry, (int, float)) else PriceProvenance.UNKNOWN
+    evidence = _evidence_items(packet, handicap, ctx)
     guard = evaluate_pit_guards(
         PitInputs(
             decision_time=ctx.decision_time,
             kickoff=parse_dt(candidate.get("kickoff") or packet.get("kickoff")),
-            projection_as_of=parse_dt(getattr(handicap, "handicapped_at", None)),
-            availability_observed_at=_availability_observed_at(packet),
+            projection_as_of=evidence["projection"].guard_time,
+            availability_observed_at=evidence["availability"].guard_time,
             qb_confirmed=None,
             quote_captured_at=ctx.quote_captured_at,
             price_provenance=provenance,
@@ -323,6 +342,7 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
             "quote_captured_at": None if ctx.quote_captured_at is None else ctx.quote_captured_at.isoformat(),
             "quote_age_seconds": quote_age,
             "kickoff": candidate.get("kickoff") or packet.get("kickoff"),
+            "evidence": {k: v.as_dict() for k, v in evidence.items()},
         },
         "fee_inclusive": fee_block,
         "fair_value": fair_block,
@@ -386,11 +406,15 @@ def annotate_candidate_artifact(
     candidates = artifact.get(key) or []
     actionable = 0
     blocked_by: dict[str, int] = {}
+    evidence_status: dict[str, dict[str, int]] = {}
     for cand in candidates:
         fields = review_candidate(cand, ctx)
         cand.update(fields)
         if fields["pit_review"]["actionable"]:
             actionable += 1
+        for etype, ev in fields["pit_review"]["evidence"].items():
+            bucket = evidence_status.setdefault(etype, {})
+            bucket[ev["status"]] = bucket.get(ev["status"], 0) + 1
         for g in fields["pit_review"]["blocking_guards"]:
             blocked_by[g] = blocked_by.get(g, 0) + 1
     exposure = exposure_review(ctx, candidates)
@@ -407,6 +431,7 @@ def annotate_candidate_artifact(
         "actionable": actionable,
         "not_actionable": len(candidates) - actionable,
         "blocked_by": dict(sorted(blocked_by.items())),
+        "evidence_status": {k: dict(sorted(v.items())) for k, v in sorted(evidence_status.items())},
         "decision_time": ctx.decision_time.isoformat(),
         "policy": {
             "max_quote_age_seconds": ctx.policy.max_quote_age.total_seconds(),

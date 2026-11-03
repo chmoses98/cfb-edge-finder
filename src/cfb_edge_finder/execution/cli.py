@@ -312,6 +312,7 @@ def cmd_prepare_live(args: argparse.Namespace) -> int:
         tz_name=args.timezone,
         slate_date=slate_date,
         context_dir=Path(args.context_dir) if args.context_dir else None,
+        evidence_dir=Path(args.evidence_dir) if args.evidence_dir else catalog_dir.parent / "evidence" / "availability",
     )
     slate = build.slate
 
@@ -1190,6 +1191,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     prepare.add_argument("--max-shard-contracts", type=int, default=DEFAULT_MAX_SHARD_CONTRACTS)
+    prepare.add_argument(
+        "--evidence-dir",
+        default=None,
+        help=(
+            "committed availability evidence, one record per game (default: evidence/availability "
+            "beside the catalog dir, i.e. data/evidence/availability). "
+            "Used only where the context store did not observe availability; an absent directory is an "
+            "empty store and every game's availability stays NEVER_COLLECTED."
+        ),
+    )
     prepare.add_argument(
         "--context-dir",
         default=str(DEFAULT_CONTEXT_DIR),

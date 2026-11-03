@@ -121,6 +121,15 @@ class ContextField:
     observed_at: str | None = None
     quality: str = FieldQuality.MISSING.value
     detail: str | None = None
+    attempted_at: str | None = None
+    """When a collector actually TRIED to read this domain, whether or not it got anything.
+
+    `observed_at` means "the source was read and answered"; `attempted_at` means "a collector ran". A
+    `missing` field WITH `attempted_at` is UNAVAILABLE (the source had nothing or errored); one WITHOUT is
+    NEVER_COLLECTED. Before this field both read the same, and the distinction was lost at the collector."""
+    source_as_of: str | None = None
+    """The time the SOURCE itself states for its content (latest published/updated entry), when it gives
+    one. Informational only: freshness gates use `observed_at`, never a source-stated time."""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -129,11 +138,26 @@ class ContextField:
             "observed_at": self.observed_at,
             "quality": self.quality,
             "detail": self.detail,
+            "attempted_at": self.attempted_at,
+            "source_as_of": self.source_as_of,
         }
 
     @classmethod
-    def missing(cls, domain: str, detail: str, source: str = "not_attempted") -> ContextField:
-        return cls(domain=domain, source=source, quality=FieldQuality.MISSING.value, detail=detail)
+    def missing(
+        cls,
+        domain: str,
+        detail: str,
+        source: str = "not_attempted",
+        *,
+        attempted_at: str | None = None,
+    ) -> ContextField:
+        return cls(
+            domain=domain,
+            source=source,
+            quality=FieldQuality.MISSING.value,
+            detail=detail,
+            attempted_at=attempted_at,
+        )
 
 
 def freshness_of(domain: str, observed_at: str | None, *, as_of: datetime) -> tuple[str, float | None]:
@@ -213,6 +237,8 @@ class GameContext:
                 observed_at=block.get("observed_at"),
                 quality=str(block.get("quality") or FieldQuality.MISSING.value),
                 detail=block.get("detail"),
+                attempted_at=block.get("attempted_at"),
+                source_as_of=block.get("source_as_of"),
             )
         return cls(
             game_key=str(payload.get("game_key")),
@@ -266,6 +292,8 @@ def refresh_quality(context: GameContext, *, as_of: datetime) -> GameContext:
             observed_at=one.observed_at,
             quality=quality,
             detail=detail,
+            attempted_at=one.attempted_at,
+            source_as_of=one.source_as_of,
         )
     return GameContext(
         game_key=context.game_key,

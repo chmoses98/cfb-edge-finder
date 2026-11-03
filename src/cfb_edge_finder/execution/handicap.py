@@ -383,6 +383,8 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
     except ValueError as exc:
         raise HandicapValidationError(str(exc)) from exc
 
+    handicapped_at = _parse_model_run_as_of(payload.get("handicapped_at"))
+
     return HandicapPayload(
         game_key=str(game_key),
         packet_hash=payload.get("packet_hash"),
@@ -400,10 +402,31 @@ def parse_handicap(payload: dict[str, Any]) -> HandicapPayload:
         data_quality=data_quality,
         thesis=str(payload.get("thesis") or ""),
         opposing_case=str(payload.get("opposing_case") or ""),
-        handicapped_at=payload.get("handicapped_at"),
+        handicapped_at=handicapped_at,
         source=str(payload.get("source") or "external_handicap"),
         schema_version_supplied=version or HANDICAP_SCHEMA_VERSION,
     )
+
+
+def _parse_model_run_as_of(value: Any) -> str | None:
+    """The model-run as_of: when the projection was computed, from the inputs it saw.
+
+    Absent stays absent: the point-in-time review then reports the projection UNAVAILABLE (undated). It is
+    NEVER defaulted to now, because stamping the current time on a historical projection would let it pass
+    every freshness gate. A timezone-aware instant is normalised to UTC. A naive or unparseable value is kept
+    VERBATIM (not guessed to be UTC, not dropped) so the review can say exactly why it cannot be dated.
+    """
+    if value is None or value == "":
+        return None
+    from datetime import UTC, datetime
+
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return str(value)
+    if moment.tzinfo is None:
+        return str(value)
+    return moment.astimezone(UTC).isoformat()
 
 
 def load_handicaps(path: Path) -> list[HandicapPayload]:
@@ -453,6 +476,7 @@ def template_for_packet(packet: dict[str, Any]) -> dict[str, Any]:
         "packet_hash": packet.get("packet_hash"),
         "context_hash": (packet.get("factual_context") or {}).get("context_hash"),
         "teams": {"home": teams.get("home"), "away": teams.get("away")},
+        "handicapped_at": None,
         "confidence": "",
         "thesis": "",
         "opposing_case": "",
@@ -494,5 +518,9 @@ def template_for_packet(packet: dict[str, Any]) -> dict[str, Any]:
             "family this game's FACTS cannot support, and its contracts become "
             "unpriceable_insufficient_data rather than being priced anyway.",
             "teams.home/teams.away must stay exactly as printed above.",
+            "handicapped_at = the UTC instant (timezone-aware ISO-8601, e.g. 2026-11-07T15:04:05Z) at which "
+            "THIS projection was computed from the inputs you saw. Leave it null if you cannot state it: the "
+            "projection is then reported UNDATED and blocked by the point-in-time guard. Never copy the packet "
+            "time or a later clock reading onto an older projection.",
         ],
     }

@@ -504,19 +504,36 @@ def availability_field(
     away_payload: dict[str, Any] | None,
     *,
     observed_at: str,
+    attempted: bool = True,
+    errors: dict[str, str] | None = None,
 ) -> ContextField:
     """Injury lists, with the empty list recorded as an observation.
+
+    `attempted=False` means no request was made at all (injuries skipped, no ESPN team id, request budget
+    spent first): the field is NEVER_COLLECTED, carries no `attempted_at`, and must not be read as a source
+    that was asked and had nothing. `errors` is the per-side transport failure reason, kept so an
+    UNAVAILABLE field says why.
 
     *** THE ONE SUBSTITUTION THIS REPOSITORY MUST NEVER MAKE ***
     A payload we could not fetch is `missing`. A payload that came back with
     an empty `items` list is `fresh` and says "no injuries listed". Those are
     different facts and the difference is worth a touchdown on a college line.
     """
+    if not attempted:
+        return ContextField.missing(
+            "availability",
+            "no injury request was made for this game (skipped, no team id, or the collection budget "
+            "was spent first); this is NOT 'no injuries'",
+            ESPN_CORE_INJURIES,
+        )
+    reasons = "; ".join(f"{k}: {v}" for k, v in sorted((errors or {}).items()) if v)
     if home_payload is None and away_payload is None:
         return ContextField.missing(
             "availability",
-            "the injury endpoint could not be read for either team; this is NOT 'no injuries'",
+            "the injury endpoint could not be read for either team; this is NOT 'no injuries'"
+            + (f" ({reasons})" if reasons else ""),
             ESPN_CORE_INJURIES,
+            attempted_at=observed_at,
         )
 
     def listing(payload: dict[str, Any] | None) -> list[dict[str, Any]] | None:
@@ -548,6 +565,7 @@ def availability_field(
             "availability",
             "the injury endpoint answered but carried no readable items list",
             ESPN_CORE_INJURIES,
+            attempted_at=observed_at,
         )
     quality = (
         FieldQuality.FRESH.value
@@ -570,7 +588,13 @@ def availability_field(
         source=ESPN_CORE_INJURIES,
         observed_at=observed_at,
         quality=quality,
-        detail=None if quality == FieldQuality.FRESH.value else "one team's list could not be read",
+        detail=None
+        if quality == FieldQuality.FRESH.value
+        else "one team's list could not be read" + (f" ({reasons})" if reasons else ""),
+        attempted_at=observed_at,
+        source_as_of=max(
+            (e["date"] for lst in (home, away) for e in (lst or []) if e.get("date")), default=None
+        ),
     )
 
 

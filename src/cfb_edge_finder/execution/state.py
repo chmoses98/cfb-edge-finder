@@ -88,6 +88,7 @@ class GameState:
     is the difference between a handicap error and a data-timing error."""
     handicap_status: str = "absent"
     handicap_timestamp: str | None = None
+    handicap_recorded_at: str | None = None
     handicap_payload: dict[str, Any] | None = None
     eligible_contracts: int | None = None
     evaluated_contracts: int | None = None
@@ -112,6 +113,7 @@ class GameState:
             "superseded_handicaps": self.superseded_handicaps[-5:],
             "handicap_status": self.handicap_status,
             "handicap_timestamp": self.handicap_timestamp,
+            "handicap_recorded_at": self.handicap_recorded_at,
             "handicap_payload": self.handicap_payload,
             "eligible_contracts": self.eligible_contracts,
             "evaluated_contracts": self.evaluated_contracts,
@@ -137,6 +139,7 @@ class GameState:
             superseded_handicaps=list(payload.get("superseded_handicaps") or []),
             handicap_status=str(payload.get("handicap_status") or "absent"),
             handicap_timestamp=payload.get("handicap_timestamp"),
+            handicap_recorded_at=payload.get("handicap_recorded_at"),
             handicap_payload=payload.get("handicap_payload"),
             eligible_contracts=payload.get("eligible_contracts"),
             evaluated_contracts=payload.get("evaluated_contracts"),
@@ -285,7 +288,10 @@ class StateStore:
     def record_handicap(self, packet: dict[str, Any], handicap: HandicapPayload) -> GameState:
         state = self.reconcile_with_packet(packet)
         state.handicap_status = "complete"
-        state.handicap_timestamp = handicap.handicapped_at or datetime.now(UTC).isoformat()
+        # The model-run as_of exactly as stated, or None. Never "now": that would date a historical
+        # projection to the moment it was ingested. When it was RECORDED is a separate fact.
+        state.handicap_timestamp = handicap.handicapped_at
+        state.handicap_recorded_at = datetime.now(UTC).isoformat()
         state.handicap_payload = handicap.as_dict()
         state.state = ExecutionState.HANDICAP_COMPLETE.value
         state.invalidation_reason = None

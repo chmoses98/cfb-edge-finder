@@ -78,7 +78,10 @@ def _grants_write(text: str) -> bool:
 # and Script Engine runs before they started (3 of 9 on 2026-10-17, all with
 # zero jobs). Every property that makes the carve-out safe is pinned by the
 # MAIN-ONLY WRITERS tests at the bottom of this module.
-MAIN_ONLY_WRITERS = {"kalshi-market-catalog.yml": "data/live"}
+MAIN_ONLY_WRITERS = {
+    "kalshi-market-catalog.yml": "data/live",
+    "cfb-availability-evidence.yml": "data/evidence/availability",
+}
 
 
 def _durable_store_writers() -> list[Path]:

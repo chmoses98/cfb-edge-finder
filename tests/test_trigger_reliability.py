@@ -422,8 +422,12 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # projection-foundation.yml joined in 2026-10: research-only projections written ONLY to its own isolated
     # `projection-data` orphan branch (own concurrency group). It consumes no secret, never touches main or
     # research-data, and its output carries authority "research_only" -- no fair value, stake or recommendation.
+    # cfb-availability-evidence.yml joined in 2026-11: it commits ONLY data/evidence/availability on its own
+    # ref -- the keyless ESPN injury observations (source id + the time each was read) that the
+    # point-in-time guard needs to evaluate a candidate. No secret, no projection, no fair value, no stake.
     assert writers == [
         "app-export.yml",
+        "cfb-availability-evidence.yml",
         "cfb-research-conductor.yml",
         "kalshi-market-catalog.yml",
         "projection-foundation.yml",

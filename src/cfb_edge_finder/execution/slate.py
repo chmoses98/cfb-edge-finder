@@ -27,6 +27,7 @@ from typing import Any
 
 from cfb_edge_finder.execution import EXECUTION_SCHEMA_VERSION
 from cfb_edge_finder.execution.context import (
+    ContextField,
     GameContext,
     context_fingerprint,
     data_quality_for,
@@ -41,6 +42,7 @@ from cfb_edge_finder.execution.disposition import (
     executable_entry,
     parse_timestamp,
 )
+from cfb_edge_finder.execution.evidence import load_availability_evidence
 from cfb_edge_finder.execution.semantics import (
     ContractSemantics,
     build_game_teams,
@@ -361,6 +363,44 @@ def load_catalog(catalog_dir: Path) -> tuple[dict[str, Any], dict[str, dict[str,
     return index, details
 
 
+def merge_availability_evidence(
+    context: GameContext | None,
+    evidence: ContextField | None,
+    *,
+    game_key: str,
+    as_of: datetime,
+) -> GameContext | None:
+    """Overlay the committed availability record onto a game's context, never degrading what is there.
+
+    The richer collected context wins when it actually observed availability. Otherwise a committed
+    observation fills the gap; otherwise a committed failed attempt (UNAVAILABLE) replaces a context that
+    never attempted it. Nothing is fabricated: no record means the domain stays NEVER_COLLECTED.
+    """
+    if evidence is None:
+        return context
+    base = context or GameContext.empty(
+        game_key,
+        reason="no collected factual context for this game; run collect-context",
+        as_of=as_of,
+    )
+    own = base.fields.get("availability")
+    if own is not None and own.observed_at:
+        return context
+    if not evidence.observed_at and (own is not None and own.attempted_at):
+        return context
+    if not evidence.observed_at and not evidence.attempted_at:
+        return context
+    fields = dict(base.fields)
+    fields["availability"] = evidence
+    return GameContext(
+        game_key=base.game_key,
+        fields=fields,
+        collected_at=base.collected_at,
+        sources_attempted=base.sources_attempted,
+        notes=base.notes,
+    )
+
+
 def load_context_store(context_dir: Path | None) -> dict[str, GameContext]:
     """Every collected game context, keyed by game_key.
 
@@ -398,10 +438,12 @@ def build_slate(
     slate_date: str | None = None,
     include_started_games: bool = False,
     context_dir: Path | None = None,
+    evidence_dir: Path | None = None,
 ) -> SlateBuild:
     index, details = load_catalog(catalog_dir)
     capture = index.get("capture") or {}
     contexts = load_context_store(context_dir)
+    availability_evidence = load_availability_evidence(evidence_dir)
 
     seen_tickers: set[str] = set()
     packets: list[dict[str, Any]] = []
@@ -436,7 +478,17 @@ def build_slate(
                 continue
 
         packet = build_packet(
-            entry, detail, config, seen_tickers, tz_name, contexts.get(game_key)
+            entry,
+            detail,
+            config,
+            seen_tickers,
+            tz_name,
+            merge_availability_evidence(
+                contexts.get(game_key),
+                availability_evidence.get(game_key),
+                game_key=game_key,
+                as_of=config.as_of,
+            ),
         )
         contracts_discovered += packet["counts"]["discovered"]
         contracts_eligible += packet["counts"]["eligible"]
