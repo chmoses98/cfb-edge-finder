@@ -180,6 +180,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--refetch-days", type=int, default=3)
     parser.add_argument("--skip-availability", action="store_true")
     parser.add_argument("--max-summaries", type=int, default=2000)
+    parser.add_argument(
+        "--backfill-periods",
+        type=int,
+        default=0,
+        help="re-fetch up to N completed games already in the log whose rows carry no period_points (per-quarter "
+        "scoring) or no special_teams counts, oldest first. 0 (default) = off, so the scheduled run's behaviour "
+        "and cost are unchanged.",
+    )
     args = parser.parse_args(argv)
 
     now = _now()
@@ -220,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
 
     refetch_after = now - timedelta(days=args.refetch_days)
     wanted = []
+    backfilled = 0
     for event_id, row in sorted(schedule.items(), key=lambda kv: (kv[1]["date"] or "", kv[0])):
         if not row["completed"]:
             continue
@@ -227,7 +236,10 @@ def main(argv: list[str] | None = None) -> int:
             continue
         kickoff = datetime.fromisoformat(str(row["date"]).replace("Z", "+00:00"))
         if event_id in by_game and kickoff < refetch_after:
-            continue
+            needs_periods = any(r.period_points is None or r.special_teams is None for r in by_game[event_id])
+            if not (needs_periods and backfilled < args.backfill_periods):
+                continue
+            backfilled += 1
         wanted.append(event_id)
 
     fetched = 0

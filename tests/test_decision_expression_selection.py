@@ -155,7 +155,9 @@ def test_every_rejection_reason_is_reported_together():
         now=NOW,
         max_quote_age_seconds=None,
     )
-    assert set(opt.rejections) == set(ExpressionRejection)
+    # OWNER_EXCLUSION_AUBURN is a team-specific owner rule, not a structural reason; it has its own matrix
+    # (tests/test_auburn_exclusion_matrix.py) and cannot fire on this non-Auburn fixture.
+    assert set(opt.rejections) == set(ExpressionRejection) - {ExpressionRejection.OWNER_EXCLUSION_AUBURN}
 
 
 # -------------------------------------------------------- selection

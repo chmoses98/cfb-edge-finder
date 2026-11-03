@@ -18,6 +18,8 @@ dev = [
   "pytest>=8.0",
   "ruff>=0.6",
   "pyarrow>=14",
+  # modeling/v2 + v3 feature builders (research code) and their havoc-ban tests import pandas.
+  "pandas>=2.0",
 ]
 # scripts/research_export.py reads data/research/v2/dataset.parquet (the research-data branch).
 research = [
