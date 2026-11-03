@@ -212,6 +212,8 @@ _HAVOC_ALLOWED = {
     "signal_discovery/screen.py": "comment/none",
     "modeling/v2/research_features.py": "VENDORED + hash-pinned shadow-model feature builder (tests/test_v2_shadow.py)",
     "archetype_research/analysis.py": "frozen historical archetype study, not a live path",
+    "modeling/forbidden_features.py": "the forbidden-feature register (docs/HAVOC_POLICY.md)",
+    "modeling/v3/feature_spec.py": "the havoc-free v3 spec: removes the v2 havoc names",
 }
 
 

@@ -49,6 +49,7 @@ class ExpressionRejection(StrEnum):
     FEE_UNVERIFIED = "FEE_UNVERIFIED"
     QUOTE_STALE = "QUOTE_STALE"
     SEMANTICS_UNRESOLVED = "SEMANTICS_UNRESOLVED"
+    OWNER_EXCLUSION_AUBURN = "OWNER_EXCLUSION_AUBURN"
 
 
 EXECUTABLE_MARKET_STATUSES = frozenset({"active"})
@@ -145,6 +146,13 @@ def build_option(
             rejections.append(ExpressionRejection.QUOTE_STALE)
     else:
         rejections.append(ExpressionRejection.QUOTE_STALE)
+
+    # Owner rule (restriction-only): never select a position that profits from Auburn underperforming. Applied
+    # here as well as at the artifact review so an alternate selection path cannot bypass it.
+    from cfb_edge_finder.decision.owner_rules import auburn_exclusion
+
+    if auburn_exclusion(snapshot.semantics.market_ticker, side.value).blocked:
+        rejections.append(ExpressionRejection.OWNER_EXCLUSION_AUBURN)
 
     fee = estimate_taker_fee(price) if price is not None else None
     all_in = None if (price is None or fee is None) else round(price + fee, 6)
