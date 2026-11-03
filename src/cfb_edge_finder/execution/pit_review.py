@@ -72,6 +72,12 @@ from cfb_edge_finder.expression.fair_value import (
 
 PIT_REVIEW_VERSION = "cfb_pit_review/1.1.0"
 
+#: Tier/flag for a handicap whose fair-probability range has zero width (low == high): that is the point estimate
+#: repeated twice, not a validated uncertainty interval, so it earns no conservative ceiling.
+POINT_ESTIMATE_NO_UNCERTAINTY = "POINT_ESTIMATE_NO_UNCERTAINTY"
+STATED_REGION_TIER = "STATED_UNCERTAINTY_REGION_UNCALIBRATED"
+CALIBRATED_TIER = "CALIBRATED_LOWER_BOUND"
+
 #: Basis string stamped beside the legacy ``bet_up_to_price`` so a reader can see what it is and is not.
 LEGACY_BET_UP_TO_BASIS = (
     "BASE_CASE_HANDICAP_PROBABILITY_AT_QUOTED_PRICE_FEE_UNCALIBRATED: fair probability minus the fee at the "
@@ -199,11 +205,27 @@ def _estimate(candidate: dict[str, Any], ctx: ReviewContext) -> tuple[Probabilit
     low, high = (stated + [None, None])[:2]
     bins = list(ctx.reliability_bins) if ctx.reliability_bins else None
     est = calibrated_probability(raw, bins)
+    zero_width = (
+        isinstance(low, (int, float))
+        and isinstance(high, (int, float))
+        and abs(float(high) - float(low)) < 1e-9
+    )
+    region_stated = bool(
+        candidate.get("scenarios_tested") and candidate.get("scenarios_tested") > 1 and not zero_width
+    )
     info = {
         "handicap_point": raw,
         "handicap_stated_low": low,
         "handicap_stated_high": high,
-        "uncertainty_region_stated": bool(candidate.get("scenarios_tested") and candidate.get("scenarios_tested") > 1),
+        "uncertainty_region_stated": region_stated,
+        "zero_width_range": bool(zero_width),
+        "uncertainty_tier": (
+            CALIBRATED_TIER if est.usable else STATED_REGION_TIER if region_stated else POINT_ESTIMATE_NO_UNCERTAINTY
+        ),
+        "uncertainty_tier_note": (
+            "POINT ESTIMATE: no validated uncertainty interval (range absent or zero-width), so no conservative "
+            "bet-up-to is offered." if not est.usable and not region_stated else None
+        ),
         "calibration_status": est.status.value,
         "calibrated_low": est.lower,
         "calibrated_high": est.upper,
@@ -299,8 +321,10 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
         if conservative is None:
             reason = "NO_PRICE_CLEARS_BREAK_EVEN_AT_STATED_LOWER_BOUND"
     else:
-        reason = "NO_STATED_UNCERTAINTY_REGION" if candidate.get("fair_probability") is not None else (
+        reason = (
             "NO_PROBABILITY"
+            if candidate.get("fair_probability") is None
+            else POINT_ESTIMATE_NO_UNCERTAINTY if info["zero_width_range"] else "NO_STATED_UNCERTAINTY_REGION"
         )
     legacy = candidate.get("bet_up_to_price")
     fair_block = {
@@ -309,6 +333,7 @@ def review_candidate(candidate: dict[str, Any], ctx: ReviewContext) -> dict[str,
         "conservative_bet_up_to_basis": basis,
         "conservative_bet_up_to_missing_reason": reason,
         "legacy_bet_up_to_price": legacy,
+        "legacy_bet_up_to_status": "LEGACY_NON_ACTIONABLE",
         "legacy_bet_up_to_basis": LEGACY_BET_UP_TO_BASIS,
         "legacy_exceeds_conservative": (
             None if legacy is None or conservative is None else bool(legacy > conservative)

@@ -135,6 +135,7 @@ class Recommendation:
     data_quality_ceiling: str | None
     correlation_group: str | None
     recommended_stake: float | None = None
+    bet_up_to_basis: str | None = None
     packet_hash: str | None = None
     handicap_hash: str | None = None
 
@@ -147,6 +148,7 @@ class Recommendation:
             "quote_timestamp": self.quote_timestamp,
             "quoted_entry": self.quoted_entry,
             "bet_up_to": self.bet_up_to,
+            "bet_up_to_basis": self.bet_up_to_basis,
             "fair_probability": self.fair_probability,
             "fee_adjusted_edge": self.fee_adjusted_edge,
             "robustness": self.robustness,
@@ -167,7 +169,8 @@ class Recommendation:
             side=str(payload.get("side") or "").upper(),
             quote_timestamp=payload.get("quote_timestamp"),
             quoted_entry=_number(payload.get("quoted_entry")),
-            bet_up_to=_number(payload.get("bet_up_to")),
+            bet_up_to=stored_bet_up_to(payload)[0],
+            bet_up_to_basis=stored_bet_up_to(payload)[1],
             fair_probability=_number(payload.get("fair_probability")),
             fee_adjusted_edge=_number(payload.get("fee_adjusted_edge")),
             robustness=payload.get("robustness"),
@@ -178,6 +181,42 @@ class Recommendation:
             packet_hash=payload.get("packet_hash"),
             handicap_hash=payload.get("handicap_hash"),
         )
+
+
+#: Basis stamped when no ceiling can be established. Mirrors ``decisions.record.LEGACY_BET_UP_TO_BASIS``.
+LEGACY_NON_ACTIONABLE_BASIS = "NO_FAIR_VALUE_BLOCK_LEGACY_NON_ACTIONABLE"
+
+
+def _defensible_bet_up_to(candidate: dict[str, Any]) -> tuple[float | None, str | None]:
+    """(ceiling, basis) a recommendation may be judged against: ``fair_value.conservative_bet_up_to`` only.
+
+    None when the handicap stated no (or a zero-width) uncertainty region. NEVER replaced by the legacy base-case
+    ``bet_up_to_price``; an artifact with no ``fair_value`` block (pre-1.2.0) has no defensible ceiling at all.
+    Mirrors ``decisions.record.defensible_bet_up_to`` (this module imports nothing from the repo).
+    """
+    fair_value = candidate.get("fair_value")
+    if isinstance(fair_value, dict) and "conservative_bet_up_to" in fair_value:
+        basis = fair_value.get("conservative_bet_up_to_basis") or fair_value.get(
+            "conservative_bet_up_to_missing_reason"
+        )
+        return _number(fair_value.get("conservative_bet_up_to")), basis
+    return None, LEGACY_NON_ACTIONABLE_BASIS
+
+
+def stored_bet_up_to(payload: dict[str, Any]) -> tuple[float | None, str | None]:
+    """The ceiling to trust from an ALREADY-PERSISTED record or ledger row, as (ceiling, basis).
+
+    Rows written before the defensible-ceiling change carry a ``bet_up_to`` that WAS the legacy base-case figure and
+    no ``bet_up_to_basis``. A row is trusted only if it states a basis other than the legacy marker; otherwise the
+    stored figure is discarded (None), so an old artifact on disk can never authorize, size or judge an order from a
+    legacy value.
+    """
+    if "bet_up_to_basis" not in payload:
+        return None, LEGACY_NON_ACTIONABLE_BASIS
+    basis = payload.get("bet_up_to_basis")
+    if not basis or basis == LEGACY_NON_ACTIONABLE_BASIS:
+        return None, basis or LEGACY_NON_ACTIONABLE_BASIS
+    return _number(payload.get("bet_up_to")), basis
 
 
 def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendation]:
@@ -197,6 +236,7 @@ def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendati
             continue
         game_key = candidate.get("game_key")
         game = games.get(str(game_key)) or {}
+        ceiling = _defensible_bet_up_to(candidate)
         out.append(
             Recommendation(
                 # Deterministic and readable: the same artifact read twice
@@ -208,7 +248,8 @@ def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendati
                 side=str(candidate.get("side") or "").upper(),
                 quote_timestamp=generated,
                 quoted_entry=_number(candidate.get("kalshi_executable_price")),
-                bet_up_to=_number(candidate.get("bet_up_to_price")),
+                bet_up_to=ceiling[0],
+                bet_up_to_basis=ceiling[1],
                 fair_probability=_number(candidate.get("fair_probability")),
                 fee_adjusted_edge=_number(candidate.get("fee_adjusted_edge")),
                 robustness=candidate.get("robustness"),
