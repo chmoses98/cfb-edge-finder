@@ -648,7 +648,7 @@ Per candidate, at the moment of recommendation: the ticker, side, period and
 family; the executable quote and its fee; the break-even; the base fair
 probability; the robustness tier and the worst-case edge across the region;
 the sensitivity bound's kind; the data-quality ceiling and gates; the
-handicapper's stated confidence; and `bet_up_to_price`. Per batch: the packet
+handicapper's stated confidence; and `bet_up_to_price`, which is LEGACY and NON-ACTIONABLE (history only; the only ceiling is `fair_value.conservative_bet_up_to`, null for a point estimate / zero-width range, tier `POINT_ESTIMATE_NO_UNCERTAINTY`). Per batch: the packet
 hash, the context hash and the material context hash, so the facts the
 handicap was formed from can be reconstructed exactly.
 

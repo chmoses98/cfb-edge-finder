@@ -137,7 +137,9 @@ def test_a_candidates_run_persists_one_record_of_what_it_decided(tmp_path, monke
     assert all(c["selected"] is True for c in record["candidates"])
     first, first_artifact = record["candidates"][0], artifact["candidates"][0]
     assert first["observed_price"] == first_artifact["kalshi_executable_price"]
-    assert first["bet_up_to"] == first_artifact["bet_up_to_price"]
+    # The record carries the DEFENSIBLE ceiling (fair_value.conservative_bet_up_to); the legacy figure is labelled.
+    assert first["bet_up_to"] == first_artifact["fair_value"]["conservative_bet_up_to"]
+    assert first["bet_up_to_legacy"] == first_artifact["bet_up_to_price"]
     assert first["tier"] == first_artifact["robustness"]
     assert first["recommendation_id"] == first_artifact["recommendation_id"]
     assert first["recommended_stake"] is None, "nothing sizes a bet; a stake would be invented"
@@ -274,6 +276,7 @@ def minimal_record(**overrides):
                 "fair_probability": 0.58,
                 "edge": 0.06,
                 "bet_up_to": 0.53,
+                "bet_up_to_basis": "HANDICAP_STATED_LOWER_BOUND_UNCALIBRATED",
                 "confidence": "medium",
                 "tier": "robust_positive_ev",
                 "recommended_stake": None,

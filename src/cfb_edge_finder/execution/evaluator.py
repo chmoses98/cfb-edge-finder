@@ -677,6 +677,7 @@ def evaluate_game(
             row["bet_up_to_price"] = round(
                 bet_up_to(best.fair_probability, best.fee, min_net_edge), 6
             )
+            row["bet_up_to_price_status"] = "LEGACY_NON_ACTIONABLE"
 
         if family in low_confidence:
             row.update(

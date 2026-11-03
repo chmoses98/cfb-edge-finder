@@ -43,6 +43,7 @@ from cfb_edge_finder.accounting.recommendation_link import (
     MatchResult,
     MatchState,
     Recommendation,
+    stored_bet_up_to,
 )
 
 MATCHED = "matched"
@@ -110,7 +111,8 @@ class DecisionCandidate:
             side=self.side,
             quote_timestamp=self.record_created_at,
             quoted_entry=_number(c.get("observed_price")),
-            bet_up_to=_number(c.get("bet_up_to")),
+            bet_up_to=stored_bet_up_to(c)[0],
+            bet_up_to_basis=stored_bet_up_to(c)[1],
             fair_probability=_number(c.get("fair_probability")),
             fee_adjusted_edge=_number(c.get("edge")),
             robustness=c.get("tier"),
@@ -385,7 +387,7 @@ def attribute(
                         "side": s.get("side"),
                         "edge": _number(s.get("edge")),
                         "observed_price": _number(s.get("observed_price")),
-                        "bet_up_to": _number(s.get("bet_up_to")),
+                        "bet_up_to": stored_bet_up_to(s)[0],
                         "selected": bool(s.get("selected")),
                         "removal_reason": s.get("removal_reason"),
                         "card_role": s.get("card_role"),
