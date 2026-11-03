@@ -1,20 +1,19 @@
 """The vendored execution-evidence ledger (copied verbatim from chmoses98/kalshi-bet-router).
 
-Pure-Python and self-contained: it pins the vendored file's digest and exercises the properties this repository relies on --
-digests only, append-only, idempotent, never rewritten.
+Pure-Python and self-contained: it pins the vendored file's digest and exercises the properties this repository
+relies on -- digests only, append-only, idempotent, never rewritten.
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "scripts" / "accounting" / "execution_evidence_ledger.py"
-PINNED_SHA256 = "e9ea7f128d72be7e0f8c15f92c68ae7a7325cf06da78dde54506061472d51945"
+PINNED_SHA256 = "72a6697e37f456cff07bfef3bb17ec06ea7b4ab534527ab531cc503700431ebe"
 
 KEY = "kalshi:v1:" + "ab" * 32
 D1, D2 = "a" * 32, "b" * 32
@@ -32,9 +31,20 @@ L = _load()
 
 
 def _execution(**over):
-    row = {"schema_version": L.SCHEMA_VERSION, "kind": "EXECUTION", "producer": "router", "source_bet_key": KEY,
-           "order_id_digest": D1, "fill_id_digests": [D2], "fill_count": 1, "first_fill_ts": 1_790_000_000,
-           "last_fill_ts": 1_790_000_001, "execution_action": "BUY", "all_taker": True, "flags": []}
+    row = {
+        "schema_version": L.SCHEMA_VERSION,
+        "kind": "EXECUTION",
+        "producer": "router",
+        "source_bet_key": KEY,
+        "order_id_digest": D1,
+        "fill_id_digests": [D2],
+        "fill_count": 1,
+        "first_fill_ts": 1_790_000_000,
+        "last_fill_ts": 1_790_000_001,
+        "execution_action": "BUY",
+        "all_taker": True,
+        "flags": [],
+    }
     row.update(over)
     return row
 
@@ -71,7 +81,13 @@ def test_a_conflicting_row_is_refused_and_the_ledger_is_unchanged(tmp_path):
 
 
 def test_the_router_cannot_write_a_recommendation_link():
-    link = {"schema_version": L.SCHEMA_VERSION, "kind": "LINK", "producer": "router", "source_bet_key": KEY,
-            "status": "MISSING", "link_basis": {"match": "exact"}}
+    link = {
+        "schema_version": L.SCHEMA_VERSION,
+        "kind": "LINK",
+        "producer": "router",
+        "source_bet_key": KEY,
+        "status": "MISSING",
+        "link_basis": {"match": "exact"},
+    }
     assert L.validate_row(link)
     assert L.validate_row({**link, "producer": "edge_finder"}) == []
