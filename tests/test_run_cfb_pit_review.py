@@ -146,7 +146,7 @@ def test_report_command_annotates_final_bets_too(tmp_path):
     assert report["final_bets"] and all("pit_review" in b for b in report["final_bets"])
     text = (out / "reports" / f"{shard}.txt").read_text()
     assert "POINT-IN-TIME: NOT ACTIONABLE" in text
-    assert "conservative bet up to" in text and "bet up to (legacy, base-case)" in text
+    assert "conservative bet up to" in text and "bet up to (LEGACY, NON-ACTIONABLE, do not quote)" in text
 
 
 # ------------------------------------------------------------ pass + unit cases
@@ -218,7 +218,9 @@ def test_no_stated_uncertainty_region_gives_no_ceiling_with_a_reason():
     point_only = dict(cand, scenarios_tested=1, fair_probability_range=[0.68, 0.68])
     fair = review_candidate(point_only, ctx)["fair_value"]
     assert fair["conservative_bet_up_to"] is None
-    assert fair["conservative_bet_up_to_missing_reason"] == "NO_STATED_UNCERTAINTY_REGION"
+    assert fair["conservative_bet_up_to_missing_reason"] == "POINT_ESTIMATE_NO_UNCERTAINTY"
+    assert fair["uncertainty_tier"] == "POINT_ESTIMATE_NO_UNCERTAINTY"
+    assert fair["uncertainty_region_stated"] is False
     assert fair["qualified_positive_ev"] is False
     no_prob = dict(cand, scenarios_tested=None, fair_probability=None, fair_probability_range=[None, None])
     assert review_candidate(no_prob, ctx)["fair_value"]["conservative_bet_up_to_missing_reason"] == "NO_PROBABILITY"
@@ -333,3 +335,30 @@ def test_cfb_policy_reuses_existing_budgets_and_does_not_require_qb():
     assert pol.require_qb_confirmation is False
     assert pol.max_quote_age == timedelta(minutes=120.0)  # disposition.DEFAULT_MAX_CAPTURE_AGE_MINUTES
     assert pol.max_availability_age == timedelta(hours=18)  # context.FRESHNESS_BUDGET_SECONDS['availability']
+
+
+def test_zero_width_range_is_a_point_estimate_even_when_many_scenarios_ran():
+    """low == high is the point estimate twice, not a validated interval: flagged, labelled, and no ceiling."""
+    pk = packet_with_fresh_availability()
+    ctx, hc = make_ctx(pk)
+    _, cand = first_candidate(pk, hc)
+    flat = dict(cand, scenarios_tested=7, fair_probability_range=[0.61, 0.61])
+    fair = review_candidate(flat, ctx)["fair_value"]
+    assert fair["zero_width_range"] is True
+    assert fair["uncertainty_tier"] == "POINT_ESTIMATE_NO_UNCERTAINTY"
+    assert "POINT ESTIMATE" in fair["uncertainty_tier_note"]
+    assert fair["conservative_bet_up_to"] is None and fair["conservative_bet_up_to_basis"] is None
+    assert fair["conservative_bet_up_to_missing_reason"] == "POINT_ESTIMATE_NO_UNCERTAINTY"
+    assert fair["within_conservative_bet_up_to"] is None
+    assert fair["qualified_positive_ev"] is False
+    assert fair["legacy_bet_up_to_status"] == "LEGACY_NON_ACTIONABLE"
+
+
+def test_a_real_region_is_tiered_as_an_uncalibrated_stated_region():
+    pk = packet_with_fresh_availability()
+    ctx, hc = make_ctx(pk)
+    _, cand = first_candidate(pk, hc)
+    fair = review_candidate(cand, ctx)["fair_value"]
+    assert fair["zero_width_range"] is False
+    assert fair["uncertainty_tier"] == "STATED_UNCERTAINTY_REGION_UNCALIBRATED"
+    assert fair["uncertainty_tier_note"] is None

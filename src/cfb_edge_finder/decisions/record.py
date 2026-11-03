@@ -63,23 +63,28 @@ def _number(value: Any) -> float | None:
     return float(value)
 
 
-#: Basis stamped on a record built from an artifact that has no ``fair_value`` block (pre-1.2.0), whose only ceiling is the legacy figure.
-LEGACY_BET_UP_TO_BASIS = "LEGACY_BASE_CASE_NO_FAIR_VALUE_BLOCK"
+#: Basis stamped on a record built from an artifact with NO ``fair_value`` block (pre-1.2.0). Such an artifact has only
+#: the legacy base-case figure, which is NOT a defensible ceiling, so the record's ``bet_up_to`` is ``None``.
+LEGACY_BET_UP_TO_BASIS = "NO_FAIR_VALUE_BLOCK_LEGACY_NON_ACTIONABLE"
 
 
 def defensible_bet_up_to(entry: dict[str, Any]) -> tuple[float | None, str | None]:
     """(ceiling, basis) a candidate may be recorded with.
 
-    ``fair_value.conservative_bet_up_to`` is the ONLY defensible ceiling (the handicap's stated lower bound clears fee-inclusive
-    break-even plus the required edge); it is ``None`` with a reason when the handicap stated no uncertainty region, and that None is
-    carried through, never replaced by the legacy base-case ``bet_up_to_price`` (a point probability with no stated uncertainty,
-    "kept unchanged for history"). An artifact that predates the block has only the legacy figure, and says so.
+    ``fair_value.conservative_bet_up_to`` is the ONLY defensible ceiling (the handicap's stated lower bound clears
+    fee-inclusive break-even plus the required edge). It is ``None`` with a reason when the handicap stated no
+    uncertainty region (or a zero-width one), and that None is carried through. The legacy base-case
+    ``bet_up_to_price`` (a point probability with no stated uncertainty) is NEVER substituted, not even for an
+    artifact that predates the ``fair_value`` block: that artifact has no defensible ceiling, so the ceiling is None
+    with an explicit non-actionable basis.
     """
     fair_value = entry.get("fair_value")
     if isinstance(fair_value, dict) and "conservative_bet_up_to" in fair_value:
-        basis = fair_value.get("conservative_bet_up_to_basis") or fair_value.get("conservative_bet_up_to_missing_reason")
+        basis = fair_value.get("conservative_bet_up_to_basis") or fair_value.get(
+            "conservative_bet_up_to_missing_reason"
+        )
         return _number(fair_value.get("conservative_bet_up_to")), basis
-    return _number(entry.get("bet_up_to_price")), LEGACY_BET_UP_TO_BASIS
+    return None, LEGACY_BET_UP_TO_BASIS
 
 
 def _canonical_hash(payload: Any) -> str:
@@ -173,6 +178,7 @@ def build_decision_record(
         ticker = str(entry.get("market") or "")
         game_key = str(entry.get("game_key") or _game_key_of_ticker(ticker) or "")
         game = games.get(game_key) or {}
+        ceiling = defensible_bet_up_to(entry)
         candidates.append(
             {
                 "recommendation_id": entry.get("recommendation_id"),
@@ -192,10 +198,11 @@ def build_decision_record(
                 "fair_probability_range": entry.get("fair_probability_range"),
                 "edge": _number(entry.get("fee_adjusted_edge")),
                 "edge_range": entry.get("fee_adjusted_edge_range"),
-                "bet_up_to": defensible_bet_up_to(entry)[0],
-                "bet_up_to_basis": defensible_bet_up_to(entry)[1],
-                # The legacy base-case figure, kept for history and labelled; it is NOT a price to quote.
+                "bet_up_to": ceiling[0],
+                "bet_up_to_basis": ceiling[1],
+                # Legacy base-case figure: history only, labelled, never a price to quote or to judge fills by.
                 "bet_up_to_legacy": _number(entry.get("bet_up_to_price")),
+                "bet_up_to_legacy_status": "LEGACY_NON_ACTIONABLE",
                 "confidence": game.get("effective_confidence"),
                 "tier": entry.get("robustness"),
                 "tier_reason": entry.get("robustness_reason"),

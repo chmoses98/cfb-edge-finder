@@ -284,6 +284,7 @@ def candidate_record(
         "sensitivity_bound": sensitivity.get("sensitivity_bound"),
         "scenarios_tested": sensitivity.get("scenarios_tested"),
         "bet_up_to_price": row.get("bet_up_to_price"),
+        "bet_up_to_price_status": LEGACY_BET_UP_TO_STATUS,
         # ---- where the numbers came from --------------------------------
         # The per-GAME facts -- thesis, opposing case, confidence, factual data
         # quality, the full market-disagreement reading -- are hoisted into the
@@ -358,6 +359,9 @@ def _awaiting_judgement(evaluations: list[GameEvaluation]) -> list[dict[str, Any
     return out
 
 
+#: Stamped beside every candidate's top-level ``bet_up_to_price``.
+LEGACY_BET_UP_TO_STATUS = "LEGACY_NON_ACTIONABLE"
+
 #: Conventions repeated on every candidate, stated ONCE.
 #:
 #: Same compaction the analysis artifact already applies to the fee model and
@@ -368,6 +372,8 @@ def _awaiting_judgement(evaluations: list[GameEvaluation]) -> list[dict[str, Any
 #: read correctly.
 CANDIDATE_CONVENTIONS = {
     "bet_up_to_price": (
+        "LEGACY, NON-ACTIONABLE (history only; never a price to quote, size or order from -- the only defensible "
+        "ceiling is fair_value.conservative_bet_up_to, null when no uncertainty is established): "
         "the highest price at which this side still clears the operator's required edge, computed "
         "at the quoted fee. Kalshi's trade fee rises with price, so the true ceiling is slightly "
         "below the figure shown."
@@ -784,6 +790,8 @@ def _pit_lines(bet: dict[str, Any]) -> list[str]:
         f"   conservative bet up to: {fair.get('conservative_bet_up_to')} "
         f"[{fair.get('conservative_bet_up_to_basis') or fair.get('conservative_bet_up_to_missing_reason')}] "
         f"| qualified +EV: {fair.get('qualified_positive_ev')}",
+        f"   uncertainty tier: {fair.get('uncertainty_tier')}"
+        + (f" -- {fair['uncertainty_tier_note']}" if fair.get("uncertainty_tier_note") else ""),
     ]
     return lines
 
@@ -825,7 +833,7 @@ def render_report(report: dict[str, Any]) -> str:
                 f"vs fair {bet['fair_probability']}",
                 f"   raw edge {bet['raw_edge']} | fee {bet['fee']} | fee-adjusted {bet['fee_adjusted_edge']}",
                 f"   robustness: {bet['robustness']} (edge range {bet['fee_adjusted_edge_range']})",
-                f"   bet up to (legacy, base-case): {bet['bet_up_to_price']}",
+                f"   bet up to (LEGACY, NON-ACTIONABLE, do not quote): {bet['bet_up_to_price']}",
                 *_pit_lines(bet),
                 f"   handicap confidence: {game.get('handicap_confidence', 'unstated')} | "
                 f"stake: {bet['stake_placeholder']}",
