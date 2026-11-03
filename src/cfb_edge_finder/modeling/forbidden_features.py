@@ -26,29 +26,42 @@ from pathlib import Path
 FORBIDDEN_FEATURE_TOKENS: tuple[str, ...] = ("havoc",)
 _PATTERN = re.compile("|".join(re.escape(t) for t in FORBIDDEN_FEATURE_TOKENS), re.IGNORECASE)
 
-#: file (repo-relative) -> (kind, reason). ``LEGACY_PINNED`` files additionally carry a sha256 in ``LEGACY_PINNED_SHA256``.
+#: file (repo-relative) -> (kind, reason). ``LEGACY_PINNED`` files also carry a sha256 in ``LEGACY_PINNED_SHA256``.
 HAVOC_MENTION_REGISTER: dict[str, tuple[str, str]] = {
     "src/cfb_edge_finder/modeling/v2/research_features.py": (
-        "LEGACY_PINNED", "frozen v2 shadow feature builder (b_havoc_def); hash-pinned, never edited"),
+        "LEGACY_PINNED",
+        "frozen v2 shadow feature builder (b_havoc_def); hash-pinned, never edited",
+    ),
     "scripts/research_export.py": (
-        "RAW_DATA_EXPORT", "exports CFBD season-level columns as raw research data; not a model input by itself"),
+        "RAW_DATA_EXPORT",
+        "exports CFBD season-level columns as raw research data; not a model input by itself",
+    ),
     "src/cfb_edge_finder/scripting/metrics.py": (
-        "DISPLAY_ONLY", "descriptive metric definition kept for reports; excluded from every edge/context table"),
+        "DISPLAY_ONLY",
+        "descriptive metric definition kept for reports; excluded from every edge/context table",
+    ),
     "src/cfb_edge_finder/scripting/matchup.py": (
-        "EXCLUSION_COMMENT", "documents that havoc is removed from the edge table"),
+        "EXCLUSION_COMMENT",
+        "documents that havoc is removed from the edge table",
+    ),
     "src/cfb_edge_finder/archetype_research/analysis.py": (
-        "LEGACY_RESEARCH", "archetype research already published (docs/ARCHETYPE_*); not used by RUN CFB"),
+        "LEGACY_RESEARCH",
+        "archetype research already published (docs/ARCHETYPE_*); not used by RUN CFB",
+    ),
     "src/cfb_edge_finder/projections/discrete_scoring.py": ("EXCLUSION_COMMENT", "states the exclusion"),
     "src/cfb_edge_finder/research/multiseason_calibration.py": ("EXCLUSION_COMMENT", "states the exclusion"),
     "src/cfb_edge_finder/decision/owner_rules.py": ("RULE_DEFINITION", "defines the ban and its scanner"),
+    "src/cfb_edge_finder/research/matchup_evidence.py": (
+        "EXCLUSION_COMMENT", "documents that havoc is never read by the evidence layer"),
     "src/cfb_edge_finder/modeling/forbidden_features.py": ("RULE_DEFINITION", "this register"),
     "src/cfb_edge_finder/modeling/v3/feature_spec.py": ("RULE_DEFINITION", "removes the v2 havoc names"),
 }
 
 #: sha256 of the legacy files at the time of registration. A changed legacy file fails the test.
 LEGACY_PINNED_SHA256: dict[str, str] = {
-    "src/cfb_edge_finder/modeling/v2/research_features.py":
-        "82fdf414d94c885de50744bdc9148cc888881528046415afccc971ba243bacce",
+    "src/cfb_edge_finder/modeling/v2/research_features.py": (
+        "82fdf414d94c885de50744bdc9148cc888881528046415afccc971ba243bacce"
+    ),
 }
 
 

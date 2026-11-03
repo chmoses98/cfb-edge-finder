@@ -125,7 +125,11 @@ def validate(
         issues.append("HOME_PERIOD_SUM_MISMATCH")
     if away_final is not None and int(sum(away)) != int(away_final):
         issues.append("AWAY_PERIOD_SUM_MISMATCH")
-    if any(v > MAX_POINTS_PER_PERIOD for v in (*home, *away)) or sum(home) > MAX_TEAM_POINTS or sum(away) > MAX_TEAM_POINTS:
+    if (
+        any(v > MAX_POINTS_PER_PERIOD for v in (*home, *away))
+        or sum(home) > MAX_TEAM_POINTS
+        or sum(away) > MAX_TEAM_POINTS
+    ):
         issues.append("IMPLAUSIBLE_POINTS")
     if expected is not None and got is not None and expected != got:
         issues.append("TEAM_MAPPING_MISMATCH")
@@ -247,8 +251,10 @@ class PeriodStore:
             )
             if same:
                 return DUPLICATE_NOOP
-            reason = "SAME_GAME_DIFFERENT_NUMBERS" if existing["game_id"] == record.game_id else (
-                "SAME_MATCHUP_DIFFERENT_GAME_ID_AND_NUMBERS"
+            reason = (
+                "SAME_GAME_DIFFERENT_NUMBERS"
+                if existing["game_id"] == record.game_id
+                else ("SAME_MATCHUP_DIFFERENT_GAME_ID_AND_NUMBERS")
             )
             return self._quarantine(record, reason, existing)
         d = record.as_dict()

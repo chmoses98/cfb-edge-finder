@@ -214,6 +214,7 @@ _HAVOC_ALLOWED = {
     "archetype_research/analysis.py": "frozen historical archetype study, not a live path",
     "modeling/forbidden_features.py": "the forbidden-feature register (docs/HAVOC_POLICY.md)",
     "modeling/v3/feature_spec.py": "the havoc-free v3 spec: removes the v2 havoc names",
+    "research/matchup_evidence.py": "documents that havoc is never read by the evidence layer",
 }
 
 

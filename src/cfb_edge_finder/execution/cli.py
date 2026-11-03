@@ -99,14 +99,16 @@ DEFAULT_CONTEXT_DIR = Path("data/live/context")
 
 
 
-def _write_decision_evidence(artifact: dict[str, Any], handicaps: dict[str, Any], args: argparse.Namespace, path: Path) -> None:
+def _write_decision_evidence(
+    artifact: dict[str, Any], handicaps: dict[str, Any], args: argparse.Namespace, path: Path
+) -> None:
     """Append DIGEST-ONLY decision candidates (recommendation ref, model-as-of) beside the candidate artifact.
 
     These are what the exact-unique-match linker needs to attach a recommendation to a later fill. Raw ids stay in
     the private decision store. A candidate that lacks a recommendation id or a stated model-as-of is counted, not
     guessed. Failing to write evidence is reported on stderr and never changes the candidates themselves.
     """
-    from cfb_edge_finder.accounting.decision_evidence import decision_candidates, write_decision_candidates
+    from cfb_edge_finder.decisions.evidence_link import decision_candidates, write_decision_candidates
 
     try:
         decision_time = datetime.fromisoformat(str((artifact.get("pit_review") or {}).get("decision_time")))

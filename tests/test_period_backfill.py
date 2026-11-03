@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,9 +12,6 @@ import pytest
 from cfb_edge_finder.projections.period_data import coverage
 from cfb_edge_finder.research import period_backfill as pb
 from cfb_edge_finder.scripting.gamelog import TeamGame
-
-import importlib.util
-import sys
 
 _spec = importlib.util.spec_from_file_location(
     "backfill_period_scores", Path(__file__).resolve().parents[1] / "scripts" / "backfill_period_scores.py"
@@ -22,7 +21,9 @@ sys.modules["backfill_period_scores"] = backfill_script
 _spec.loader.exec_module(backfill_script)  # type: ignore[union-attr]
 
 
-def summary(gid="401", home=("111", [7, 10, 3, 7]), away=("222", [0, 14, 7, 3]), *, completed=True, date="2026-10-17T19:00Z"):
+def summary(
+    gid="401", home=("111", [7, 10, 3, 7]), away=("222", [0, 14, 7, 3]), *, completed=True, date="2026-10-17T19:00Z"
+):
     def comp(side, tid, periods):
         return {
             "homeAway": side,
@@ -140,17 +141,33 @@ def test_same_matchup_under_two_game_ids(tmp_path):
 
 def _tg(game_id, team_id, opp_id, site, pts):
     return TeamGame(
-        game_id=game_id, season=2026, week=7, kickoff_utc="2026-10-17T19:00:00Z", team_id=team_id, team=team_id,
-        opponent_id=opp_id, opponent=opp_id, team_division="fbs", opponent_division="fbs", site=site,
-        points_for=pts[0], points_against=pts[1], box={}, pbp=None,
+        game_id=game_id,
+        season=2026,
+        week=7,
+        kickoff_utc="2026-10-17T19:00:00Z",
+        team_id=team_id,
+        team=team_id,
+        opponent_id=opp_id,
+        opponent=opp_id,
+        team_division="fbs",
+        opponent_division="fbs",
+        site=site,
+        points_for=pts[0],
+        points_against=pts[1],
+        box={},
+        pbp=None,
     )
 
 
 def test_attach_periods_matches_orientation_and_updates_coverage(tmp_path):
     store = pb.PeriodStore(tmp_path)
     store.ingest(pb.record_from_summary(summary(), fetched_at=T))
-    rows = [_tg("401", "111", "222", "home", (27, 24)), _tg("401", "222", "111", "away", (24, 27)),
-            _tg("500", "333", "444", "home", (10, 3)), _tg("500", "444", "333", "away", (3, 10))]
+    rows = [
+        _tg("401", "111", "222", "home", (27, 24)),
+        _tg("401", "222", "111", "away", (24, 27)),
+        _tg("500", "333", "444", "home", (10, 3)),
+        _tg("500", "444", "333", "away", (3, 10)),
+    ]
     out, stats = pb.attach_periods(rows, store)
     assert stats == {"attached": 2, "already_had": 0, "no_record": 2, "mapping_mismatch": 0}
     assert out[0].period_points == (7, 10, 3, 7) and out[1].period_points == (0, 14, 7, 3)
@@ -172,14 +189,22 @@ def test_script_offline_and_dry_run(tmp_path, capsys):
     sdir.mkdir()
     (sdir / "401.json").write_text(json.dumps(summary()))
     store_dir = tmp_path / "store"
-    assert backfill_script.main(["--team-games", str(tg), "--store-dir", str(store_dir),
-                                 "--summaries-dir", str(sdir), "--dry-run"]) == 0
+    assert (
+        backfill_script.main(
+            ["--team-games", str(tg), "--store-dir", str(store_dir), "--summaries-dir", str(sdir), "--dry-run"]
+        )
+        == 0
+    )
     assert not store_dir.exists()
     assert json.loads(capsys.readouterr().out)["VALID_WOULD_WRITE"] == 1
-    assert backfill_script.main(["--team-games", str(tg), "--store-dir", str(store_dir),
-                                 "--summaries-dir", str(sdir)]) == 0
+    assert (
+        backfill_script.main(["--team-games", str(tg), "--store-dir", str(store_dir), "--summaries-dir", str(sdir)])
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["NEW"] == 1
-    assert backfill_script.main(["--team-games", str(tg), "--store-dir", str(store_dir),
-                                 "--summaries-dir", str(sdir)]) == 0
+    assert (
+        backfill_script.main(["--team-games", str(tg), "--store-dir", str(store_dir), "--summaries-dir", str(sdir)])
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["DUPLICATE_NOOP"] == 1
     assert backfill_script.main(["--team-games", str(tmp_path / "nope.jsonl"), "--store-dir", str(store_dir)]) == 2

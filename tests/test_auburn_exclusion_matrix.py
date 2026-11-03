@@ -58,11 +58,14 @@ def test_moneyline_matrix_both_sides(where, series):
     assert not auburn_exclusion(f"{series}-{game}-{opp}", "NO").blocked
 
 
-@pytest.mark.parametrize("ticker", [
-    "KXNCAAF1QMONEY-26OCT17AUBUGA-UGA",  # a series the ontology does not know, in an Auburn game
-    "KXNCAAF1HTEAMTOTAL-26NOV07ARKAUB-AUB10",
-    "KXNCAAFSOMETHING-26NOV07ARKAUB-ARK",
-])
+@pytest.mark.parametrize(
+    "ticker",
+    [
+        "KXNCAAF1QMONEY-26OCT17AUBUGA-UGA",  # a series the ontology does not know, in an Auburn game
+        "KXNCAAF1HTEAMTOTAL-26NOV07ARKAUB-AUB10",
+        "KXNCAAFSOMETHING-26NOV07ARKAUB-ARK",
+    ],
+)
 def test_unknown_series_in_an_auburn_game_fails_closed(ticker):
     v = auburn_exclusion(ticker, "NO")
     assert v.blocked and v.reason == OWNER_EXCLUSION_AUBURN_UNDETERMINED
@@ -85,7 +88,10 @@ COMBO = "KXMVECROSSCATEGORY-S2026ABC-XYZ"
 
 
 def test_combo_yes_with_a_leg_against_auburn_is_blocked():
-    legs = [{"ticker": "KXNCAAFGAME-26OCT17AUBUGA-UGA", "side": "YES"}, {"ticker": "KXNBAGAME-26OCT21MINMIA-MIN", "side": "YES"}]
+    legs = [
+        {"ticker": "KXNCAAFGAME-26OCT17AUBUGA-UGA", "side": "YES"},
+        {"ticker": "KXNBAGAME-26OCT21MINMIA-MIN", "side": "YES"},
+    ]
     v = combo_auburn_exclusion(COMBO, "YES", legs=legs)
     assert v.blocked and v.reason == OWNER_EXCLUSION_AUBURN
 
@@ -98,12 +104,17 @@ def test_combo_yes_with_only_pro_auburn_legs_is_allowed_but_no_is_not_assumed_sa
 
 
 def test_combo_legs_that_do_not_involve_auburn_pass():
-    legs = [{"ticker": "KXNCAAFGAME-26OCT17UGAMIA-UGA", "side": "NO"}, {"ticker": "KXNBAGAME-26OCT21MINMIA-MIN", "side": "YES"}]
+    legs = [
+        {"ticker": "KXNCAAFGAME-26OCT17UGAMIA-UGA", "side": "NO"},
+        {"ticker": "KXNBAGAME-26OCT21MINMIA-MIN", "side": "YES"},
+    ]
     assert combo_auburn_exclusion(COMBO, "YES", legs=legs).blocked is False
     assert combo_auburn_exclusion(COMBO, "NO", legs=legs).blocked is False
 
 
-@pytest.mark.parametrize("text", ["Auburn to win and Lakers over", "yes KXNCAAFGAME-26NOV07ARKAUB-ARK", "26OCT17AUBUGA"])
+@pytest.mark.parametrize(
+    "text", ["Auburn to win and Lakers over", "yes KXNCAAFGAME-26NOV07ARKAUB-ARK", "26OCT17AUBUGA"]
+)
 def test_combo_with_unknown_legs_but_auburn_text_fails_closed(text):
     v = combo_auburn_exclusion(COMBO, "YES", legs=None, evidence_text=text)
     assert v.blocked and v.reason == OWNER_EXCLUSION_AUBURN_UNDETERMINED

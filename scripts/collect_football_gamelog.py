@@ -185,7 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=0,
         help="re-fetch up to N completed games already in the log whose rows carry no period_points (per-quarter "
-        "scoring) or no special_teams counts, oldest first. 0 (default) = off, so the scheduled run's behaviour and cost are unchanged.",
+        "scoring) or no special_teams counts, oldest first. 0 (default) = off, so the scheduled run's behaviour "
+        "and cost are unchanged.",
     )
     args = parser.parse_args(argv)
 

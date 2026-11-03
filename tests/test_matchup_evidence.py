@@ -68,7 +68,9 @@ def test_profile_is_walk_forward_and_flags_thin_history():
 
 def test_coverage_counts_and_never_reads_havoc():
     rows = rows_from_fixture()
-    cov = evidence_coverage(rows, {"2377": {"status": "OBSERVED", "items": [1], "qb_status": "Q"}, "99": {"status": "FAILED"}})
+    cov = evidence_coverage(
+        rows, {"2377": {"status": "OBSERVED", "items": [1], "qb_status": "Q"}, "99": {"status": "FAILED"}}
+    )
     assert cov["special_teams"]["rows_with_value"] == 2 and cov["period_scoring"]["rows_with_periods"] == 2
     assert cov["injuries"] == {**cov["injuries"], "teams_in_capture": 2, "teams_observed": 1, "qb_status_known": 1}
     assert cov["havoc"] == "FORBIDDEN_NEVER_READ" and cov["epa"].startswith("MISSING_SOURCE_EPA")

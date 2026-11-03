@@ -109,7 +109,9 @@ def write_decision_candidates(path: Path, rows: list[dict[str, Any]]) -> int:
             if line.strip():
                 r = json.loads(line)
                 seen.add((r["recommendation_ref"], r["market_ticker"], r["side"], r["created_at_ts"]))
-    fresh = [r for r in rows if (r["recommendation_ref"], r["market_ticker"], r["side"], r["created_at_ts"]) not in seen]
+    fresh = [
+        r for r in rows if (r["recommendation_ref"], r["market_ticker"], r["side"], r["created_at_ts"]) not in seen
+    ]
     if fresh:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as fh:
@@ -143,8 +145,11 @@ def link_executions(
     out = []
     for item in executions:
         row = ledger.link_recommendation(
-            item["execution"], candidates, window_seconds=window_seconds,
-            market_ticker=item["market_ticker"], side=str(item["side"]).upper(),
+            item["execution"],
+            candidates,
+            window_seconds=window_seconds,
+            market_ticker=item["market_ticker"],
+            side=str(item["side"]).upper(),
         )
         row["recorded_at"] = recorded_at
         problems = ledger.validate_row(row)

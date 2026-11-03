@@ -45,13 +45,21 @@ def test_v3_sets_are_clean_and_only_remove_havoc():
 
 def test_v3_matchup_frame_ignores_havoc_columns_in_the_input():
     n = 3
-    df = pd.DataFrame({
-        "neutral": [False, True, False], "postseason": [0, 0, 0], "conference_game": [1, 0, 1],
-        "home_class": ["fbs"] * n, "away_class": ["fbs"] * n,
-        "h_o_b_havoc_def": [0.1, 0.2, 0.3], "a_d_b_havoc_def": [0.2, 0.1, 0.4],
-        "h_o_pts_for": [30.0, 28.0, 35.0], "a_d_pts_for": [24.0, 25.0, 20.0],
-        "a_o_pts_for": [21.0, 27.0, 31.0], "h_d_pts_for": [22.0, 26.0, 23.0],
-    })
+    df = pd.DataFrame(
+        {
+            "neutral": [False, True, False],
+            "postseason": [0, 0, 0],
+            "conference_game": [1, 0, 1],
+            "home_class": ["fbs"] * n,
+            "away_class": ["fbs"] * n,
+            "h_o_b_havoc_def": [0.1, 0.2, 0.3],
+            "a_d_b_havoc_def": [0.2, 0.1, 0.4],
+            "h_o_pts_for": [30.0, 28.0, 35.0],
+            "a_d_pts_for": [24.0, 25.0, 20.0],
+            "a_o_pts_for": [21.0, 27.0, 31.0],
+            "h_d_pts_for": [22.0, 26.0, 23.0],
+        }
+    )
     out = v3.matchup_frame(df)
     assert not ff.forbidden_in(list(out.columns))
     assert "diff_pts_for" in out.columns
