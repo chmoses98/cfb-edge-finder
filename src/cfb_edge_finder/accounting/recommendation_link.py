@@ -180,6 +180,15 @@ class Recommendation:
         )
 
 
+def _defensible_bet_up_to(candidate: dict[str, Any]) -> float | None:
+    """The ceiling a recommendation may be judged against: ``fair_value.conservative_bet_up_to`` (None when the handicap stated no
+    uncertainty region, never replaced by the legacy base-case ``bet_up_to_price``); only an artifact with no ``fair_value`` block
+    falls back to the legacy figure. Mirrors ``decisions.record.defensible_bet_up_to`` (this module imports nothing from the repo)."""
+    fair_value = candidate.get("fair_value")
+    value = fair_value.get("conservative_bet_up_to") if isinstance(fair_value, dict) and "conservative_bet_up_to" in fair_value else candidate.get("bet_up_to_price")
+    return _number(value)
+
+
 def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendation]:
     """Read a candidate artifact into recommendation records.
 
@@ -208,7 +217,7 @@ def recommendations_from_artifact(artifact: dict[str, Any]) -> list[Recommendati
                 side=str(candidate.get("side") or "").upper(),
                 quote_timestamp=generated,
                 quoted_entry=_number(candidate.get("kalshi_executable_price")),
-                bet_up_to=_number(candidate.get("bet_up_to_price")),
+                bet_up_to=_defensible_bet_up_to(candidate),
                 fair_probability=_number(candidate.get("fair_probability")),
                 fee_adjusted_edge=_number(candidate.get("fee_adjusted_edge")),
                 robustness=candidate.get("robustness"),
