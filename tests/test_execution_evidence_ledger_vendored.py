@@ -91,3 +91,20 @@ def test_the_router_cannot_write_a_recommendation_link():
     }
     assert L.validate_row(link)
     assert L.validate_row({**link, "producer": "edge_finder"}) == []
+
+
+# Cross-repository agreement on how order / fill / recommendation_ref / model_run_ref digests are derived. The same
+# four vectors are asserted in kalshi-bet-router (tests/test_execution_evidence.py::GOLDEN_DIGESTS) and in every
+# destination, so a repository that derives a ref differently fails its own CI.
+_GOLDEN_DIGESTS = (
+    ("order", "ORDER-X", "70b17cbeb58152c522d8be2a9a30ac34"),
+    ("fill", "FILL-X", "b34311e543285f452dd37dc618573dcb"),
+    ("recommendation", "rec_0001", "34284d398be9830fd5ca1d76f8a673f1"),
+    ("model_run", "run_0001", "6e039e855b3d236b125624c33b87427b"),
+)
+
+
+def test_digest_formula_matches_the_cross_repository_golden_vectors():
+    for kind, value, expected in _GOLDEN_DIGESTS:
+        material = f"kalshi-router.execution-evidence.v1|{kind}|{value}".encode()
+        assert hashlib.sha256(material).hexdigest()[:32] == expected
