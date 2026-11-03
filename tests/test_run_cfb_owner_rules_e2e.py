@@ -33,7 +33,7 @@ def auburn_markets():
     return json.loads(text)
 
 
-def walk(tmp_path: Path, *, home_mean: float, away_mean: float, extra=()):
+def walk(tmp_path: Path, *, home_mean: float, away_mean: float, extra=(), handicapped_at: str | None = None):
     catalog = catalog_dir(tmp_path, auburn_markets(), title="Arkansas at Auburn", game_key=GAME)
     out = tmp_path / "exec"
     assert (
@@ -78,6 +78,7 @@ def walk(tmp_path: Path, *, home_mean: float, away_mean: float, extra=()):
                         }
                     },
                     "explicit_probabilities": {},
+                    **({"handicapped_at": handicapped_at} if handicapped_at else {}),
                 }
             ]
         )

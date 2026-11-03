@@ -98,6 +98,33 @@ DEFAULT_OUT_DIR = Path("data/execution/latest")
 DEFAULT_CONTEXT_DIR = Path("data/live/context")
 
 
+
+def _write_decision_evidence(artifact: dict[str, Any], handicaps: dict[str, Any], args: argparse.Namespace, path: Path) -> None:
+    """Append DIGEST-ONLY decision candidates (recommendation ref, model-as-of) beside the candidate artifact.
+
+    These are what the exact-unique-match linker needs to attach a recommendation to a later fill. Raw ids stay in
+    the private decision store. A candidate that lacks a recommendation id or a stated model-as-of is counted, not
+    guessed. Failing to write evidence is reported on stderr and never changes the candidates themselves.
+    """
+    from cfb_edge_finder.accounting.decision_evidence import decision_candidates, write_decision_candidates
+
+    try:
+        decision_time = datetime.fromisoformat(str((artifact.get("pit_review") or {}).get("decision_time")))
+        as_of = {
+            key: (h.handicapped_at.isoformat() if isinstance(h.handicapped_at, datetime) else str(h.handicapped_at))
+            for key, h in handicaps.items()
+            if getattr(h, "handicapped_at", None)
+        }
+        rows, gaps = decision_candidates(artifact, decision_time=decision_time, model_as_of_by_game=as_of)
+        target = path.with_name(path.name.replace(".candidates.json", ".decision_candidates.jsonl"))
+        written = write_decision_candidates(target, rows)
+        print(
+            f"DECISION EVIDENCE: {written} digest-only decision candidate(s) -> {target.name}; gaps={gaps}; "
+            "model_run_ref not available (no run id in the artifact)"
+        )
+    except (ValueError, OSError, TypeError) as exc:
+        print(f"WARNING: decision evidence NOT written ({type(exc).__name__}: {exc})", file=sys.stderr)
+
 def _write(path: Path, payload: Any, *, compact: bool = False) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     if compact:
@@ -919,6 +946,7 @@ def cmd_candidates(args: argparse.Namespace) -> int:
 
     path = out_dir / "candidates" / f"{label}.candidates.json"
     size = _write(path, artifact)
+    _write_decision_evidence(artifact, handicaps, args, path)
     # THE AUDIT IS WRITTEN IN THE SAME BREATH AS THE SHORTLIST, ALWAYS.
     # A reduction the operator can act on and cannot inspect is the thing this
     # whole file exists to avoid, so the ledger is not an option and not a
