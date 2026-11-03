@@ -28,8 +28,13 @@ on:
 permissions:
   contents: write
 
+# Its OWN group, not research-data-write. This workflow writes only the `period-scores` data branch (never `research-data`,
+# never main), so it cannot race the research writers and has no reason to queue behind them. In the shared group the first
+# real run (41593634883) sat pending for 30 minutes behind long-running writers and was then cancelled when a newer pending
+# run replaced it; the re-dispatch (41682398478) was pending behind an App Export run. Runs of this workflow still serialize
+# with each other, and cancel-in-progress stays false so a half-finished ingest is never killed.
 concurrency:
-  group: research-data-write
+  group: period-score-backfill
   cancel-in-progress: false
 
 jobs:
@@ -75,4 +80,4 @@ jobs:
           git add -A
           if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git commit -m "period scores: ingest (append-only)"
-          git push origin period-scores
+          git push origin HEAD:period-scores

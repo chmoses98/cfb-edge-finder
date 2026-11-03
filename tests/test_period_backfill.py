@@ -208,3 +208,16 @@ def test_script_offline_and_dry_run(tmp_path, capsys):
     )
     assert json.loads(capsys.readouterr().out)["DUPLICATE_NOOP"] == 1
     assert backfill_script.main(["--team-games", str(tmp_path / "nope.jsonl"), "--store-dir", str(store_dir)]) == 2
+
+
+def test_workflow_serializes_on_its_own_group_not_the_research_writers_group():
+    """The backfill writes only its own branch; sharing research-data-write left real runs pending, then cancelled."""
+    import pathlib
+    import re
+
+    text = (pathlib.Path(__file__).resolve().parents[1] / ".github/workflows/period-score-backfill.yml").read_text()
+    block = re.search(r"^concurrency:\n((?:[ ]{2}.*\n)+)", text, re.M)
+    assert block, "workflow declares no concurrency block"
+    assert "group: period-score-backfill" in block.group(1)
+    assert "research-data-write" not in block.group(1)
+    assert "cancel-in-progress: false" in block.group(1)
