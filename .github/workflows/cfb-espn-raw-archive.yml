@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   archive:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -37,15 +38,21 @@ jobs:
       - name: Check out the archive branch (or start it)
         run: |
           set -euo pipefail
-          if git fetch origin cfb-espn-raw-archive --depth=1 2>/dev/null; then
+          if git ls-remote --exit-code --heads origin cfb-espn-raw-archive >/dev/null 2>&1; then
+            git fetch origin cfb-espn-raw-archive --depth=1
             git worktree add /tmp/espn origin/cfb-espn-raw-archive --detach
-          else
+          elif [ $? -eq 2 ]; then
             mkdir -p /tmp/espn && git -C /tmp/espn init -q && git -C /tmp/espn checkout -q --orphan cfb-espn-raw-archive
+          else
+            echo "could not reach origin to check for the archive branch" >&2; exit 1
           fi
       - name: Archive completed games (fail soft per game)
+        env:
+          MAX_GAMES: ${{ github.event.inputs.max_games || '120' }}
         run: |
+          case "$MAX_GAMES" in (*[!0-9]*|"") echo "max_games must be an integer" >&2; exit 1;; esac
           python3 scripts/archive_espn_raw.py --archive-dir /tmp/espn --schedule data/football/2026/schedule.json \
-            --max-games "${{ github.event.inputs.max_games || '120' }}" --refresh-days 4 --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            --max-games "$MAX_GAMES" --refresh-days 4 --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
       - name: Verify the archive before publishing
         run: |
           python3 - <<'PY'
@@ -66,17 +73,6 @@ jobs:
             if [ -n "$BAD" ]; then echo "non-append change: $BAD"; exit 1; fi
           fi
       - name: Push to cfb-espn-raw-archive (isolated orphan branch)
-        run: |
-          set -euo pipefail
-          cd /tmp/espn
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git diff --cached --quiet && { echo "nothing new"; exit 0; }
-          git commit -q -m "cfb espn raw archive ${GITHUB_RUN_ID} (postgame, research-only, append-only)"
-          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          for attempt in 1 2 3 4; do
-            git push origin HEAD:cfb-espn-raw-archive && exit 0
-            git fetch origin cfb-espn-raw-archive --depth=1 && git rebase origin/cfb-espn-raw-archive || true
-            sleep $((attempt * 4))
-          done
-          exit 1
+        env:
+          GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
+        run: scripts/archive_publish.sh /tmp/espn cfb-espn-raw-archive "cfb espn raw archive ${GITHUB_RUN_ID} (research-only, append-only)"

@@ -75,7 +75,6 @@ def test_strict_cohort_requires_pregame_quote_identity_orientation_start_score_a
         assert rep["rows_by_lead_bucket"]["1-6h"] == 3 and rep["rows_by_lead_bucket"]["after_start"] == 3
         b = rep["market_only_baseline"]
         assert b["n_tickers"] == 3 and b["n_games"] == 1 and "no fees" in b["note"]
-        assert rep["archive_verification"] if "archive_verification" in rep else True
 
 
 def test_a_kalshi_result_that_contradicts_espn_period_score_is_flagged_and_excluded():
@@ -115,3 +114,29 @@ def test_orientation_mismatch_blocks_the_cohort():
         lad, espn = build(d, [bad], [dict(bad, status="settled", result="yes")])
         c = run_audit(lad, espn)["cohort"]
         assert c.get("orientation_verified", 0) == 0 and c.get("strict_cohort", 0) == 0
+
+
+def test_quote_observed_after_espn_kickoff_or_with_disagreeing_start_never_enters_the_cohort():
+    """Kalshi thinks the game starts 30 minutes AFTER ESPN's real kickoff: a quote seen in that window is NOT pregame."""
+    with tempfile.TemporaryDirectory() as d:
+        lad = Path(d) / "lad"
+        late_start = KICK + timedelta(minutes=30)
+
+        class Late(F):
+            def __call__(self, url, params=None, headers=None, timeout=None):
+                if url.endswith("/milestones"):
+                    return Resp({"milestones": [{"id": "m", "start_date": late_start.strftime("%Y-%m-%dT%H:%M:%SZ"), "details": {"league": "NCAAFB", "status": "scheduled"},
+                                                 "primary_event_tickers": [EV], "related_event_tickers": []}], "cursor": ""})
+                return Fake.__call__(self, url, params, headers, timeout)
+        g = l1.RawKalshiGetter(http_get=Late({"open": [mk(13.5)]}), sleep=lambda s: None, clock=Clock(KICK + timedelta(minutes=10)))
+        r = l1.capture(g, run_id="late", prev_state=None, clock=g._clock)
+        assert r.rows[0]["eligible_pregame"]                 # Kalshi's (wrong) start says it is still pregame ...
+        store.write_run(lad, r)
+        g = l1.RawKalshiGetter(http_get=F({"settled": [mk(13.5, "yes", "settled")]}), sleep=lambda s: None, clock=Clock(KICK + timedelta(hours=5)))
+        store.write_run(lad, l1.capture(g, run_id="post", prev_state=r.state, clock=g._clock))
+        body = (FIX / "summary_401856705.json").read_bytes()
+        espn = Path(d) / "espn"
+        row = er.index_row("401856705", {"ok": True, "status": 200, "uri": "u", "body": body, "fetched_at": "2026-10-04T06:00:00Z", "error": None}, {"date": "2026-10-03T16:45Z", "state": "post"}, "e1")
+        es.write_run(espn, {"run_id": "e1", "finished_at": "2026-10-04T06:00:01Z", "started_at": "x"}, [row], {"401856705": body})
+        c = run_audit(lad, espn)["cohort"]
+        assert c["with_eligible_pregame_quote"] == 1 and c["quote_after_espn_kickoff_or_start_disagrees"] == 1 and c.get("strict_cohort", 0) == 0

@@ -22,7 +22,12 @@ def stamp(observed_at: str) -> tuple[str, str]:
 
 def load_state(archive: Path) -> dict[str, Any] | None:
     p = archive / "state" / "latest.json"
-    return json.loads(p.read_text()) if p.exists() else None
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except ValueError:
+        return None            # a truncated cache is rebuilt as a fresh FULL board; the rows themselves are the record
 
 
 def write_run(archive: Path, res: CaptureResult) -> dict[str, Any]:
@@ -43,7 +48,9 @@ def write_run(archive: Path, res: CaptureResult) -> dict[str, Any]:
     write_new(archive / written["manifest"], canonical(m) + b"\n")
     state_path = archive / "state" / "latest.json"
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_bytes(canonical(res.state) + b"\n")
+    tmp = state_path.with_suffix(".tmp")
+    tmp.write_bytes(canonical(res.state) + b"\n")
+    tmp.replace(state_path)           # atomic replace: a crash never leaves a truncated state file
     return m
 
 
@@ -63,13 +70,13 @@ def verify(archive: Path) -> dict[str, Any]:
         except ValueError:
             problems.append(f"raw not JSON: {f.name}")
     manifests = sorted((archive / "runs").glob("*/*.json")) if (archive / "runs").exists() else []
-    last_obs = ""
+    known = {m_.name for m_ in manifests}
+    for rf in sorted((archive / "rows").glob("*/*.jsonl")) if (archive / "rows").exists() else []:
+        if rf.with_suffix(".json").name not in known:
+            problems.append(f"rows file without a manifest: {rf.name}")
     n_rows = 0
     for mf in manifests:
         m = json.loads(mf.read_text())
-        if m["observed_at"] < last_obs and mf.name.split("_")[0] > "":
-            pass  # file order is by day/time string; run clocks may interleave across days, so only require per-file consistency below
-        last_obs = max(last_obs, m["observed_at"])
         files = m.get("files") or {}
         rp = files.get("rows")
         if rp:
@@ -87,6 +94,9 @@ def verify(archive: Path) -> dict[str, Any]:
                 for r in rows:
                     if r["observed_at"] != m["observed_at"] or r["run_id"] != m["run_id"]:
                         problems.append(f"row/run mismatch in {rp}")
+                        break
+                    if bool(r["eligible_pregame"]) != (not r["ineligible_reasons"]) or (r["eligible_pregame"] and not (r["lead_minutes"] is not None and r["lead_minutes"] > 0)):
+                        problems.append(f"eligibility invariant violated for {r['ticker']} in {rp}")
                         break
         for rp in files.get("raw", []):
             if not (archive / rp).exists():

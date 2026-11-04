@@ -116,3 +116,36 @@ def test_fetch_raw_retries_transient_and_hashes_original_bytes():
     assert out["ok"] and out["body"] == b'{"a":1}' and len(calls) == 2
     out = er.fetch_raw("1", http_get=lambda *a, **k: R(b"", 404), sleep=lambda s: None)
     assert not out["ok"] and out["status"] == 404 and out["body"] is None
+
+
+def test_fg_type_whitelist_and_word_boundary_result():
+    plays = [
+        {"id": "1", "type": {"text": "Field Goal Good"}, "text": "(10:00) J.Goodman field goal attempt from 41 yards GOOD", "period": {"number": 1}},
+        {"id": "2", "type": {"text": "Field Goal Missed"}, "text": "(09:00) J.Gooden field goal attempt from 52 yards NO GOOD", "period": {"number": 1}},
+        {"id": "3", "type": {"text": "Missed Field Goal Return"}, "text": "returned field goal attempt", "period": {"number": 1}},
+        {"id": "4", "type": {"text": "Penalty"}, "text": "false start, field goal attempt from 40 yards", "period": {"number": 1}},
+        {"id": "5", "type": {"text": "Field Goal"}, "text": "Goodman 33 Yd Field Goal MISSED", "period": {"number": 2}},
+    ]
+    fgs, _ = er.fg_attempts({"drives": {"previous": [{"team": {"id": "1"}, "plays": plays}]}})
+    got = {f["play_id"]: (f["result"], f["distance_yards"]) for f in fgs}
+    assert got["1"] == ("GOOD", 41) and got["2"] == ("NO_GOOD", 52) and set(got) == {"1", "2", "5"}
+    assert got["5"][0] == "NO_GOOD" and got["5"][1] == 33        # "Goodman" must not turn a MISSED kick into GOOD
+
+
+def test_made_count_period_scores_and_incomplete_box_are_reconciled():
+    s = json.loads(raw("401856705"))
+    for blk in s["boxscore"]["players"]:
+        for cat in blk["statistics"]:
+            if cat["name"] == "kicking":
+                cat["totals"][0] = "1/2" if blk["team"]["id"] == "61" else cat["totals"][0]
+    r = er.index_row("1", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None}, None, "r")
+    assert "FG_MADE_DISAGREES_WITH_BOX" in r["missingness"] or "FG_PLAYS_DISAGREE_WITH_BOX_ATTEMPTS" in r["missingness"]
+    s2 = json.loads(raw("401856705"))
+    s2["header"]["competitions"][0]["competitors"][0]["score"] = "99"
+    r2 = er.index_row("2", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s2).encode(), "fetched_at": "t", "error": None}, None, "r")
+    assert "PERIOD_SCORES_DISAGREE_WITH_FINAL" in r2["missingness"]
+
+
+def test_payloads_that_never_complete_are_not_re_archived_forever():
+    h = {"archived_ok": True, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": es.MAX_FAILED_ATTEMPTS}
+    assert es.should_fetch(h) == (False, "GAVE_UP_PAYLOAD_NEVER_COMPLETED")

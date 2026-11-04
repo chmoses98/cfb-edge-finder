@@ -18,12 +18,22 @@ MAX_FAILED_ATTEMPTS = 4
 def history(archive: Path) -> dict[str, dict[str, Any]]:
     """event_id -> {archived_ok, completed_ok, failed_attempts}."""
     h: dict[str, dict[str, Any]] = {}
+    for mf in sorted((archive / "runs").glob("*/*.json")) if (archive / "runs").exists() else []:
+        m = json.loads(mf.read_text())
+        ip = (m.get("files") or {}).get("index")
+        if ip:
+            if not (archive / ip).exists():
+                problems.append(f"manifest points at missing index {ip}")
+            elif sha256((archive / ip).read_bytes()) != m.get("index_sha256"):
+                problems.append(f"index hash mismatch {ip}")
     for f in sorted((archive / "index").glob("*/*.jsonl")) if (archive / "index").exists() else []:
         for r in read_jsonl(f):
-            e = h.setdefault(r["event_id"], {"archived_ok": False, "completed_ok": False, "failed_attempts": 0})
+            e = h.setdefault(r["event_id"], {"archived_ok": False, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": 0})
             if r.get("fetch_ok"):
                 e["archived_ok"] = True
-                e["completed_ok"] = e["completed_ok"] or bool((r.get("final_state") or {}).get("completed"))
+                done = bool((r.get("final_state") or {}).get("completed"))
+                e["completed_ok"] = e["completed_ok"] or done
+                e["incomplete_attempts"] += 0 if done else 1
             else:
                 e["failed_attempts"] += 1
     return h
@@ -36,6 +46,8 @@ def should_fetch(hist: dict[str, Any] | None) -> tuple[bool, str]:
         return False, "ALREADY_ARCHIVED_COMPLETE"
     if hist["failed_attempts"] >= MAX_FAILED_ATTEMPTS and not hist["archived_ok"]:
         return False, "GAVE_UP_AFTER_FAILURES"
+    if hist.get("incomplete_attempts", 0) >= MAX_FAILED_ATTEMPTS:
+        return False, "GAVE_UP_PAYLOAD_NEVER_COMPLETED"
     return True, "RETRY_NOT_COMPLETE_OR_FAILED"
 
 
@@ -71,6 +83,14 @@ def verify(archive: Path) -> dict[str, Any]:
             json.loads(data)
         except ValueError:
             problems.append(f"raw not JSON {f.name}")
+    for mf in sorted((archive / "runs").glob("*/*.json")) if (archive / "runs").exists() else []:
+        m = json.loads(mf.read_text())
+        ip = (m.get("files") or {}).get("index")
+        if ip:
+            if not (archive / ip).exists():
+                problems.append(f"manifest points at missing index {ip}")
+            elif sha256((archive / ip).read_bytes()) != m.get("index_sha256"):
+                problems.append(f"index hash mismatch {ip}")
     for f in sorted((archive / "index").glob("*/*.jsonl")) if (archive / "index").exists() else []:
         for r in read_jsonl(f):
             n_idx += 1

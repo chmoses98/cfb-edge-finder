@@ -95,7 +95,7 @@ jobs:
           retention-days: 14
 
   capture:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'          # branch code never gets a write token
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -112,15 +112,21 @@ jobs:
       - name: Check out the archive branch (or start it)
         run: |
           set -euo pipefail
-          if git fetch origin cfb-1q-ladder-archive --depth=1 2>/dev/null; then
+          if git ls-remote --exit-code --heads origin cfb-1q-ladder-archive >/dev/null 2>&1; then
+            git fetch origin cfb-1q-ladder-archive --depth=1
             git worktree add /tmp/ladder origin/cfb-1q-ladder-archive --detach
-          else
+          elif [ $? -eq 2 ]; then
             mkdir -p /tmp/ladder && git -C /tmp/ladder init -q && git -C /tmp/ladder checkout -q --orphan cfb-1q-ladder-archive
+          else
+            echo "could not reach origin to check for the archive branch" >&2; exit 1
           fi
       - name: Capture (read-only)
+        env:
+          ORDERBOOKS: ${{ github.event.inputs.orderbooks || 'true' }}
         run: |
-          python3 scripts/capture_cfb_1q_ladders.py --archive-dir /tmp/ladder --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            ${{ github.event.inputs.orderbooks == 'false' && '--no-orderbooks' || '' }}
+          EXTRA=""
+          if [ "$ORDERBOOKS" = "false" ]; then EXTRA="--no-orderbooks"; fi
+          python3 scripts/capture_cfb_1q_ladders.py --archive-dir /tmp/ladder --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" $EXTRA
       - name: Verify the archive before publishing
         run: |
           python3 - <<'PY'
@@ -141,17 +147,19 @@ jobs:
             if [ -n "$BAD" ]; then echo "non-append change: $BAD"; exit 1; fi
           fi
       - name: Push to cfb-1q-ladder-archive (isolated orphan branch)
+        env:
+          GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
+        run: scripts/archive_publish.sh /tmp/ladder cfb-1q-ladder-archive "cfb 1q ladder capture ${GITHUB_RUN_ID} (research-only, append-only)"
+      - name: Fail the run if the capture was unusable (AFTER the failed run was published)
+        if: always()
         run: |
-          set -euo pipefail
-          cd /tmp/ladder
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git diff --cached --quiet && { echo "nothing new"; exit 0; }
-          git commit -q -m "cfb 1q ladder capture ${GITHUB_RUN_ID} (research-only, append-only)"
-          git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          for attempt in 1 2 3 4; do
-            git push origin HEAD:cfb-1q-ladder-archive && exit 0
-            git fetch origin cfb-1q-ladder-archive --depth=1 && git rebase origin/cfb-1q-ladder-archive || true
-            sleep $((attempt * 4))
-          done
-          exit 1
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          ms = sorted(Path("/tmp/ladder/runs").glob("*/*.json"))
+          m = json.loads(ms[-1].read_text()) if ms else None
+          if m is None or (m["markets_seen"] == 0 and not any(s["complete"] for s in m["sweeps"].values())):
+              print("capture produced nothing usable", file=sys.stderr)
+              sys.exit(1)
+          print("last run:", m["run_id"], "complete" if m["capture_complete"] else "INCOMPLETE", m["markets_seen"], "markets")
+          PY

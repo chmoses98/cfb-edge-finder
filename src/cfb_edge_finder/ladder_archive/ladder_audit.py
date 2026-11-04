@@ -17,7 +17,7 @@ from .ladder_1q import _price, lead_bucket, parse_ts
 
 RULE_RX = re.compile(r"of the (?P<a>.+?) vs (?P<b>.+?) college football game originally scheduled for (?P<d>[A-Z][a-z]{2} \d{1,2}, \d{4})")
 ORIENT_RX = re.compile(r"more than (?P<x>[\d.]+) points in the 1st quarter.*resolves to Yes", re.I | re.S)
-START_TOLERANCE = timedelta(minutes=45)
+START_TOLERANCE = timedelta(minutes=10)
 
 
 def load_rows(archive) -> list[dict[str, Any]]:
@@ -101,11 +101,14 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
             buckets_rows[r["lead_bucket"]] += 1
             if r["eligible_pregame"]:
                 buckets_tickers[r["lead_bucket"]].add(t)
-        elig = [r for r in rs if r["eligible_pregame"] and r["quote_status"] == "QUOTED"]
+        elig_raw = [r for r in rs if r["eligible_pregame"] and r["quote_status"] == "QUOTED"]
+        ek = parse_ts(espn[eid]["kickoff"]) if eid and eid in espn else None
+        # a quote counts only if IT was observed before ESPN's kickoff and ITS OWN Kalshi start agrees with ESPN's within a tight tolerance
+        elig = [r for r in elig_raw if ek and parse_ts(r["observed_at"]) < ek and parse_ts(r.get("kalshi_start")) and abs(parse_ts(r["kalshi_start"]) - ek) <= START_TOLERANCE
+                and (r.get("orderbook") or {}).get("pregame", True)]
         start_ok = None
-        if eid and last.get("kalshi_start") and eid in espn:
-            ek, kk = parse_ts(espn[eid]["kickoff"]), parse_ts(last["kalshi_start"])
-            start_ok = bool(ek and kk and abs(ek - kk) <= START_TOLERANCE)
+        if ek and elig_raw:
+            start_ok = bool(elig)
         p1 = None
         if eid and eid in espn:
             ts = espn[eid]["teams"]
@@ -117,7 +120,8 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
         settle_consistent = None if (derived is None or result not in ("yes", "no")) else (derived == result)
         strict = bool(elig and eid and orientation_ok and start_ok and p1 is not None and result in ("yes", "no") and settle_consistent)
         cohort["tickers_observed"] += 1
-        cohort["with_eligible_pregame_quote"] += bool(elig)
+        cohort["with_eligible_pregame_quote"] += bool(elig_raw)
+        cohort["quote_after_espn_kickoff_or_start_disagrees"] += bool(elig_raw and not elig)
         cohort["joined_to_espn_game"] += bool(eid)
         cohort["start_corroborated_by_espn"] += bool(start_ok)
         cohort["orientation_verified"] += orientation_ok

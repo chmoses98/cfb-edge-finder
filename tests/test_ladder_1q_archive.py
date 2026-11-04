@@ -88,7 +88,7 @@ def test_a_price_seen_after_kickoff_is_never_pregame_and_placeholder_start_is_ne
     row = r.rows[0]
     assert not row["eligible_pregame"] and "AT_OR_AFTER_START" in row["ineligible_reasons"] and row["lead_bucket"] == "after_start"
     r = run(Fake({"open": [mk(6.5)]}, ms_status="time-tbd"))
-    assert "START_IS_PLACEHOLDER_TIME_TBD" in r.rows[0]["ineligible_reasons"] and not r.rows[0]["eligible_pregame"]
+    assert "MILESTONE_STATUS_TIME_TBD" in r.rows[0]["ineligible_reasons"] and not r.rows[0]["eligible_pregame"]
     r = run(Fake({"closed": [mk(6.5, status="closed")]}))
     assert "MARKET_STATUS_CLOSED" in r.rows[0]["ineligible_reasons"]
 
@@ -181,3 +181,68 @@ def test_events_without_a_milestone_start_are_reported_not_dropped():
     r = run(Fake({"open": [m]}))
     assert r.manifest["events_without_milestone_start"] == ["KXNCAAF1QTOTAL-26NOV05XXYY"]
     assert r.rows[0]["kalshi_start"] is None and "START_UNKNOWN" in r.rows[0]["ineligible_reasons"]
+
+
+def test_markets_that_vanish_between_runs_are_reported_not_silent():
+    f = Fake({"open": [mk(6.5), mk(7.5)]})
+    r1 = run(f)
+    r2 = run(Fake({"open": [mk(6.5)]}), state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
+    assert r2.manifest["previously_seen_not_returned"] == [f"{EV}-15"] and r2.manifest["previously_seen_not_returned_count"] == 1
+
+
+@pytest.mark.parametrize("status", ["created", "inprogress", "closed", "complete", "time-tbd", None])
+def test_only_a_plain_scheduled_milestone_start_is_trusted(status):
+    r = run(Fake({"open": [mk(6.5)]}, ms_status=status))
+    assert not r.rows[0]["eligible_pregame"] and any(x.startswith("MILESTONE_STATUS_") for x in r.rows[0]["ineligible_reasons"])
+
+
+def test_orderbook_fetched_at_or_after_start_downgrades_the_row():
+    clock_t = {"t": KICK - timedelta(seconds=3)}
+
+    def slow_clock():
+        clock_t["t"] += timedelta(seconds=2)           # each read advances: the order-book GET lands after kickoff
+        return clock_t["t"]
+    g = l1.RawKalshiGetter(http_get=Fake({"open": [mk(6.5)]}), sleep=lambda s: None, clock=slow_clock)
+    res = l1.capture(g, run_id="r", prev_state=None, clock=slow_clock)
+    row = res.rows[0]
+    ob = row["orderbook"]
+    if ob["status"].startswith("CAPTURED"):
+        assert ob["fetched_at"] and (ob["pregame"] or (not row["eligible_pregame"] and "ORDERBOOK_FETCHED_AT_OR_AFTER_START" in row["ineligible_reasons"]))
+
+
+def test_incomplete_full_board_does_not_reset_the_full_board_clock():
+    f = Fake({"open": [mk(6.5), mk(7.5), mk(8.5)]}, fail={("/markets", "open", "2"): 500})
+    r1 = run(f)
+    assert r1.manifest["board"] == "FULL_INCOMPLETE" and r1.state["last_full_board"] is None
+    r2 = run(Fake({"open": [mk(6.5), mk(7.5), mk(8.5)]}), state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
+    assert r2.manifest["board"] == "FULL" and r2.state["last_full_board"] is not None
+
+
+def test_start_or_milestone_status_change_with_unchanged_quote_writes_a_row():
+    r1 = run(Fake({"open": [mk(6.5)]}, ms_status="time-tbd"))
+    r2 = run(Fake({"open": [mk(6.5)]}, ms_status="scheduled"), state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
+    assert len(r2.rows) == 1 and r2.rows[0]["row_reason"] == "CHANGED" and r2.rows[0]["eligible_pregame"]
+
+
+def test_failed_orderbook_is_retried_next_run():
+    class OB(Fake):
+        def __call__(self, url, params=None, headers=None, timeout=None):
+            if url.endswith("/orderbook") and self.fail_ob:
+                return Resp({}, 400)
+            return super().__call__(url, params, headers, timeout)
+    f = OB({"open": [mk(6.5)]}); f.fail_ob = True
+    r1 = run(f)
+    assert r1.rows[0]["orderbook"]["status"] == "FAILED"
+    f.fail_ob = False
+    r2 = run(f, state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
+    assert len(r2.rows) == 1 and r2.rows[0]["orderbook"]["status"] == "CAPTURED"
+
+
+def test_identical_raw_pages_are_archived_once_across_runs():
+    f = Fake({"open": [mk(6.5), mk(7.5)]})
+    r1 = run(f)
+    assert r1.raw_pages
+    f2 = Fake({"open": [mk(6.5, yb="0.41"), mk(7.5)]})
+    r2 = run(f2, state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
+    ms = [h for h in r2.manifest["requests"] if h["path"] == "/milestones"][0]["sha256"]
+    assert ms not in r2.raw_pages and ms in r2.manifest["raw_pages_deduped"]
