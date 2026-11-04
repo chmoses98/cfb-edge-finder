@@ -1,5 +1,6 @@
 """End-to-end audit on the REAL captured ESPN summary 401856705 (VAN at UGA, Q1 = 7-7, total 14) with a fake-transport ladder."""
 
+import json
 import sys
 import tempfile
 from datetime import UTC, datetime, timedelta
@@ -279,3 +280,26 @@ def test_upcoming_games_without_an_espn_record_are_awaiting_not_disagreeing():
             c["eligible_quote_awaiting_espn_game_record"] == 1
             and c.get("quote_after_espn_kickoff_or_start_disagrees", 0) == 0
         )
+
+
+def test_scores_the_archive_flagged_as_inconsistent_are_never_used_to_settle():
+    with tempfile.TemporaryDirectory() as d:
+        lad = Path(d) / "lad"
+        espn = Path(d) / "espn"
+        pre, post = [mk(13.5)], [mk(13.5, "yes", "settled")]
+        lad, _ = build(d, pre, post, espn_body=False)
+        body = json.loads((FIX / "summary_401856705.json").read_bytes())
+        body["header"]["competitions"][0]["competitors"][0]["score"] = "99"  # linescores no longer sum to the final
+        raw = json.dumps(body).encode()
+        row = er.index_row(
+            "401856705",
+            {"ok": True, "status": 200, "uri": "u", "body": raw, "fetched_at": "2026-10-04T06:00:00Z", "error": None},
+            {"date": "2026-10-03T16:45Z", "state": "post"},
+            "e1",
+        )
+        assert "PERIOD_SCORES_DISAGREE_WITH_FINAL" in row["missingness"]
+        es.write_run(
+            espn, {"run_id": "e1", "finished_at": "2026-10-04T06:00:01Z", "started_at": "x"}, [row], {"401856705": raw}
+        )
+        c = run_audit(lad, espn)["cohort"]
+        assert c.get("official_q1_score_available", 0) == 0 and c.get("strict_cohort", 0) == 0

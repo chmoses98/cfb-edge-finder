@@ -125,9 +125,15 @@ def test_failures_are_retried_then_given_up_and_never_become_rows_of_zeros():
     assert es.should_fetch(h)[0] is True
     h["failed_attempts"] = es.MAX_FAILED_ATTEMPTS
     assert es.should_fetch(h) == (False, "GAVE_UP_AFTER_FAILURES")
+    # an event archived once as incomplete that keeps failing is also given up (no starvation of newer games)
+    assert es.should_fetch({"archived_ok": True, "completed_ok": False, "failed_attempts": 9}) == (
+        False,
+        "GAVE_UP_AFTER_FAILURES",
+    )
     assert (
-        es.should_fetch({"archived_ok": True, "completed_ok": False, "failed_attempts": 9})[0] is True
-    )  # a non-complete payload is re-fetched
+        es.should_fetch({"archived_ok": True, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": 1})[0]
+        is True
+    )
 
 
 def test_fetch_raw_retries_transient_and_hashes_original_bytes():
@@ -244,3 +250,28 @@ def test_empty_kicking_category_is_a_genuine_zero_but_an_absent_one_is_missing()
         r2["reconciliation"]["fg_plays_vs_box_attempts"]["match"] is True
         or r2["reconciliation"]["fg_plays_vs_box_attempts"]["match"] is None
     )
+
+
+def test_non_dict_or_non_json_200_never_crashes_or_blocks_publishing():
+    for body in (b"[]", b"null", b"<html>", b'"x"'):
+        r = er.index_row(
+            "1", {"ok": True, "status": 200, "uri": "u", "body": body, "fetched_at": "t", "error": None}, None, "r"
+        )
+        assert r["missingness"] == ["PAYLOAD_NOT_JSON"]
+
+    class R:
+        def __init__(s, c, code):
+            s.content, s.status_code = c, code
+
+    out = er.fetch_raw("1", http_get=lambda *a, **k: R(b"<html>maintenance</html>", 200), sleep=lambda s: None)
+    assert not out["ok"] and out["body"] is None and "non-JSON" in out["error"]
+
+
+def test_archived_but_incomplete_events_that_keep_failing_are_given_up():
+    h = {
+        "archived_ok": True,
+        "completed_ok": False,
+        "failed_attempts": es.MAX_FAILED_ATTEMPTS,
+        "incomplete_attempts": 1,
+    }
+    assert es.should_fetch(h) == (False, "GAVE_UP_AFTER_FAILURES")

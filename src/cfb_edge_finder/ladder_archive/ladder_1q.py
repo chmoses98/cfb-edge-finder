@@ -189,6 +189,7 @@ class RawKalshiGetter:
         )
         self.log: list[dict[str, Any]] = []
         self.bodies: dict[str, bytes] = {}
+        self.page_paths: dict[str, str] = {}
 
     def __call__(self, path: str, params: dict[str, Any] | None = None) -> dict:
         import json
@@ -236,8 +237,18 @@ class RawKalshiGetter:
                 }
             )
             if resp.status_code < 400:
+                try:
+                    parsed = json.loads(raw)
+                except ValueError as exc:  # an HTML/maintenance 200 is a failed request, never an archived "page"
+                    self.log[-1]["non_json"] = True
+                    last = requests.HTTPError(f"non-JSON 200 body for {path}: {exc}")
+                    if attempt == self.attempts - 1:
+                        raise last from exc
+                    self._sleep(KalshiClient._retry_delay_seconds(resp, attempt))
+                    continue
                 self.bodies.setdefault(digest, raw)
-                return json.loads(raw)
+                self.page_paths[digest] = path
+                return parsed
             retryable = resp.status_code == 429 or 500 <= resp.status_code < 600
             last = requests.HTTPError(f"HTTP {resp.status_code} for {path}")
             if not retryable or attempt == self.attempts - 1:
@@ -319,8 +330,10 @@ def capture(
             starts[ev] = (ms.start_date, ms.status, ms.milestone_id)
     observed_at = clock()
     all_complete = all(s_["complete"] for s_ in sweeps.values())
-    full_due = prev.get("last_full_board") is None or (
-        parse_ts(prev["last_full_board"]) and observed_at - parse_ts(prev["last_full_board"]) >= FULL_BOARD_EVERY
+    full_due = (
+        prev.get("last_full_board") is None
+        or parse_ts(prev.get("last_full_board")) is None
+        or (parse_ts(prev["last_full_board"]) and observed_at - parse_ts(prev["last_full_board"]) >= FULL_BOARD_EVERY)
     )
     full_board = bool(full_due)  # a due full board is still attempted, but only a COMPLETE one resets the clock (below)
     rows: list[dict[str, Any]] = []
@@ -407,13 +420,17 @@ def capture(
         for t, v in prev.get("tickers", {}).items()
         if t not in markets and str(v.get("status")) not in ("settled", "finalized")
     )
-    seen_raw = set(prev.get("raw_seen", []))
+    prior_seen = list(prev.get("raw_seen", []))
+    seen_raw = set(prior_seen)
     pages = {
         sha: body for sha, body in getter.bodies.items() if sha not in seen_raw
     }  # identical pages are archived once, not per run
+    stable = [
+        sha for sha, path in getter.page_paths.items() if not path.endswith("/orderbook") and sha not in seen_raw
+    ]  # order-book bodies change constantly: never tracked
     new_state["raw_seen"] = (
-        sorted(seen_raw | set(getter.bodies))[-4000:] if (rows or full_board) else sorted(seen_raw)[-4000:]
-    )
+        (prior_seen + sorted(stable))[-2000:] if (rows or full_board) else prior_seen[-2000:]
+    )  # insertion-ordered: oldest evicted first
     wrote_raw = bool(rows) or full_board
     status_counts: dict[str, int] = {}
     for m in markets.values():

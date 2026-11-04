@@ -40,7 +40,7 @@ def should_fetch(hist: dict[str, Any] | None) -> tuple[bool, str]:
         return True, "NEW"
     if hist["completed_ok"]:
         return False, "ALREADY_ARCHIVED_COMPLETE"
-    if hist["failed_attempts"] >= MAX_FAILED_ATTEMPTS and not hist["archived_ok"]:
+    if hist["failed_attempts"] >= MAX_FAILED_ATTEMPTS:
         return False, "GAVE_UP_AFTER_FAILURES"
     if hist.get("incomplete_attempts", 0) >= MAX_FAILED_ATTEMPTS:
         return False, "GAVE_UP_PAYLOAD_NEVER_COMPLETED"

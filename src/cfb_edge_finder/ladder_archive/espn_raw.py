@@ -9,6 +9,7 @@ box-score kicking totals are reconciled against the FG plays; scores are reconci
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from collections.abc import Callable
@@ -75,6 +76,19 @@ def fetch_raw(
             fetched = now_iso()
             body = r.content
             if r.status_code == 200 and len(body) <= MAX_BYTES:
+                try:
+                    json.loads(body)
+                except ValueError:
+                    last = {
+                        "ok": False,
+                        "status": 200,
+                        "uri": uri,
+                        "body": None,
+                        "fetched_at": fetched,
+                        "error": "non-JSON 200 body",
+                    }
+                    sleep(min(2**attempt, 8))
+                    continue
                 return {"ok": True, "status": 200, "uri": uri, "body": body, "fetched_at": fetched, "error": None}
             last = {
                 "ok": False,
@@ -250,6 +264,8 @@ def index_row(event_id: str, fetch: dict[str, Any], schedule_row: dict[str, Any]
     try:
         s = json.loads(body)
     except ValueError:
+        s = None
+    if not isinstance(s, dict):
         row["missingness"].append("PAYLOAD_NOT_JSON")
         return row
     drives = drive_summary(s)

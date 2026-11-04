@@ -51,6 +51,12 @@ def espn_period1(espn_archive) -> dict[str, dict[str, Any]]:
         for r in read_jsonl(f):
             if not r.get("fetch_ok") or not (r.get("final_state") or {}).get("completed"):
                 continue
+            rec = r.get("reconciliation") or {}
+            if (
+                rec.get("period_scores_match_final") is False
+                or (rec.get("last_play_score_vs_final") or {}).get("match") is False
+            ):
+                continue  # the archive itself flagged these scores as inconsistent: never use them to settle
             payload = json.loads(read_gz(espn_archive / r["raw_file"]))
             comp = ((payload.get("header") or {}).get("competitions") or [{}])[0]
             teams = {}
@@ -164,6 +170,7 @@ def audit(
             and parse_ts(r.get("kalshi_start"))
             and abs(parse_ts(r["kalshi_start"]) - ek) <= START_TOLERANCE
             and (r.get("orderbook") or {}).get("pregame", True)
+            and (not (r.get("orderbook") or {}).get("fetched_at") or parse_ts(r["orderbook"]["fetched_at"]) < ek)
         ]
         start_ok = None
         if ek and elig_raw:
@@ -191,7 +198,8 @@ def audit(
         cohort["tickers_observed"] += 1
         cohort["with_eligible_pregame_quote"] += bool(elig_raw)
         cohort["quote_after_espn_kickoff_or_start_disagrees"] += bool(elig_raw and espn_known and not elig)
-        cohort["eligible_quote_awaiting_espn_game_record"] += bool(elig_raw and not espn_known)
+        cohort["eligible_quote_awaiting_espn_game_record"] += bool(elig_raw and eid and not espn_known)
+        cohort["eligible_quote_unjoined_to_espn_game"] += bool(elig_raw and not eid)
         cohort["joined_to_espn_game"] += bool(eid)
         cohort["start_corroborated_by_espn"] += bool(start_ok)
         cohort["orientation_verified"] += orientation_ok

@@ -314,3 +314,31 @@ def test_identical_raw_pages_are_archived_once_across_runs():
     r2 = run(f2, state=r1.state, t=T0 + timedelta(minutes=10), rid="r2")
     ms = [h for h in r2.manifest["requests"] if h["path"] == "/milestones"][0]["sha256"]
     assert ms not in r2.raw_pages and ms in r2.manifest["raw_pages_deduped"]
+
+
+def test_html_200_is_a_failed_request_never_an_archived_page():
+    class Html(Fake):
+        def __call__(self, url, params=None, headers=None, timeout=None):
+            if url.endswith("/milestones"):
+                return Resp(b"<html>maintenance</html>", 200)
+            return super().__call__(url, params, headers, timeout)
+
+    f = Html({"open": [mk(6.5)]})
+    g = l1.RawKalshiGetter(http_get=f, sleep=lambda s: None, clock=Clock(T0))
+    r = l1.capture(g, run_id="r", prev_state=None, clock=g._clock)
+    assert r.manifest["sweeps"]["milestones"]["complete"] is False and r.manifest["capture_complete"] is False
+    assert all(json.loads(b) is not None for b in r.raw_pages.values())  # every archived body parses
+    with tempfile.TemporaryDirectory() as d:
+        store.write_run(Path(d), r)
+        assert store.verify(Path(d))["ok"]
+
+
+def test_corrupt_last_full_board_is_treated_as_due_and_raw_seen_ignores_orderbooks():
+    f = Fake({"open": [mk(6.5)]})
+    r1 = run(f)
+    bad = dict(r1.state, last_full_board="garbage")
+    r2 = run(f, state=bad, t=T0 + timedelta(minutes=10), rid="r2")
+    assert r2.manifest["board"] == "FULL"
+    assert all(len(h) == 64 for h in r1.state["raw_seen"]) and len(r1.state["raw_seen"]) <= 2000
+    ob_shas = {h["sha256"] for h in r1.manifest["requests"] if h["path"].endswith("/orderbook")}
+    assert ob_shas and not (ob_shas & set(r1.state["raw_seen"]))

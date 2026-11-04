@@ -110,6 +110,7 @@ def verify(archive: Path) -> dict[str, Any]:
                 and m.get("raw_pages_written")
                 and req["status"]
                 and req["status"] < 400
+                and not req.get("non_json")
                 and req["sha256"] not in shas
             ):
                 problems.append(f"request body not archived: {req['path']} {req['sha256'][:12]}")

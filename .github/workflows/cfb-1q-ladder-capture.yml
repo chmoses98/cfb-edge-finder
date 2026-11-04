@@ -82,6 +82,9 @@ jobs:
           ok = [r for r in rows if r.get("fetch_ok")]
           print("espn rows", len(rows), "ok", len(ok))
           for r in ok:
+              if "n_drives" not in r:
+                  print(r["event_id"], "UNPARSEABLE", r["missingness"])
+                  continue
               print(r["event_id"], "drives", r["n_drives"], "fg", [(f["distance_yards"], f["result"]) for f in r["fg_attempts"]],
                     "fg_vs_box", r["reconciliation"]["fg_plays_vs_box_attempts"], "missing", r["missingness"], "sha", r["sha256"][:12])
           PY
