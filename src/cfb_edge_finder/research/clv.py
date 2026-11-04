@@ -39,15 +39,21 @@ def market_move_toward_model(
 
 
 def fee_adjusted_clv(
-    raw_price_movement: float, estimated_taker_fee_entry: float | None, estimated_taker_fee_closing: float | None
+    raw_price_movement: float,
+    estimated_taker_fee_entry: float | None,
+    estimated_taker_fee_closing: float | None = None,
 ) -> float | None:
-    """research_clv, fee-adjusted: raw movement minus the round-trip
-    (entry + closing) estimated taker fee drag, both already computed by
-    Milestone D's fee_schedule closure pass. None if either fee is
-    unknown -- never silently treated as zero."""
-    if estimated_taker_fee_entry is None or estimated_taker_fee_closing is None:
+    """research_clv minus the ENTRY fee, counted exactly once. None if the entry fee is unknown -- never silently
+    treated as zero.
+
+    ``estimated_taker_fee_closing`` is accepted for call compatibility and IGNORED. A position held to settlement
+    pays no closing fee, so charging one (the previous round-trip formula) double-counted fee drag against a
+    market-movement figure. ``raw_price_movement`` must itself be fee-exclusive (quote-to-quote); Kalshi's
+    fee-inclusive position cost basis is not a price. Not side-signed: pass a movement already signed toward the
+    purchased side."""
+    if estimated_taker_fee_entry is None:
         return None
-    return raw_price_movement - (estimated_taker_fee_entry + estimated_taker_fee_closing)
+    return raw_price_movement - estimated_taker_fee_entry
 
 
 def compute_market_movement(
@@ -56,7 +62,7 @@ def compute_market_movement(
     closing_price: float,
     model_probability_at_entry: float | None,
     estimated_taker_fee_entry: float | None,
-    estimated_taker_fee_closing: float | None,
+    estimated_taker_fee_closing: float | None = None,
     time_to_kickoff_hours_at_entry: float | None,
 ) -> MarketMovementResult:
     raw = closing_price_delta(entry_snapshot_price, closing_price)

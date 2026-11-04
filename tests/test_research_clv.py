@@ -33,15 +33,26 @@ def test_market_move_toward_model_none_without_model_probability():
     assert market_move_toward_model(0.50, 0.60, None) is None
 
 
-def test_fee_adjusted_clv_subtracts_round_trip_fees():
+def test_fee_adjusted_clv_charges_the_entry_fee_exactly_once():
     raw = 0.10
     result = fee_adjusted_clv(raw, estimated_taker_fee_entry=0.01, estimated_taker_fee_closing=0.02)
-    assert result == pytest.approx(raw - 0.03)
+    assert result == pytest.approx(raw - 0.01)  # the closing fee is never charged to a held position
+    assert fee_adjusted_clv(raw, 0.01) == pytest.approx(raw - 0.01)
 
 
-def test_fee_adjusted_clv_none_when_fee_unknown():
+def test_flat_market_with_fee_inclusive_ui_cost_is_zero_movement_and_one_fee():
+    # 50c fill shown as ~51.7c after fees; the market stays 50c.
+    movement = compute_market_movement(
+        entry_snapshot_price=0.50, closing_price=0.50, model_probability_at_entry=0.55,
+        estimated_taker_fee_entry=0.017, estimated_taker_fee_closing=0.017, time_to_kickoff_hours_at_entry=24.0,
+    )
+    assert movement.raw_price_movement == 0.0
+    assert movement.fee_adjusted_movement == pytest.approx(-0.017)  # not 0.0 (fee delta) and not -0.034 (round trip)
+
+
+def test_fee_adjusted_clv_none_when_entry_fee_unknown():
     assert fee_adjusted_clv(0.10, None, 0.02) is None
-    assert fee_adjusted_clv(0.10, 0.01, None) is None
+    assert fee_adjusted_clv(0.10, None) is None
 
 
 def test_compute_market_movement_end_to_end():
