@@ -1,15 +1,29 @@
 {
  "availability": {
-  "attempted_at": "2026-11-04T00:51:23.189918+00:00",
-  "detail": "the injury endpoint could not be read for either team; this is NOT 'no injuries' (away: HTTP 404; home: HTTP 404)",
-  "observed_at": null,
-  "quality": "missing",
+  "attempted_at": "2026-11-04T01:34:50.303788+00:00",
+  "detail": null,
+  "observed_at": "2026-11-04T01:34:50.303788+00:00",
+  "quality": "fresh",
   "source": "espn.core.injuries",
   "source_as_of": null,
-  "values": {}
+  "values": {
+   "away_injuries": [],
+   "away_listed": 0,
+   "empty_means": "an empty list is the observation 'no injuries listed by this source', not an assertion that the team is healthy. A team whose list could not be read is null, never empty.",
+   "home_injuries": [
+    {
+     "athlete": null,
+     "date": null,
+     "detail": null,
+     "position": null,
+     "status": null
+    }
+   ],
+   "home_listed": 1
+  }
  },
  "collector": {
-  "run_at": "2026-11-04T00:51:23.189918+00:00",
+  "run_at": "2026-11-04T01:34:50.303788+00:00",
   "script": "scripts/collect_live_context.py"
  },
  "game_key": "26NOV06NEBILL",
