@@ -109,12 +109,18 @@ def kicking_totals(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
             labels, totals = cat.get("labels") or [], cat.get("totals") or []
             fg = str(totals[labels.index("FG")]) if "FG" in labels and len(totals) > labels.index("FG") else None
             made = att = None
+            empty_present = cat.get("totals") == [] and not cat.get(
+                "athletes"
+            )  # ESPN lists the category with empty totals when the team had none: a genuine zero
+            if empty_present:
+                made = att = 0
             if fg and "/" in fg:
                 a, b = fg.split("/", 1)
                 made, att = _int(a), _int(b)
             out[tid] = {
                 "fg_made": made,
                 "fg_att": att,
+                "empty_category_means_zero": empty_present,
                 "long": _int(totals[labels.index("LONG")])
                 if "LONG" in labels and len(totals) > labels.index("LONG")
                 else None,

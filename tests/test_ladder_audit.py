@@ -240,3 +240,42 @@ def test_quote_observed_after_espn_kickoff_or_with_disagreeing_start_never_enter
             and c["quote_after_espn_kickoff_or_start_disagrees"] == 1
             and c.get("strict_cohort", 0) == 0
         )
+
+
+def test_parenthetical_state_aliases_and_awaiting_espn_record_are_distinguished():
+    names = lambda *n: {"names": list(n)}  # noqa: E731
+    ev = [
+        {
+            "id": "1",
+            "date": "2026-10-31T20:00Z",
+            "competitors": [
+                names("Miami Hurricanes", "Miami", "MIA"),
+                names("North Carolina Tar Heels", "North Carolina", "UNC"),
+            ],
+        }
+    ]
+    rules = "If the teams collectively score more than 10.5 points in the 1st quarter of the Miami (FL) vs North Carolina college football game originally scheduled for Oct 31, 2026, then the market resolves to Yes."
+    assert la.match_event(rules, ev, transport.name_variants) == ("1", "MATCHED")
+    ev_oh = [
+        {
+            "id": "2",
+            "date": "2026-10-31T20:00Z",
+            "competitors": [
+                names("Miami (OH) RedHawks", "Miami (OH)", "M-OH"),
+                names("North Carolina Tar Heels", "North Carolina"),
+            ],
+        }
+    ]
+    assert (
+        la.match_event(rules, ev_oh, transport.name_variants)[1] == "NO_MATCH"
+    )  # Miami (FL) must never match Miami (OH)
+
+
+def test_upcoming_games_without_an_espn_record_are_awaiting_not_disagreeing():
+    with tempfile.TemporaryDirectory() as d:
+        lad, _ = build(d, [mk(13.5)], [], espn_body=False)
+        c = run_audit(lad, None)["cohort"]
+        assert (
+            c["eligible_quote_awaiting_espn_game_record"] == 1
+            and c.get("quote_after_espn_kickoff_or_start_disagrees", 0) == 0
+        )

@@ -214,3 +214,33 @@ def test_payloads_that_never_complete_are_not_re_archived_forever():
         "incomplete_attempts": es.MAX_FAILED_ATTEMPTS,
     }
     assert es.should_fetch(h) == (False, "GAVE_UP_PAYLOAD_NEVER_COMPLETED")
+
+
+def test_empty_kicking_category_is_a_genuine_zero_but_an_absent_one_is_missing():
+    s = json.loads(raw("401858250"))
+    for blk in s["boxscore"]["players"]:
+        for cat in blk["statistics"]:
+            if cat["name"] == "kicking" and blk["team"]["id"] != "87":
+                cat["totals"], cat["athletes"] = [], []
+    r = er.index_row(
+        "1",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
+    assert (
+        "KICKING_BOX_INCOMPLETE" not in r["missingness"]
+        and r["reconciliation"]["fg_plays_vs_box_attempts"]["match"] is True
+    )
+    for blk in s["boxscore"]["players"]:
+        blk["statistics"] = [c for c in blk["statistics"] if not (c["name"] == "kicking" and blk["team"]["id"] != "87")]
+    r2 = er.index_row(
+        "2",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
+    assert (
+        r2["reconciliation"]["fg_plays_vs_box_attempts"]["match"] is True
+        or r2["reconciliation"]["fg_plays_vs_box_attempts"]["match"] is None
+    )

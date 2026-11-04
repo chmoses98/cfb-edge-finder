@@ -85,7 +85,17 @@ def match_event(rules: str, schedule_events: list[dict[str, Any]], name_variants
         day = datetime.strptime(m.group("d"), "%b %d, %Y")
     except ValueError:
         return None, "RULES_DATE_UNPARSEABLE"
-    va, vb = name_variants(m.group("a")), name_variants(m.group("b"))
+
+    def variants(name: str) -> set[str]:
+        v = set(name_variants(name))
+        stripped = re.sub(
+            r"\s*\((?:FL|FLA)\)", "", name
+        ).strip()  # Kalshi "Miami (FL)" is ESPN "Miami"; "Miami (OH)" keeps its qualifier
+        if stripped != name:
+            v |= set(name_variants(stripped))
+        return v
+
+    va, vb = variants(m.group("a")), variants(m.group("b"))
     hits = []
     for ev in schedule_events:
         kick = parse_ts(ev.get("date"))
@@ -145,6 +155,7 @@ def audit(
         elig_raw = [r for r in rs if r["eligible_pregame"] and r["quote_status"] == "QUOTED"]
         ek = parse_ts(espn[eid]["kickoff"]) if eid and eid in espn else None
         # a quote counts only if IT was observed before ESPN's kickoff and ITS OWN Kalshi start agrees with ESPN's within a tight tolerance
+        espn_known = ek is not None
         elig = [
             r
             for r in elig_raw
@@ -179,7 +190,8 @@ def audit(
         )
         cohort["tickers_observed"] += 1
         cohort["with_eligible_pregame_quote"] += bool(elig_raw)
-        cohort["quote_after_espn_kickoff_or_start_disagrees"] += bool(elig_raw and not elig)
+        cohort["quote_after_espn_kickoff_or_start_disagrees"] += bool(elig_raw and espn_known and not elig)
+        cohort["eligible_quote_awaiting_espn_game_record"] += bool(elig_raw and not espn_known)
         cohort["joined_to_espn_game"] += bool(eid)
         cohort["start_corroborated_by_espn"] += bool(start_ok)
         cohort["orientation_verified"] += orientation_ok
