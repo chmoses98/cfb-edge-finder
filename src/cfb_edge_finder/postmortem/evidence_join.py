@@ -193,6 +193,16 @@ def close_proxy(wager: dict[str, Any], resolver: _Resolver) -> dict[str, Any]:
         }
         if vals["mid"] is None:
             out["clv_vs_mid_missing_reason"] = "BOOK_NOT_TWO_SIDED"
+        # A pre-kickoff close is the benchmark for a PRE-GAME entry only. An order placed at/after kickoff bought a
+        # live price; scoring it against the pre-kickoff close mixes in-game movement and is not CLV. Withhold the
+        # CLV (kept under a labelled diagnostic) and say why; an unknown order time cannot be proven pre-game.
+        executed = parse_utc(wager.get("executed_at"))
+        phase = "UNKNOWN" if executed is None else ("LIVE" if executed >= kickoff else "PRE_GAME")
+        out["entry_phase"] = phase
+        if phase != "PRE_GAME":
+            out["live_entry_diagnostic"] = {"clv_vs_mid": out["clv_vs_mid"], "clv_vs_bid": out["clv_vs_bid"]}
+            out["clv_vs_mid"] = out["clv_vs_bid"] = None
+            out["clv_withheld_reason"] = "ENTRY_AT_OR_AFTER_KICKOFF" if phase == "LIVE" else "ENTRY_TIME_UNKNOWN"
         return out
     return {"state": "MISSING_MARKET_NOT_IN_CATALOG", "reason": "no pre-kickoff snapshot lists this market"}
 
