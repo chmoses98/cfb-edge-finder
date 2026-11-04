@@ -1,0 +1,19 @@
+{
+ "availability": {
+  "attempted_at": "2026-11-04T00:51:23.189918+00:00",
+  "detail": "the injury endpoint could not be read for either team; this is NOT 'no injuries' (away: HTTP 404; home: HTTP 404)",
+  "observed_at": null,
+  "quality": "missing",
+  "source": "espn.core.injuries",
+  "source_as_of": null,
+  "values": {}
+ },
+ "collector": {
+  "run_at": "2026-11-04T00:51:23.189918+00:00",
+  "script": "scripts/collect_live_context.py"
+ },
+ "game_key": "26NOV05SCSTHOW",
+ "kickoff": "2026-11-06T00:30:00Z",
+ "last_failed_attempt_at": null,
+ "schema_version": "cfb_availability_evidence/1.0.0"
+}
