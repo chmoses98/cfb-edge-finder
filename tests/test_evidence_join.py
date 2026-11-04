@@ -197,3 +197,29 @@ def test_clv_is_price_only_and_never_fee_adjusted_or_double_counted():
     assert with_fees["clv_vs_bid"] == plain["clv_vs_bid"]
     # The all-in cost per contract (stake / contracts = 0.445) is NOT the comparison price.
     assert with_fees["clv_vs_mid"] != pytest.approx(0.48 - 0.445)
+
+
+def test_entry_at_or_after_kickoff_is_not_scored_against_the_pregame_close():
+    """A live order bought an in-game price. Comparing it with the pre-kickoff close is not CLV (it measured
+    -13.7c on the NEAR-close live subset of the 2026 ledger vs about -0.5c for pre-game entries)."""
+    src = FakeSource({KICK - timedelta(minutes=30): {GAME: doc(q(yes_bid=0.46, yes_ask=0.50))}})
+    live = build_evidence([wager(price=0.62, at=KICK + timedelta(minutes=40))], source=src)["rows"][0]["close_proxy"]
+    assert live["entry_phase"] == "LIVE" and live["clv_vs_mid"] is None and live["clv_vs_bid"] is None
+    assert live["clv_withheld_reason"] == "ENTRY_AT_OR_AFTER_KICKOFF"
+    # kept, labelled, never aggregated
+    assert live["live_entry_diagnostic"]["clv_vs_mid"] == pytest.approx(0.48 - 0.62)
+    exactly = build_evidence([wager(price=0.62, at=KICK)], source=src)["rows"][0]["close_proxy"]
+    assert exactly["entry_phase"] == "LIVE" and exactly["clv_vs_mid"] is None  # kickoff instant is not pre-game
+    pre = build_evidence([wager(price=0.42)], source=src)["rows"][0]["close_proxy"]
+    assert pre["entry_phase"] == "PRE_GAME" and pre["clv_vs_mid"] == pytest.approx(0.06)
+
+
+def test_unknown_order_time_cannot_be_proven_pregame_and_live_rows_leave_the_aggregate():
+    src = FakeSource({KICK - timedelta(minutes=30): {GAME: doc(q(yes_bid=0.46, yes_ask=0.50))}})
+    no_time = {**wager(price=0.42), "placed_at": None}
+    c = build_evidence([no_time], source=src)["rows"][0]["close_proxy"]
+    assert c["entry_phase"] == "UNKNOWN" and c["clv_vs_mid"] is None
+    assert c["clv_withheld_reason"] == "ENTRY_TIME_UNKNOWN"
+    rows = [wager(price=0.42), {**wager(price=0.62, at=KICK + timedelta(minutes=40)), "source_bet_key": "k-live"}]
+    ev = build_evidence(rows, source=src)
+    assert ev["clv_vs_mid"]["n"] == 1 and ev["clv_vs_mid"]["mean"] == pytest.approx(0.06)  # only the pre-game entry
