@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """python scripts/audit_cfb_1q_ladders.py --ladder-archive DIR --espn-archive DIR --schedule data/football/2026/schedule.json --out report.json"""
+
 from __future__ import annotations
 
 import argparse
@@ -28,10 +29,34 @@ def main(argv=None) -> int:
     ea = Path(a.espn_archive) if a.espn_archive else None
     ev = espn_store.verify(ea) if ea else None
     sched = json.loads(Path(a.schedule).read_text())["events"]
-    rep = ladder_audit.audit(ladder_audit.load_rows(la), ladder_audit.load_manifests(la), sched, ladder_audit.espn_period1(ea), transport.name_variants)
+    rep = ladder_audit.audit(
+        ladder_audit.load_rows(la),
+        ladder_audit.load_manifests(la),
+        sched,
+        ladder_audit.espn_period1(ea),
+        transport.name_variants,
+    )
     rep["archive_verification"] = {"ladder": v, "espn": ev}
     Path(a.out).write_text(json.dumps(rep, indent=1, sort_keys=True) + "\n")
-    print(json.dumps({k: rep[k] for k in ("runs", "rows", "cohort", "join_status", "rows_by_lead_bucket", "baseline_status", "unjoined_events", "unjoined_events_sample", "archive_verification")}, indent=1))
+    print(
+        json.dumps(
+            {
+                k: rep[k]
+                for k in (
+                    "runs",
+                    "rows",
+                    "cohort",
+                    "join_status",
+                    "rows_by_lead_bucket",
+                    "baseline_status",
+                    "unjoined_events",
+                    "unjoined_events_sample",
+                    "archive_verification",
+                )
+            },
+            indent=1,
+        )
+    )
     return 0 if v["ok"] and (ev is None or ev["ok"]) else 2
 
 

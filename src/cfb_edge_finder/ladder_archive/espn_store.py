@@ -4,6 +4,7 @@
     index/YYYY-MM-DD/<ts>_<run>.jsonl                    one extraction row per fetch attempt (failures included)
     runs/YYYY-MM-DD/<ts>_<run>.json                      run manifest: candidates, skipped (with reason), fetched, failed
 There is no mutable state file: "already archived" is derived from the index."""
+
 from __future__ import annotations
 
 import json
@@ -18,17 +19,12 @@ MAX_FAILED_ATTEMPTS = 4
 def history(archive: Path) -> dict[str, dict[str, Any]]:
     """event_id -> {archived_ok, completed_ok, failed_attempts}."""
     h: dict[str, dict[str, Any]] = {}
-    for mf in sorted((archive / "runs").glob("*/*.json")) if (archive / "runs").exists() else []:
-        m = json.loads(mf.read_text())
-        ip = (m.get("files") or {}).get("index")
-        if ip:
-            if not (archive / ip).exists():
-                problems.append(f"manifest points at missing index {ip}")
-            elif sha256((archive / ip).read_bytes()) != m.get("index_sha256"):
-                problems.append(f"index hash mismatch {ip}")
     for f in sorted((archive / "index").glob("*/*.jsonl")) if (archive / "index").exists() else []:
         for r in read_jsonl(f):
-            e = h.setdefault(r["event_id"], {"archived_ok": False, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": 0})
+            e = h.setdefault(
+                r["event_id"],
+                {"archived_ok": False, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": 0},
+            )
             if r.get("fetch_ok"):
                 e["archived_ok"] = True
                 done = bool((r.get("final_state") or {}).get("completed"))
@@ -51,7 +47,9 @@ def should_fetch(hist: dict[str, Any] | None) -> tuple[bool, str]:
     return True, "RETRY_NOT_COMPLETE_OR_FAILED"
 
 
-def write_run(archive: Path, manifest: dict[str, Any], rows: list[dict[str, Any]], bodies: dict[str, bytes]) -> dict[str, Any]:
+def write_run(
+    archive: Path, manifest: dict[str, Any], rows: list[dict[str, Any]], bodies: dict[str, bytes]
+) -> dict[str, Any]:
     observed = manifest["finished_at"]
     day, ts = observed[:10], observed[11:19].replace(":", "") + "Z"
     base = f"{ts}_{manifest['run_id']}"

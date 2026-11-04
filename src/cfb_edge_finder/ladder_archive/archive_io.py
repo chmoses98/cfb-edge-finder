@@ -2,6 +2,7 @@
 
 Files are named by capture time + run id, so two runs never target the same path; `open(..., 'xb')` makes an accidental
 overwrite a hard error. The only mutable file is `state/latest.json` (a change-detection cache that can be rebuilt from rows)."""
+
 from __future__ import annotations
 
 import gzip

@@ -5,6 +5,7 @@ the ESPN start corroborates (or contradicts) Kalshi's milestone start; settlemen
 (independent of Kalshi's `result`). Anything not proven stays in an explicit bucket with its own count. No price is ever called pregame
 unless the row itself was observed pregame (see ladder_1q.eligibility). Baselines use the ask actually quoted (cost to buy YES), never a midpoint
 fill; no fees are modelled here and nothing implies an executable edge."""
+
 from __future__ import annotations
 
 import re
@@ -13,9 +14,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from .archive_io import read_gz, read_jsonl
-from .ladder_1q import _price, lead_bucket, parse_ts
+from .ladder_1q import _price, parse_ts
 
-RULE_RX = re.compile(r"of the (?P<a>.+?) vs (?P<b>.+?) college football game originally scheduled for (?P<d>[A-Z][a-z]{2} \d{1,2}, \d{4})")
+RULE_RX = re.compile(
+    r"of the (?P<a>.+?) vs (?P<b>.+?) college football game originally scheduled for (?P<d>[A-Z][a-z]{2} \d{1,2}, \d{4})"
+)
 ORIENT_RX = re.compile(r"more than (?P<x>[\d.]+) points in the 1st quarter.*resolves to Yes", re.I | re.S)
 START_TOLERANCE = timedelta(minutes=10)
 
@@ -29,12 +32,18 @@ def load_rows(archive) -> list[dict[str, Any]]:
 
 def load_manifests(archive) -> list[dict[str, Any]]:
     import json
-    return [json.loads(p.read_text()) for p in sorted((archive / "runs").glob("*/*.json"))] if (archive / "runs").exists() else []
+
+    return (
+        [json.loads(p.read_text()) for p in sorted((archive / "runs").glob("*/*.json"))]
+        if (archive / "runs").exists()
+        else []
+    )
 
 
 def espn_period1(espn_archive) -> dict[str, dict[str, Any]]:
     """event_id -> {teams:{id:{score,p1}}, completed, sha256, fetched_at}, from the newest complete raw summary per event."""
     import json
+
     out: dict[str, dict[str, Any]] = {}
     if not espn_archive or not (espn_archive / "index").exists():
         return out
@@ -51,8 +60,20 @@ def espn_period1(espn_archive) -> dict[str, dict[str, Any]]:
                     p1 = int(ls[0]) if ls else None
                 except (TypeError, ValueError):
                     p1 = None
-                teams[str((c.get("team") or {}).get("id") or c.get("id"))] = {"p1": p1, "n_periods": len(ls), "score": c.get("score"), "home_away": c.get("homeAway"), "names": [(c.get("team") or {}).get("displayName"), (c.get("team") or {}).get("location")]}
-            out[r["event_id"]] = {"teams": teams, "kickoff": comp.get("date"), "sha256": r["sha256"], "fetched_at": r["fetched_at"], "raw_file": r["raw_file"]}
+                teams[str((c.get("team") or {}).get("id") or c.get("id"))] = {
+                    "p1": p1,
+                    "n_periods": len(ls),
+                    "score": c.get("score"),
+                    "home_away": c.get("homeAway"),
+                    "names": [(c.get("team") or {}).get("displayName"), (c.get("team") or {}).get("location")],
+                }
+            out[r["event_id"]] = {
+                "teams": teams,
+                "kickoff": comp.get("date"),
+                "sha256": r["sha256"],
+                "fetched_at": r["fetched_at"],
+                "raw_file": r["raw_file"],
+            }
     return out
 
 
@@ -78,11 +99,16 @@ def match_event(rules: str, schedule_events: list[dict[str, Any]], name_variants
     return None, "NO_MATCH" if not hits else "AMBIGUOUS_MATCH"
 
 
-def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_events: list[dict[str, Any]], espn: dict[str, dict[str, Any]], name_variants) -> dict[str, Any]:
+def audit(
+    rows: list[dict[str, Any]],
+    manifests: list[dict[str, Any]],
+    schedule_events: list[dict[str, Any]],
+    espn: dict[str, dict[str, Any]],
+    name_variants,
+) -> dict[str, Any]:
     by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for r in rows:
         by_ticker[r["ticker"]].append(r)
-    sched = {e["id"]: e for e in schedule_events}
     cohort = Counter()
     join_status = Counter()
     buckets_rows, buckets_tickers = Counter(), defaultdict(set)
@@ -95,11 +121,23 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
         raw = last["market"]
         floor = raw.get("floor_strike")
         orient = ORIENT_RX.search(raw.get("rules_primary") or "")
-        orientation_ok = bool(orient and floor is not None and abs(float(orient.group("x")) - float(floor)) < 1e-9 and str(raw.get("strike_type")) == "greater")
+        orientation_ok = bool(
+            orient
+            and floor is not None
+            and abs(float(orient.group("x")) - float(floor)) < 1e-9
+            and str(raw.get("strike_type")) == "greater"
+        )
         eid, why = match_event(raw.get("rules_primary"), schedule_events, name_variants)
         join_status[why] += 1
         if why != "MATCHED":
-            unjoined.setdefault(last["event_ticker"], {"reason": why, "rules": (raw.get("rules_primary") or "")[:200], "kalshi_start": last.get("kalshi_start")})
+            unjoined.setdefault(
+                last["event_ticker"],
+                {
+                    "reason": why,
+                    "rules": (raw.get("rules_primary") or "")[:200],
+                    "kalshi_start": last.get("kalshi_start"),
+                },
+            )
         for r in rs:
             buckets_rows[r["lead_bucket"]] += 1
             if r["eligible_pregame"]:
@@ -107,8 +145,15 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
         elig_raw = [r for r in rs if r["eligible_pregame"] and r["quote_status"] == "QUOTED"]
         ek = parse_ts(espn[eid]["kickoff"]) if eid and eid in espn else None
         # a quote counts only if IT was observed before ESPN's kickoff and ITS OWN Kalshi start agrees with ESPN's within a tight tolerance
-        elig = [r for r in elig_raw if ek and parse_ts(r["observed_at"]) < ek and parse_ts(r.get("kalshi_start")) and abs(parse_ts(r["kalshi_start"]) - ek) <= START_TOLERANCE
-                and (r.get("orderbook") or {}).get("pregame", True)]
+        elig = [
+            r
+            for r in elig_raw
+            if ek
+            and parse_ts(r["observed_at"]) < ek
+            and parse_ts(r.get("kalshi_start"))
+            and abs(parse_ts(r["kalshi_start"]) - ek) <= START_TOLERANCE
+            and (r.get("orderbook") or {}).get("pregame", True)
+        ]
         start_ok = None
         if ek and elig_raw:
             start_ok = bool(elig)
@@ -119,9 +164,19 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
             if len(vals) == 2 and all(v is not None for v in vals):
                 p1 = sum(vals)
         result = str(raw.get("result") or "").lower() or None
-        derived = None if (p1 is None or floor is None or not orientation_ok) else ("yes" if p1 > float(floor) else "no")
+        derived = (
+            None if (p1 is None or floor is None or not orientation_ok) else ("yes" if p1 > float(floor) else "no")
+        )
         settle_consistent = None if (derived is None or result not in ("yes", "no")) else (derived == result)
-        strict = bool(elig and eid and orientation_ok and start_ok and p1 is not None and result in ("yes", "no") and settle_consistent)
+        strict = bool(
+            elig
+            and eid
+            and orientation_ok
+            and start_ok
+            and p1 is not None
+            and result in ("yes", "no")
+            and settle_consistent
+        )
         cohort["tickers_observed"] += 1
         cohort["with_eligible_pregame_quote"] += bool(elig_raw)
         cohort["quote_after_espn_kickoff_or_start_disagrees"] += bool(elig_raw and not elig)
@@ -138,22 +193,53 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
             g["tickers"] += 1
             g["strict"] += strict
         if strict:
-            q = max(elig, key=lambda r: r["observed_at"])            # the last eligible pregame quote actually observed
+            q = max(elig, key=lambda r: r["observed_at"])  # the last eligible pregame quote actually observed
             ya = _price(q["market"], "yes_ask")
             yb = _price(q["market"], "yes_bid")
             y = 1.0 if result == "yes" else 0.0
             if ya is not None and 0 < ya < 1:
                 brier.append({"ask": ya, "bid": yb, "y": y, "lead_minutes": q["lead_minutes"], "game": eid})
-        tickers_out.append({"ticker": t, "n_rows": len(rs), "n_eligible_pregame_vintages": len(elig), "first_seen": rs[0]["observed_at"], "last_seen": rs[-1]["observed_at"], "join": why})
+        tickers_out.append(
+            {
+                "ticker": t,
+                "n_rows": len(rs),
+                "n_eligible_pregame_vintages": len(elig),
+                "first_seen": rs[0]["observed_at"],
+                "last_seen": rs[-1]["observed_at"],
+                "join": why,
+            }
+        )
     n = len(brier)
     base = None
     if n:
-        base = {"n_tickers": n, "n_games": len({b["game"] for b in brier}), "yes_ask_brier": round(sum((b["ask"] - b["y"]) ** 2 for b in brier) / n, 5),
-                "yes_ask_mean_minus_outcome": round(sum(b["ask"] - b["y"] for b in brier) / n, 5),
-                "note": "descriptive only: ask-implied probability of the LAST eligible pregame quote vs settled outcome; no fees, no fills, rungs within a game are dependent"}
-    return {"schema": "cfb_1q_ladder_audit/1.0", "runs": len(manifests), "runs_capture_complete": sum(bool(m["capture_complete"]) for m in manifests), "runs_incomplete": [m["run_id"] for m in manifests if not m["capture_complete"]][:20],
-            "first_run": manifests[0]["observed_at"] if manifests else None, "last_run": manifests[-1]["observed_at"] if manifests else None,
-            "rows": len(rows), "cohort": dict(cohort), "join_status": dict(join_status), "rows_by_lead_bucket": dict(buckets_rows),
-            "eligible_tickers_by_lead_bucket": {k: len(v) for k, v in buckets_tickers.items()}, "games_joined": len(games), "games_with_strict_cohort": sum(1 for g in games.values() if g["strict"]),
-            "quote_status": dict(Counter(r["quote_status"] for r in rows)), "events_without_milestone_start": sorted({e for m in manifests for e in m.get("events_without_milestone_start", [])})[:50],
-            "unjoined_events_sample": dict(list(unjoined.items())[:30]), "unjoined_events": len(unjoined), "market_only_baseline": base, "baseline_status": "NO_STRICT_COHORT_YET" if not n else "DESCRIPTIVE_ONLY", "tickers": tickers_out[:500]}
+        base = {
+            "n_tickers": n,
+            "n_games": len({b["game"] for b in brier}),
+            "yes_ask_brier": round(sum((b["ask"] - b["y"]) ** 2 for b in brier) / n, 5),
+            "yes_ask_mean_minus_outcome": round(sum(b["ask"] - b["y"] for b in brier) / n, 5),
+            "note": "descriptive only: ask-implied probability of the LAST eligible pregame quote vs settled outcome; no fees, no fills, rungs within a game are dependent",
+        }
+    return {
+        "schema": "cfb_1q_ladder_audit/1.0",
+        "runs": len(manifests),
+        "runs_capture_complete": sum(bool(m["capture_complete"]) for m in manifests),
+        "runs_incomplete": [m["run_id"] for m in manifests if not m["capture_complete"]][:20],
+        "first_run": manifests[0]["observed_at"] if manifests else None,
+        "last_run": manifests[-1]["observed_at"] if manifests else None,
+        "rows": len(rows),
+        "cohort": dict(cohort),
+        "join_status": dict(join_status),
+        "rows_by_lead_bucket": dict(buckets_rows),
+        "eligible_tickers_by_lead_bucket": {k: len(v) for k, v in buckets_tickers.items()},
+        "games_joined": len(games),
+        "games_with_strict_cohort": sum(1 for g in games.values() if g["strict"]),
+        "quote_status": dict(Counter(r["quote_status"] for r in rows)),
+        "events_without_milestone_start": sorted(
+            {e for m in manifests for e in m.get("events_without_milestone_start", [])}
+        )[:50],
+        "unjoined_events_sample": dict(list(unjoined.items())[:30]),
+        "unjoined_events": len(unjoined),
+        "market_only_baseline": base,
+        "baseline_status": "NO_STRICT_COHORT_YET" if not n else "DESCRIPTIVE_ONLY",
+        "tickers": tickers_out[:500],
+    }

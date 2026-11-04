@@ -4,6 +4,7 @@
     python scripts/archive_espn_raw.py --archive-dir /path/to/archive --schedule data/football/2026/schedule.json --through 2026-11-05
 
 Postgame only. Provider failures are recorded as rows, never as zeros. Exit 0 unless the archive could not be written."""
+
 from __future__ import annotations
 
 import argparse
@@ -31,9 +32,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--archive-dir", required=True)
     ap.add_argument("--schedule", required=True)
     ap.add_argument("--through", default=None, help="YYYY-MM-DD (UTC) latest kickoff day to consider; default today")
-    ap.add_argument("--min-age-hours", type=float, default=4.0, help="only games that kicked off at least this long ago")
+    ap.add_argument(
+        "--min-age-hours", type=float, default=4.0, help="only games that kicked off at least this long ago"
+    )
     ap.add_argument("--max-games", type=int, default=120)
-    ap.add_argument("--refresh-days", type=int, default=4, help="also read the live ESPN scoreboard for the last N days (0 = schedule file only)")
+    ap.add_argument(
+        "--refresh-days",
+        type=int,
+        default=4,
+        help="also read the live ESPN scoreboard for the last N days (0 = schedule file only)",
+    )
     ap.add_argument("--run-id", default=None)
     a = ap.parse_args(argv)
     now = datetime.now(UTC)
@@ -44,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.refresh_days > 0:
         import collect_football_gamelog as gl
         import collect_live_context as transport
+
         for k in range(a.refresh_days + 1):
             day = (now - timedelta(days=k)).strftime("%Y%m%d")
             evs, err = transport.fetch_scoreboard(day)
@@ -52,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             for ev in evs:
                 row = gl.compact_event(ev)
-                events[row["id"]] = row          # the live scoreboard wins over a stale schedule row
+                events[row["id"]] = row  # the live scoreboard wins over a stale schedule row
     hist = es.history(archive)
     cutoff = now - timedelta(hours=a.min_age_hours)
     through = date.fromisoformat(a.through) if a.through else now.date()
@@ -92,11 +101,36 @@ def main(argv: list[str] | None = None) -> int:
     for r in rows:
         for m in r["missingness"]:
             miss[m] = miss.get(m, 0) + 1
-    manifest = {"schema": "cfb_espn_raw_run/1.0", "run_id": run_id, "started_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "finished_at": finished, "candidates": len(todo),
-                "fetched_ok": sum(1 for r in rows if r.get("fetch_ok")), "failed": failed, "skipped_counts": {k: len(v) for k, v in skipped.items()}, "missingness_counts": miss,
-                "scoreboard_refresh_errors": refresh_errors, "authenticated": False}
+    manifest = {
+        "schema": "cfb_espn_raw_run/1.0",
+        "run_id": run_id,
+        "started_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "finished_at": finished,
+        "candidates": len(todo),
+        "fetched_ok": sum(1 for r in rows if r.get("fetch_ok")),
+        "failed": failed,
+        "skipped_counts": {k: len(v) for k, v in skipped.items()},
+        "missingness_counts": miss,
+        "scoreboard_refresh_errors": refresh_errors,
+        "authenticated": False,
+    }
     out = es.write_run(archive, manifest, rows, bodies)
-    print(json.dumps({k: out[k] for k in ("run_id", "candidates", "fetched_ok", "skipped_counts", "missingness_counts", "scoreboard_refresh_errors")}, indent=1))
+    print(
+        json.dumps(
+            {
+                k: out[k]
+                for k in (
+                    "run_id",
+                    "candidates",
+                    "fetched_ok",
+                    "skipped_counts",
+                    "missingness_counts",
+                    "scoreboard_refresh_errors",
+                )
+            },
+            indent=1,
+        )
+    )
     print("failed:", len(failed))
     return 0
 

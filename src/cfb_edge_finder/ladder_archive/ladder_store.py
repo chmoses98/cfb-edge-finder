@@ -1,9 +1,10 @@
 """Write / verify the append-only ladder archive laid out on the `cfb-1q-ladder-archive` branch.
 
-    runs/YYYY-MM-DD/<ts>_<run>.json        run manifest (every run, including failures)
-    rows/YYYY-MM-DD/<ts>_<run>.jsonl       changed-only / full-board market rows
-    raw/YYYY-MM-DD/<ts>_<run>_<sha12>.json.gz   original API response bytes (hash is of the uncompressed original)
-    state/latest.json                      change-detection cache (rebuildable; the ONLY mutable file)"""
+runs/YYYY-MM-DD/<ts>_<run>.json        run manifest (every run, including failures)
+rows/YYYY-MM-DD/<ts>_<run>.jsonl       changed-only / full-board market rows
+raw/YYYY-MM-DD/<ts>_<run>_<sha12>.json.gz   original API response bytes (hash is of the uncompressed original)
+state/latest.json                      change-detection cache (rebuildable; the ONLY mutable file)"""
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,7 @@ def load_state(archive: Path) -> dict[str, Any] | None:
     try:
         return json.loads(p.read_text())
     except ValueError:
-        return None            # a truncated cache is rebuilt as a fresh FULL board; the rows themselves are the record
+        return None  # a truncated cache is rebuilt as a fresh FULL board; the rows themselves are the record
 
 
 def write_run(archive: Path, res: CaptureResult) -> dict[str, Any]:
@@ -50,7 +51,7 @@ def write_run(archive: Path, res: CaptureResult) -> dict[str, Any]:
     state_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = state_path.with_suffix(".tmp")
     tmp.write_bytes(canonical(res.state) + b"\n")
-    tmp.replace(state_path)           # atomic replace: a crash never leaves a truncated state file
+    tmp.replace(state_path)  # atomic replace: a crash never leaves a truncated state file
     return m
 
 
@@ -95,13 +96,25 @@ def verify(archive: Path) -> dict[str, Any]:
                     if r["observed_at"] != m["observed_at"] or r["run_id"] != m["run_id"]:
                         problems.append(f"row/run mismatch in {rp}")
                         break
-                    if bool(r["eligible_pregame"]) != (not r["ineligible_reasons"]) or (r["eligible_pregame"] and not (r["lead_minutes"] is not None and r["lead_minutes"] > 0)):
+                    if bool(r["eligible_pregame"]) != (not r["ineligible_reasons"]) or (
+                        r["eligible_pregame"] and not (r["lead_minutes"] is not None and r["lead_minutes"] > 0)
+                    ):
                         problems.append(f"eligibility invariant violated for {r['ticker']} in {rp}")
                         break
         for rp in files.get("raw", []):
             if not (archive / rp).exists():
                 problems.append(f"missing raw {rp}")
         for req in m.get("requests", []):
-            if req.get("sha256") and m.get("raw_pages_written") and req["status"] and req["status"] < 400 and req["sha256"] not in shas:
+            if (
+                req.get("sha256")
+                and m.get("raw_pages_written")
+                and req["status"]
+                and req["status"] < 400
+                and req["sha256"] not in shas
+            ):
                 problems.append(f"request body not archived: {req['path']} {req['sha256'][:12]}")
-    return {"ok": not problems, "problems": problems[:50], "counts": {"manifests": len(manifests), "raw_files": len(raw_files), "rows": n_rows}}
+    return {
+        "ok": not problems,
+        "problems": problems[:50],
+        "counts": {"manifests": len(manifests), "raw_files": len(raw_files), "rows": n_rows},
+    }

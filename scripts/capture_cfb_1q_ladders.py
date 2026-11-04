@@ -5,6 +5,7 @@
 
 No credentials, no order/portfolio endpoints. Exit 0 whenever the archive was written (a partial capture is labelled
 capture_complete=false in its manifest); a failed run is archived too (the workflow fails after publishing it); exit 1 only if the archive could not be written."""
+
 from __future__ import annotations
 
 import argparse
@@ -33,11 +34,33 @@ def main(argv: list[str] | None = None) -> int:
     m = res.manifest
     if m["markets_seen"] == 0 and not any(s["complete"] for s in m["sweeps"].values()):
         print("capture produced nothing usable (archived as a failed run):", m["errors"][:3], file=sys.stderr)
-        store.write_run(archive, res)          # the failed run is itself evidence and is published; the workflow turns red AFTER the push
+        store.write_run(
+            archive, res
+        )  # the failed run is itself evidence and is published; the workflow turns red AFTER the push
         return 0
     out = store.write_run(archive, res)
-    print(json.dumps({k: out[k] for k in ("run_id", "board", "capture_complete", "markets_seen", "events_seen", "market_status_counts", "rows_written", "quoted_rows", "no_quote_rows",
-                                          "eligible_pregame_rows", "orderbooks_requested", "errors")}, indent=1))
+    print(
+        json.dumps(
+            {
+                k: out[k]
+                for k in (
+                    "run_id",
+                    "board",
+                    "capture_complete",
+                    "markets_seen",
+                    "events_seen",
+                    "market_status_counts",
+                    "rows_written",
+                    "quoted_rows",
+                    "no_quote_rows",
+                    "eligible_pregame_rows",
+                    "orderbooks_requested",
+                    "errors",
+                )
+            },
+            indent=1,
+        )
+    )
     print("events without a milestone start:", len(m["events_without_milestone_start"]))
     return 0
 

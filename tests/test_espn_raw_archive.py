@@ -1,4 +1,5 @@
 """Raw ESPN archive: extraction against REAL captured summaries, reconciliation, availability and idempotency. Offline."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -46,11 +47,25 @@ def test_missingness_is_explicit_never_zero_filled():
     s = json.loads(raw("401856705"))
     s["drives"] = {"previous": []}
     s["boxscore"]["players"] = []
-    r = er.index_row("1", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None}, None, "r")
-    assert "NO_DRIVES" in r["missingness"] and "NO_KICKING_CATEGORY" in r["missingness"] and r["fg_attempts"] == [] and r["kicking_box"] == {}
-    bad = er.index_row("2", {"ok": False, "status": 503, "uri": "u", "body": None, "fetched_at": "t", "error": "HTTP 503"}, None, "r")
+    r = er.index_row(
+        "1",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
+    assert (
+        "NO_DRIVES" in r["missingness"]
+        and "NO_KICKING_CATEGORY" in r["missingness"]
+        and r["fg_attempts"] == []
+        and r["kicking_box"] == {}
+    )
+    bad = er.index_row(
+        "2", {"ok": False, "status": 503, "uri": "u", "body": None, "fetched_at": "t", "error": "HTTP 503"}, None, "r"
+    )
     assert bad["missingness"] == ["FETCH_FAILED"] and bad["fetch_ok"] is False and bad["sha256"] is None
-    nj = er.index_row("3", {"ok": True, "status": 200, "uri": "u", "body": b"<html>", "fetched_at": "t", "error": None}, None, "r")
+    nj = er.index_row(
+        "3", {"ok": True, "status": 200, "uri": "u", "body": b"<html>", "fetched_at": "t", "error": None}, None, "r"
+    )
     assert "PAYLOAD_NOT_JSON" in nj["missingness"]
 
 
@@ -65,7 +80,9 @@ def test_fg_without_distance_keeps_none_and_reason_and_duplicates_are_flagged():
     fgs, flags = er.fg_attempts(s)
     nodist = [f for f in fgs if f["result"] == "GOOD"][0]
     assert nodist["distance_yards"] is None and nodist["distance_missing_reason"] == "NO_DISTANCE_IN_PLAY_TEXT"
-    assert any(f.startswith("DUPLICATE_FG_PLAY_ID") for f in flags) and len([f for f in fgs if f["result"] == "GOOD"]) == 1
+    assert (
+        any(f.startswith("DUPLICATE_FG_PLAY_ID") for f in flags) and len([f for f in fgs if f["result"] == "GOOD"]) == 1
+    )
 
 
 def test_box_disagreement_is_surfaced():
@@ -74,7 +91,12 @@ def test_box_disagreement_is_surfaced():
         for cat in blk["statistics"]:
             if cat["name"] == "kicking":
                 cat["totals"][0] = "5/9"
-    r = er.index_row("1", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None}, None, "r")
+    r = er.index_row(
+        "1",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
     assert "FG_PLAYS_DISAGREE_WITH_BOX_ATTEMPTS" in r["missingness"]
 
 
@@ -86,7 +108,10 @@ def test_archive_roundtrip_idempotency_and_tamper():
         es.write_run(a, man, [row], {"401856705": raw("401856705")})
         assert es.verify(a)["ok"]
         h = es.history(a)
-        assert h["401856705"]["completed_ok"] and es.should_fetch(h["401856705"]) == (False, "ALREADY_ARCHIVED_COMPLETE")
+        assert h["401856705"]["completed_ok"] and es.should_fetch(h["401856705"]) == (
+            False,
+            "ALREADY_ARCHIVED_COMPLETE",
+        )
         assert es.should_fetch(None) == (True, "NEW")
         with pytest.raises(FileExistsError):
             es.write_run(a, man, [dict(row)], {"401856705": raw("401856705")})
@@ -100,18 +125,23 @@ def test_failures_are_retried_then_given_up_and_never_become_rows_of_zeros():
     assert es.should_fetch(h)[0] is True
     h["failed_attempts"] = es.MAX_FAILED_ATTEMPTS
     assert es.should_fetch(h) == (False, "GAVE_UP_AFTER_FAILURES")
-    assert es.should_fetch({"archived_ok": True, "completed_ok": False, "failed_attempts": 9})[0] is True   # a non-complete payload is re-fetched
+    assert (
+        es.should_fetch({"archived_ok": True, "completed_ok": False, "failed_attempts": 9})[0] is True
+    )  # a non-complete payload is re-fetched
 
 
 def test_fetch_raw_retries_transient_and_hashes_original_bytes():
     class R:
-        def __init__(s, c, code): s.content, s.status_code = c, code
+        def __init__(s, c, code):
+            s.content, s.status_code = c, code
+
     seq = [R(b"", 503), R(b'{"a":1}', 200)]
     calls = []
 
     def g(url, params=None, headers=None, timeout=None):
         calls.append(url)
         return seq.pop(0)
+
     out = er.fetch_raw("1", http_get=g, sleep=lambda s: None)
     assert out["ok"] and out["body"] == b'{"a":1}' and len(calls) == 2
     out = er.fetch_raw("1", http_get=lambda *a, **k: R(b"", 404), sleep=lambda s: None)
@@ -120,16 +150,36 @@ def test_fetch_raw_retries_transient_and_hashes_original_bytes():
 
 def test_fg_type_whitelist_and_word_boundary_result():
     plays = [
-        {"id": "1", "type": {"text": "Field Goal Good"}, "text": "(10:00) J.Goodman field goal attempt from 41 yards GOOD", "period": {"number": 1}},
-        {"id": "2", "type": {"text": "Field Goal Missed"}, "text": "(09:00) J.Gooden field goal attempt from 52 yards NO GOOD", "period": {"number": 1}},
-        {"id": "3", "type": {"text": "Missed Field Goal Return"}, "text": "returned field goal attempt", "period": {"number": 1}},
-        {"id": "4", "type": {"text": "Penalty"}, "text": "false start, field goal attempt from 40 yards", "period": {"number": 1}},
+        {
+            "id": "1",
+            "type": {"text": "Field Goal Good"},
+            "text": "(10:00) J.Goodman field goal attempt from 41 yards GOOD",
+            "period": {"number": 1},
+        },
+        {
+            "id": "2",
+            "type": {"text": "Field Goal Missed"},
+            "text": "(09:00) J.Gooden field goal attempt from 52 yards NO GOOD",
+            "period": {"number": 1},
+        },
+        {
+            "id": "3",
+            "type": {"text": "Missed Field Goal Return"},
+            "text": "returned field goal attempt",
+            "period": {"number": 1},
+        },
+        {
+            "id": "4",
+            "type": {"text": "Penalty"},
+            "text": "false start, field goal attempt from 40 yards",
+            "period": {"number": 1},
+        },
         {"id": "5", "type": {"text": "Field Goal"}, "text": "Goodman 33 Yd Field Goal MISSED", "period": {"number": 2}},
     ]
     fgs, _ = er.fg_attempts({"drives": {"previous": [{"team": {"id": "1"}, "plays": plays}]}})
     got = {f["play_id"]: (f["result"], f["distance_yards"]) for f in fgs}
     assert got["1"] == ("GOOD", 41) and got["2"] == ("NO_GOOD", 52) and set(got) == {"1", "2", "5"}
-    assert got["5"][0] == "NO_GOOD" and got["5"][1] == 33        # "Goodman" must not turn a MISSED kick into GOOD
+    assert got["5"][0] == "NO_GOOD" and got["5"][1] == 33  # "Goodman" must not turn a MISSED kick into GOOD
 
 
 def test_made_count_period_scores_and_incomplete_box_are_reconciled():
@@ -138,14 +188,29 @@ def test_made_count_period_scores_and_incomplete_box_are_reconciled():
         for cat in blk["statistics"]:
             if cat["name"] == "kicking":
                 cat["totals"][0] = "1/2" if blk["team"]["id"] == "61" else cat["totals"][0]
-    r = er.index_row("1", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None}, None, "r")
+    r = er.index_row(
+        "1",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
     assert "FG_MADE_DISAGREES_WITH_BOX" in r["missingness"] or "FG_PLAYS_DISAGREE_WITH_BOX_ATTEMPTS" in r["missingness"]
     s2 = json.loads(raw("401856705"))
     s2["header"]["competitions"][0]["competitors"][0]["score"] = "99"
-    r2 = er.index_row("2", {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s2).encode(), "fetched_at": "t", "error": None}, None, "r")
+    r2 = er.index_row(
+        "2",
+        {"ok": True, "status": 200, "uri": "u", "body": json.dumps(s2).encode(), "fetched_at": "t", "error": None},
+        None,
+        "r",
+    )
     assert "PERIOD_SCORES_DISAGREE_WITH_FINAL" in r2["missingness"]
 
 
 def test_payloads_that_never_complete_are_not_re_archived_forever():
-    h = {"archived_ok": True, "completed_ok": False, "failed_attempts": 0, "incomplete_attempts": es.MAX_FAILED_ATTEMPTS}
+    h = {
+        "archived_ok": True,
+        "completed_ok": False,
+        "failed_attempts": 0,
+        "incomplete_attempts": es.MAX_FAILED_ATTEMPTS,
+    }
     assert es.should_fetch(h) == (False, "GAVE_UP_PAYLOAD_NEVER_COMPLETED")
