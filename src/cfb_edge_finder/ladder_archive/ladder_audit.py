@@ -89,6 +89,7 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
     games: dict[str, dict[str, Any]] = {}
     tickers_out = []
     brier = []
+    unjoined: dict[str, dict[str, Any]] = {}
     for t, rs in by_ticker.items():
         last = rs[-1]
         raw = last["market"]
@@ -97,6 +98,8 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
         orientation_ok = bool(orient and floor is not None and abs(float(orient.group("x")) - float(floor)) < 1e-9 and str(raw.get("strike_type")) == "greater")
         eid, why = match_event(raw.get("rules_primary"), schedule_events, name_variants)
         join_status[why] += 1
+        if why != "MATCHED":
+            unjoined.setdefault(last["event_ticker"], {"reason": why, "rules": (raw.get("rules_primary") or "")[:200], "kalshi_start": last.get("kalshi_start")})
         for r in rs:
             buckets_rows[r["lead_bucket"]] += 1
             if r["eligible_pregame"]:
@@ -153,4 +156,4 @@ def audit(rows: list[dict[str, Any]], manifests: list[dict[str, Any]], schedule_
             "rows": len(rows), "cohort": dict(cohort), "join_status": dict(join_status), "rows_by_lead_bucket": dict(buckets_rows),
             "eligible_tickers_by_lead_bucket": {k: len(v) for k, v in buckets_tickers.items()}, "games_joined": len(games), "games_with_strict_cohort": sum(1 for g in games.values() if g["strict"]),
             "quote_status": dict(Counter(r["quote_status"] for r in rows)), "events_without_milestone_start": sorted({e for m in manifests for e in m.get("events_without_milestone_start", [])})[:50],
-            "market_only_baseline": base, "baseline_status": "NO_STRICT_COHORT_YET" if not n else "DESCRIPTIVE_ONLY", "tickers": tickers_out[:500]}
+            "unjoined_events_sample": dict(list(unjoined.items())[:30]), "unjoined_events": len(unjoined), "market_only_baseline": base, "baseline_status": "NO_STRICT_COHORT_YET" if not n else "DESCRIPTIVE_ONLY", "tickers": tickers_out[:500]}
