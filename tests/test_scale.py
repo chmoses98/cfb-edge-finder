@@ -10,6 +10,7 @@ an accidental O(n^2) scan introduced into CoverageLedger).
 
 from __future__ import annotations
 
+import gc
 import time
 
 from cfb_edge_finder.ids import assert_unique_game_ids, canonical_game_id, slugify_team
@@ -42,14 +43,24 @@ def _run_full_week(n_games: int, n_markets_per_game: int) -> tuple[CoverageLedge
         all_tickers.extend(_synthetic_tickers_for_game(game_id, n_markets_per_game))
 
     ledger = CoverageLedger()
-    start = time.perf_counter()
-    for i, ticker in enumerate(all_tickers):
-        game_id = game_ids[i // n_markets_per_game]
-        ledger.record_discovered(ticker, game_id=game_id)
-        ledger.transition(ticker, CoverageOutcome.MAPPED, game_id=game_id)
-        ledger.transition(ticker, CoverageOutcome.EVALUATED, game_id=game_id)
-        ledger.set_recommendation_readiness(ticker, RecommendationReadiness.PASS)
-    elapsed = time.perf_counter() - start
+    # Cyclic GC cost grows with every object the WHOLE process holds, not with this ledger. After thousands of
+    # earlier tests the heap is large, and full collections triggered by the 12x run (but not the 1x run) made the
+    # ratio ~30x on CI for linear work. Collect first, then time with GC off: the measurement is the ledger's.
+    gc.collect()
+    gc_was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        start = time.perf_counter()
+        for i, ticker in enumerate(all_tickers):
+            game_id = game_ids[i // n_markets_per_game]
+            ledger.record_discovered(ticker, game_id=game_id)
+            ledger.transition(ticker, CoverageOutcome.MAPPED, game_id=game_id)
+            ledger.transition(ticker, CoverageOutcome.EVALUATED, game_id=game_id)
+            ledger.set_recommendation_readiness(ticker, RecommendationReadiness.PASS)
+        elapsed = time.perf_counter() - start
+    finally:
+        if gc_was_enabled:
+            gc.enable()
 
     return ledger, all_tickers, elapsed
 

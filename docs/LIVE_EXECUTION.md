@@ -692,3 +692,23 @@ Known limits.
   actually ANSWER -- the environment this was built in cannot reach them, so
   the parsers are tested against recorded payload shapes and the first
   Friday or Saturday run is the real proof.
+
+## Point-in-time evidence provenance (availability, projection, quote)
+
+Every input the point-in-time guards judge now carries `source_id`, `observed_at` (when the source was
+actually read), `as_of` (what the source says its content is current to, when it says), and one status:
+`OBSERVED` (read, inside the window), `STALE` (read, past the window), `UNAVAILABLE` (a collector ran and the
+source had nothing usable, errored, or answered for one team only), `NEVER_COLLECTED` (no collector produced it),
+plus `FROM_FUTURE` (claims to be read after the decision time). `candidates`/`report` print it per candidate under
+`pit_review.evidence` and counted under `pit_review.evidence_status`; the guard verdicts are unchanged and
+UNAVAILABLE / NEVER_COLLECTED expose no timestamp, so the guard keeps blocking.
+
+* **Availability** comes from `scripts/collect_live_context.py` (ESPN core injuries, keyless). RUN CFB reads
+  committed files, so `.github/workflows/cfb-availability-evidence.yml` runs the collector and commits
+  `data/evidence/availability/<game_key>.json` via `scripts/publish_live_evidence.py`. `prepare-live` overlays
+  those records (`--evidence-dir`, default `data/evidence/availability`) only where the context store did not
+  observe availability. A game with no record is NEVER_COLLECTED; a failed run never overwrites an older real
+  observation.
+* **Projection** time is the handicap payload's `handicapped_at`: the UTC instant the projection was computed
+  from the inputs it saw. The template now lists it. It is never defaulted to now (the old state fallback that did
+  so is removed; `handicap_recorded_at` records ingestion separately); absent or naive means UNAVAILABLE.

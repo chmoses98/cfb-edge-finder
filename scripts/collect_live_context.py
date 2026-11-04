@@ -516,7 +516,11 @@ def collect_game(
     odds: dict | None,
     cfbd: dict[str, Any],
     as_of: datetime,
+    injury_attempts: dict[str, str | None] | None = None,
 ) -> GameContext:
+    """`injury_attempts[slot]`: None = not attempted; "" = answered; otherwise the transport error.
+
+    Absent (older callers) means every slot was attempted, which is the pre-existing behaviour."""
     observed = as_of.isoformat()
     game_key = str(packet.get("game_key"))
     fields: dict[str, ContextField] = {
@@ -532,6 +536,7 @@ def collect_game(
                 domain,
                 "no ESPN scoreboard event could be matched to this Kalshi game",
                 "espn.scoreboard",
+                attempted_at=observed,
             )
     else:
         sources.append("espn.scoreboard")
@@ -552,8 +557,13 @@ def collect_game(
         fields["rest_and_travel"] = rest_field(
             kickoff, home_history, away_history, observed_at=observed
         )
+        attempts = injury_attempts if injury_attempts is not None else {"home": "", "away": ""}
         fields["availability"] = availability_field(
-            injuries.get("home"), injuries.get("away"), observed_at=observed
+            injuries.get("home"),
+            injuries.get("away"),
+            observed_at=observed,
+            attempted=any(v is not None for v in attempts.values()),
+            errors={k: v for k, v in attempts.items() if v},
         )
         if injuries.get("home") is not None or injuries.get("away") is not None:
             sources.append("espn.core.injuries")
@@ -909,6 +919,7 @@ def main(argv: list[str] | None = None) -> int:
 
         history: dict[str, list[dict]] = {"home": [], "away": []}
         injuries: dict[str, dict | None] = {"home": None, "away": None}
+        injury_attempts: dict[str, str | None] = {"home": None, "away": None}
         odds = None
         if event is not None:
             for slot in ("home", "away"):
@@ -935,12 +946,19 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 if not args.skip_injuries:
                     if team_id:
-                        payload, _error = _get(
+                        payload, error = _get(
                             f"{ESPN_CORE}/seasons/"
                             f"{(entry.get('identity') or {}).get('season_year') or as_of.year}"
                             f"/teams/{team_id}/injuries"
                         )
                         injuries[slot] = payload
+                        # The request WAS made (or the budget refused it, which is its own reason).
+                        if payload is not None:
+                            injury_attempts[slot] = ""
+                        elif _BUDGET is not None and error == _BUDGET.tripped_reason:
+                            injury_attempts[slot] = None  # refused by the budget: no request went out
+                        else:
+                            injury_attempts[slot] = str(error or "no payload")
             if not args.skip_odds and event.get("id"):
                 odds, _error = _get(
                     f"{ESPN_CORE}/events/{event['id']}/competitions/{event['id']}/odds"
@@ -954,6 +972,7 @@ def main(argv: list[str] | None = None) -> int:
             odds=odds,
             cfbd=cfbd_payload,
             as_of=as_of,
+            injury_attempts=injury_attempts,
         )
         path = out_dir / f"{context.game_key}.json"
         path.write_text(

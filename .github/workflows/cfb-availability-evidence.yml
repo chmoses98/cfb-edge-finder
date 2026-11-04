@@ -1,0 +1,80 @@
+name: CFB Availability Evidence
+
+# *** WHAT THIS IS ***
+# The one real collector of injury / availability evidence, committed where RUN CFB can read it.
+# RUN CFB works from committed files and has no outbound access, so a freshness-gated input has to
+# be committed WITH the time a source was actually read, or the point-in-time guard (correctly)
+# blocks every candidate with MISSING_AVAILABILITY.
+#
+# *** SOURCE ***
+# ESPN's public core injuries endpoint (keyless), via scripts/collect_live_context.py. Nothing is
+# inferred: a game the collector reached gets its observed_at; a game it tried and could not read gets
+# an UNAVAILABLE record with the attempt time; a game it did not reach gets no record
+# (NEVER_COLLECTED). A failed run never overwrites an older real observation.
+#
+# *** WHY ITS OWN WORKFLOW AND PATH ***
+# The catalog workflow resets data/live whenever the market surface is unchanged, which would discard
+# this evidence, and its 30-minute cadence is the wrong price for ~500 injury requests. This writes
+# only data/evidence/availability on the ref it runs on, through a rebase-retry push, in its own group.
+on:
+  schedule:
+    # Mornings (UTC) before the Saturday windows, plus a mid-week pass. Availability goes stale in 18h.
+    - cron: "17 10,14 * * 6"
+    - cron: "17 22 * * 5"
+    - cron: "17 14 * * 2,3,4"
+  workflow_dispatch:
+    inputs:
+      horizon_days:
+        description: "Only collect games kicking off within this many days (or 'all')"
+        required: false
+        default: "3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cfb-availability-evidence
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Collect injuries (fail soft)
+        timeout-minutes: 12
+        run: |
+          python3 scripts/collect_live_context.py \
+            --catalog-dir data/live \
+            --out-dir "$RUNNER_TEMP/context" \
+            --horizon-days "${{ github.event.inputs.horizon_days || '3' }}" \
+            --skip-odds
+      - name: Publish availability evidence
+        run: |
+          python3 scripts/publish_live_evidence.py \
+            --catalog-dir data/live \
+            --context-dir "$RUNNER_TEMP/context" \
+            --evidence-dir data/evidence/availability
+      - name: Commit the evidence only if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/evidence/availability
+          if git diff --cached --quiet; then
+            echo "availability evidence unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "cfb availability evidence: refresh"
+          for attempt in 1 2 3 4; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt ${attempt} failed; backing off"
+            sleep $((attempt * 4))
+          done
+          exit 1
