@@ -162,6 +162,12 @@ class Budget:
 _BUDGET: Budget | None = None
 
 
+def injury_url(team_id: str) -> str:
+    """ESPN core per-team injuries. There is NO ``/seasons/{year}`` segment: that form answers HTTP 404 for every
+    team (observed on the runner, 2026-11-04), while ``/teams/{id}/injuries`` answers 200 with an ``items`` list."""
+    return f"{ESPN_CORE}/teams/{team_id}/injuries"
+
+
 def _get(url: str, params: dict | None = None, *, retries: int = 2, timeout: float = 25.0):
     """One GET. Never raises: a failure is a (None, reason) the caller records.
 
@@ -947,9 +953,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not args.skip_injuries:
                     if team_id:
                         payload, error = _get(
-                            f"{ESPN_CORE}/seasons/"
-                            f"{(entry.get('identity') or {}).get('season_year') or as_of.year}"
-                            f"/teams/{team_id}/injuries"
+                            injury_url(team_id)
                         )
                         injuries[slot] = payload
                         # The request WAS made (or the budget refused it, which is its own reason).

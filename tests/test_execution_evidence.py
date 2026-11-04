@@ -308,3 +308,9 @@ def test_evidence_never_overrides_a_context_store_that_really_observed(tmp_path)
     filled = merge_availability_evidence(None, fresh_field(), game_key=GAME_KEY, as_of=NOW)
     assert filled.fields["availability"].observed_at == (NOW - H).isoformat()
     assert CAPTURED_AT < NOW
+
+
+def test_injury_url_has_no_season_segment_which_espn_answers_404_for():
+    url = collector.injury_url("2649")
+    assert url.endswith("/college-football/teams/2649/injuries")
+    assert "/seasons/" not in url
