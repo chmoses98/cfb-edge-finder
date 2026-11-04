@@ -182,3 +182,18 @@ def test_summary_script_writes_aggregates_only(tmp_path):
     help_out = subprocess.run([sys.executable, str(root / "scripts/cfb_evidence_join.py"), "--help"],
                               capture_output=True, text=True, check=False)
     assert help_out.returncode == 0 and "AGGREGATE ONLY" in help_out.stdout
+
+
+def test_clv_is_price_only_and_never_fee_adjusted_or_double_counted():
+    """CLV = close value of the side - the FILL PRICE (average_price). The wager's fees and its fee-inclusive
+    stake must not move it: the entry fee is accounted once, in stake, not again in a price comparison."""
+    src = FakeSource({KICK - timedelta(minutes=30): {GAME: doc(q(yes_bid=0.46, yes_ask=0.50))}})
+    plain = build_evidence([wager(price=0.42)], source=src)["rows"][0]["close_proxy"]
+    with_fees = build_evidence(
+        [wager(price=0.42, fees=2.5, stake=0.42 * 100 + 2.5, contracts=100)], source=src
+    )["rows"][0]["close_proxy"]
+    assert plain["clv_vs_mid"] == pytest.approx(0.06)
+    assert with_fees["clv_vs_mid"] == plain["clv_vs_mid"]
+    assert with_fees["clv_vs_bid"] == plain["clv_vs_bid"]
+    # The all-in cost per contract (stake / contracts = 0.445) is NOT the comparison price.
+    assert with_fees["clv_vs_mid"] != pytest.approx(0.48 - 0.445)
