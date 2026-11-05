@@ -75,4 +75,4 @@ jobs:
       - name: Push to cfb-espn-raw-archive (isolated orphan branch)
         env:
           GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
-        run: scripts/archive_publish.sh /tmp/espn cfb-espn-raw-archive "cfb espn raw archive ${GITHUB_RUN_ID} (research-only, append-only)"
+        run: scripts/archive_publish.sh /tmp/espn HEAD:cfb-espn-raw-archive "cfb espn raw archive ${GITHUB_RUN_ID} (research-only, append-only)"

@@ -152,7 +152,7 @@ jobs:
       - name: Push to cfb-1q-ladder-archive (isolated orphan branch)
         env:
           GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
-        run: scripts/archive_publish.sh /tmp/ladder cfb-1q-ladder-archive "cfb 1q ladder capture ${GITHUB_RUN_ID} (research-only, append-only)"
+        run: scripts/archive_publish.sh /tmp/ladder HEAD:cfb-1q-ladder-archive "cfb 1q ladder capture ${GITHUB_RUN_ID} (research-only, append-only)"
       - name: Fail the run if the capture was unusable (AFTER the failed run was published)
         if: always()
         run: |

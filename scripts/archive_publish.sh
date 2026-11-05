@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Publish the staged files of an append-only archive worktree to its isolated branch without ever losing them.
-#   scripts/archive_publish.sh WORKDIR BRANCH "commit message"
+#   scripts/archive_publish.sh WORKDIR HEAD:BRANCH "commit message"
 # On a rejected push it does NOT rebase (a conflict on state/latest.json used to leave a detached HEAD and a no-op "successful" push).
 # It re-creates its own commit on top of the remote tip: our new files are unique per run, and our state file simply wins.
 set -euo pipefail
-WORKDIR="$1"; BRANCH="$2"; MSG="$3"
+WORKDIR="$1"; REFSPEC="$2"; MSG="$3"
+BRANCH="${REFSPEC#HEAD:}"
+[ "$REFSPEC" = "HEAD:${BRANCH}" ] && [ -n "$BRANCH" ] || { echo "refspec must look like HEAD:<branch>" >&2; exit 2; }
 cd "$WORKDIR"
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -92,7 +92,7 @@ def _publish(wd, msg="m"):
         "HOME": str(wd),
     }
     return subprocess.run(
-        [str(W.parent.parent / "scripts" / "archive_publish.sh"), str(wd), "arch", msg],
+        [str(W.parent.parent / "scripts" / "archive_publish.sh"), str(wd), "HEAD:arch", msg],
         capture_output=True,
         text=True,
         env=env,
