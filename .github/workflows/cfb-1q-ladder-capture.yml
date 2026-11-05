@@ -1,0 +1,168 @@
+name: CFB 1Q Ladder Capture (read-only, research-only)
+
+# *** WHAT THIS IS ***
+# Prospective, append-only capture of EVERY Kalshi CFB first-quarter total rung (series KXNCAAF1QTOTAL): exact contract
+# definition, bid/ask and size fields, observation time, kickoff eligibility at observation time, and settlement fields after the
+# game. It exists because the app explorer prunes a game's history after kickoff, so pregame 1Q prices were unrecoverable and
+# CFB 1Q `m.quote_history` could never be evaluated against a market baseline (Alpha #6/#7, issue #264).
+#
+# *** ISOLATION ***
+#   storage       the `cfb-1q-ladder-archive` ORPHAN branch only. Never main, research-data, the catalog, the ledger or any model input.
+#   concurrency   its OWN group, never the collector's `research-data-write`, and never cancelled mid-write.
+#   authority     public Kalshi market-data GETs only (/markets, /milestones, /markets/{t}/orderbook). No credentials, no order or
+#                 portfolio endpoint, no model, no recommendation. Read-only research evidence.
+#   failure       a partial/failed capture is itself archived (capture_complete=false, errors listed); only a failed write/push is red.
+#
+# *** CADENCE ***
+# GitHub drops scheduled ticks, so the cron is a floor, not a promise: every 10 minutes Wed 12:00 UTC - Sun 06:00 UTC (the
+# slate), every 2 hours otherwise. Every run states its own board semantics (FULL vs CHANGED_ONLY) in its manifest.
+#
+# *** PULL REQUESTS ***
+# A PR touching the capture code runs `smoke`: the real capture against live Kalshi into a TEMP directory (nothing is pushed),
+# the archive verifier, the audit, and a short real ESPN raw-archive run. Its output is the real-source evidence for the PR.
+on:
+  schedule:
+    - cron: "*/10 12-23 * * 3"
+    - cron: "*/10 * * * 4,5,6"
+    - cron: "*/10 0-5 * * 0"
+    - cron: "11 */2 * * 0,1,2"
+  workflow_dispatch:
+    inputs:
+      orderbooks:
+        description: "Capture order-book depth for open markets starting within 3h"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+  pull_request:
+    paths:
+      - "src/cfb_edge_finder/ladder_archive/**"
+      - "scripts/capture_cfb_1q_ladders.py"
+      - "scripts/archive_espn_raw.py"
+      - "scripts/audit_cfb_1q_ladders.py"
+      - ".github/workflows/cfb-1q-ladder-capture.yml"
+      - ".github/workflows/cfb-espn-raw-archive.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e . pytest
+      - name: Offline tests
+        run: python3 -m pytest tests/test_ladder_1q_archive.py tests/test_espn_raw_archive.py tests/test_ladder_audit.py tests/test_ladder_workflows.py -q
+      - name: Real Kalshi capture into a temp archive (nothing pushed)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ladder"
+          python3 scripts/capture_cfb_1q_ladders.py --archive-dir "$RUNNER_TEMP/ladder" --run-id "smoke${GITHUB_RUN_ID}a"
+          sleep 20
+          python3 scripts/capture_cfb_1q_ladders.py --archive-dir "$RUNNER_TEMP/ladder" --run-id "smoke${GITHUB_RUN_ID}b"
+      - name: Real ESPN raw archive (3 most recent completed games, temp archive)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/espn"
+          python3 scripts/archive_espn_raw.py --archive-dir "$RUNNER_TEMP/espn" --schedule data/football/2026/schedule.json --max-games 3 --refresh-days 4 --run-id "smoke${GITHUB_RUN_ID}"
+      - name: Verify archives and audit
+        run: |
+          python3 scripts/audit_cfb_1q_ladders.py --ladder-archive "$RUNNER_TEMP/ladder" --espn-archive "$RUNNER_TEMP/espn" --schedule data/football/2026/schedule.json --out "$RUNNER_TEMP/audit.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          t = Path(os.environ["RUNNER_TEMP"])
+          rows = [json.loads(l) for f in (t / "espn" / "index").glob("*/*.jsonl") for l in f.read_text().splitlines()]
+          ok = [r for r in rows if r.get("fetch_ok")]
+          print("espn rows", len(rows), "ok", len(ok))
+          for r in ok:
+              if "n_drives" not in r:
+                  print(r["event_id"], "UNPARSEABLE", r["missingness"])
+                  continue
+              print(r["event_id"], "drives", r["n_drives"], "fg", [(f["distance_yards"], f["result"]) for f in r["fg_attempts"]],
+                    "fg_vs_box", r["reconciliation"]["fg_plays_vs_box_attempts"], "missing", r["missingness"], "sha", r["sha256"][:12])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cfb-1q-smoke-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ladder
+            ${{ runner.temp }}/espn
+            ${{ runner.temp }}/audit.json
+          retention-days: 14
+
+  capture:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'          # branch code never gets a write token
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: cfb-1q-ladder-archive-write
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Check out the archive branch (or start it)
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin cfb-1q-ladder-archive >/dev/null 2>&1; then
+            git fetch origin cfb-1q-ladder-archive --depth=1
+            git worktree add /tmp/ladder origin/cfb-1q-ladder-archive --detach
+          elif [ $? -eq 2 ]; then
+            mkdir -p /tmp/ladder && git -C /tmp/ladder init -q && git -C /tmp/ladder checkout -q --orphan cfb-1q-ladder-archive
+          else
+            echo "could not reach origin to check for the archive branch" >&2; exit 1
+          fi
+      - name: Capture (read-only)
+        env:
+          ORDERBOOKS: ${{ github.event.inputs.orderbooks || 'true' }}
+        run: |
+          EXTRA=""
+          if [ "$ORDERBOOKS" = "false" ]; then EXTRA="--no-orderbooks"; fi
+          python3 scripts/capture_cfb_1q_ladders.py --archive-dir /tmp/ladder --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" $EXTRA
+      - name: Verify the archive before publishing
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, "src")
+          from cfb_edge_finder.ladder_archive import ladder_store
+          v = ladder_store.verify(Path("/tmp/ladder"))
+          print(json.dumps(v["counts"]))
+          sys.exit(0 if v["ok"] else 1)
+          PY
+      - name: Append-only check (no existing archive file may change except state/latest.json)
+        run: |
+          cd /tmp/ladder
+          git add -A
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            BAD=$(git diff --cached --name-status | grep -v '^A' | grep -v 'state/latest.json' || true)
+            if [ -n "$BAD" ]; then echo "non-append change: $BAD"; exit 1; fi
+          fi
+      - name: Push to cfb-1q-ladder-archive (isolated orphan branch)
+        env:
+          GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
+        run: scripts/archive_publish.sh /tmp/ladder HEAD:cfb-1q-ladder-archive "cfb 1q ladder capture ${GITHUB_RUN_ID} (research-only, append-only)"
+      - name: Fail the run if the capture was unusable (AFTER the failed run was published)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          ms = sorted(Path("/tmp/ladder/runs").glob("*/*.json"))
+          m = json.loads(ms[-1].read_text()) if ms else None
+          if m is None or (m["markets_seen"] == 0 and not any(s["complete"] for s in m["sweeps"].values())):
+              print("capture produced nothing usable", file=sys.stderr)
+              sys.exit(1)
+          print("last run:", m["run_id"], "complete" if m["capture_complete"] else "INCOMPLETE", m["markets_seen"], "markets")
+          PY

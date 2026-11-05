@@ -425,9 +425,15 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # cfb-availability-evidence.yml joined in 2026-11: it commits ONLY data/evidence/availability on its own
     # ref -- the keyless ESPN injury observations (source id + the time each was read) that the
     # point-in-time guard needs to evaluate a candidate. No secret, no projection, no fair value, no stake.
+    # cfb-1q-ladder-capture.yml and cfb-espn-raw-archive.yml joined in 2026-11 (issue #264): keyless read-only
+    # archives (Kalshi KXNCAAF1QTOTAL ladders; raw postgame ESPN summaries) written ONLY to their own isolated
+    # orphan branches (`cfb-1q-ladder-archive`, `cfb-espn-raw-archive`), each with its own concurrency group.
+    # No secret, no projection, no fair value, no stake, no order endpoint; append-only and verified before push.
     assert writers == [
         "app-export.yml",
+        "cfb-1q-ladder-capture.yml",
         "cfb-availability-evidence.yml",
+        "cfb-espn-raw-archive.yml",
         "cfb-research-conductor.yml",
         "kalshi-market-catalog.yml",
         "projection-foundation.yml",

@@ -1,0 +1,78 @@
+name: CFB ESPN Raw Postgame Archive (read-only, research-only)
+
+# Archives the ORIGINAL ESPN summary payload (drives, plays incl. field-goal distances, boxscore kicking, period line scores) for
+# completed FBS-involved games, with fetch time, source URI, sha256 and an extraction index that keeps every missing field explicit.
+# These are POSTGAME records: `available_from` is our fetch time and they may only inform LATER games (issue #264 part B).
+#
+# Isolation: the `cfb-espn-raw-archive` ORPHAN branch only; own concurrency group; keyless public GETs; no model, no main writes.
+on:
+  schedule:
+    - cron: "23 9 * * *"
+    - cron: "41 3,8 * * 0,1"
+  workflow_dispatch:
+    inputs:
+      max_games:
+        description: "Maximum games to fetch this run"
+        required: false
+        default: "120"
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: cfb-espn-raw-archive-write
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Check out the archive branch (or start it)
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin cfb-espn-raw-archive >/dev/null 2>&1; then
+            git fetch origin cfb-espn-raw-archive --depth=1
+            git worktree add /tmp/espn origin/cfb-espn-raw-archive --detach
+          elif [ $? -eq 2 ]; then
+            mkdir -p /tmp/espn && git -C /tmp/espn init -q && git -C /tmp/espn checkout -q --orphan cfb-espn-raw-archive
+          else
+            echo "could not reach origin to check for the archive branch" >&2; exit 1
+          fi
+      - name: Archive completed games (fail soft per game)
+        env:
+          MAX_GAMES: ${{ github.event.inputs.max_games || '120' }}
+        run: |
+          case "$MAX_GAMES" in (*[!0-9]*|"") echo "max_games must be an integer" >&2; exit 1;; esac
+          python3 scripts/archive_espn_raw.py --archive-dir /tmp/espn --schedule data/football/2026/schedule.json \
+            --max-games "$MAX_GAMES" --refresh-days 4 --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+      - name: Verify the archive before publishing
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, "src")
+          from cfb_edge_finder.ladder_archive import espn_store
+          v = espn_store.verify(Path("/tmp/espn"))
+          print(json.dumps(v["counts"]))
+          sys.exit(0 if v["ok"] else 1)
+          PY
+      - name: Append-only check
+        run: |
+          cd /tmp/espn
+          git add -A
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            BAD=$(git diff --cached --name-status | grep -v '^A' || true)
+            if [ -n "$BAD" ]; then echo "non-append change: $BAD"; exit 1; fi
+          fi
+      - name: Push to cfb-espn-raw-archive (isolated orphan branch)
+        env:
+          GITHUB_TOKEN_FOR_ARCHIVE: ${{ github.token }}
+        run: scripts/archive_publish.sh /tmp/espn HEAD:cfb-espn-raw-archive "cfb espn raw archive ${GITHUB_RUN_ID} (research-only, append-only)"

@@ -43,6 +43,13 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
+# Research archive modules (issue #264): long docstring/contract prose and recorded-payload fixtures read better unwrapped.
+"src/cfb_edge_finder/ladder_archive/*.py" = ["E501"]
+"scripts/capture_cfb_1q_ladders.py" = ["E501"]
+"scripts/archive_espn_raw.py" = ["E501"]
+"scripts/audit_cfb_1q_ladders.py" = ["E501"]
+"tests/test_ladder_*.py" = ["E501"]
+"tests/test_espn_raw_archive.py" = ["E501"]
 # Markdown renderers for research docs: one f-string per table row is clearer than wrapped fragments.
 "scripts/signal_discovery_cfb_tables.py" = ["E501"]
 "scripts/signal_discovery_cfb_registry.py" = ["E501"]

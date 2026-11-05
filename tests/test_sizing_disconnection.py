@@ -21,6 +21,10 @@ SRC = REPO_ROOT / "src" / "cfb_edge_finder"
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Read-only research archives (2026-11-04, issue #264): prospective 1Q ladder capture and raw postgame ESPN
+    # summaries. They record prices and source payloads only and carry no stake, fair value or recommendation;
+    # guarded so they can never size a bet.
+    "ladder_archive",
     # Read-only postmortem tooling (2026-11-02): reconciles executed contracts and attributes losses. It reads
     # stakes, so it is guarded for the same reason as accounting: it must never size the next bet.
     "postmortem",
