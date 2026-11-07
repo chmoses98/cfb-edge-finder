@@ -1,62 +1,74 @@
-# RUN CFB hand-off demonstration — 2026-11-07 (real data, real connector read)
+# RUN CFB hand-off evidence — 2026-11-07 (real data, real connector reads, real GitHub Actions)
 
-Run at ~02:50 UTC Nov 7 against branch `claude/run-cfb-handicapping-system-xs4rkz`. **This demonstrates that the evidence
-is reachable and complete enough to handicap. It is not a betting recommendation**: the analyst figures in §3 are
-illustrative estimates written to exercise the arithmetic, no web research (confirmed QB, injuries) was possible in this
-environment, and both test games were at or minutes from kickoff.
+This is evidence that the evidence is reachable and complete enough to handicap. **It contains no betting recommendation.**
+Probabilities below were supplied by testers for the arithmetic, no web research (confirmed QB, injuries) was possible in the
+test environments, and several games had kicked off.
 
-## 1. Retrieval through the GitHub connector (what ChatGPT does)
+## 1. A real GitHub Actions run of the packet workflow
 
-| Read (GitHub MCP `get_file_contents`, ref = the branch) | Result |
+`CFB Research Packets` run **42343863326** on branch `claude/run-cfb-handicapping-system-xs4rkz` (head `5767132`), all steps green:
+
+| Step | Result |
 |---|---|
-| directory `data/research_packets/games/26NOV06TCUARIZ` | `packet.json` 59,506 B · `team_profiles.json` 24,831 B · `schedules.json` 18,584 B · `distributions.json` 12,115 B · `markets.json` 183,733 B — all far under the 1 MB connector limit, no ZIP, no artifact, no upload |
-| `data/research_packets/games/26NOV06UNMNEV/schedules.json` | full text returned: 8 games per team with opponent adjusted rank, success rate, period scores, passer, SOS flag, similar-opponent record, home/away and 1H/1Q splits |
+| Refresh the game log into a scratch copy | success: `633 games / 1266 rows … fetched 9 this run; missing 0; failures 0; availability OBSERVED 143` |
+| Build the research packets | success: `117 games, 384 files written, 84 unchanged` |
+| Verify every expected packet (strict) | success: `verified 117 games: 0 errors, 0 warnings` (contract counts equal the execution index, `markets.json` fingerprints equal `quotes.json`, sizes, owner rules, every game inside the 120 h horizon has a packet) |
+| Commit the packets only if they changed | success: bot commit `4f3c057` (only `data/research_packets/**`), rebase-retry push |
 
-Local equivalent for the whole index (`scripts/verify_research_packets.py --strict`): **123 games, 0 errors, 0 warnings**; every
-game's `markets.json` contract count equals the execution index's `market_count`, and its `game_fingerprint` equals the
-current `quotes.json` fingerprint (TCU–Arizona `9c8f4daf8d21…` both).
+Every changed file in that commit changed in content (the league fit moved because four more games finished); none was a
+timestamp-only rewrite, so an unchanged slate commits nothing.
 
-## 2. What the TCU at Arizona packet gives (selected, all from the committed files)
+**Why it is a separate workflow.** The first design ran inside `script-engine.yml`. Run **42340958366** (this branch) and every
+recent `main` run of that workflow (Nov 5–7) were **cancelled at the 45-minute job timeout inside `script_engine.py build`**:
+all later steps skipped, nothing committed, the ledger step never reached. That is a pre-existing problem on `main` (also why
+`data/football` went four days stale) and is not changed here; `script-engine.yml` is restored to `main` and the prospective
+ledger is untouched.
 
-* **Matchup, opponent-adjusted (rank of 138 FBS):** Arizona offense success rate 44.3% adj (raw 47.4%, rank 33) vs TCU defense
-  38.3% allowed (rank 23); TCU offense 39.8% (raw 40.8%, rank 96) vs Arizona defense 36.5% allowed (rank **6**). Explosive-play rate:
-  Arizona offense 12.2% (rank 61) vs TCU defense 11.0% (42); TCU offense 10.5% (rank 111) vs Arizona defense 9.4% (rank **6**).
-  Points per scoring opportunity: TCU offense 3.65 (rank 126). Raw and adjusted differ; both are published with standard errors.
-* **Schedules:** every game of both teams with opponent net-rating rank, `points_vs_adjusted_expectation`, SOS flag, record
-  against the same tier as the opponent, last-3 vs season with a small-sample warning.
-* **QB (projected, not confirmed):** Arizona Noah Fifita, TCU Jaden Craig, no change in the last three games; `QB_NOT_CONFIRMED`
-  raised — a session must confirm both by web research.
-* **Environment:** Tucson, grass false; ESPN forecast 64°F, gust 6 mph, **54% precipitation probability**.
-* **Pace:** expected possessions ≈ 11.5 per team; raw 1H/1Q splits for both teams over 8 captured linescores.
-* **Scoring baseline (MODEL_PROJECTION, uncalibrated):** Arizona by 9.4, total 40.7, shown beside its measured accuracy
-  (total MAE 12.8 vs 13.1 for a league-average guess).
-* **Historical reference class (128 past games with a similar baseline):** actual home margin median +8, p10 −17, p90 +33
-  (sd 19.2); actual total median 45, p10 30, p90 66; 1H total median 23; 12 named closest games.
-* **Kalshi menu:** 252 contracts across 15 families (moneyline, spread, total, team total, 1H/2H, four quarters, 1H team total,
-  first-TD, overtime), each with YES/NO asks, sizes, 1U order fee, all-in cost, and the family's coverage status and gaps.
+**Visible failure.** The packet workflow has no `continue-on-error` on build, verify or commit: a failure turns the run red and
+commits nothing, so the last good packets stay. A failed game-log refresh is a `::warning` annotation and a step-summary line.
+A first push of the workflow was itself rejected by GitHub as invalid YAML (an unquoted `: ` in a step name); that is fixed and a
+guard test added.
 
-## 3. Arithmetic on illustrative analyst figures (exercise of `scripts/cfb_price_limits.py`)
+## 2. Saturday November 7 hand-off, read through the GitHub connector
 
-| Contract | Side | Ask | All-in (1U) | Illustrative low/point/high | Break-even | Bet up to | Result |
-|---|---|---|---|---|---|---|---|
-| `KXNCAAFGAME-26NOV06TCUARIZ-ARIZ` | YES | 0.71 | 0.7245 | 0.68 / 0.74 / 0.79 | 72.4% | 66¢ | lower bound −4.5pp: **pass at 71¢** |
-| `KXNCAAFTOTAL-26NOV06TCUARIZ-44` (over 43.5) | NO | 0.41 | 0.4270 | 0.45 / 0.52 / 0.58 | 42.7% | 43¢ | lower bound +2.3pp: 1U tier, conditional lean only (`qualified_positive_ev` false) |
+An independent tester session read **only through `mcp__github__get_file_contents`**, following `RUN_CFB.md` literally
+(commit `a9d1092`, before the later fixes):
 
-Note the NO price used is the NO ask (0.41), not 1 − the YES ask (0.40); the fee is the order-level cent-rounded taker fee.
+* Slate 2026-11-07: **111 games** (early 42 / afternoon 46 / evening 23); index, slate and execution index agreed on counts and
+  fingerprints; no game had blocking flags.
+* Three FBS games, one per window (Clemson at Syracuse, Alabama at LSU, Louisville at Georgia Tech): contract counts equal the
+  slate row and the execution index (249 / 300 across two market parts / 260); `markets.json` fingerprints equal `quotes.json`;
+  moneyline sides match the packet's home/away; PARTIAL and GAP families (1H/2H/quarters/overtime/first-TD partial; game stat
+  prop and unlabelled combos GAP) were named; QB, injuries and weather research flags were listed.
+* The tester wrote its own football view from the packet evidence **before** looking at asks, then derived fee-inclusive
+  break-evens and bet-up-to ceilings from its **lower bounds** (hand arithmetic from `RUN_CFB.md` §4 and the lookup table).
+  Cross-checked against `scripts/cfb_price_limits.py`: **all six contracts matched exactly**. Result: five of six points and all six
+  lower bounds sat below break-even at the captured asks — correctly reported as passes, stakes unsized, nothing called validated.
+* Tester findings (all addressed in the final head): misleading "recommendation" label on a pass → `PASS_AT_THIS_ASK`; ambiguous
+  part naming and stale file sizes in `RUN_CFB.md`; missing freshness rule; ticker suffix is the rounded-up line (use `line`);
+  undecoded weather codes and null `indoor`; no FBS-vs-FBS field → `football_history`; a mixed hard/soft schedule mislabelled soft →
+  `SCHEDULE_MIXED`; no guidance when the baseline, ESPN and the reference class disagree.
 
-## 4. Full-slate coverage (Saturday Nov 7, 111 games, `scripts/report_research_coverage.py --date 2026-11-07`)
+Slate coverage (`scripts/report_research_coverage.py --date 2026-11-07`): 12,390 contracts, **12,124 priced on both buy sides with an
+all-in cost**, 266 with an empty or one-sided book (reported); 11,425 carry a reference-class frequency; matchup, schedules and
+distributions available for 93 of 111 games — the other **18 are non-FBS vs non-FBS** (`FOOTBALL_HISTORY_ABSENT`, results-only
+schedule, no baseline). Market coverage by contract: 5,382 `SUPPORTED`, 6,937 `PARTIAL`, 71 `GAP`.
 
-* 12,390 contracts; **12,124 priced on both buy sides with an all-in cost**; 266 have an empty or one-sided book (reported, not hidden).
-* 11,425 contracts carry a historical reference-class frequency.
-* Same depth for every game: markets 111/111 `OK`; matchup comparison + schedules + distributions available for **93 of 111**.
-  The other **18 are non-FBS vs non-FBS games**: no box scores exist in the log, so they carry `FOOTBALL_HISTORY_ABSENT`, a results-only
-  schedule, and no baseline/distributions. This is a remaining gap, stated in each of those packets.
-* Flags on every game: `QB_NOT_CONFIRMED`, `NO_STRUCTURED_INJURY_SOURCE`, `EPA_UNAVAILABLE` — the research a session must still do.
-* Market coverage by contract: 5,382 `SUPPORTED`, 6,937 `PARTIAL` (halves, quarters, stat props, first TD, OT), 71 `GAP`.
+## 3. Integrity checks run
 
-## 5. Not demonstrated (environment limits)
+* **Time cutoffs:** every stored baseline record has `cutoff < kickoff`; 244 stored 2026 baselines reproduce **exactly** (max difference
+  0.0) when rebuilt today from only the games before each cutoff, and no history row is at or after its cutoff or is the game itself.
+* **Misattribution found and fixed:** two 2024 neutral-site bowl linescores were attached with home and away swapped
+  (UTSA/Coastal Carolina, USC/Texas A&M); linescores now attach only when they reconcile to the row's final score, re-oriented by
+  score if swapped (2 re-oriented, 0 dropped).
+* **Identity/orientation:** all 123 identities resolved by team identity, none swapped on this slate; contract sides follow the football
+  game's orientation even when a swap occurs (unit-tested); every one of 246 moneyline contracts names the team its `side` says.
+* **Adjustment:** across 117 teams, adjusted-minus-raw scoring correlates negatively with the rank of the defenses faced (−0.36), as
+  opponent adjustment should.
 
-* A live ChatGPT session. The read path was exercised with the GitHub connector and the verifier, not with ChatGPT itself.
-* The new injury `$ref` resolution against the live ESPN core API (blocked from this sandbox); it is covered by unit tests with
-  recorded-shape payloads and will be exercised on the next Script Engine run.
-* The workflow wiring (`script-engine.yml`) — YAML is unchanged apart from two steps and cannot be run here.
+## 4. Not demonstrated
+
+* A live ChatGPT session in this PR's final state (ChatGPT read the TCU–Arizona packet through the connector in an earlier session,
+  per the owner; the tester above used the same GitHub connector tool from Claude Code).
+* The injury `$ref` resolution against live ESPN core data: the real run reported `availability OBSERVED 143` but ESPN's feed is nearly
+  empty for CFB; the packets still raise `NO_STRUCTURED_INJURY_SOURCE` on every game.
