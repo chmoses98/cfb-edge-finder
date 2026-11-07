@@ -1,43 +1,48 @@
 {
  "capture_health": {
   "expected_games": 107,
-  "game_winner_markets_found": 71,
+  "game_winner_markets_found": 70,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 1,
-  "pending": 14,
+  "pending": 7,
   "price_1_00": 1,
-  "primary_window_coverage": 0.9891,
+  "primary_window_coverage": 0.9899,
   "statuses": {
-   "CAPTURE_OK": 91,
-   "CAPTURE_PENDING": 14,
+   "CAPTURE_OK": 98,
+   "CAPTURE_PENDING": 7,
    "ORIENTATION_FAILURE": 1,
    "PRICE_1_00": 1
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 91,
+  "valid_primary_captures": 98,
   "window": {
    "from": "2026-11-07T17:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 93
+  "windows_closed": 100
  },
  "population": {
-  "awaiting_kickoff": {},
+  "awaiting_kickoff": {
+   "AWAY_CONTROL_STRONG": 1,
+   "HOME_CONTROL_MODERATE": 1,
+   "HOME_CONTROL_STRONG": 1,
+   "NO_CONTROL": 11
+  },
   "by_strength": {
-   "MODERATE": 20,
-   "NO_CONTROL": 89,
-   "STRONG": 19
+   "MODERATE": 22,
+   "NO_CONTROL": 100,
+   "STRONG": 22
   },
   "by_tier": {
    "AWAY_CONTROL_MODERATE": 10,
-   "AWAY_CONTROL_STRONG": 8,
-   "HOME_CONTROL_MODERATE": 10,
-   "HOME_CONTROL_STRONG": 11,
-   "NO_CONTROL": 89
+   "AWAY_CONTROL_STRONG": 9,
+   "HOME_CONTROL_MODERATE": 12,
+   "HOME_CONTROL_STRONG": 13,
+   "NO_CONTROL": 100
   },
-  "final_pregame_games": 128,
+  "final_pregame_games": 144,
   "missing_final_pregame": [
    {
     "event_id": "401856823",
@@ -2213,16 +2218,6 @@
     "event_id": "401868313",
     "game_key": "26NOV07SFALAM",
     "kickoff_utc": "2026-11-07T21:00:00Z"
-   },
-   {
-    "event_id": "401858517",
-    "game_key": "26NOV07RUTGWIS",
-    "kickoff_utc": "2026-11-07T21:15:00Z"
-   },
-   {
-    "event_id": "401856742",
-    "game_key": "26NOV07VANMSST",
-    "kickoff_utc": "2026-11-07T21:15:00Z"
    }
   ]
  },
