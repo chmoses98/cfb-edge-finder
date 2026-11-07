@@ -72,3 +72,36 @@ and is reported `UNAVAILABLE`. History is context: no family is excluded, favour
 `docs/reports/CFB_MARKET_AUDIT_2026-11-07_early.{md,json}`: 42 games, 3,992 contracts, 7,984 sides, all reconciled. 123
 sides are unpriceable. **No analyst evaluations have been recorded, so 7,861 priceable sides are `NOT_EVALUATED` and the verdict
 is `INCOMPLETE`.** Per-game ledgers are regenerated with `--ledger-dir`, not committed.
+
+## Derived historical estimates (`--derive`)
+
+`scripts/audit_cfb_market_evaluation.py --derive` generates a research-only estimate for **every** priceable side
+(`src/cfb_edge_finder/research_packet/derived_estimates.py`). It uses only the packets' own leak-free reference class
+(past games whose pre-kickoff baseline resembled this one), so each probability is a count of past outcomes, never an
+invented number. It changes no model, sizes no stake, never writes `EVALUATED_CANDIDATE` and cannot be called validated EV.
+
+| status (source `DERIVED_HISTORICAL`) | meaning |
+|---|---|
+| `DERIVED_ESTIMATE` | reference class >= 60 games, its (quantity, period) showed out-of-sample skill, and the line is inside the span that test covered. Range plus a fee-inclusive **Bet Up To from the lower bound**. |
+| `SHAPE_ONLY_REFERENCE` | reference class exists but the (quantity, period) has no demonstrated skill (for example 1H/2H/quarter totals), the line is a tail beyond the tested span, or it is untested (overtime, winning-margin buckets, 1H/game joint). Range shown as shape; **Bet Up To withheld**; only an analyst handicap sets one. Nothing is excluded for this reason. |
+| `INSUFFICIENT_EVIDENCE` | no football history for the game, a reference class under 60 games, or no data in the repository for the quantity (first-TD team, stat props, D/ST TDs). The missing evidence is named. |
+
+`NOT_EVALUATED` now means *genuinely unexamined*. Reconciliation alone never changes a status.
+
+**Range** = union of (a) the Wilson 95% interval for the reference class's sampling error and (b) the frequency under
+each team's projected points moved by the baseline's own stated uncertainty times a **matchup-specific multiplier**: QB not
+confirmed, a second passer in the last four games, a recent QB change, and listed absences each add to it
+(`POLICY` in the module; uncalibrated, widening only, so a missing QB or injury feed lowers lower bounds instead of rejecting
+markets). **Skill** is a walk-forward test (2025-09-01 onward, reference class from earlier games only) of Brier gain over
+league frequency per quantity and period; `SUPPORTED` needs a game-clustered 95% interval above 0. It measures distribution
+quality, not edge versus Kalshi: the repository holds no market lines. The table is committed at
+`data/research_packets/reference/derived_skill.json` (`--refresh-skill` recomputes it).
+
+**Analyst precedence.** `--evaluations` entries are applied after the generated ones; an analyst judgment supersedes a
+generated estimate (the estimate is kept as `derived_prior`). The verdict is `COMPLETE` only when every priceable side is
+an analyst evaluation with a probability range, so generated estimates reach at most `COMPLETE_WITH_EVIDENCE_GAPS`.
+
+The report adds coverage by family and source, **derived leads for analyst review** (derived sides whose lower bound
+clears fee-inclusive break-even: a queue, not candidates), and a same-direction comparison across families and periods
+(moneyline, spread, totals, team totals, halves, quarters) showing lower-bound headroom without picking a bet. Nov 7 early:
+`docs/reports/CFB_MARKET_AUDIT_2026-11-07_early_derived.{md,json}`.

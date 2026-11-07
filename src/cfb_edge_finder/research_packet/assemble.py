@@ -29,42 +29,42 @@ FILES = ("packet.json", "team_profiles.json", "schedules.json", "distributions.j
 EVIDENCE_TIERS = {
     "VERIFIED_FACT": "an observed result, count, schedule or listing, with its source and observation time",
     "HISTORICAL_ESTIMATE": "a statistic computed from past games (opponent-adjusted rates, splits, reference-class "
-        "frequencies)",
+    "frequencies)",
     "MODEL_PROJECTION": "this repository's descriptive scoring baseline: uncalibrated, with its error evidence beside "
-        "it",
+    "it",
     "EXTERNAL_MODEL_REFERENCE": "another party's model (ESPN's predictor), shown separately and never blended in",
     "ANALYST_JUDGMENT": "yours: probabilities, ranges, the script you believe, the bets. Nothing in the packet "
-        "supplies it",
+    "supplies it",
 }
 
 ANALYST_STEPS = [
     "1. Read data_quality.missing_data_flags first. Resolve every flag whose `needs_analyst_research` is true by "
-        "web research, citing the source and its timestamp (confirmed QB, injuries, late weather).",
+    "web research, citing the source and its timestamp (confirmed QB, injuries, late weather).",
     "2. Read football.matchup_comparison and schedules.json: weigh opponent-adjusted offense vs the ACTUAL "
-        "opposing defense, discount stats built on weak schedules, and do not over-weight last-3 form.",
+    "opposing defense, discount stats built on weak schedules, and do not over-weight last-3 form.",
     "3. Read game_script: the dominant, competitive and upset scripts, and what evidence would flip each.",
     "4. Use distributions.json for shape and spread (reference-class frequencies, closest games, the baseline's "
-        "real error). Do not invent a score and assume a normal curve.",
+    "real error). Do not invent a score and assume a normal curve.",
     "5. Write YOUR probability and an uncertainty range for each thesis you will price (winner, cover, total, team "
-        "totals, halves, quarters, ladders). Keep them football-derived: never copy Kalshi's implied probability.",
+    "totals, halves, quarters, ladders). Keep them football-derived: never copy Kalshi's implied probability.",
     "6. Compare every listed contract of the relevant families (markets.json) on the side you would buy, at the NO "
-        "ask for NO, with the all-in cost. Use bet-up-to prices from your LOWER bound. A stake is optional, advisory "
-        "and yours: leave it unsized unless you can justify it (max 5U, 1U = $75).",
+    "ask for NO, with the all-in cost. Use bet-up-to prices from your LOWER bound. A stake is optional, advisory "
+    "and yours: leave it unsized unless you can justify it (max 5U, 1U = $75).",
     "7. Reconcile correlated exposure across contracts and games, then return one ranked card. Passing is a "
-        "correct answer.",
+    "correct answer.",
 ]
 
 OWNER_RULES = [
     "1U = $75. Maximum 5U per individual bet.",
     "Never recommend betting against Auburn (includes the Under on Auburn's own team total; game/1Q/1H total "
-        "Unders are independent).",
+    "Unders are independent).",
     "Recommendations are allowed until the actual kickoff, never at or after it (no pre-kickoff buffer); they still "
-        "need a recent captured quote, valid liquidity and a fee-inclusive Bet Up To.",
+    "need a recent captured quote, valid liquidity and a fee-inclusive Bet Up To.",
     f"No {FORBIDDEN_FEATURE_TOKENS[0]} in handicapping (owner ruling 2026-11-02): the metric is excluded from "
-        f"every table here.",
+    f"every table here.",
     "No fabricated probabilities, pricing advantages or stakes. No forced bets or loss-chasing.",
     "Compare every relevant market before choosing. Keep analyst recommendations separate from automated "
-        "qualification/execution gates.",
+    "qualification/execution gates.",
 ]
 
 
@@ -102,7 +102,7 @@ def missing_data_flags(
                 "FOOTBALL_IDENTITY_UNRESOLVED",
                 "BLOCKING",
                 f"the Kalshi game could not be matched to an ESPN game ({identity_status}); no football sections "
-                    f"were built",
+                f"were built",
                 research=True,
                 action="resolve the teams manually before handicapping",
             )
@@ -163,10 +163,10 @@ def missing_data_flags(
             "QB_NOT_CONFIRMED",
             "MAJOR",
             "no keyless source publishes a confirmed starting quarterback; the packet shows the PROJECTED starter "
-                "inferred from box scores",
+            "inferred from box scores",
             research=True,
             action="search for the confirmed starter for both teams (team/beat reports, depth chart, injury report); "
-                "record source + time",
+            "record source + time",
         )
     )
     for side in ("home", "away"):
@@ -186,12 +186,12 @@ def missing_data_flags(
             "NO_STRUCTURED_INJURY_SOURCE",
             "MAJOR",
             "ESPN's keyless feeds carry no usable CFB injury report; athlete rows in the repository's injury "
-                "listing are unresolved references with no name or status. The roster feed flags "
+            "listing are unresolved references with no name or status. The roster feed flags "
             + ", ".join(f"{s}: {len(rosters.get(s, {}).get('flagged_athletes') or [])}" for s in ("home", "away"))
             + " athletes. Absence of a listing is not health.",
             research=True,
             action="search for injuries/suspensions/OL and defensive-front absences for both teams; record source + "
-                "time",
+            "time",
         )
     )
     flags.append(
@@ -199,7 +199,7 @@ def missing_data_flags(
             "EPA_UNAVAILABLE",
             "INFO",
             "expected points added is not available keylessly; opponent-adjusted success rate, explosive rate, "
-                "points per drive and per scoring opportunity are provided",
+            "points per drive and per scoring opportunity are provided",
         )
     )
     thin = [s_ for s_ in ("home", "away") if ((period or {}).get(s_) or {}).get("games", 0) < 4]
@@ -332,7 +332,7 @@ def build_packet_files(
             "accuracy": baseline_acc,
             "use": (
                 "a descriptive, opponent-adjusted scoring summary. It is uncalibrated and has been only slightly "
-                    "better than "
+                "better than "
                 "guessing the league-average total; treat it as one input, not as the answer"
             ),
         }
@@ -346,8 +346,8 @@ def build_packet_files(
             "scripts": content.get("game_scripts"),
             "read": content.get("sift_read"),
             "note": "scripts are the deterministic engine's evidence-gated game scripts (dominant / competitive / "
-                "upset). "
-                "They are football context, not predictions; what would flip each is in its causal chain.",
+            "upset). "
+            "They are football context, not predictions; what would flip each is in its causal chain.",
         }
         files["team_profiles.json"] = {
             "schema_version": PACKET_SCHEMA,
@@ -355,9 +355,9 @@ def build_packet_files(
             "adjusted": True,
             "adjustment": {
                 "method": "ridge-regularised offense/defense/home-field effects per metric, fitted on every completed "
-                    "game "
-                    "before the data cutoff; opponent-adjusted values are what a team would do against an average "
-                    "opponent",
+                "game "
+                "before the data cutoff; opponent-adjusted values are what a team would do against an average "
+                "opponent",
                 "version": content.get("adjustment_version"),
                 "config": (vector.get("adjustment") or {}).get("config"),
                 "stability": (vector.get("adjustment") or {}).get("stability"),
@@ -410,11 +410,11 @@ def build_packet_files(
         "league_wide_shape": unconditional_summary,
         "how_to_use": (
             "p_*_greater_than tables give P(outcome > threshold) among past games whose pre-kickoff baseline "
-                "resembled this one. "
+            "resembled this one. "
             "They show spread and skew, including how often a favourite fails a spread. They are NOT calibrated "
-                "probabilities for "
+            "probabilities for "
             "this game: shift them for the matchup, QB, injuries and weather evidence, and widen your range when "
-                "the reference class is thin."
+            "the reference class is thin."
         ),
     }
     files["markets.json"] = markets
@@ -425,8 +425,8 @@ def build_packet_files(
         "evidence_tiers": EVIDENCE_TIERS,
         "owner_rules": OWNER_RULES,
         "kickoff_rule": "recommendations are allowed until the actual kickoff and never at or after kickoff_utc; "
-            "require a recent captured Kalshi quote, valid liquidity and a fee-inclusive Bet Up To; "
-            "compute against your own clock",
+        "require a recent captured Kalshi quote, valid liquidity and a fee-inclusive Bet Up To; "
+        "compute against your own clock",
         "files": {name: f"data/research_packets/games/{key}/{name}" for name in FILES}
         | {"markets_parts": markets_paths},
         "teams": {"home": home, "away": away, "identity": identity},
@@ -479,11 +479,11 @@ def build_packet_files(
             },
             "head_coaches": {s: rosters.get(s, {}).get("head_coach") for s in ("home", "away")},
             "interpretation": "an empty or null-valued list is NOT evidence of health. Confirmed injuries, "
-                "suspensions, OL and "
-                "defensive-front absences must come from analyst research with a cited source and timestamp.",
+            "suspensions, OL and "
+            "defensive-front absences must come from analyst research with a cited source and timestamp.",
             "absence_effect_guide": "for each confirmed absence: which unit (QB, OL, front seven, secondary, skill) "
-                "-> which row of "
-                "football.matchup_comparison it touches -> widen your range even if you do not shift the mean",
+            "-> which row of "
+            "football.matchup_comparison it touches -> widen your range even if you do not shift the mean",
         },
         "environment": {"evidence_tier": "VERIFIED_FACT", **(extras or {"status": "UNAVAILABLE"})},
         "game_script": script,
@@ -508,8 +508,8 @@ def build_packet_files(
                 "winner_probability": {"point": None, "low": None, "high": None},
                 "script_probabilities": {"dominant": None, "competitive": None, "upset": None},
                 "family_estimates": "for every family you price: the probability (low/point/high) of each thesis, and "
-                    "the contracts "
-                    "that express it",
+                "the contracts "
+                "that express it",
                 "confirmed_inputs": {"qb": None, "injuries": None, "weather": None, "sources": []},
             },
         },
@@ -542,6 +542,6 @@ def _raw_defense(history: list[TeamGame], team_id: str) -> dict[str, Any]:
         "passes_defended_per_game": per("def_passes_defended"),
         "adjusted": False,
         "caveat": "raw counts, not opponent-adjusted; shown for pass-rush / defensive-front context only. Sack rate "
-            "allowed "
-            "(adjusted) is in metrics.pressure_and_protection",
+        "allowed "
+        "(adjusted) is in metrics.pressure_and_protection",
     }
