@@ -1,4 +1,4 @@
-"""The Script Engine workflow's research-packet steps: fail soft for the ledger, fail VISIBLE for the operator.
+"""The research-packet workflow: isolated from the Script Engine, read-only to the ledger, fail-visible.
 
 Read with a narrow text scan, not a YAML parser: this repository's CI installs no PyYAML (see
 tests/test_research_workflow_concurrency.py for the same choice)."""
@@ -8,47 +8,52 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-TEXT = (Path(__file__).resolve().parents[1] / ".github/workflows/script-engine.yml").read_text()
+WORKFLOWS = Path(__file__).resolve().parents[1] / ".github/workflows"
+PACKETS = (WORKFLOWS / "cfb-research-packets.yml").read_text()
+EXECUTABLE = "\n".join(line for line in PACKETS.splitlines() if not line.lstrip().startswith("#"))
+ENGINE = (WORKFLOWS / "script-engine.yml").read_text()
 
 
 def _steps() -> list[tuple[str, str]]:
-    """[(step name, step body)] in file order, for the `build` job."""
-    chunks = re.split(r"(?m)^      - name: ", TEXT)[1:]
-    return [(c.split("\n", 1)[0], c) for c in chunks]
+    return [(chunk.split("\n", 1)[0], chunk) for chunk in re.split(r"(?m)^      - name: ", PACKETS)[1:]]
+
+
+def _body(prefix: str) -> str:
+    return next(body for name, body in _steps() if name.startswith(prefix))
 
 
 def _index(prefix: str) -> int:
     return next(i for i, (name, _) in enumerate(_steps()) if name.startswith(prefix))
 
 
-def _body(prefix: str) -> str:
-    return _steps()[_index(prefix)][1]
+def test_packets_do_not_depend_on_or_ride_inside_the_script_engine():
+    """A real run showed the Script Engine's build step hitting its 45-minute timeout on main; the packets must neither
+    wait behind it nor be lost with it. The engine workflow is left exactly as it was."""
+    assert "research_packets" not in ENGINE and "build_research_packets" not in ENGINE
+    assert "script_engine.py build" not in EXECUTABLE and "script-ledger" not in EXECUTABLE
 
 
-def test_packets_are_built_after_the_football_artifacts_and_verified_strictly():
-    body = _body("Build the RUN CFB research packets")
-    assert "id: packets" in body and "continue-on-error: true" in body
-    assert "build_research_packets.py" in body
-    assert "verify_research_packets.py --strict --require-horizon-hours" in body
-    assert _index("Build (football artifact frozen first") < _index("Build the RUN CFB research packets")
+def test_build_then_strict_verification_then_commit_and_nothing_commits_on_failure():
+    assert _index("Build the research packets") < _index("Verify every expected packet") < _index("Commit the packets")
+    verify = _body("Verify every expected packet")
+    assert "verify_research_packets.py --strict --require-horizon-hours" in verify
+    for name in ("Build the research packets", "Verify every expected packet", "Commit the packets"):
+        step = _body(name)
+        assert "continue-on-error" not in step and "if: always()" not in step  # a failure fails the run, visibly
 
 
-def test_a_packet_failure_is_never_silent_and_never_committed():
-    discard = _body("Discard unverified research packets")
-    assert "if: steps.packets.outcome == 'failure'" in discard and "::error" in discard
-    built = _index("Build the RUN CFB research packets")
-    assert built < _index("Discard unverified") < _index("Commit football data and live payloads")
-    steps = _steps()
-    name, final = steps[-1]
-    assert name.startswith("Fail the run if the research packets failed")
-    assert "steps.packets.outcome == 'failure'" in final and "exit 1" in final
-    assert _index("Commit the prospective ledger") < len(steps) - 1  # red only AFTER the ledger and data commits
+def test_a_failed_game_log_refresh_is_a_visible_warning_not_silence():
+    collect = _body("Refresh the game log into a scratch copy")
+    assert "id: collect" in collect and "continue-on-error: true" in collect
+    assert "data/football" in collect and '"$RUNNER_TEMP/football/$SEASON"' in collect  # scratch copy, never the repo
+    warn = _body("Warn if the game log could not be refreshed")
+    assert "if: steps.collect.outcome == 'failure'" in warn and "::warning" in warn
 
 
-def test_the_prospective_ledger_protection_is_unchanged():
-    ledger = _body("Commit the prospective ledger")
-    assert "if: github.ref_name == 'main'" in ledger
-    assert "Ledger NOT pushed from" in TEXT and "script-ledger-unpushed" in TEXT
-    commit = _body("Commit football data and live payloads")
-    assert "git add data/football data/scripting/live data/research_packets" in commit
-    assert "script-ledger" not in commit
+def test_it_stages_only_its_own_path_and_never_touches_the_ledger_or_orders():
+    commit = _body("Commit the packets")
+    assert "git add -A data/research_packets" in commit and "git add -A data/football" not in commit
+    assert 'HEAD:"${GITHUB_REF_NAME}"' in commit or "HEAD:${GITHUB_REF_NAME}" in commit
+    assert "git pull --rebase" in commit
+    for forbidden in ("script-ledger", "research-data", "KALSHI", "secrets."):
+        assert forbidden not in EXECUTABLE

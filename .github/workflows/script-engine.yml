@@ -66,33 +66,6 @@ jobs:
           --football-dir "data/football/$SEASON" --catalog-dir data/live
           --out-dir data/scripting/live --ledger-dir "$LEDGER/data/scripting/ledger" --season "$SEASON"
 
-      - name: Build the RUN CFB research packets (per-game football research + Kalshi menus; no model probabilities)
-        # The ChatGPT handoff: data/research_packets/** is what RUN CFB reads. It is derived from the game log just
-        # collected, the committed execution index and keyless ESPN lookups (venue/weather/roster), so it needs no
-        # secret.
-        #
-        # FAIL SOFT *AND* FAIL VISIBLE. `continue-on-error` keeps a packet failure from costing the frozen artifacts or the
-        # prospective ledger (which cannot be re-recorded after kickoff), but the failure is never silent: the two steps
-        # after the commit annotate the run and turn it RED, and unverified packets are discarded before anything is
-        # committed, so a broken build can never replace the last good packets.
-        id: packets
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          python scripts/build_research_packets.py --horizon-hours 120
-          python scripts/verify_research_packets.py --strict --require-horizon-hours 120
-          {
-            echo "### RUN CFB research packets"
-            python scripts/report_research_coverage.py
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Discard unverified research packets (never commit a broken build)
-        if: steps.packets.outcome == 'failure'
-        run: |
-          git checkout -- data/research_packets 2>/dev/null || true
-          git clean -fdq data/research_packets || true
-          echo "::error title=Research packets FAILED::packet build or verification failed; the previous committed packets were kept. See the 'Build the RUN CFB research packets' step."
-
       - name: Settle finished games and rebuild the report
         run: |
           python scripts/script_engine.py settle --football-dir "data/football/$SEASON" \
@@ -113,7 +86,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/football data/scripting/live data/research_packets
+          git add data/football data/scripting/live
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "script engine: football log + frozen artifacts ($(date -u +%Y-%m-%dT%H:%MZ))"
           for attempt in 1 2 3 4; do
@@ -161,9 +134,3 @@ jobs:
         run: |
           echo "Ledger NOT pushed from ${{ github.ref_name }}: prospective records come from main only."
           cat "$LEDGER"/data/scripting/ledger/"$SEASON"/publications.jsonl "$LEDGER"/data/scripting/ledger/"$SEASON"/publications.part-*.jsonl 2>/dev/null | wc -l || true
-
-      - name: Fail the run if the research packets failed (after the ledger and data commits, so neither is lost)
-        if: always() && steps.packets.outcome == 'failure'
-        run: |
-          echo "::error title=Research packets FAILED::this run is red on purpose: the football log, frozen artifacts and ledger were handled, but RUN CFB's packets were not refreshed"
-          exit 1
