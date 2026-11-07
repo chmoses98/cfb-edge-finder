@@ -429,12 +429,18 @@ def test_the_live_catalog_is_the_only_scheduled_writer_now():
     # archives (Kalshi KXNCAAF1QTOTAL ladders; raw postgame ESPN summaries) written ONLY to their own isolated
     # orphan branches (`cfb-1q-ladder-archive`, `cfb-espn-raw-archive`), each with its own concurrency group.
     # No secret, no projection, no fair value, no stake, no order endpoint; append-only and verified before push.
+    # cfb-research-packets.yml joined in 2026-11 (PR #267): it commits ONLY data/research_packets on its own ref --
+    # the RUN CFB football-research packets and Kalshi menus (docs/RUN_CFB_RESEARCH_PACKETS.md). Own concurrency
+    # group, scratch copy of the game log, strict verification before commit, nothing committed on failure, no access
+    # to the prospective ledger. No secret, no probability, no fair value, no stake, no recommendation, no order
+    # endpoint.
     assert writers == [
         "app-export.yml",
         "cfb-1q-ladder-capture.yml",
         "cfb-availability-evidence.yml",
         "cfb-espn-raw-archive.yml",
         "cfb-research-conductor.yml",
+        "cfb-research-packets.yml",
         "kalshi-market-catalog.yml",
         "projection-foundation.yml",
         "script-engine.yml",

@@ -130,23 +130,51 @@ def fetch_summary(event_id: str) -> tuple[dict[str, Any] | None, str | None]:
     return None, error
 
 
+# : ESPN's core injury list returns REFERENCES: {"items": [{"$ref": ".../injuries/123"}]}, each of which must be
+# followed,
+#: and the athlete inside it is another reference. Reading `athlete`/`status` off the stub (as this function did until
+#: 2026-11-07) produced rows of nulls -- proof that something was listed, with no name, position or status. The two hops
+#: are now followed, bounded per team, and a row that cannot be resolved says so instead of posing as an observation.
+MAX_INJURY_DEREFS_PER_TEAM = 40
+
+
+def _deref(ref: Any) -> tuple[dict[str, Any] | None, str | None]:
+    url = ref.get("$ref") if isinstance(ref, dict) else None
+    if not url:
+        return (ref if isinstance(ref, dict) else None), None
+    return transport._get(str(url).replace("http://", "https://", 1))
+
+
+def resolve_injury_item(item: dict[str, Any]) -> dict[str, Any]:
+    """One injury list entry, following ``$ref`` hops. Never raises; an unresolvable entry is marked, not guessed."""
+    body, error = (item, None) if "status" in item or "athlete" in item else _deref(item)
+    if body is None:
+        return {"athlete": None, "position": None, "status": None, "unresolved_ref": True, "error": error}
+    athlete, a_error = _deref(body.get("athlete") or {})
+    athlete = athlete or {}
+    position = athlete.get("position") or {}
+    if isinstance(position, dict) and position.get("$ref") and not position.get("abbreviation"):
+        position = _deref(position)[0] or {}
+    return {
+        "athlete": athlete.get("displayName") or athlete.get("fullName"),
+        "position": position.get("abbreviation") if isinstance(position, dict) else None,
+        "status": body.get("status") or (body.get("type") or {}).get("description"),
+        "detail": (body.get("details") or {}).get("type") if isinstance(body.get("details"), dict) else None,
+        "date": body.get("date"),
+        "unresolved_ref": not (athlete.get("displayName") or athlete.get("fullName")),
+        "error": a_error,
+    }
+
+
 def availability_for(team_id: str, observed_at: str) -> dict[str, Any]:
     payload, error = transport._get(INJURY_URL.format(team_id=team_id))
     if payload is None:
         status = "NOT_PUBLISHED" if error and "404" in error else "NOT_OBSERVED"
         return {"status": status, "observed_at": observed_at, "error": error, "items": None}
     items = []
-    for item in payload.get("items") or []:
-        if not isinstance(item, dict):
-            continue
-        athlete = item.get("athlete") or {}
-        items.append(
-            {
-                "athlete": athlete.get("displayName") or athlete.get("fullName"),
-                "position": (athlete.get("position") or {}).get("abbreviation"),
-                "status": item.get("status") or (item.get("type") or {}).get("description"),
-            }
-        )
+    raw_items = [i for i in (payload.get("items") or []) if isinstance(i, dict)]
+    for item in raw_items[:MAX_INJURY_DEREFS_PER_TEAM]:
+        items.append(resolve_injury_item(item))
     qb = next(
         (
             i
@@ -160,6 +188,8 @@ def availability_for(team_id: str, observed_at: str) -> dict[str, Any]:
         "status": "OBSERVED",
         "observed_at": observed_at,
         "items": items,
+        "listed_total": len(raw_items),
+        "unresolved_items": sum(1 for i in items if i.get("unresolved_ref")),
         "qb_uncertain": qb is not None,
         "qb_name": qb.get("athlete") if qb else None,
         "qb_status": qb.get("status") if qb else None,

@@ -1,0 +1,98 @@
+name: CFB Research Packets
+
+# *** WHAT THIS IS ***
+# The RUN CFB handoff: per-game football research packets and Kalshi menus committed to data/research_packets/, where
+# ChatGPT reads them through the GitHub connector. See RUN_CFB.md and docs/RUN_CFB_RESEARCH_PACKETS.md.
+#
+# *** WHY ITS OWN WORKFLOW ***
+# The first design ran these steps inside script-engine.yml. A real run showed why that cannot work: every recent
+# Script Engine run on main (2026-11-05 .. 11-07) was CANCELLED at its 45-minute job timeout inside the
+# `script_engine.py build` step, before anything was committed -- which is also why data/football went four days stale.
+# Packets need only the game log and the committed execution index, not the frozen artifacts, so they must not wait
+# behind (or die with) that step.
+#
+# *** WHAT IT TOUCHES ***
+# Reads the committed catalog (data/live) and the committed game log. Collects the log's newest games into a SCRATCH copy
+# (it never edits data/football). Writes ONLY data/research_packets on the ref it runs on, through a rebase-retry push, in
+# its own concurrency group. It never touches the prospective ledger (script-ledger branch), the durable store, any order
+# or portfolio endpoint, or any credential. Nothing here can place a bet.
+#
+# *** FAIL SOFT FOR NOTHING, FAIL VISIBLE FOR EVERYTHING ***
+# A packet build or verification failure turns this run red and commits nothing, so the last good packets stay in place.
+# A failed game-log refresh is annotated as a warning and the packets are built from the committed log, whose age they
+# state (`inputs.football_log_fetched_at`).
+on:
+  schedule:
+    # Thu-Sun every 30 minutes (a slate day), and every 3 hours Mon-Wed. GitHub fires these late, so cadence is a floor.
+    - cron: "7,37 * * * 0,4,5,6"
+    - cron: "7 */3 * * 1,2,3"
+  workflow_dispatch:
+    inputs:
+      horizon_hours:
+        description: "Build packets for games kicking off within this many hours"
+        required: false
+        default: "120"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cfb-research-packets
+  cancel-in-progress: false
+
+jobs:
+  packets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SEASON: "2026"
+      HORIZON_HOURS: ${{ github.event.inputs.horizon_hours || '120' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e .
+      - name: Refresh the game log into a scratch copy (ESPN, keyless; never edits data/football)
+        id: collect
+        continue-on-error: true
+        timeout-minutes: 12
+        run: |
+          mkdir -p "$RUNNER_TEMP/football"
+          cp -r "data/football/$SEASON" "$RUNNER_TEMP/football/$SEASON"
+          python scripts/collect_football_gamelog.py --season "$SEASON" --out-dir "$RUNNER_TEMP/football/$SEASON"
+      - name: Warn if the game log could not be refreshed
+        if: steps.collect.outcome == 'failure'
+        run: |
+          echo "::warning title=Game log refresh failed::packets are built from the committed game log; each packet states its football_log_fetched_at"
+          echo "### Game log refresh FAILED: packets use the committed log" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build the research packets
+        run: |
+          python scripts/build_research_packets.py \
+            --football-dir "$RUNNER_TEMP/football/$SEASON" --horizon-hours "$HORIZON_HOURS"
+      - name: "Verify every expected packet (strict - counts, fingerprints, sizes, owner rules)"
+        run: |
+          python scripts/verify_research_packets.py --strict --require-horizon-hours "$HORIZON_HOURS"
+          {
+            echo "### RUN CFB research packets"
+            python scripts/report_research_coverage.py
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit the packets only if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/research_packets
+          if git diff --cached --quiet; then
+            echo "research packets unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "cfb research packets: refresh ($(date -u +%Y-%m-%dT%H:%MZ))"
+          for attempt in 1 2 3 4; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push attempt ${attempt} failed; backing off"
+            sleep $((attempt * 4))
+          done
+          echo "::error title=Research packet push FAILED::the packets were built and verified but could not be pushed"
+          exit 1

@@ -81,6 +81,7 @@ def _grants_write(text: str) -> bool:
 MAIN_ONLY_WRITERS = {
     "kalshi-market-catalog.yml": "data/live",
     "cfb-availability-evidence.yml": "data/evidence/availability",
+    "cfb-research-packets.yml": "data/research_packets",
 }
 
 
