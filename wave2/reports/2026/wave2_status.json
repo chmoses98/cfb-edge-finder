@@ -4,19 +4,19 @@
  "capture_health": {
   "by_outcome": {
    "NO_MARKET": 490,
-   "OK": 2208
+   "OK": 2214
   },
   "in_window_by_outcome": {
    "NO_MARKET": 392,
-   "OK": 1772
+   "OK": 1778
   },
   "last_cycle_errors": [],
-  "spread_attempts": 2698,
-  "spread_attempts_in_window": 2164,
+  "spread_attempts": 2704,
+  "spread_attempts_in_window": 2170,
   "system_failures": 48
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-07T21:46:45Z",
+ "last_ledger_row_at": "2026-11-07T22:01:44Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -32,9 +32,9 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 6,
+   "awaiting_entry": 5,
    "entries": {
-    "ELIGIBLE": 44,
+    "ELIGIBLE": 45,
     "MARKET_NOT_OFFERED": 35
    },
    "entry_reasons": {
@@ -109,13 +109,13 @@
    }
   },
   "CFB-PROS-002": {
-   "awaiting_entry": 2,
+   "awaiting_entry": 1,
    "entries": {
-    "EXCLUDED_PROTOCOL": 11,
+    "EXCLUDED_PROTOCOL": 12,
     "MARKET_NOT_OFFERED": 2
    },
    "entry_reasons": {
-    "IMPLIED_MARGIN_NOT_BELOW_3": 11,
+    "IMPLIED_MARGIN_NOT_BELOW_3": 12,
     "NO_SPREAD_LADDER_IN_WINDOW": 2
    },
    "next_read": {
