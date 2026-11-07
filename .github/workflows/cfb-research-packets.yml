@@ -76,7 +76,7 @@ jobs:
         run: |
           python scripts/build_research_packets.py \
             --football-dir "$RUNNER_TEMP/football/$SEASON" --horizon-hours "$HORIZON_HOURS"
-      - name: Verify every expected packet (strict: counts, fingerprints, sizes, owner rules)
+      - name: "Verify every expected packet (strict - counts, fingerprints, sizes, owner rules)"
         run: |
           python scripts/verify_research_packets.py --strict --require-horizon-hours "$HORIZON_HOURS"
           {
