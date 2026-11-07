@@ -45,7 +45,6 @@ from cfb_edge_finder.decision.exposure_aggregation import (
 )
 from cfb_edge_finder.decision.owner_rules import auburn_exclusion, clamp_stake
 from cfb_edge_finder.decision.pit_guards import (
-    DEFAULT_KICKOFF_BUFFER,
     DEFAULT_MAX_PROJECTION_AGE,
     PitInputs,
     PitPolicy,
@@ -86,6 +85,14 @@ LEGACY_BET_UP_TO_BASIS = (
 )
 
 
+#: Analyst recommendations are allowed up to the actual kickoff and never at or after it: ``decision_time < kickoff``
+#: (the guard blocks when ``decision_time >= kickoff - buffer``). The former 10-minute pre-kickoff buffer is removed
+#: for the ANALYST review only. ``DEFAULT_KICKOFF_BUFFER`` in ``decision/pit_guards.py`` is deliberately left as it is
+#: so nothing that shares ``PitPolicy`` defaults (automated qualification / execution authorization) changes. Price
+#: quality (quote age, executable ask, fee-inclusive ceiling) is unchanged and is what protects a late recommendation.
+CFB_ANALYST_KICKOFF_BUFFER = timedelta(0)
+
+
 def cfb_policy(
     *, max_quote_age: timedelta | None = None, max_projection_age: timedelta | None = None
 ) -> PitPolicy:
@@ -94,14 +101,15 @@ def cfb_policy(
     * quote: the slate's capture-age budget (``DEFAULT_MAX_CAPTURE_AGE_MINUTES``) -- the same bar
       ``prepare-live`` applied when the slate was built, now re-applied at decision time;
     * availability: the context layer's own ``FRESHNESS_BUDGET_SECONDS['availability']``;
-    * projection: the PIT default (12h); kickoff buffer: the PIT default.
+    * projection: the PIT default (12h); kickoff: no buffer -- strictly before the actual kickoff (see
+      ``CFB_ANALYST_KICKOFF_BUFFER``).
     CFB has no confirmed-QB source, so confirmation is a disclosed note, not a block.
     """
     return PitPolicy(
         max_projection_age=max_projection_age or DEFAULT_MAX_PROJECTION_AGE,
         max_availability_age=timedelta(seconds=FRESHNESS_BUDGET_SECONDS["availability"]),
         max_quote_age=max_quote_age or timedelta(minutes=DEFAULT_MAX_CAPTURE_AGE_MINUTES),
-        kickoff_buffer=DEFAULT_KICKOFF_BUFFER,
+        kickoff_buffer=CFB_ANALYST_KICKOFF_BUFFER,
         require_qb_confirmation=False,
     )
 

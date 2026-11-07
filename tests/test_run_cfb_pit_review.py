@@ -107,17 +107,36 @@ def test_candidates_command_attaches_the_review_and_blocks_missing_evidence(tmp_
     assert "POINT-IN-TIME REVIEW" in out_text
 
 
-def test_stale_quote_and_after_kickoff_are_named_blocks_through_the_cli(tmp_path):
+def test_stale_quote_is_a_named_block_but_five_minutes_before_kickoff_is_not(tmp_path):
     late = (NOW + timedelta(hours=11, minutes=25)).isoformat()  # 23:25Z: 5 min before kickoff, capture 11h40m old
     art, *_ = walk(tmp_path, as_of=late)
     for cand in art["candidates"]:
         blocked = cand["pit_review"]["blocking_guards"]
-        assert "QUOTE_STALE" in blocked
-        assert "AFTER_KICKOFF_CUTOFF" in blocked
+        assert "QUOTE_STALE" in blocked  # price quality still blocks a late recommendation
+        assert "AFTER_KICKOFF_CUTOFF" not in blocked  # the 10-minute pre-kickoff buffer is gone
         expected_age = int((NOW + timedelta(hours=11, minutes=25) - CAPTURED_AT).total_seconds())
         assert cand["pit_review"]["quote_age_seconds"] == expected_age
     assert art["pit_review"]["actionable"] == 0
     assert art["pit_review"]["blocked_by"]["QUOTE_STALE"] == len(art["candidates"])
+
+
+@pytest.mark.parametrize("minutes_after_2300z", [30, 31])  # exactly at kickoff (23:30Z) and one minute after
+def test_at_or_after_actual_kickoff_is_a_named_block_through_the_cli(tmp_path, minutes_after_2300z):
+    moment = (NOW + timedelta(hours=11, minutes=minutes_after_2300z - 0)).isoformat()
+    art, *_ = walk(tmp_path, as_of=moment)
+    assert art["candidates"]
+    for cand in art["candidates"]:
+        assert "AFTER_KICKOFF_CUTOFF" in cand["pit_review"]["blocking_guards"]
+        assert cand["pit_review"]["actionable"] is False
+
+
+def test_analyst_policy_has_no_prekickoff_buffer_and_automated_default_is_untouched():
+    from cfb_edge_finder.decision.pit_guards import DEFAULT_KICKOFF_BUFFER, PitPolicy
+
+    assert cfb_policy().kickoff_buffer == timedelta(0)
+    # the shared default (what any non-analyst consumer of PitPolicy gets) is deliberately unchanged
+    assert DEFAULT_KICKOFF_BUFFER == timedelta(minutes=10)
+    assert PitPolicy().kickoff_buffer == timedelta(minutes=10)
 
 
 def test_the_review_is_restriction_only_same_candidates_same_order_legacy_fields_unchanged(tmp_path):
