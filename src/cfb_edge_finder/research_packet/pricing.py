@@ -139,7 +139,7 @@ def stake_check(
             "dollars": 0.0,
             "reasons": [
                 f"the lower bound ({probability_low:.3f}) does not clear fee-inclusive break-even "
-                    f"({break_even:.3f}) at this ask"
+                f"({break_even:.3f}) at this ask"
             ],
         }
     units = proposed_units
@@ -162,7 +162,7 @@ QUALIFICATION: dict[str, Any] = {
     "empirically_validated_positive_ev": False,
     "meaning": (
         "the probability and range are the analyst's stated opinion. The ceiling below is arithmetic on that "
-            "opinion; it is "
+        "opinion; it is "
         "not evidence that the wager has positive expected value"
     ),
     "required_for_validated_positive_ev": (

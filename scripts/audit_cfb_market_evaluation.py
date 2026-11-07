@@ -23,6 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from cfb_edge_finder.research_packet import derived_estimates as de  # noqa: E402
+from cfb_edge_finder.research_packet import history as hist  # noqa: E402
 from cfb_edge_finder.research_packet import market_audit as ma  # noqa: E402
 
 
@@ -34,6 +36,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--expect-games", type=int)
     ap.add_argument("--expect-contracts", type=int)
     ap.add_argument("--evaluations", help="analyst evaluations JSON (cfb_market_evaluations/1.0.0)")
+    ap.add_argument("--derive", action="store_true", help="generate research-only historical estimates for every side")
+    ap.add_argument("--derived", help="a saved cfb_derived_estimates/1.0.0 file to apply instead of generating")
+    ap.add_argument("--derived-out", help="write the generated derived-estimates file here")
+    ap.add_argument("--skill-json", default="data/research_packets/reference/derived_skill.json")
+    ap.add_argument("--refresh-skill", action="store_true", help="recompute the walk-forward skill table")
     ap.add_argument("--wagers", default="app/latest/wagers.json")
     ap.add_argument("--evidence-join", default=None, help="evidence_join report JSON (CLV by family)")
     ap.add_argument("--as-of", help="label only; recorded in the report")
@@ -55,16 +62,39 @@ def main(argv: list[str] | None = None) -> int:
     inv = ma.load_inventory(root, a.slate_date, a.window)
     sides = ma.build_sides(inv)
     entries, load_defects = ma.load_evaluations(Path(a.evaluations) if a.evaluations else None)
+    context = None
+    derived_defects: list[ma.Defect] = []
+    if a.derived:
+        d_entries, derived_defects = ma.load_derived(Path(a.derived))
+        derived_defects += ma.apply_derived(sides, d_entries)
+    elif a.derive:
+        games = hist.load_games(root / "data/research_packets/reference/history_games.jsonl.gz")
+        skill_path = root / a.skill_json
+        if skill_path.is_file() and not a.refresh_skill:
+            skill = json.loads(skill_path.read_text())
+        else:
+            skill = de.family_skill(games)
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text(json.dumps(skill, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        doc, context = de.generate(root, inv, games, skill)
+        if a.derived_out:
+            Path(a.derived_out).write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8")
+        derived_defects = ma.apply_derived(sides, doc["entries"])
+    # analyst evaluations are applied LAST so an independent analyst judgment supersedes a generated estimate
     apply_defects = ma.apply_evaluations(sides, entries)
     defects = ma.verify(
-        inv, sides, load_defects + apply_defects, expect_games=a.expect_games, expect_contracts=a.expect_contracts
+        inv,
+        sides,
+        load_defects + derived_defects + apply_defects,
+        expect_games=a.expect_games,
+        expect_contracts=a.expect_contracts,
     )
     evj = Path(a.evidence_join) if a.evidence_join else None
     if evj is None:
         found = sorted((root / "docs" / "reports").glob("evidence_join_*.json"))
         evj = found[-1] if found else None
     history = ma.family_history(root / a.wagers, evj)
-    report = ma.build_report(inv, sides, defects, history=history, as_of=a.as_of)
+    report = ma.build_report(inv, sides, defects, history=history, as_of=a.as_of, derived_context=context)
     problems = ma.verify_report(report)
     if problems:  # the audit's own arithmetic must hold before anything is written
         for p in problems:

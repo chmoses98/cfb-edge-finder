@@ -40,8 +40,16 @@ INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 EVALUATED_PASS = "EVALUATED_PASS"
 EVALUATED_CANDIDATE = "EVALUATED_CANDIDATE"
 
+DERIVED_ESTIMATE = "DERIVED_ESTIMATE"
+SHAPE_ONLY_REFERENCE = "SHAPE_ONLY_REFERENCE"
+DERIVED_STATUSES = (DERIVED_ESTIMATE, SHAPE_ONLY_REFERENCE, INSUFFICIENT_EVIDENCE)  # what the generator may assign
+
 ANALYST_STATUSES = (EVALUATED_PASS, EVALUATED_CANDIDATE, INSUFFICIENT_EVIDENCE)
-ALL_STATUSES = (UNPRICEABLE, NOT_EVALUATED, *ANALYST_STATUSES)
+ALL_STATUSES = (UNPRICEABLE, NOT_EVALUATED, DERIVED_ESTIMATE, SHAPE_ONLY_REFERENCE, *ANALYST_STATUSES)
+
+SRC_ANALYST = "ANALYST"
+SRC_DERIVED = "DERIVED_HISTORICAL"
+DERIVED_SCHEMA = "cfb_derived_estimates/1.0.0"
 
 VERDICT_INCOMPLETE = "INCOMPLETE"
 VERDICT_GAPS = "COMPLETE_WITH_EVIDENCE_GAPS"
@@ -75,6 +83,7 @@ class Inventory:
     contracts: dict[str, list[dict[str, Any]]] = field(default_factory=dict)  # game_key -> contracts
     thesis_groups: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     family_coverage: dict[str, dict[str, str]] = field(default_factory=dict)
+    side_codes: dict[str, dict[str, str]] = field(default_factory=dict)
     defects: list[Defect] = field(default_factory=list)
 
 
@@ -106,6 +115,7 @@ def load_inventory(root: Path, slate_date: str, window: str | None = None) -> In
             doc = _load_json(path)
             loaded.extend(doc.get("contracts") or [])
             inv.thesis_groups.setdefault(key, doc.get("thesis_groups") or {})
+            inv.side_codes.setdefault(key, doc.get("side_codes") or {})
             for fam, meta in (doc.get("families") or {}).items():
                 inv.family_coverage.setdefault(key, {})[fam] = (meta or {}).get("coverage", "UNKNOWN")
         inv.contracts[key] = loaded
@@ -216,6 +226,16 @@ def build_sides(inv: Inventory) -> list[dict[str, Any]]:
                         "bet_up_to": None,
                         "thesis": None,
                         "missing_evidence": None,
+                        "kind": c.get("kind"),
+                        "period": c.get("period"),
+                        "contract_side": c.get("side"),
+                        "contract_outcome": c.get("outcome"),
+                        "evaluation_source": None,
+                        "price_screen": None,
+                        "skill_label": None,
+                        "reference_n": None,
+                        "bet_up_to_withheld": None,
+                        "derived_prior": None,
                     }
                 )
     return rows
@@ -310,7 +330,17 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
                         "record it as EVALUATED_PASS (you may state a conditional ceiling)",
                     )
                     continue
+        if side["evaluation_source"] == SRC_DERIVED:  # an analyst judgment supersedes a generated estimate
+            side["derived_prior"] = {"status": side["status"], "probability": side["probability"]}
+        side["probability"] = None
+        side["margin_low_vs_all_in"] = None
+        side["bet_up_to"] = None
+        side["price_screen"] = None
+        side["skill_label"] = None
+        side["reference_n"] = None
+        side["bet_up_to_withheld"] = None
         side["status"] = status
+        side["evaluation_source"] = SRC_ANALYST
         side["reason"] = reason.strip()
         side["reason_code"] = e.get("reason_code") or side["reason_code"]
         side["thesis"] = e.get("thesis")
@@ -337,6 +367,81 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
                         tk,
                     )
                 )
+    return defects
+
+
+def load_derived(path: Path | None) -> tuple[list[dict[str, Any]], list[Defect]]:
+    if path is None:
+        return [], []
+    doc = _load_json(Path(path))
+    if not isinstance(doc, dict) or doc.get("schema_version") != DERIVED_SCHEMA:
+        return [], [Defect("DERIVED_SCHEMA", INPUT, f"expected schema_version {DERIVED_SCHEMA!r}; nothing applied")]
+    return list(doc.get("entries") or []), []
+
+
+def apply_derived(sides: list[dict[str, Any]], entries: list[dict[str, Any]]) -> list[Defect]:
+    """Attach GENERATED historical estimates. They are never analyst evaluations and never candidates.
+
+    DERIVED_ESTIMATE gets a fee-inclusive Bet Up To from the LOWER bound; SHAPE_ONLY_REFERENCE keeps its range but its
+    ceiling is withheld; INSUFFICIENT_EVIDENCE names what is missing. A rejected entry leaves the side NOT_EVALUATED.
+    """
+    defects: list[Defect] = []
+    index = {(s["game_key"], s["ticker"], s["side"]): s for s in sides}
+    seen = Counter((e.get("game_key"), e.get("ticker"), str(e.get("side", "")).upper()) for e in entries)
+    for e in entries:
+        key = (e.get("game_key"), e.get("ticker"), str(e.get("side", "")).upper())
+
+        def reject(code: str, detail: str, key=key) -> None:
+            defects.append(Defect(code, INPUT, detail, key[0], key[1]))
+
+        if seen[key] > 1:
+            reject("DUPLICATE_DERIVED_ESTIMATE", "derived more than once; all copies rejected")
+            continue
+        side = index.get(key)
+        if side is None:
+            reject("ORPHAN_DERIVED_ESTIMATE", "no listed side matches this entry")
+            continue
+        if side["status"] == UNPRICEABLE:
+            continue  # a blanket generator also covers sides nobody offers; they stay UNPRICEABLE, not a defect
+        status = e.get("status")
+        if status not in DERIVED_STATUSES or e.get("source") != SRC_DERIVED:
+            reject("BAD_DERIVED_STATUS", f"status must be one of {DERIVED_STATUSES} with source {SRC_DERIVED}")
+            continue
+        reason = e.get("reason")
+        if not isinstance(reason, str) or len(reason.strip()) < 8:
+            reject("MISSING_REASON", "a specific reason is required")
+            continue
+        prob = e.get("probability")
+        if status == INSUFFICIENT_EVIDENCE:
+            missing = e.get("missing_evidence")
+            if prob is not None or not isinstance(missing, list) or not missing:
+                reject("BAD_INSUFFICIENT_EVIDENCE", "must name missing evidence and carry no probability")
+                continue
+            side["missing_evidence"] = missing
+        else:
+            err = _valid_probability(prob)
+            if err:
+                reject("BAD_PROBABILITY", err)
+                continue
+            low = float(prob["low"])
+            side["probability"] = {
+                "low": low,
+                "point": prob.get("point"),
+                "high": float(prob["high"]),
+                "tier": "HISTORICAL_ESTIMATE",
+                "calibrated": False,
+            }
+            side["margin_low_vs_all_in"] = round(low - float(side["all_in"]), 6)
+            side["price_screen"] = "LOWER_BOUND_CLEARS_BREAKEVEN" if low > float(side["all_in"]) else "DOES_NOT_CLEAR"
+            side["skill_label"] = e.get("skill_label")
+            side["reference_n"] = e.get("reference_n")
+            if status == DERIVED_ESTIMATE:
+                side["bet_up_to"] = pricing.bet_up_to_price(low, str(side["ticker"]).split("-")[0])
+            else:
+                side["bet_up_to_withheld"] = e.get("bet_up_to_withheld") or "SHAPE_ONLY"
+        side["status"] = status
+        side["evaluation_source"] = SRC_DERIVED
+        side["reason"] = reason.strip()
     return defects
 
 
@@ -382,17 +487,30 @@ def verify(
 
 
 def classify(sides: list[dict[str, Any]], defects: list[Defect]) -> dict[str, Any]:
-    """The only place a verdict is decided. ``evaluation_complete`` is True only for VERDICT_COMPLETE."""
+    """The only place a verdict is decided. ``evaluation_complete`` is True only for VERDICT_COMPLETE.
+
+    COMPLETE requires EVERY priceable side to be an ANALYST evaluation (pass or candidate) carrying a stated probability
+    range. Generated historical estimates, shape-only references and insufficient-evidence flags are honest
+    dispositions,
+    but they are never analyst evaluation, so they can reach at most COMPLETE_WITH_EVIDENCE_GAPS.
+    """
     c = Counter(s["status"] for s in sides)
     structural = [d for d in defects if d.severity == STRUCTURAL]
-    disposed = [s for s in sides if s["status"] in ANALYST_STATUSES]
-    without_prob = [s for s in disposed if s["status"] != INSUFFICIENT_EVIDENCE and s["probability"] is None]
+    analyst = [s for s in sides if s["evaluation_source"] == SRC_ANALYST]
+    without_prob = [s for s in analyst if s["status"] != INSUFFICIENT_EVIDENCE and s["probability"] is None]
+    priceable = [s for s in sides if s["status"] != UNPRICEABLE]
+    all_analyst_with_prob = all(
+        s["evaluation_source"] == SRC_ANALYST
+        and s["status"] in (EVALUATED_PASS, EVALUATED_CANDIDATE)
+        and s["probability"] is not None
+        for s in priceable
+    )
     if structural or c[NOT_EVALUATED] > 0:
         verdict = VERDICT_INCOMPLETE
-    elif c[INSUFFICIENT_EVIDENCE] > 0 or without_prob:
-        verdict = VERDICT_GAPS
-    else:
+    elif all_analyst_with_prob:
         verdict = VERDICT_COMPLETE
+    else:
+        verdict = VERDICT_GAPS
     return {
         "verdict": verdict,
         "evaluation_complete": verdict == VERDICT_COMPLETE,
@@ -516,6 +634,7 @@ def build_report(
     *,
     history: dict[str, Any] | None = None,
     as_of: str | None = None,
+    derived_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     n_contracts = sum(len(v) for v in inv.contracts.values())
     verdict = classify(sides, defects)
@@ -530,9 +649,10 @@ def build_report(
             "sides": len(rows),
             **{k.lower(): v for k, v in fc.items()},
             "evaluated": fc[EVALUATED_PASS] + fc[EVALUATED_CANDIDATE],
+            "analyst_evaluated": sum(1 for s in rows if s["evaluation_source"] == SRC_ANALYST),
             "with_probability": sum(1 for s in rows if s["probability"] is not None),
             "pct_priceable_sides_disposed": _pct(
-                fc[EVALUATED_PASS] + fc[EVALUATED_CANDIDATE] + fc[INSUFFICIENT_EVIDENCE],
+                len(rows) - fc[UNPRICEABLE] - fc[NOT_EVALUATED],
                 len(rows) - fc[UNPRICEABLE],
             ),
             "packet_family_coverage": sorted({s["family_coverage"] for s in rows}),
@@ -568,7 +688,13 @@ def build_report(
             "status_counts": counts,
             "priceable_sides": len(sides) - counts[UNPRICEABLE],
             "evaluated_sides": counts[EVALUATED_PASS] + counts[EVALUATED_CANDIDATE],
+            "analyst_evaluated_sides": sum(1 for s in sides if s["evaluation_source"] == SRC_ANALYST),
+            "derived_estimate_sides": counts[DERIVED_ESTIMATE],
+            "shape_only_reference_sides": counts[SHAPE_ONLY_REFERENCE],
             "insufficient_evidence_sides": counts[INSUFFICIENT_EVIDENCE],
+            "insufficient_evidence_by_source": dict(
+                Counter(s["evaluation_source"] for s in sides if s["status"] == INSUFFICIENT_EVIDENCE)
+            ),
             "not_evaluated_sides": counts[NOT_EVALUATED],
             "unpriceable_sides": counts[UNPRICEABLE],
             "sides_with_stated_probability": sum(1 for s in sides if s["probability"] is not None),
@@ -580,6 +706,9 @@ def build_report(
         "rejection_reasons": dict(sorted(rejected.items(), key=lambda kv: -kv[1])),
         "missing_evidence_named_by_analyst": dict(sorted(missing_named.items(), key=lambda kv: -kv[1])),
         "alternate_expressions": _alternates(sides),
+        "derived_leads_for_analyst_review": _derived_leads(sides),
+        "direction_group_comparison": _direction_groups(sides),
+        "derived_context": derived_context,
         "history_by_family": history,
         "defects": [d.as_dict() for d in defects],
         "family_mix_of_candidates": dict(Counter(s["family"] for s in candidates)),
@@ -589,6 +718,120 @@ def build_report(
             "Nothing is ranked by attractiveness; candidates are listed by kickoff then ticker. No family is favoured "
             "or excluded and no diversification is forced.",
         ],
+    }
+
+
+def _view_of(s: dict[str, Any]) -> str | None:
+    """The direction of the game outcome a side needs, so the same view across families/periods can be compared."""
+    kind, yes, cs = s["kind"], s["side"] == "YES", s["contract_side"]
+    other = {"home": "away", "away": "home"}.get(cs or "")
+    if kind in ("win", "margin_over"):
+        if s["contract_outcome"] == "tie" or cs is None:
+            return None
+        return f"{(cs if yes else other).upper()}_STRONGER"
+    if kind == "total_over":
+        return "HIGH_SCORING" if yes else "LOW_SCORING"
+    if kind == "team_points_over" and cs:
+        return f"{cs.upper()}_{'HIGH' if yes else 'LOW'}"
+    return None
+
+
+def _derived_leads(sides: list[dict[str, Any]]) -> dict[str, Any]:
+    """Generated DERIVED_ESTIMATE sides whose LOWER bound clears fee-inclusive break-even: a queue for analyst review.
+
+    Not candidates and not recommendations: a candidate needs an analyst. Listed by game then ticker, not ranked.
+    """
+    leads = [
+        s for s in sides if s["status"] == DERIVED_ESTIMATE and s["price_screen"] == "LOWER_BOUND_CLEARS_BREAKEVEN"
+    ]
+    leads.sort(key=lambda s: (str(s["kickoff"]), s["game_key"], s["ticker"], s["side"]))
+    return {
+        "count": len(leads),
+        "by_family": dict(Counter(s["family"] for s in leads)),
+        "by_side": dict(Counter(s["side"] for s in leads)),
+        "rows": [_candidate_row(s) | {"skill_label": s["skill_label"], "reference_n": s["reference_n"]} for s in leads],
+        "note": "Research leads only: uncalibrated historical estimates, not validated EV and not approvals.",
+    }
+
+
+def _direction_groups(sides: list[dict[str, Any]], rows_per_group: int = 5) -> dict[str, Any]:
+    """Per game and direction, every family/period expressing it, compared on fee-inclusive headroom.
+
+    Only groups that contain at least one side whose lower bound clears break-even are listed. ``cheapest`` is the
+    expression with the largest (lower bound - all-in) among sides that carry a Bet Up To: arithmetic, not a pick.
+    """
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for s in sides:
+        if s["probability"] is None or s["status"] == UNPRICEABLE:
+            continue
+        view = _view_of(s)
+        if view:
+            groups[(s["game_key"], view)].append(s)
+    out = []
+    family_mix: Counter[str] = Counter()
+    for (gk, view), rows in sorted(groups.items()):
+        clearing = [r for r in rows if (r["margin_low_vs_all_in"] or -1) > 0]
+        if not clearing:
+            continue
+        rows.sort(key=lambda r: -(r["margin_low_vs_all_in"] or -1))
+        best = next((r for r in rows if r["bet_up_to"] is not None and (r["margin_low_vs_all_in"] or -1) > 0), None)
+        if best:
+            family_mix[best["family"]] += 1
+        out.append(
+            {
+                "game_key": gk,
+                "direction": view,
+                "expressions_with_estimates": len(rows),
+                "expressions_clearing_breakeven_at_lower_bound": len(clearing),
+                "families_clearing": sorted({r["family"] for r in clearing}),
+                "cheapest": None
+                if best is None
+                else {
+                    k: best[k]
+                    for k in (
+                        "ticker",
+                        "family",
+                        "period",
+                        "line",
+                        "side",
+                        "ask",
+                        "all_in",
+                        "bet_up_to",
+                        "margin_low_vs_all_in",
+                        "status",
+                    )
+                },
+                "top_rows": [
+                    {
+                        k: r[k]
+                        for k in (
+                            "ticker",
+                            "family",
+                            "period",
+                            "line",
+                            "side",
+                            "ask",
+                            "all_in",
+                            "status",
+                            "bet_up_to",
+                            "margin_low_vs_all_in",
+                        )
+                    }
+                    | {
+                        "low": r["probability"]["low"],
+                        "point": r["probability"]["point"],
+                        "high": r["probability"]["high"],
+                    }
+                    for r in rows[:rows_per_group]
+                ],
+            }
+        )
+    return {
+        "groups_with_a_clearing_expression": len(out),
+        "cheapest_expression_family_mix": dict(family_mix),
+        "groups": out,
+        "note": "Same-direction comparison across families and periods (moneyline, spread, totals, team totals, halves, "  # noqa: E501
+        "quarters). It shows headroom arithmetic and picks nothing; no family is favoured or forced.",
     }
 
 
@@ -701,6 +944,12 @@ def verify_report(report: dict[str, Any]) -> list[str]:
         problems.append("evaluation_complete is true but verdict is not COMPLETE")
     if v.get("evaluation_complete") and (sc.get(INSUFFICIENT_EVIDENCE, 0) or v.get("evaluated_without_probability")):
         problems.append("evaluation_complete is true while evidence gaps remain")
+    if v.get("evaluation_complete") and (t.get("derived_estimate_sides", 0) or t.get("shape_only_reference_sides", 0)):
+        problems.append(
+            "evaluation_complete is true while derived or shape-only estimates stand in for analyst evaluation"
+        )
+    if t.get("analyst_evaluated_sides", 0) > t.get("sides_recorded", 0):
+        problems.append("analyst_evaluated_sides exceeds sides_recorded")
     return problems
 
 
@@ -711,7 +960,12 @@ def render_markdown(report: dict[str, Any]) -> str:
     if v["verdict"] == VERDICT_COMPLETE:
         head = "COMPLETE: every side has a disposition and a stated probability range."
     elif v["verdict"] == VERDICT_GAPS:
-        head = "COMPLETE WITH EVIDENCE GAPS: every side has a disposition, but some lack evidence or a probability."
+        head = (
+            "EVERY SIDE HAS A DISPOSITION, BUT NOT EVERY SIDE IS ANALYST-EVALUATED: "
+            f"{t['analyst_evaluated_sides']:,} analyst-evaluated, {t['derived_estimate_sides']:,} derived historical "
+            f"estimates, {t['shape_only_reference_sides']:,} shape-only references, "
+            f"{t['insufficient_evidence_sides']:,} insufficient evidence."
+        )
     else:
         head = (
             f"NOT A COMPLETE EVALUATION. {t['not_evaluated_sides']:,} of {t['priceable_sides']:,} priceable sides have "
@@ -741,21 +995,23 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines.append(f"| {k} | {sc[k]:,} |")
     lines += [
         "",
-        f"Sides with an analyst-stated probability range: **{t['sides_with_stated_probability']:,}**. "
-        f"Evaluated: **{t['evaluated_sides']:,}**; insufficient evidence: **{t['insufficient_evidence_sides']:,}**; "
-        f"unpriceable: **{t['unpriceable_sides']:,}**; not evaluated: **{t['not_evaluated_sides']:,}**.",
+        f"Sides with any stated probability range: **{t['sides_with_stated_probability']:,}** "
+        f"(analyst-evaluated: **{t['analyst_evaluated_sides']:,}**; generated historical estimates are NOT analyst "
+        f"evaluation). Insufficient evidence: **{t['insufficient_evidence_sides']:,}**; "
+        f"unpriceable: **{t['unpriceable_sides']:,}**; genuinely unexamined: **{t['not_evaluated_sides']:,}**.",
         "",
         "## Coverage by family",
         "",
-        "| family | contracts | sides | evaluated | insufficient | not evaluated | unpriceable | with probability "
-        "| % priceable disposed |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| family | contracts | sides | analyst-evaluated | derived | shape-only | insufficient | not evaluated "
+        "| unpriceable | % priceable disposed |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for name, f in sorted(report["coverage_by_family"].items(), key=lambda kv: -kv[1]["sides"]):
         pct = "n/a" if f["pct_priceable_sides_disposed"] is None else f"{f['pct_priceable_sides_disposed']}%"
         lines.append(
-            f"| {name} | {f['contracts']:,} | {f['sides']:,} | {f['evaluated']:,} | {f['insufficient_evidence']:,} | "
-            f"{f['not_evaluated']:,} | {f['unpriceable']:,} | {f['with_probability']:,} | {pct} |"
+            f"| {name} | {f['contracts']:,} | {f['sides']:,} | {f['analyst_evaluated']:,} | "
+            f"{f['derived_estimate']:,} | {f['shape_only_reference']:,} | {f['insufficient_evidence']:,} | "
+            f"{f['not_evaluated']:,} | {f['unpriceable']:,} | {pct} |"
         )
     lines += ["", "## Why sides are unpriceable", ""]
     for k, n in report["unpriceable_by_reason"].items():
@@ -777,6 +1033,51 @@ def render_markdown(report: dict[str, Any]) -> str:
             )
     else:
         lines.append("None on record. (That is not a finding that none exist: see the status counts above.)")
+    leads = report.get("derived_leads_for_analyst_review") or {}
+    lines += ["", "## Derived leads for analyst review (generated, NOT candidates or recommendations)", ""]
+    if leads.get("count"):
+        lines.append(
+            f"{leads['count']:,} DERIVED_ESTIMATE sides have a historical lower bound above fee-inclusive break-even at "  # noqa: E501
+            "the captured ask. They are research leads from an uncalibrated reference class, not validated EV."
+        )
+        lines += ["", "| family | leads |", "|---|---:|"]
+        for fam_name, n in sorted(leads["by_family"].items(), key=lambda kv: -kv[1]):
+            lines.append(f"| {fam_name} | {n:,} |")
+    else:
+        lines.append("None.")
+    dg = report.get("direction_group_comparison") or {}
+    lines += ["", "## Same-direction expression comparison (arithmetic, picks nothing)", ""]
+    lines.append(
+        f"{dg.get('groups_with_a_clearing_expression', 0):,} game/direction groups contain at least one expression whose "  # noqa: E501
+        "lower bound clears break-even. Cheapest-expression family mix (largest lower-bound headroom): "
+        f"{dg.get('cheapest_expression_family_mix') or 'none'}. Full rows are in the JSON report."
+    )
+    ctx = report.get("derived_context")
+    if ctx:
+        lines += ["", "## Derived-estimate method and matchup uncertainty", ""]
+        lines.append(
+            f"Skill test (walk-forward from {ctx['skill']['test_from']}; {ctx['skill']['not_an_edge_claim']}):"
+        )
+        lines += [
+            "",
+            "| quantity|period | label | games | Brier gain vs league frequency | 95% CI |",
+            "|---|---|---:|---:|---|",
+        ]
+        for k, v in sorted(ctx["skill"]["keys"].items()):
+            lines.append(
+                f"| {k} | {v['label']} | {v.get('n_games')} | {v.get('brier_gain_vs_league_frequency')} | {v.get('ci95')} |"  # noqa: E501
+            )
+        lines += ["", f"Widening policy (uncalibrated, widening only): `{ctx['policy']}`"]
+        lv = Counter()
+        for g in ctx["games"]:
+            qa = g.get("qb_assessment")
+            if qa:
+                lv[("home", qa["home"]["level"])] += 1
+                lv[("away", qa["away"]["level"])] += 1
+        lines += [
+            "",
+            f"Matchup QB/absence uncertainty levels across teams with a reference class: {dict(sorted(lv.items()))}",
+        ]
     lines += ["", "## Why markets were rejected (analyst passes, by reason code)", ""]
     if report["rejection_reasons"]:
         for k, n in report["rejection_reasons"].items():
@@ -784,7 +1085,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     else:
         lines.append("No analyst passes are on record.")
     if report["missing_evidence_named_by_analyst"]:
-        lines += ["", "## Missing evidence named by the analyst", ""]
+        lines += ["", "## Missing evidence named (by the generator or an analyst)", ""]
         for k, n in report["missing_evidence_named_by_analyst"].items():
             lines.append(f"* {k}: {n:,}")
     alt = report["alternate_expressions"]

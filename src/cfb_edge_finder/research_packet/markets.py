@@ -39,7 +39,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
             "scripts",
         ],
         "note": "likely winner, realistic upset pathways: use the dominant / competitive / upset script set in "
-            "`game_script`.",
+        "`game_script`.",
     },
     "game_spread": {
         "coverage": FULL,
@@ -52,7 +52,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
             "game_script",
         ],
         "note": "expected margin, control, mismatch and backdoor-cover risk (the margin distribution's width is the "
-            "backdoor risk). Spread rungs are one ladder: P is monotone in the line.",
+        "backdoor risk). Spread rungs are one ladder: P is monotone in the line.",
     },
     "game_total": {
         "coverage": FULL,
@@ -65,8 +65,8 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
             "environment",
         ],
         "note": "projected possessions x scoring efficiency, explosive plays, defensive matchups; weather and tempo "
-            "shift "
-            "the whole ladder.",
+        "shift "
+        "the whole ladder.",
     },
     "team_total": {
         "coverage": FULL,
@@ -88,8 +88,8 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
             "football.pace",
         ],
         "note": "first-half history is conditional on the full-game baseline; team first-half scoring splits are raw "
-            "(unadjusted) and opening scripts are not captured, so early-game tendencies come from those splits plus "
-            "early-down success rate and neutral pass rate.",
+        "(unadjusted) and opening scripts are not captured, so early-game tendencies come from those splits plus "
+        "early-down success rate and neutral pass rate.",
         "gaps": [
             "team first-half splits are raw and unadjusted (football.period_splits_raw)",
             "opening-drive tendencies are not captured",
@@ -105,7 +105,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         ],
         "gaps": [
             "team first-half splits are raw and unadjusted (football.period_splits_raw); opening-drive tendencies "
-                "are not captured"
+            "are not captured"
         ],
     },
     "first_half_total": {
@@ -114,7 +114,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["distributions.comparables.first_half.p_total_greater_than", "football.pace", "football.baseline"],
         "gaps": [
             "team first-half splits are raw and unadjusted (football.period_splits_raw); opening-drive tendencies "
-                "are not captured"
+            "are not captured"
         ],
     },
     "first_half_team_total": {
@@ -123,7 +123,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["distributions.comparables.first_half", "football.matchup", "availability.qb"],
         "gaps": [
             "team first-half splits are raw and unadjusted (football.period_splits_raw); opening-drive tendencies "
-                "are not captured"
+            "are not captured"
         ],
     },
     "second_half_moneyline": {
@@ -177,8 +177,8 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "estimate": "P(winner and margin band)",
         "inputs": ["distributions.comparables.p_home_margin_greater_than", "football.matchup", "game_script"],
         "note": "a band is the difference of two spread-ladder probabilities; price it from the margin distribution, "
-            "then "
-            "check the bands sum to the winner probability.",
+        "then "
+        "check the bands sum to the winner probability.",
     },
     "overtime": {
         "coverage": PARTIAL,
@@ -186,7 +186,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["distributions.comparables.actual_home_margin (mass near zero)", "football.baseline"],
         "gaps": [
             "overtime frequency among comparables is small-n; regulation-tie probability is not modelled by the "
-                "repository"
+            "repository"
         ],
     },
     "touchdown_scorer": {
@@ -203,7 +203,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["football.matchup (passing / rushing / finishing)", "football.baseline", "availability.qb"],
         "gaps": [
             "team stat counts beyond points are in the log as box totals only; no historical distribution of that "
-                "stat is conditioned on the baseline"
+            "stat is conditioned on the baseline"
         ],
     },
     "game_stat_prop": {
@@ -218,7 +218,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["availability", "football.qb", "roster"],
         "gaps": [
             "the repository has no player-level usage, target share, carry share or matchup data; "
-                "individual-player markets need external research"
+            "individual-player markets need external research"
         ],
     },
     "unknown": {
@@ -227,7 +227,7 @@ FAMILY_GUIDE: dict[str, dict[str, Any]] = {
         "inputs": ["event rules text"],
         "gaps": [
             "unlabelled family: classify from rules_primary before pricing (e.g. half/full-game parlays are "
-                "conjunctions: price the joint outcome, not the legs independently)"
+            "conjunctions: price the joint outcome, not the legs independently)"
         ],
     },
 }
@@ -430,7 +430,7 @@ def build_markets(
         lad["tickers"] = [lad["tickers"][i] for i in order]
         lad["monotone_rule"] = (
             "YES probability is non-increasing as the line rises; a price that violates it is a mispricing or a "
-                "stale quote"
+            "stale quote"
         )
 
     guide = {f: {**FAMILY_GUIDE.get(f, DEFAULT_GUIDE), "contracts": n} for f, n in sorted(families.items())}
@@ -446,7 +446,7 @@ def build_markets(
             "rule": (
                 "every price below is a capture from the catalog collector, not a live order-book quote. Compare "
                 "`game_fingerprint` with `data/live/execution/games/<game_key>/quotes.json`: if they differ, the "
-                    "quotes file is "
+                "quotes file is "
                 "newer and wins. Confirm any price on Kalshi before acting."
             ),
         },
@@ -455,20 +455,20 @@ def build_markets(
             "buy_YES": "pay yes_ask; size is yes.ask_size",
             "buy_NO": "pay no_ask (= 1 - yes_bid, NEVER 1 - yes_ask); size is no.ask_size (the YES bid book)",
             "all_in_per_contract": "ask + the ORDER's taker fee / contracts, for a one-unit order; fee = "
-                "ceil_to_cent(multiplier x 0.07 x "
-                "contracts x P x (1-P))",
+            "ceil_to_cent(multiplier x 0.07 x "
+            "contracts x P x (1-P))",
             "fee_excludes": ["rounding_fee", "rebate", "fee_accumulator", "user_balance_precision"],
             "break_even_probability": "equals all_in: the probability that the side you BUY wins at which expected "
-                "value is zero",
+            "value is zero",
             "contract_fields": {
                 "yes/no.ask": "price to BUY that side (NO uses the NO ask)",
                 "yes/no.ask_size": "contracts quoted at that ask at capture (NO size is the YES bid book)",
                 "yes/no.exec": "positive quoted size on that side at capture (NOT live-verified)",
                 "yes/no.all_in": "ask + one-unit order fee spread over its contracts = break-even probability for "
-                    "that side",
+                "that side",
                 "ref_freq": "share of n comparable past games in which the YES outcome occurred: descriptive "
-                    "reference class, "
-                    "NOT a fair probability",
+                "reference class, "
+                "NOT a fair probability",
                 "upd": "when Kalshi last changed the contract; a thin ladder rung can be days old",
             },
         },
@@ -478,8 +478,8 @@ def build_markets(
             "away": {"ticker_code": codes.get("away"), "team": (team_names or {}).get("away")},
             "orientation_swapped_vs_kalshi_key": orientation_swapped,
             "rule": "`side` on a contract is the FOOTBALL game's home/away (matches football.* in packet.json); "
-                "verify the "
-                "code-to-team pairing here",
+            "verify the "
+            "code-to-team pairing here",
         },
         "families": guide,
         "thesis_groups": THESIS_GROUPS,
