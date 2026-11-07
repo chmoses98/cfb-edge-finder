@@ -20,8 +20,8 @@ from datetime import datetime
 from typing import Any
 
 from cfb_edge_finder.modeling.forbidden_features import forbidden_in
-from cfb_edge_finder.scripting.espn import FBS_CONFERENCE_IDS
 from cfb_edge_finder.scripting.adjust import LeagueFit, rank_in_universe
+from cfb_edge_finder.scripting.espn import FBS_CONFERENCE_IDS
 from cfb_edge_finder.scripting.gamelog import TeamGame, before, parse_utc
 from cfb_edge_finder.scripting.metrics import METRICS
 
@@ -112,7 +112,10 @@ def matchup_table(league: LeagueFit, home_id: str, away_id: str) -> list[dict[st
             if mid in seen or mid in EXCLUDED_METRIC_IDS:
                 continue
             seen.add(mid)
-            for off_side, off_id, def_side, def_id in (("away", away_id, "home", home_id), ("home", home_id, "away", away_id)):
+            for off_side, off_id, def_side, def_id in (
+                ("away", away_id, "home", home_id),
+                ("home", home_id, "away", away_id),
+            ):
                 o = metric_row(league, mid, off_id, "offense")
                 d = metric_row(league, mid, def_id, "defense")
                 if o is None or d is None:
@@ -208,12 +211,18 @@ def _game_line(row: TeamGame, league: LeagueFit, ranks: dict[str, tuple[int, flo
         "opponent_defense_rank_points": def_rank,
         "opponent_adjusted_ppg_scored": None if opp_off is None else _r(opp_off.adjusted, 2),
         "opponent_adjusted_ppg_allowed": None if opp_def is None else _r(opp_def.adjusted, 2),
-        "points_vs_adjusted_expectation": None if expected is None or row.points_for is None else round(row.points_for - expected, 1),
+        "points_vs_adjusted_expectation": None
+        if expected is None or row.points_for is None
+        else round(row.points_for - expected, 1),
         "plays": box.get("plays"),
         "yards_per_play": _rate(box.get("total_yards"), box.get("plays")),
         "success_rate": _rate(pbp.get("success_plays"), pbp.get("scrim_plays")),
-        "explosive_rate": _rate((pbp.get("explosive_rush") or 0) + (pbp.get("explosive_pass") or 0) if pbp else None, pbp.get("scrim_plays")),
-        "third_down": None if not box.get("third_att") else f"{int(box.get('third_conv') or 0)}/{int(box['third_att'])}",
+        "explosive_rate": _rate(
+            (pbp.get("explosive_rush") or 0) + (pbp.get("explosive_pass") or 0) if pbp else None, pbp.get("scrim_plays")
+        ),
+        "third_down": None
+        if not box.get("third_att")
+        else f"{int(box.get('third_conv') or 0)}/{int(box['third_att'])}",
         "turnovers": box.get("turnovers"),
         "sacks_taken": pbp.get("sacks_taken"),
         "def_sacks": box.get("def_sacks"),
@@ -233,14 +242,20 @@ def _tier(rank: int | None, universe: int) -> str | None:
 
 
 def team_schedule(
-    history: list[TeamGame], team_id: str, league: LeagueFit, ranks: dict[str, tuple[int, float]], upcoming_opponent_id: str
+    history: list[TeamGame],
+    team_id: str,
+    league: LeagueFit,
+    ranks: dict[str, tuple[int, float]],
+    upcoming_opponent_id: str,
 ) -> dict[str, Any]:
     """Every completed game of one team with opponent quality, plus strength-of-schedule and inflation diagnostics."""
     games = sorted((r for r in history if r.team_id == team_id), key=lambda r: (r.kickoff_utc, r.game_id))
     lines = [_game_line(r, league, ranks) for r in games]
     universe = len(ranks)
     fbs_lines = [g for g in lines if g["opponent_net_rating_rank"] is not None]
-    avg_opp_rank = round(sum(g["opponent_net_rating_rank"] for g in fbs_lines) / len(fbs_lines), 1) if fbs_lines else None
+    avg_opp_rank = (
+        round(sum(g["opponent_net_rating_rank"] for g in fbs_lines) / len(fbs_lines), 1) if fbs_lines else None
+    )
     avg_opp_off = [g["opponent_offense_rank_points"] for g in lines if g["opponent_offense_rank_points"]]
     avg_opp_def = [g["opponent_defense_rank_points"] for g in lines if g["opponent_defense_rank_points"]]
     non_fbs = sum(1 for g in lines if g["opponent_division"] != "fbs")
@@ -248,7 +263,9 @@ def team_schedule(
     strong = sum(1 for g in fbs_lines if universe and g["opponent_net_rating_rank"] <= universe / 3)
     upcoming = ranks.get(upcoming_opponent_id)
     upcoming_tier = _tier(upcoming[0], universe) if upcoming else None
-    similar = [g for g in fbs_lines if upcoming_tier and _tier(g["opponent_net_rating_rank"], universe) == upcoming_tier]
+    similar = [
+        g for g in fbs_lines if upcoming_tier and _tier(g["opponent_net_rating_rank"], universe) == upcoming_tier
+    ]
 
     def avg(vals: list[float | None]) -> float | None:
         vals = [v for v in vals if v is not None]
@@ -258,7 +275,9 @@ def team_schedule(
     sos_flag = None
     if lines:
         if (non_fbs + weak) / len(lines) >= 0.5:
-            sos_flag = "SCHEDULE_SOFT: at least half of the games were against FCS/non-FBS or bottom-third FBS opponents"
+            sos_flag = (
+                "SCHEDULE_SOFT: at least half of the games were against FCS/non-FBS or bottom-third FBS opponents"
+            )
         elif strong / len(lines) >= 0.5:
             sos_flag = "SCHEDULE_HARD: at least half of the games were against top-third FBS opponents"
     return {
@@ -271,8 +290,12 @@ def team_schedule(
             "games": len(lines),
             "fbs_universe": universe,
             "avg_opponent_net_rating_rank": avg_opp_rank,
-            "avg_opponent_offense_rank_points": None if not avg_opp_off else round(sum(avg_opp_off) / len(avg_opp_off), 1),
-            "avg_opponent_defense_rank_points": None if not avg_opp_def else round(sum(avg_opp_def) / len(avg_opp_def), 1),
+            "avg_opponent_offense_rank_points": None
+            if not avg_opp_off
+            else round(sum(avg_opp_off) / len(avg_opp_off), 1),
+            "avg_opponent_defense_rank_points": None
+            if not avg_opp_def
+            else round(sum(avg_opp_def) / len(avg_opp_def), 1),
             "games_vs_non_fbs": non_fbs,
             "games_vs_bottom_third_fbs": weak,
             "games_vs_top_third_fbs": strong,
@@ -280,10 +303,23 @@ def team_schedule(
         },
         "against_similar_opponents": {
             "evidence_tier": VERIFIED,
-            "definition": f"games against FBS opponents in the same adjusted-net-rating tier as the upcoming opponent ({upcoming_tier})",
+            "definition": f"games against FBS opponents in the same adjusted-net-rating tier as the upcoming opponent "
+                f"({upcoming_tier})",
             "upcoming_opponent_tier": upcoming_tier,
             "games": [
-                {k: g[k] for k in ("week", "opponent", "site", "points_for", "points_against", "result", "opponent_net_rating_rank", "success_rate")}
+                {
+                    k: g[k]
+                    for k in (
+                        "week",
+                        "opponent",
+                        "site",
+                        "points_for",
+                        "points_against",
+                        "result",
+                        "opponent_net_rating_rank",
+                        "success_rate",
+                    )
+                }
                 for g in similar
             ],
             "avg_points_for": avg([g["points_for"] for g in similar]),
@@ -297,8 +333,8 @@ def team_schedule(
 def results_from_schedule(events: list[dict[str, Any]], team_id: str, before_utc: str) -> dict[str, Any]:
     """Exact results for a team the game log holds NO box scores for (both sides outside the FBS).
 
-    The scoreboard sweep covers FCS events, so final scores and opponents exist; box scores, play logs and therefore every
-    opponent-adjusted metric do not. This is a results list and nothing more, and it says so."""
+    The scoreboard sweep covers FCS events, so final scores and opponents exist; box scores, play logs and therefore
+    every opponent-adjusted metric do not. This is a results list and nothing more, and it says so."""
     cutoff = parse_utc(before_utc)
     games: list[dict[str, Any]] = []
     for ev in sorted(events, key=lambda e: (e.get("date") or "", e.get("id") or "")):
@@ -336,7 +372,8 @@ def results_from_schedule(events: list[dict[str, Any]], team_id: str, before_utc
         "points_for_per_game": round(sum(g["points_for"] for g in games) / len(games), 1) if games else None,
         "points_against_per_game": round(sum(g["points_against"] for g in games) / len(games), 1) if games else None,
         "limits": (
-            "final scores only: the game log collects FBS-involved games, so there are no box scores, no play log and no "
+            "final scores only: the game log collects FBS-involved games, so there are no box scores, no play log "
+                "and no "
             "opponent-adjusted metrics for this team. Opponent quality is not measured; do not infer it from this list"
         ),
     }
@@ -358,10 +395,30 @@ def recent_form(schedule: dict[str, Any]) -> dict[str, Any]:
         "evidence_tier": ESTIMATE,
         "season_games": len(games),
         "last_games": len(last),
-        "season": {k: avg(games, k) for k in ("points_for", "points_against", "success_rate", "yards_per_play", "points_vs_adjusted_expectation")},
-        "last3": {k: avg(last, k) for k in ("points_for", "points_against", "success_rate", "yards_per_play", "points_vs_adjusted_expectation")},
+        "season": {
+            k: avg(games, k)
+            for k in (
+                "points_for",
+                "points_against",
+                "success_rate",
+                "yards_per_play",
+                "points_vs_adjusted_expectation",
+            )
+        },
+        "last3": {
+            k: avg(last, k)
+            for k in (
+                "points_for",
+                "points_against",
+                "success_rate",
+                "yards_per_play",
+                "points_vs_adjusted_expectation",
+            )
+        },
         "small_sample_warning": len(last) < 3 or len(games) < 6,
-        "caution": "three games is a small sample; weigh against the full-season opponent-adjusted profile, never instead of it",
+        "caution": "three games is a small sample; weigh against the full-season opponent-adjusted profile, never "
+            "instead of "
+            "it",
     }
 
 
@@ -396,8 +453,9 @@ def split_table(history: list[TeamGame], team_id: str) -> dict[str, Any]:
 def period_splits(history: list[TeamGame], team_id: str) -> dict[str, Any]:
     """Raw per-quarter / per-half scoring for and against, from the venue linescores captured in the log.
 
-    UNADJUSTED (the opponents differ game to game) and only over games whose linescore was captured and reconciled to the
-    final score: ``games`` says how many. Opening-drive tendencies are not captured and are not inferred from these."""
+    UNADJUSTED (the opponents differ game to game) and only over games whose linescore was captured and reconciled to
+    the final score: ``games`` says how many. Opening-drive tendencies are not captured and are not inferred from
+    these."""
     rows = [r for r in history if r.team_id == team_id and r.period_points and len(r.period_points) >= 4]
     index = {(r.game_id, r.team_id): r for r in history}
     usable = []
@@ -407,7 +465,13 @@ def period_splits(history: list[TeamGame], team_id: str) -> dict[str, Any]:
             continue
         usable.append((r.period_points, opp.period_points))
     if not usable:
-        return {"evidence_tier": VERIFIED, "adjusted": False, "games": 0, "status": "UNAVAILABLE", "reason": "no captured linescores for this team"}
+        return {
+            "evidence_tier": VERIFIED,
+            "adjusted": False,
+            "games": 0,
+            "status": "UNAVAILABLE",
+            "reason": "no captured linescores for this team",
+        }
     n = len(usable)
 
     def avg(vals: list[float]) -> float:
@@ -424,7 +488,8 @@ def period_splits(history: list[TeamGame], team_id: str) -> dict[str, Any]:
     ):
         pf = [pick(f) for f, _ in usable]
         pa = [pick(a) for _, a in usable]
-        out[label] = {"points_for": avg(pf), "points_against": avg(pa), "total": avg([x + y for x, y in zip(pf, pa)])}
+        totals = [x + y for x, y in zip(pf, pa, strict=True)]
+        out[label] = {"points_for": avg(pf), "points_against": avg(pa), "total": avg(totals)}
     first_half_for = sum(f[0] + f[1] for f, _ in usable)
     total_for = sum(sum(f[:4]) for f, _ in usable)
     out["share_of_own_regulation_points_in_first_half"] = round(first_half_for / total_for, 3) if total_for else None
@@ -476,7 +541,8 @@ def pace_environment(league: LeagueFit, home_id: str, away_id: str, history: lis
         "away": both_ways(away_id),
         "drives_per_game": {"home": h_drives, "away": a_drives, "games": {"home": hn, "away": an}},
         "expected_possessions_per_team": expected,
-        "expected_possessions_basis": "mean of the two teams' observed drives per game (raw); a pace-clash estimate, not a forecast",
+        "expected_possessions_basis": "mean of the two teams' observed drives per game (raw); a pace-clash estimate, "
+            "not a forecast",
     }
 
 
@@ -484,7 +550,13 @@ def passers_summary(history: list[TeamGame], team_id: str) -> dict[str, Any]:
     """The quarterback evidence the box scores carry. This is INFERENCE; no confirmed-starter source exists."""
     games = sorted((r for r in history if r.team_id == team_id), key=lambda r: (r.kickoff_utc, r.game_id))
     log = [
-        {"week": r.week, "opponent": r.opponent, "passer": r.primary_passer, "attempts": r.primary_passer_att, "kickoff_utc": r.kickoff_utc}
+        {
+            "week": r.week,
+            "opponent": r.opponent,
+            "passer": r.primary_passer,
+            "attempts": r.primary_passer_att,
+            "kickoff_utc": r.kickoff_utc,
+        }
         for r in games
     ]
     attempts: dict[str, float] = defaultdict(float)
@@ -500,7 +572,9 @@ def passers_summary(history: list[TeamGame], team_id: str) -> dict[str, Any]:
         "projected_starter": None if last is None else last["passer"],
         "projected_starter_basis": "primary passer (most attempts) in the team's most recent completed game",
         "confirmed_starter": None,
-        "confirmed_starter_status": "NOT_CONFIRMED: no keyless source publishes a confirmed CFB starting quarterback. Verify by web research and cite the source.",
+        "confirmed_starter_status": "NOT_CONFIRMED: no keyless source publishes a confirmed CFB starting quarterback. "
+            "Verify by web research "
+            "and cite the source.",
         "season_attempt_leader": leader,
         "season_attempts_by_passer": {k: v for k, v in sorted(attempts.items(), key=lambda kv: -kv[1])},
         "changed_in_last_3_games": changed,

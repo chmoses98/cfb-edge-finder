@@ -29,10 +29,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import script_engine as se  # noqa: E402  (identity + football-packet wiring shared with the Script Engine)
 
-from cfb_edge_finder.research_packet import assemble, espn_extras  # noqa: E402
+from cfb_edge_finder.research_packet import (  # noqa: E402
+    assemble,
+    espn_extras,
+    pricing,  # noqa: E402
+)
 from cfb_edge_finder.research_packet import history as hist  # noqa: E402
 from cfb_edge_finder.research_packet import markets as mk  # noqa: E402
-from cfb_edge_finder.research_packet import pricing  # noqa: E402
 from cfb_edge_finder.scripting.football import LeagueFitCache, build_content  # noqa: E402
 from cfb_edge_finder.scripting.gamelog import iso_utc, parse_utc  # noqa: E402
 
@@ -78,8 +81,10 @@ def load_json(path: Path, default: Any = None) -> Any:
     return json.loads(path.read_text()) if path.exists() else default
 
 
-def load_execution(catalog_dir: Path, row: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
-    """The game's quote parts, event shards (by event ticker) and manifest, exactly as the catalog workflow wrote them."""
+def load_execution(
+    catalog_dir: Path, row: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
+    """The game's quote parts, event shards (by event ticker) and manifest, as the catalog workflow wrote them."""
     quotes = [json.loads((ROOT / p).read_text()) for p in row["quote_files"]]
     manifest = json.loads((ROOT / row["manifest"]).read_text())
     shards: dict[str, dict[str, Any]] = {}
@@ -97,7 +102,15 @@ def split_markets(markets: dict[str, Any]) -> list[dict[str, Any]]:
         return [markets]
     contracts = markets["contracts"]
     header_bytes = len(_dump({**markets, "contracts": []}).encode())
-    small_header = len(_dump({"schema_version": markets["schema_version"], "game_key": markets["game_key"], "price_provenance": markets["price_provenance"]}).encode())
+    small_header = len(
+        _dump(
+            {
+                "schema_version": markets["schema_version"],
+                "game_key": markets["game_key"],
+                "price_provenance": markets["price_provenance"],
+            }
+        ).encode()
+    )
     chunks: list[list[dict[str, Any]]] = [[]]
     used = header_bytes
     for c in contracts:
@@ -144,7 +157,9 @@ def resolve_identity(se_mod: Any, entry: dict[str, Any], schedule: list[dict[str
     return request, event, check
 
 
-def refresh_cache(cache: dict[str, Any], key: str, fetch, max_age: timedelta, now: datetime, enabled: bool) -> dict[str, Any]:
+def refresh_cache(
+    cache: dict[str, Any], key: str, fetch, max_age: timedelta, now: datetime, enabled: bool
+) -> dict[str, Any]:
     cur = cache.get(key)
     if cur and cur.get("status") == "OBSERVED":
         seen = cur.get("observed_at")
@@ -174,8 +189,10 @@ def reference_tables(out_dir: Path, series_by_multiplier: dict[float, str], buil
         "schema_version": "cfb_bet_up_to_table/1.0.0",
         "unit_dollars": pricing.UNIT_DOLLARS,
         "meaning": (
-            "the highest whole-cent price at which a lower-bound probability (the probability that the side you BUY wins) still "
-            "covers the all-in cost of a one-unit order. Use YOUR lower bound. null = no price qualifies. required margin = 0"
+            "the highest whole-cent price at which a lower-bound probability (the probability that the side you "
+                "BUY wins) still "
+            "covers the all-in cost of a one-unit order. Use YOUR lower bound. null = no price qualifies. required "
+                "margin = 0"
         ),
         "tables_by_fee_multiplier": rows,
     }
@@ -191,7 +208,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--horizon-hours", type=float, default=168.0)
     ap.add_argument("--as-of", type=str, default=None)
     ap.add_argument("--game", action="append")
-    ap.add_argument("--markets-only", action="store_true", help="re-price markets.json from the current quotes; keep football files")
+    ap.add_argument(
+        "--markets-only", action="store_true", help="re-price markets.json from the current quotes; keep football files"
+    )
     ap.add_argument("--no-fetch", action="store_true", help="never touch the network; use cached ESPN lookups only")
     args = ap.parse_args(argv)
 
@@ -216,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
     entries = [
         g
         for g in sorted(index["games"], key=lambda g: (g["kickoff"], g["game_key"]))
-        if (not wanted or g["game_key"] in wanted) and (wanted or (now - timedelta(hours=1) <= parse_utc(g["kickoff"]) <= horizon))
+        if (not wanted or g["game_key"] in wanted)
+        and (wanted or (now - timedelta(hours=1) <= parse_utc(g["kickoff"]) <= horizon))
     ]
     cache = LeagueFitCache()
     rows_index: list[dict[str, Any]] = []
@@ -238,12 +258,19 @@ def main(argv: list[str] | None = None) -> int:
             stored = (load_json(gdir / "markets.json", {}).get("price_provenance") or {}).get("game_fingerprint")
             if stored and stored == entry.get("game_fingerprint"):
                 unchanged += 1
-                rows_index.append(_index_row(entry, old, _markets_stub(gdir), gdir, [{}] * max(1, len(list(gdir.glob("markets*.json"))))))
+                rows_index.append(
+                    _index_row(
+                        entry, old, _markets_stub(gdir), gdir, [{}] * max(1, len(list(gdir.glob("markets*.json"))))
+                    )
+                )
                 continue
             chosen_cached = None
             comp = load_json(gdir / "distributions.json", {}).get("reference_class") or {}
-            markets = mk.build_markets(game_key=key, quote_files=quotes, event_files=shards, capture=capture, reference_games=[])
-            # markets-only keeps the football packet; frequencies are re-derived from the full builder, so carry them over.
+            markets = mk.build_markets(
+                game_key=key, quote_files=quotes, event_files=shards, capture=capture, reference_games=[]
+            )
+            # markets-only keeps the football packet; frequencies are re-derived from the full builder, so carry them
+            # over.
             prev = {c["ticker"]: c.get("ref_freq") for c in _old_contracts(gdir)}
             for c in markets["contracts"]:
                 if prev.get(c["ticker"]):
@@ -271,10 +298,16 @@ def main(argv: list[str] | None = None) -> int:
             ident = packet.identity
             home = {"team_id": ident.home_id, "name": ident.home_name}
             away = {"team_id": ident.away_id, "name": ident.away_name}
-            extras = refresh_cache(extras_cache, ident.event_id, espn_extras.fetch_event_extras, EXTRAS_MAX_AGE, now, fetch)
+            extras = refresh_cache(
+                extras_cache, ident.event_id, espn_extras.fetch_event_extras, EXTRAS_MAX_AGE, now, fetch
+            )
             rosters = {
-                "home": refresh_cache(roster_cache, ident.home_id, espn_extras.fetch_roster, ROSTER_MAX_AGE, now, fetch),
-                "away": refresh_cache(roster_cache, ident.away_id, espn_extras.fetch_roster, ROSTER_MAX_AGE, now, fetch),
+                "home": refresh_cache(
+                    roster_cache, ident.home_id, espn_extras.fetch_roster, ROSTER_MAX_AGE, now, fetch
+                ),
+                "away": refresh_cache(
+                    roster_cache, ident.away_id, espn_extras.fetch_roster, ROSTER_MAX_AGE, now, fetch
+                ),
             }
             for side, team in (("home", home), ("away", away)):
                 a = availability.get(team["team_id"]) or {}
@@ -288,7 +321,8 @@ def main(argv: list[str] | None = None) -> int:
                     "named_entries": len(resolved),
                     "entries": resolved,
                     "quality_note": (
-                        "listed rows with no athlete/position/status are unresolved ESPN references: they prove something was listed, not who or why"
+                        "listed rows with no athlete/position/status are unresolved ESPN references: they prove "
+                            "something was listed, not who or why"
                         if items and not resolved
                         else None
                     ),
@@ -296,21 +330,40 @@ def main(argv: list[str] | None = None) -> int:
                 }
 
         reference_chosen: list[dict[str, Any]] = []
+        # LEAKAGE GUARD: only games that finished before this packet's data cutoff may sit in the reference class, and
+        # never
+        # the game itself. (For a live build this removes nothing; it protects any as-of build.)
+        cutoff_iso = (content or {}).get("football_data_cutoff")
+        game_refs = hist.eligible_reference(reference_games, cutoff_iso, (event or {}).get("id"))
         if content is not None:
             sb = content["matchup_profile"]["scoring_baseline"]
             if sb.get("home_margin") is not None and sb.get("total_points") is not None:
-                _, reference_chosen = hist.comparables(reference_games, sb["home_margin"], sb["total_points"])
+                _, reference_chosen = hist.comparables(game_refs, sb["home_margin"], sb["total_points"])
 
-        markets = mk.build_markets(game_key=key, quote_files=quotes, event_files=shards, capture=capture, reference_games=reference_chosen)
+        markets = mk.build_markets(
+            game_key=key,
+            quote_files=quotes,
+            event_files=shards,
+            capture=capture,
+            reference_games=reference_chosen,
+            orientation_swapped=bool(check.get("orientation_swapped")),
+            team_names={"home": (home or {}).get("name"), "away": (away or {}).get("name")},
+        )
         parts = split_markets(markets)
-        market_paths = [f"data/research_packets/games/{key}/" + ("markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json") for i in range(1, len(parts) + 1)]
+        market_paths = [
+            f"data/research_packets/games/{key}/"
+            + ("markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json")
+            for i in range(1, len(parts) + 1)
+        ]
         inputs = {
             "football_log_rows_fingerprint": (content or {}).get("inputs", {}).get("rows_fingerprint"),
             "football_log_fetched_at": manifest.get("fetched_at"),
             "availability_fingerprint": (content or {}).get("inputs", {}).get("availability_fingerprint"),
             "quotes_game_fingerprint": entry.get("game_fingerprint"),
             "quotes_captured_at": capture.get("captured_at"),
-            "history_games": len(reference_games),
+            "history_games": len(game_refs),
+            "history_through_kickoff_utc": max((g["kickoff_utc"] for g in game_refs), default=None),
+            "football_data_cutoff": cutoff_iso,
             "methodology_version": (content or {}).get("methodology_version"),
         }
         files = assemble.build_packet_files(
@@ -324,7 +377,7 @@ def main(argv: list[str] | None = None) -> int:
             extras=extras,
             rosters=rosters,
             availability=avail_view,
-            reference_games=reference_games,
+            reference_games=game_refs,
             unconditional_summary=unconditional,
             baseline_acc=baseline_acc,
             markets=parts[0] if len(parts) == 1 else {**markets, "contract_count": markets["contract_count"]},
@@ -367,14 +420,18 @@ def _old_contracts(gdir: Path) -> list[dict[str, Any]]:
 
 def _write_market_parts(gdir: Path, parts: list[dict[str, Any]], built_at: str) -> int:
     """Write the market parts (only the ones that changed) and drop stale ones. Returns the number written."""
-    names = ["markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json" for i in range(1, len(parts) + 1)]
+    names = [
+        "markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json" for i in range(1, len(parts) + 1)
+    ]
     for stale in gdir.glob("markets*.json"):
         if stale.name not in names:
             stale.unlink()
-    return sum(1 for name, body in zip(names, parts) if write_if_changed(gdir / name, body, built_at))
+    return sum(1 for name, body in zip(names, parts, strict=True) if write_if_changed(gdir / name, body, built_at))
 
 
-def _index_row(entry: dict[str, Any], packet: dict[str, Any], markets: dict[str, Any], gdir: Path, parts: list[dict[str, Any]]) -> dict[str, Any]:
+def _index_row(
+    entry: dict[str, Any], packet: dict[str, Any], markets: dict[str, Any], gdir: Path, parts: list[dict[str, Any]]
+) -> dict[str, Any]:
     dq = (packet or {}).get("data_quality") or {}
     key = entry["game_key"]
     return {
@@ -389,7 +446,11 @@ def _index_row(entry: dict[str, Any], packet: dict[str, Any], markets: dict[str,
             "team_profiles": f"data/research_packets/games/{key}/team_profiles.json",
             "schedules": f"data/research_packets/games/{key}/schedules.json",
             "distributions": f"data/research_packets/games/{key}/distributions.json",
-            "markets": [f"data/research_packets/games/{key}/" + ("markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json") for i in range(1, len(parts) + 1)],
+            "markets": [
+                f"data/research_packets/games/{key}/"
+                + ("markets.json" if i == 1 else f"markets.part{i:02d}of{len(parts):02d}.json")
+                for i in range(1, len(parts) + 1)
+            ],
             "quotes_live_source": (entry.get("quote_files") or [None])[0],
         },
         "contract_count": markets["contract_count"],
@@ -403,7 +464,15 @@ def _index_row(entry: dict[str, Any], packet: dict[str, Any], markets: dict[str,
     }
 
 
-def _write_indexes(out: Path, rows: list[dict[str, Any]], exec_index: dict[str, Any], manifest: dict[str, Any], args, built_at: str, wanted: set[str]) -> None:
+def _write_indexes(
+    out: Path,
+    rows: list[dict[str, Any]],
+    exec_index: dict[str, Any],
+    manifest: dict[str, Any],
+    args,
+    built_at: str,
+    wanted: set[str],
+) -> None:
     by_slate: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         by_slate.setdefault(r["slate_date"], []).append(r)
@@ -427,7 +496,14 @@ def _write_indexes(out: Path, rows: list[dict[str, Any]], exec_index: dict[str, 
         by_slate[date] = rs
         payload = {**header, "slate_date": date, "games": sorted(rs, key=lambda r: (r["kickoff"], r["game_key"]))}
         write_if_changed(path, payload, built_at)
-        slates.append({"slate_date": date, "path": f"data/research_packets/slates/{date}.json", "games": len(rs), "windows": {w: sum(1 for r in rs if r["window"] == w) for w in ("early", "afternoon", "evening")}})
+        slates.append(
+            {
+                "slate_date": date,
+                "path": f"data/research_packets/slates/{date}.json",
+                "games": len(rs),
+                "windows": {w: sum(1 for r in rs if r["window"] == w) for w in ("early", "afternoon", "evening")},
+            }
+        )
     if wanted:  # a partial build never replaces the whole-slate index
         return
     write_if_changed(
@@ -440,11 +516,28 @@ def _write_indexes(out: Path, rows: list[dict[str, Any]], exec_index: dict[str, 
             "reading_order": [
                 "RUN_CFB.md",
                 "this index -> slates[].path -> games[] (kickoff, window, blocking_flags, file paths)",
-                "per game: packet.json, then schedules.json / team_profiles.json / distributions.json, then markets.json",
-                "re-read data/live/execution/games/<game_key>/quotes.json when its game_fingerprint differs from markets.json's",
+                "per game: packet.json, then schedules.json / team_profiles.json / distributions.json, then "
+                    "markets.json",
+                "re-read data/live/execution/games/<game_key>/quotes.json when its game_fingerprint differs from "
+                    "markets.json's",
             ],
             "games": [
-                {k: r[k] for k in ("game_key", "title", "kickoff", "kickoff_et", "slate_date", "window", "packet", "contract_count", "football_data_confidence", "blocking_flags", "flag_codes")}
+                {
+                    k: r[k]
+                    for k in (
+                        "game_key",
+                        "title",
+                        "kickoff",
+                        "kickoff_et",
+                        "slate_date",
+                        "window",
+                        "packet",
+                        "contract_count",
+                        "football_data_confidence",
+                        "blocking_flags",
+                        "flag_codes",
+                    )
+                }
                 for r in rows
             ],
         },

@@ -81,7 +81,9 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
             "wind_gust_mph": weather.get("gust"),
             "precipitation_probability_pct": weather.get("precipitation"),
             "condition": weather.get("conditionId"),
-            "caveat": "an ESPN/AccuWeather forecast for the game's location at publication time, not an observation; indoor venues ignore it",
+            "caveat": "an ESPN/AccuWeather forecast for the game's location at publication time, not an observation; "
+                "indoor "
+                "venues ignore it",
         }
     else:
         out["weather"] = {
@@ -93,14 +95,18 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
     try:
         out["espn_predictor"] = {
             "evidence_tier": "EXTERNAL_MODEL_REFERENCE",
-            "label": "ESPN's own matchup predictor: a third-party model, not a market and not this repository's baseline",
+            "label": "ESPN's own matchup predictor: a third-party model, not a market and not this repository's "
+                "baseline",
             "home_team_id": home.get("id"),
             "home_win_pct": float(home["gameProjection"]),
             "away_team_id": away.get("id"),
             "away_win_pct": float(away["gameProjection"]),
         }
     except (KeyError, TypeError, ValueError):
-        out["espn_predictor"] = {"status": "UNAVAILABLE", "reason": "the summary carried no predictor (ESPN drops it once a game starts)"}
+        out["espn_predictor"] = {
+            "status": "UNAVAILABLE",
+            "reason": "the summary carried no predictor (ESPN drops it once a game starts)",
+        }
     return out
 
 
@@ -120,7 +126,9 @@ def parse_roster(payload: dict[str, Any], *, observed_at: str) -> dict[str, Any]
         coach = {
             "name": " ".join(x for x in (c.get("firstName"), c.get("lastName")) if x) or None,
             "experience_years": c.get("experience"),
-            "caveat": "ESPN's `experience` is years of coaching experience as it reports them; it does not say whether the coach is new to THIS program",
+            "caveat": "ESPN's `experience` is years of coaching experience as it reports them; it does not say "
+                "whether the "
+                "coach is new to THIS program",
         }
     qbs: list[dict[str, Any]] = []
     flagged: list[dict[str, Any]] = []
@@ -145,7 +153,13 @@ def parse_roster(payload: dict[str, Any], *, observed_at: str) -> dict[str, Any]
                     {
                         **entry,
                         "injuries": [
-                            {"status": i.get("status"), "detail": (i.get("details") or {}).get("detail") or i.get("longComment") or i.get("shortComment"), "date": i.get("date")}
+                            {
+                                "status": i.get("status"),
+                                "detail": (i.get("details") or {}).get("detail")
+                                or i.get("longComment")
+                                or i.get("shortComment"),
+                                "date": i.get("date"),
+                            }
                             for i in injuries
                         ],
                         "group": group.get("position"),

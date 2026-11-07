@@ -37,7 +37,13 @@ def test_index_lists_every_slate_and_every_game_has_all_files(index, rows):
     assert index["contains_model_probabilities"] is False
     assert index["game_count"] == len(rows) >= 2
     for r in rows:
-        for rel in [r["packet"], r["files"]["team_profiles"], r["files"]["schedules"], r["files"]["distributions"], *r["files"]["markets"]]:
+        for rel in [
+            r["packet"],
+            r["files"]["team_profiles"],
+            r["files"]["schedules"],
+            r["files"]["distributions"],
+            *r["files"]["markets"],
+        ]:
             p = ROOT / rel
             assert p.exists(), rel
             assert p.stat().st_size <= MAX_BYTES, f"{rel} exceeds the connector-safe budget"
@@ -65,17 +71,32 @@ def test_every_game_gets_the_same_depth_of_analysis_regardless_of_slate_size(row
 @pytest.mark.parametrize("key", ["26NOV06UNMNEV", "26NOV06TCUARIZ"])
 def test_nov_6_test_games_carry_the_full_football_picture(key):
     base = f"data/research_packets/games/{key}"
-    packet, profiles, sched, dist = (load(f"{base}/{n}.json") for n in ("packet", "team_profiles", "schedules", "distributions"))
+    packet, profiles, sched, dist = (
+        load(f"{base}/{n}.json") for n in ("packet", "team_profiles", "schedules", "distributions")
+    )
     # opponent adjustment is genuine: adjusted values differ from raw and carry a standard error and a rank
     rows = packet["football"]["matchup_comparison"]
     assert len(rows) >= 30
-    differing = [r for r in rows if r["offense_adjusted"] is not None and r["offense_raw"] is not None and abs(r["offense_adjusted"] - r["offense_raw"]) > 1e-4]
+    differing = [
+        r
+        for r in rows
+        if r["offense_adjusted"] is not None
+        and r["offense_raw"] is not None
+        and abs(r["offense_adjusted"] - r["offense_raw"]) > 1e-4
+    ]
     assert len(differing) > len(rows) * 0.5
     for side in ("home", "away"):
         metrics = profiles["teams"][side]["metrics"]
         sr = metrics["efficiency"]["success_rate"]["offense"]
         assert sr["adjusted_available"] and sr["standard_error"] is not None and sr["rank"] and sr["games"] >= 3
-        assert {"passing", "rushing", "explosiveness", "pressure_and_protection", "finishing_red_zone", "pace_and_tendency"} <= set(metrics)
+        assert {
+            "passing",
+            "rushing",
+            "explosiveness",
+            "pressure_and_protection",
+            "finishing_red_zone",
+            "pace_and_tendency",
+        } <= set(metrics)
         # exact schedules with opponent quality
         games = sched["teams"][side]["games"]
         assert len(games) >= 5
@@ -96,7 +117,9 @@ def test_nov_6_test_games_carry_the_full_football_picture(key):
     assert dist["reference_class"]["first_half"]["games_with_linescores"] > 0
     assert dist["reference_class"]["closest_games"]
     flags = {f["code"] for f in packet["data_quality"]["missing_data_flags"]}
-    assert {"QB_NOT_CONFIRMED", "NO_STRUCTURED_INJURY_SOURCE", "EPA_UNAVAILABLE"} <= flags and any(f.startswith("PERIOD_") for f in flags)
+    assert {"QB_NOT_CONFIRMED", "NO_STRUCTURED_INJURY_SOURCE", "EPA_UNAVAILABLE"} <= flags and any(
+        f.startswith("PERIOD_") for f in flags
+    )
     # owner rule: nothing forbidden is published as a metric
     for side in ("home", "away"):
         for group in profiles["teams"][side]["metrics"].values():
@@ -107,15 +130,23 @@ def test_packets_never_originate_probabilities_or_bets(rows):
     for r in rows[:30]:
         packet = load(r["packet"])
         assert packet["analyst_worksheet"]["your_output_per_game"]["evidence_tier"] == "ANALYST_JUDGMENT"
-        assert packet["analyst_worksheet"]["your_output_per_game"]["winner_probability"] == {"point": None, "low": None, "high": None}
+        assert packet["analyst_worksheet"]["your_output_per_game"]["winner_probability"] == {
+            "point": None,
+            "low": None,
+            "high": None,
+        }
         text = json.dumps(load(r["files"]["markets"][0])).lower()
-        assert "contains_model_probabilities\":false" in text.replace(" ", "")
+        assert 'contains_model_probabilities":false' in text.replace(" ", "")
         assert "fair_value" not in text and "kelly" not in text
 
 
-def test_verifier_passes_on_the_committed_packets():
-    proc = subprocess.run([sys.executable, str(ROOT / "scripts/verify_research_packets.py"), "--game", "26NOV06UNMNEV", "--game", "26NOV06TCUARIZ"], capture_output=True, text=True)
+def test_verifier_passes_on_the_committed_packets(rows):
+    """The whole committed index, not named games: games leave the index once they kick off."""
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/verify_research_packets.py")], capture_output=True, text=True
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"verified {len(rows)} games" in proc.stdout
 
 
 def test_bet_up_to_reference_table_is_present_and_monotone():

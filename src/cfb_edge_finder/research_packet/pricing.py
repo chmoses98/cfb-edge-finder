@@ -3,7 +3,7 @@
 The research packet never originates a probability. This module only converts a probability (and a stated
 uncertainty range) that a human or ChatGPT supplies into the price arithmetic that follows from it:
 
-    all-in cost  ->  fee-inclusive break-even probability  ->  bet-up-to price  ->  stake tier
+    all-in cost  ->  fee-inclusive break-even probability  ->  bet-up-to price  ->  advisory stake check
 
 Everything reuses the repository's existing fee machinery (``kalshi.fee_schedule`` / ``expression.fair_value``):
 the taker fee is ``ceil_to_cent(multiplier * 0.07 * contracts * P * (1 - P))`` for the ORDER, which is what
@@ -14,8 +14,9 @@ Kalshi charges, so a one-unit order's fee is not simply the per-contract figure 
   one; ``qualified_positive_ev`` is therefore never produced here (that needs a settled-outcome reliability table,
   see ``execution/pit_review.py``).
 * It does not place orders and does not bypass the automated-approval gates in ``execution``/``decision``.
-* The stake tiers are a transparent analyst heuristic that respects the owner's rules (1U = $75, max 5U per bet).
-  They are NOT Kelly sizing and are not calibrated; an uncalibrated edge is capped well below the 5U ceiling.
+* Sizing is ADVISORY and analyst-owned (``stake_check``): the tool derives no stake from edge, confidence or range
+width, because no settled-outcome evidence supports such a rule. It only enforces the owner's mechanical limits (1U =
+$75, maximum 5U per bet), the quoted size, and "no stake when the lower bound does not clear break-even".
 """
 
 from __future__ import annotations
@@ -28,20 +29,6 @@ from cfb_edge_finder.expression.fair_value import fee_inclusive_break_even, orde
 
 UNIT_DOLLARS = 75.0
 MAX_UNITS_PER_BET = 5.0
-#: Stake tiers by LOWER-BOUND edge over fee-inclusive break-even (percentage points of probability). The edge is
-#: measured at the lower end of the analyst's stated range, so a wide range shrinks the stake automatically.
-STAKE_TIERS: tuple[tuple[float, float], ...] = (
-    (0.14, 5.0),
-    (0.10, 4.0),
-    (0.07, 3.0),
-    (0.04, 2.0),
-    (0.02, 1.0),
-    (0.005, 0.5),
-)
-#: Without a settled-outcome calibration table every stake is capped here regardless of the edge claimed.
-UNCALIBRATED_UNIT_CAP = 3.0
-#: A range wider than this (high - low) is too uncertain to size at all: flag, do not stake.
-MAX_SIZABLE_RANGE_WIDTH = 0.30
 
 SIDES = ("YES", "NO")
 
@@ -99,56 +86,91 @@ def bet_up_to_price(
     return best
 
 
-def stake_units(
+def stake_check(
+    proposed_units: float | None,
     probability_low: float,
-    probability_high: float,
     break_even: float | None,
     *,
-    calibrated: bool = False,
     quoted_contracts: float | None = None,
     price: float | None = None,
 ) -> dict[str, Any]:
-    """A transparent unit-stake tier for an analyst-stated range. 0U is a valid, common answer.
+    """ADVISORY check of a stake the ANALYST proposes. This function never chooses a stake.
 
-    Sized from the LOWER bound's edge over fee-inclusive break-even, capped at the owner's 5U ceiling, capped lower
-    (``UNCALIBRATED_UNIT_CAP``) while the probability is an uncalibrated opinion, and limited by quoted size.
+    There is no empirical sizing rule behind this repository's probabilities (no settled-outcome calibration exists),
+    so no stake is derived from an edge size, a confidence level or a range width. With no proposal the answer is "not
+    assigned". With a proposal it only enforces what is mechanical and owner-set: no stake when the lower bound does
+    not clear fee-inclusive break-even, never above 5U ($375) on one bet, never more than the quoted size at the ask.
+    The reasons it returns are for the analyst to weigh; the analyst owns the number and must label it advisory.
     """
+    base: dict[str, Any] = {
+        "advisory": True,
+        "assigned_by_tool": False,
+        "unit_dollars": UNIT_DOLLARS,
+        "max_units_per_bet": MAX_UNITS_PER_BET,
+        "basis": (
+            "analyst-proposed and advisory: the tool derives no stake from edge, confidence or range width because no "
+            "settled-outcome evidence supports any such rule"
+        ),
+    }
+    if proposed_units is None:
+        return {
+            **base,
+            "status": "NOT_ASSIGNED",
+            "units": None,
+            "dollars": None,
+            "reasons": ["no stake proposed; unsized candidates are a normal output"],
+        }
+    if proposed_units <= 0:
+        return {**base, "status": "NO_STAKE", "units": 0.0, "dollars": 0.0, "reasons": ["analyst proposed no stake"]}
     reasons: list[str] = []
     if break_even is None:
-        return {"units": 0.0, "dollars": 0.0, "reasons": ["fee or price unknown: no stake without a known cost"]}
-    if probability_high < probability_low:
-        return {"units": 0.0, "dollars": 0.0, "reasons": ["range is inverted (high < low)"]}
-    width = probability_high - probability_low
-    if width > MAX_SIZABLE_RANGE_WIDTH:
-        return {"units": 0.0, "dollars": 0.0, "reasons": [f"range width {width:.2f} > {MAX_SIZABLE_RANGE_WIDTH}: too uncertain to size"]}
-    edge = probability_low - break_even
-    units = 0.0
-    for threshold, tier_units in STAKE_TIERS:
-        if edge >= threshold:
-            units = tier_units
-            break
-    if units == 0.0:
-        reasons.append(f"lower-bound edge {edge * 100:+.1f}pp does not clear the smallest tier: no stake")
+        return {
+            **base,
+            "status": "NO_STAKE",
+            "units": 0.0,
+            "dollars": 0.0,
+            "reasons": ["fee or price unknown: no stake without a known cost"],
+        }
+    if probability_low < break_even:
+        return {
+            **base,
+            "status": "NO_STAKE",
+            "units": 0.0,
+            "dollars": 0.0,
+            "reasons": [
+                f"the lower bound ({probability_low:.3f}) does not clear fee-inclusive break-even "
+                    f"({break_even:.3f}) at this ask"
+            ],
+        }
+    units = proposed_units
     if units > MAX_UNITS_PER_BET:
         units = MAX_UNITS_PER_BET
-    if not calibrated and units > UNCALIBRATED_UNIT_CAP:
-        units = UNCALIBRATED_UNIT_CAP
-        reasons.append(f"capped at {UNCALIBRATED_UNIT_CAP}U: the probability is an uncalibrated analyst opinion")
-    dollars = units * UNIT_DOLLARS
+        reasons.append("clamped to the owner's 5U maximum per bet")
     if quoted_contracts is not None and price:
-        depth_dollars = quoted_contracts * price
-        if dollars > depth_dollars:
-            dollars = math.floor(depth_dollars / UNIT_DOLLARS * 2) / 2 * UNIT_DOLLARS
-            units = dollars / UNIT_DOLLARS
-            reasons.append("limited by the quoted size at the ask")
-    return {
-        "units": units,
-        "dollars": round(units * UNIT_DOLLARS, 2),
-        "lower_bound_edge": round(edge, 4),
-        "tier_basis": "lower-bound edge over fee-inclusive break-even",
-        "calibrated": calibrated,
-        "reasons": reasons,
-    }
+        depth_units = (quoted_contracts * price) / UNIT_DOLLARS
+        if units > depth_units:
+            units = math.floor(depth_units * 2) / 2
+            reasons.append("limited to the quoted size at the ask")
+    status = "ADVISORY_PROPOSAL" if units == proposed_units else "ADVISORY_PROPOSAL_ADJUSTED"
+    if units <= 0:
+        status = "NO_STAKE"
+    return {**base, "status": status, "units": units, "dollars": round(units * UNIT_DOLLARS, 2), "reasons": reasons}
+
+
+QUALIFICATION: dict[str, Any] = {
+    "tier": "ANALYST_RECOMMENDATION_WITH_STATED_UNCERTAINTY",
+    "empirically_validated_positive_ev": False,
+    "meaning": (
+        "the probability and range are the analyst's stated opinion. The ceiling below is arithmetic on that "
+            "opinion; it is "
+        "not evidence that the wager has positive expected value"
+    ),
+    "required_for_validated_positive_ev": (
+        "a probability calibrated on settled outcomes (a reliability table) whose lower bound clears fee-inclusive "
+        "break-even, as computed by execution/pit_review.py. None exists, so this tool can never produce that tier"
+    ),
+    "automated_approval_gates": "unchanged and separate: nothing here qualifies, approves or places an order",
+}
 
 
 @dataclass(frozen=True)
@@ -190,7 +212,7 @@ def evaluate(
     probability_point: float,
     probability_high: float,
     quoted_contracts: float | None = None,
-    calibrated: bool = False,
+    proposed_units: float | None = None,
     required_margin: float = 0.0,
 ) -> dict[str, Any]:
     """Everything that follows from an analyst's probability for ONE side of ONE contract.
@@ -202,9 +224,6 @@ def evaluate(
     view = view_side(side, ask, series_ticker)
     be = view.break_even_probability
     ceiling = bet_up_to_price(probability_low, series_ticker, required_margin=required_margin)
-    stake = stake_units(
-        probability_low, probability_high, be, calibrated=calibrated, quoted_contracts=quoted_contracts, price=ask
-    )
     clears_at_ask = be is not None and probability_low - be >= required_margin
     return {
         "side": side,
@@ -218,12 +237,9 @@ def evaluate(
         "edge_at_lower_bound_pp": None if be is None else round((probability_low - be) * 100, 2),
         "bet_up_to": ceiling,
         "clears_at_current_ask": clears_at_ask,
-        "stake": stake if clears_at_ask else {"units": 0.0, "dollars": 0.0, "reasons": ["lower bound does not clear break-even at this ask"]},
+        "stake": stake_check(proposed_units, probability_low, be, quoted_contracts=quoted_contracts, price=ask),
         "qualified_positive_ev": False,
-        "qualified_positive_ev_note": (
-            "always False here: a stated range is an opinion, not a settled-outcome calibration. Present any bet "
-            "as a football lean / conditional candidate priced up to the stated ceiling."
-        ),
+        "qualification": QUALIFICATION,
         "unit_dollars": UNIT_DOLLARS,
         "max_units_per_bet": MAX_UNITS_PER_BET,
     }

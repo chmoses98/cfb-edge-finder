@@ -130,7 +130,8 @@ def fetch_summary(event_id: str) -> tuple[dict[str, Any] | None, str | None]:
     return None, error
 
 
-#: ESPN's core injury list returns REFERENCES: {"items": [{"$ref": ".../injuries/123"}]}, each of which must be followed,
+# : ESPN's core injury list returns REFERENCES: {"items": [{"$ref": ".../injuries/123"}]}, each of which must be
+# followed,
 #: and the athlete inside it is another reference. Reading `athlete`/`status` off the stub (as this function did until
 #: 2026-11-07) produced rows of nulls -- proof that something was listed, with no name, position or status. The two hops
 #: are now followed, bounded per team, and a row that cannot be resolved says so instead of posing as an observation.

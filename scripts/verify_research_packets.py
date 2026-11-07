@@ -9,8 +9,9 @@ Checks (exit 1 on any failure):
 * every game in ``data/research_packets/index.json`` has every file the index names, each valid JSON and under the
   connector-safe size (default 250 KB; GitHub's contents API returns nothing for files over 1 MB);
 * ``markets.json`` (all parts) holds exactly the contracts the execution index lists for the game;
-* no football table carries a metric the owner's forbidden-input register matches (``modeling/forbidden_features.py``), and no market record carries a model probability,
-  fair value, edge or stake (the repository supplies evidence, never the bet);
+* no football table carries a metric the owner's forbidden-input register matches
+(``modeling/forbidden_features.py``), and no market record carries a model probability, fair value, edge or stake (the
+repository supplies evidence, never the bet);
 * every contract has both buy sides priced (or says why not) with an all-in cost.
 
 ``--strict`` also fails when a game's ``markets.json`` was built from an older quotes fingerprint than the current
@@ -22,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -29,24 +31,44 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from cfb_edge_finder.modeling.forbidden_features import forbidden_in  # noqa: E402
+
 MAX_FILE_BYTES = 250_000
-BANNED_MARKET_KEYS = {"fair_value", "fair_probability", "model_probability", "edge", "stake", "kelly", "bet_up_to", "ev"}
+BANNED_MARKET_KEYS = {
+    "fair_value",
+    "fair_probability",
+    "model_probability",
+    "edge",
+    "stake",
+    "kelly",
+    "bet_up_to",
+    "ev",
+}
 
 
 def load(path: Path) -> Any:
     return json.loads(path.read_text())
 
 
-def verify_game(row: dict[str, Any], exec_rows: dict[str, dict[str, Any]], *, strict: bool, max_bytes: int) -> tuple[list[str], list[str]]:
+def verify_game(
+    row: dict[str, Any], exec_rows: dict[str, dict[str, Any]], *, strict: bool, max_bytes: int
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     key = row["game_key"]
-    paths = [row["packet"], row["files"]["team_profiles"], row["files"]["schedules"], row["files"]["distributions"], *row["files"]["markets"]]
+    paths = [
+        row["packet"],
+        row["files"]["team_profiles"],
+        row["files"]["schedules"],
+        row["files"]["distributions"],
+        *row["files"]["markets"],
+    ]
     docs: dict[str, Any] = {}
     for rel in paths:
         p = ROOT / rel
         if not p.exists():
-            if rel.endswith(("team_profiles.json", "schedules.json")) and "FOOTBALL_IDENTITY_UNRESOLVED" in (row.get("blocking_flags") or []):
+            if rel.endswith(("team_profiles.json", "schedules.json")) and "FOOTBALL_IDENTITY_UNRESOLVED" in (
+                row.get("blocking_flags") or []
+            ):
                 continue  # identity failed: football sections legitimately absent, and the packet says so
             errors.append(f"{key}: missing {rel}")
             continue
@@ -63,11 +85,16 @@ def verify_game(row: dict[str, Any], exec_rows: dict[str, dict[str, Any]], *, st
     if exec_row is None:
         errors.append(f"{key}: not in the execution index")
     elif len(contracts) != exec_row["market_count"]:
-        errors.append(f"{key}: markets hold {len(contracts)} contracts, execution index lists {exec_row['market_count']}")
+        errors.append(
+            f"{key}: markets hold {len(contracts)} contracts, execution index lists {exec_row['market_count']}"
+        )
     if markets_docs:
         stored = (markets_docs[0].get("price_provenance") or {}).get("game_fingerprint")
         if exec_row is not None and stored != exec_row.get("game_fingerprint"):
-            (errors if strict else warnings).append(f"{key}: markets.json fingerprint is older than the execution index; read quotes.json for current prices")
+            (errors if strict else warnings).append(
+                f"{key}: markets.json fingerprint is older than the execution index; read quotes.json for current "
+                    f"prices"
+            )
         if markets_docs[0].get("contains_model_probabilities") is not False:
             errors.append(f"{key}: markets.json must declare contains_model_probabilities=false")
     for c in contracts:
@@ -98,6 +125,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--game", action="append")
     ap.add_argument("--strict", action="store_true")
+    ap.add_argument(
+        "--require-horizon-hours",
+        type=float,
+        help="also fail if any execution-index game kicking off within this many hours (from now) has no packet row",
+    )
     ap.add_argument("--max-bytes", type=int, default=MAX_FILE_BYTES)
     ap.add_argument("--packets-dir", type=Path, default=ROOT / "data/research_packets")
     args = ap.parse_args(argv)
@@ -115,6 +147,15 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     errors: list[str] = []
     warnings: list[str] = []
+    if args.require_horizon_hours:
+        now = datetime.now(UTC)
+        have = {r["game_key"] for r in rows}
+        for g in exec_index["games"]:
+            kick = datetime.fromisoformat(g["kickoff"].replace("Z", "+00:00"))
+            if now <= kick <= now + timedelta(hours=args.require_horizon_hours) and g["game_key"] not in have:
+                errors.append(
+                    f"{g['game_key']}: kicks off {g['kickoff']} inside the horizon but has no research packet"
+                )
     for r in rows:
         e, w = verify_game(r, exec_rows, strict=args.strict, max_bytes=args.max_bytes)
         errors += e

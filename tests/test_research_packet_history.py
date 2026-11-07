@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cfb_edge_finder.research_packet import history as h
 
 
 def game(i, pm, pt, home, away, hp=None, ap=None):
     return {
-        "game_id": str(i), "season": 2025, "week": 5, "home": f"H{i}", "away": f"A{i}",
-        "pred_home": (pt + pm) / 2, "pred_away": (pt - pm) / 2, "pred_total": pt,
-        "actual_home": home, "actual_away": away,
-        "home_periods": hp, "away_periods": ap,
+        "game_id": str(i),
+        "season": 2025,
+        "week": 5,
+        "home": f"H{i}",
+        "away": f"A{i}",
+        "pred_home": (pt + pm) / 2,
+        "pred_away": (pt - pm) / 2,
+        "pred_total": pt,
+        "actual_home": home,
+        "actual_away": away,
+        "home_periods": hp,
+        "away_periods": ap,
     }
 
 
@@ -36,8 +42,12 @@ def test_period_view_is_none_without_captured_linescores():
 
 def test_frequency_orientation_for_the_away_team():
     chosen = [game(i, 7, 50, 30, 20 if i % 2 else 33) for i in range(10)]  # home margin 10 (5x) or -3 (5x)
-    away_by_over_2 = h.frequency_for(chosen, {"type": "margin_over", "side": "away", "threshold": 2.5, "period": "game"})
-    home_by_over_9 = h.frequency_for(chosen, {"type": "margin_over", "side": "home", "threshold": 9.5, "period": "game"})
+    away_by_over_2 = h.frequency_for(
+        chosen, {"type": "margin_over", "side": "away", "threshold": 2.5, "period": "game"}
+    )
+    home_by_over_9 = h.frequency_for(
+        chosen, {"type": "margin_over", "side": "home", "threshold": 9.5, "period": "game"}
+    )
     assert away_by_over_2["yes_frequency"] == 0.5 and home_by_over_9["yes_frequency"] == 0.5
     assert h.frequency_for(chosen, {"type": "win", "side": "away", "period": "game"})["yes_frequency"] == 0.5
     tie = h.frequency_for(chosen, {"type": "win", "outcome": "tie", "period": "h1"})
@@ -48,8 +58,15 @@ def test_total_and_team_total_frequency():
     chosen = [game(i, 3, 50, 28, 24, [7, 7, 7, 7], [7, 7, 5, 5]) for i in range(5)]
     assert h.frequency_for(chosen, {"type": "total_over", "threshold": 51.5, "period": "game"})["yes_frequency"] == 1.0
     assert h.frequency_for(chosen, {"type": "total_over", "threshold": 52.5, "period": "game"})["yes_frequency"] == 0.0
-    assert h.frequency_for(chosen, {"type": "team_points_over", "side": "home", "threshold": 13.5, "period": "h1"})["yes_frequency"] == 1.0
-    assert h.frequency_for(chosen, {"type": "total_over", "threshold": 23.5, "period": "h1"})["yes_frequency"] == 1.0  # 14+14=28
+    assert (
+        h.frequency_for(chosen, {"type": "team_points_over", "side": "home", "threshold": 13.5, "period": "h1"})[
+            "yes_frequency"
+        ]
+        == 1.0
+    )
+    assert (
+        h.frequency_for(chosen, {"type": "total_over", "threshold": 23.5, "period": "h1"})["yes_frequency"] == 1.0
+    )  # 14+14=28
 
 
 def test_comparables_widen_until_enough_games_and_report_thin_classes():

@@ -60,8 +60,9 @@ unavailable only after every path for it failed, and name them. Never answer "pr
    total vs 1H vs quarter. The cheapest expression of one view is often not the obvious one. A ladder's probabilities must
    be monotone in the line (`ladders[].monotone_rule`); a violation is a mispricing or a stale rung.
 7. **Pick the strongest expressions.**
-8. **Compute defensible bet-up-to prices and stakes** from the **lower bound** of your range (§4). If your lower bound does
-   not clear break-even at the ask, that contract is a **pass at this price** (you may still quote a conditional ceiling).
+8. **Compute defensible bet-up-to prices** from the **lower bound** of your range (§4). If your lower bound does not
+   clear break-even at the ask, that contract is a **pass at this price** (you may still quote a conditional ceiling).
+   A stake is optional, advisory and yours (§4): leave it unsized unless you can justify a number.
 9. **Reconcile existing exposure and correlation.** Read `docs/CFB_BET_RISK_PROTOCOL.md`. Same-game legs that need the same
    team to control the game are one bet, not diversification. Show same-game and cumulative-day gross exposure and flag
    > 5U per game or > 15U per day. No recovery stakes.
@@ -92,12 +93,18 @@ probability: shift it for the matchup, QB, injuries and weather, and widen your 
   `bet_up_to_table.json` (by lower-bound %), or run
   `python scripts/cfb_price_limits.py --game <key> --ticker <ticker> --side NO --low .. --point .. --high ..` if you can run code.
   If your range is a point estimate with no uncertainty, say so; do not invent a range.
-* **Stake** (when supported): sized from the lower bound's edge over break-even — 0.5U at ≥0.5pp, 1U ≥2pp, 2U ≥4pp, 3U ≥7pp,
-  4U ≥10pp, 5U ≥14pp — then **capped at 3U while the probability is an uncalibrated opinion** (it always is), limited by quoted
-  size, **never above 5U ($375) on one bet** (1U = $75). A range wider than 0.30 is not sized. 0U is a normal answer.
-* `qualified_positive_ev` is **false** for every analyst range (no settled-outcome calibration exists). Label bets accordingly:
-  **qualified bet** only if your probability is source-grounded and its lower bound clears break-even + fees at an executable
-  price; otherwise **football lean / conditional candidate** with a stated ceiling.
+* **Stake — advisory, yours, never automatic.** No settled-outcome evidence supports any rule that turns an edge size, a
+  confidence level or a range width into a stake, so the repository supplies none and neither should you pretend it does.
+  Leave **Stake** as `unsized` unless you can state why a number is justified, then write it as `advisory ≤ nU`. Whatever you
+  write must respect the owner's rules: **1U = $75, never more than 5U ($375) on one bet**, nothing above the quoted size at
+  the ask, nothing at all when your lower bound does not clear break-even, and the game (> 5U) / day (> 15U) exposure flags.
+  `scripts/cfb_price_limits.py --units N` only *checks* a stake you propose against those mechanical limits.
+* **Two different labels — never confuse them.**
+  **Analyst recommendation with stated uncertainty** = a bet you recommend on your own probability and range, with the
+  ceiling above. **Empirically validated positive-EV wager** = a probability calibrated on settled outcomes whose lower bound
+  clears fee-inclusive break-even (`execution/pit_review.py`). No reliability table exists, so **never write the second
+  label**; `qualified_positive_ev` is always `false`. This does not touch the automated qualification and approval gates,
+  which stay separate and unchanged: your card is advice, not an order and not an approval.
 * Read `book` first: `empty_book`, `bid_only`, `ask_only` are not two-sided markets; a 0/100 book is not a 50% market.
   `exec` means positive quoted size **at capture**. A rung with a stale `upd` is a thin ladder, not a live price.
 
@@ -109,10 +116,13 @@ that mattered and what you researched), (b) the ranked table, (c) a short exposu
 | Rank | Game | Bet (YES/NO) | Kalshi Price | Bet Up To | Stake | Why I Like It | Confidence |
 |---|---|---|---|---|---|---|---|
 
-* **Kalshi Price** = the buy-side ask, labelled *captured at `<time>`*. **Bet Up To** and **Stake** come from §4.
+* **Kalshi Price** = the buy-side ask, labelled *captured at `<time>`*. **Bet Up To** comes from §4. **Stake** is `unsized`
+  or `advisory ≤ nU` (§4).
 * **Why I Like It** = the football reason (matchup, script, schedule quality, QB/injury/weather), the contract it expresses,
   and what would change your mind. **Confidence** = your own, reflecting the data-quality flags and the width of your range.
-* Separate **qualified bets** from **conditional candidates** under two headings. Fewer, better, or none.
+* Put **analyst recommendations (stated uncertainty)** under one heading and **conditional candidates / passes** under another
+  (a conditional candidate has a ceiling below today's ask, or evidence you could not confirm). Fewer, better, or none.
+  Never label anything "validated" or "+EV" in the empirical sense (§4).
 
 ## 6. Owner rules (non-negotiable)
 

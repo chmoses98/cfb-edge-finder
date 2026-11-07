@@ -91,6 +91,22 @@ def period_view(g: dict[str, Any]) -> dict[str, Any] | None:
     return view
 
 
+def eligible_reference(
+    games: list[dict[str, Any]], cutoff_utc: str | None, own_game_id: str | None
+) -> list[dict[str, Any]]:
+    """LEAKAGE GUARD: only games that kicked off BEFORE the packet's data cutoff, and never the game itself.
+
+    ISO-8601 UTC strings of equal format compare correctly as text. For a live build this removes nothing; it protects
+    any as-of build and any game that is itself already in the history."""
+    if not cutoff_utc:
+        return list(games)
+    return [
+        g
+        for g in games
+        if g["kickoff_utc"] < cutoff_utc and (own_game_id is None or str(g["game_id"]) != str(own_game_id))
+    ]
+
+
 def baseline_accuracy(games: list[dict[str, Any]]) -> dict[str, Any]:
     """How the baseline has actually performed on these games, versus guessing the league-average total."""
     usable = [g for g in games if g.get("pred_total") is not None]
@@ -114,14 +130,18 @@ def baseline_accuracy(games: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "home_margin": {"bias_pred_minus_actual": round(sum(margin_err) / len(margin_err), 2), "mae": mae(margin_err)},
         "reading": (
-            "the baseline's total-points error is only marginally better than guessing the league-average total: it is a "
-            "descriptive matchup summary, not a sharp scorer. Treat its point estimates as loosely informative and widen "
+            "the baseline's total-points error is only marginally better than guessing the league-average total: "
+                "it is a "
+            "descriptive matchup summary, not a sharp scorer. Treat its point estimates as loosely informative and "
+                "widen "
             "every range accordingly"
         ),
     }
 
 
-def reference_class(games: list[dict[str, Any]], pred_margin: float, pred_total: float) -> tuple[list[dict[str, Any]], tuple[float, float]]:
+def reference_class(
+    games: list[dict[str, Any]], pred_margin: float, pred_total: float
+) -> tuple[list[dict[str, Any]], tuple[float, float]]:
     """Past games whose baseline margin and total sit inside the smallest window that holds MIN_COMPARABLES games."""
     pool = [g for g in games if g.get("pred_total") is not None]
     chosen: list[dict[str, Any]] = []
@@ -198,7 +218,10 @@ def comparables(
     Returns (published summary, the chosen reference-class rows) so contract-level frequencies use the same class."""
     if pred_margin is None or pred_total is None:
         return (
-            {"status": "UNAVAILABLE", "reason": "this game has no scoring baseline (a team lacks opponent-adjusted history)"},
+            {
+                "status": "UNAVAILABLE",
+                "reason": "this game has no scoring baseline (a team lacks opponent-adjusted history)",
+            },
             [],
         )
     chosen, window = reference_class(games, pred_margin, pred_total)
@@ -236,7 +259,8 @@ def comparables(
             "evidence_tier": RAW_STATUS,
             "orientation": ORIENTATION,
             "reference_class": {
-                "definition": "past games whose pre-kickoff baseline margin and total were within the window of this game's",
+                "definition": "past games whose pre-kickoff baseline margin and total were within the window of this "
+                    "game's",
                 "baseline_home_margin": round(pred_margin, 1),
                 "baseline_total": round(pred_total, 1),
                 "window_points_margin_total": list(window),
@@ -246,10 +270,14 @@ def comparables(
             },
             "actual_home_margin": quantile_table(margins),
             "actual_home_margin_minus_baseline": quantile_table([m - pred_margin for m in margins]),
-            "p_home_margin_greater_than": exceedance(margins, _grid(round(pred_margin) - 30.5, round(pred_margin) + 30.5)),
+            "p_home_margin_greater_than": exceedance(
+                margins, _grid(round(pred_margin) - 30.5, round(pred_margin) + 30.5)
+            ),
             "actual_total": quantile_table(totals),
             "actual_total_minus_baseline": quantile_table([t - pred_total for t in totals]),
-            "p_total_greater_than": exceedance(totals, _grid(max(10.5, math.floor(pred_total) - 30.5), math.floor(pred_total) + 30.5)),
+            "p_total_greater_than": exceedance(
+                totals, _grid(max(10.5, math.floor(pred_total) - 30.5), math.floor(pred_total) + 30.5)
+            ),
             "home_points": quantile_table([g["actual_home"] for g in chosen]),
             "away_points": quantile_table([g["actual_away"] for g in chosen]),
             "p_home_points_greater_than": exceedance([g["actual_home"] for g in chosen], _grid(6.5, 56.5)),
@@ -262,11 +290,18 @@ def comparables(
                 "away_points": quantile_table([v["h1"][1] for _, v in with_p]),
                 "p_total_greater_than": exceedance(h1_total, _grid(10.5, 40.5)),
                 "p_home_margin_greater_than": exceedance(h1_margin, _grid(-20.5, 20.5)),
-                "p_home_leads_at_half": round(sum(1 for m in h1_margin if m > 0) / len(h1_margin), 3) if h1_margin else None,
+                "p_home_leads_at_half": round(sum(1 for m in h1_margin if m > 0) / len(h1_margin), 3)
+                if h1_margin
+                else None,
                 "p_tied_at_half": round(sum(1 for m in h1_margin if m == 0) / len(h1_margin), 3) if h1_margin else None,
-                "share_of_game_points": round(sum(h1_total) / sum(full_with_p), 3) if full_with_p and sum(full_with_p) else None,
+                "share_of_game_points": round(sum(h1_total) / sum(full_with_p), 3)
+                if full_with_p and sum(full_with_p)
+                else None,
             },
-            "second_half": {"total": quantile_table(h2_total), "p_total_greater_than": exceedance(h2_total, _grid(8.5, 40.5))},
+            "second_half": {
+                "total": quantile_table(h2_total),
+                "p_total_greater_than": exceedance(h2_total, _grid(8.5, 40.5)),
+            },
             "first_quarter": {
                 "games_with_linescores": len(with_p),
                 "total": quantile_table(q1_total),
@@ -275,12 +310,16 @@ def comparables(
                 "p_total_greater_than": exceedance(q1_total, _grid(0.5, 24.5)),
                 "p_home_points_greater_than": exceedance([v["q1"][0] for _, v in with_p], _grid(0.5, 21.5)),
                 "p_away_points_greater_than": exceedance([v["q1"][1] for _, v in with_p], _grid(0.5, 21.5)),
-                "p_scoreless_first_quarter": round(sum(1 for t in q1_total if t == 0) / len(q1_total), 3) if q1_total else None,
+                "p_scoreless_first_quarter": round(sum(1 for t in q1_total if t == 0) / len(q1_total), 3)
+                if q1_total
+                else None,
             },
             "closest_games": [closest(g) for g in near],
             "caveat": (
-                "an empirical reference class conditioned on an UNCALIBRATED baseline: use it for shape and spread (how wide, "
-                "how skewed, how often a favourite is held below a line), not as a settled-outcome probability for this game"
+                "an empirical reference class conditioned on an UNCALIBRATED baseline: use it for shape and spread "
+                    "(how wide, "
+                "how skewed, how often a favourite is held below a line), not as a settled-outcome probability for "
+                    "this game"
             ),
         },
         chosen,

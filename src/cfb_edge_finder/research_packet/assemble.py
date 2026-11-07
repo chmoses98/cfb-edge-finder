@@ -28,33 +28,48 @@ FILES = ("packet.json", "team_profiles.json", "schedules.json", "distributions.j
 
 EVIDENCE_TIERS = {
     "VERIFIED_FACT": "an observed result, count, schedule or listing, with its source and observation time",
-    "HISTORICAL_ESTIMATE": "a statistic computed from past games (opponent-adjusted rates, splits, reference-class frequencies)",
-    "MODEL_PROJECTION": "this repository's descriptive scoring baseline: uncalibrated, with its error evidence beside it",
+    "HISTORICAL_ESTIMATE": "a statistic computed from past games (opponent-adjusted rates, splits, reference-class "
+        "frequencies)",
+    "MODEL_PROJECTION": "this repository's descriptive scoring baseline: uncalibrated, with its error evidence beside "
+        "it",
     "EXTERNAL_MODEL_REFERENCE": "another party's model (ESPN's predictor), shown separately and never blended in",
-    "ANALYST_JUDGMENT": "yours: probabilities, ranges, the script you believe, the bets. Nothing in the packet supplies it",
+    "ANALYST_JUDGMENT": "yours: probabilities, ranges, the script you believe, the bets. Nothing in the packet "
+        "supplies it",
 }
 
 ANALYST_STEPS = [
-    "1. Read data_quality.missing_data_flags first. Resolve every flag whose `needs_analyst_research` is true by web research, citing the source and its timestamp (confirmed QB, injuries, late weather).",
-    "2. Read football.matchup_comparison and schedules.json: weigh opponent-adjusted offense vs the ACTUAL opposing defense, discount stats built on weak schedules, and do not over-weight last-3 form.",
+    "1. Read data_quality.missing_data_flags first. Resolve every flag whose `needs_analyst_research` is true by "
+        "web research, citing the source and its timestamp (confirmed QB, injuries, late weather).",
+    "2. Read football.matchup_comparison and schedules.json: weigh opponent-adjusted offense vs the ACTUAL "
+        "opposing defense, discount stats built on weak schedules, and do not over-weight last-3 form.",
     "3. Read game_script: the dominant, competitive and upset scripts, and what evidence would flip each.",
-    "4. Use distributions.json for shape and spread (reference-class frequencies, closest games, the baseline's real error). Do not invent a score and assume a normal curve.",
-    "5. Write YOUR probability and an uncertainty range for each thesis you will price (winner, cover, total, team totals, halves, quarters, ladders). Keep them football-derived: never copy Kalshi's implied probability.",
-    "6. Compare every listed contract of the relevant families (markets.json) on the side you would buy, at the NO ask for NO, with the all-in cost. Use bet-up-to prices from your LOWER bound.",
-    "7. Reconcile correlated exposure across contracts and games, then return one ranked card. Passing is a correct answer.",
+    "4. Use distributions.json for shape and spread (reference-class frequencies, closest games, the baseline's "
+        "real error). Do not invent a score and assume a normal curve.",
+    "5. Write YOUR probability and an uncertainty range for each thesis you will price (winner, cover, total, team "
+        "totals, halves, quarters, ladders). Keep them football-derived: never copy Kalshi's implied probability.",
+    "6. Compare every listed contract of the relevant families (markets.json) on the side you would buy, at the NO "
+        "ask for NO, with the all-in cost. Use bet-up-to prices from your LOWER bound. A stake is optional, advisory "
+        "and yours: leave it unsized unless you can justify it (max 5U, 1U = $75).",
+    "7. Reconcile correlated exposure across contracts and games, then return one ranked card. Passing is a "
+        "correct answer.",
 ]
 
 OWNER_RULES = [
     "1U = $75. Maximum 5U per individual bet.",
-    "Never recommend betting against Auburn (includes the Under on Auburn's own team total; game/1Q/1H total Unders are independent).",
+    "Never recommend betting against Auburn (includes the Under on Auburn's own team total; game/1Q/1H total "
+        "Unders are independent).",
     "No pregame bets after kickoff.",
-    f"No {FORBIDDEN_FEATURE_TOKENS[0]} in handicapping (owner ruling 2026-11-02): the metric is excluded from every table here.",
+    f"No {FORBIDDEN_FEATURE_TOKENS[0]} in handicapping (owner ruling 2026-11-02): the metric is excluded from "
+        f"every table here.",
     "No fabricated probabilities, pricing advantages or stakes. No forced bets or loss-chasing.",
-    "Compare every relevant market before choosing. Keep analyst recommendations separate from automated qualification/execution gates.",
+    "Compare every relevant market before choosing. Keep analyst recommendations separate from automated "
+        "qualification/execution gates.",
 ]
 
 
-def _flag(code: str, severity: str, detail: str, *, research: bool = False, action: str | None = None) -> dict[str, Any]:
+def _flag(
+    code: str, severity: str, detail: str, *, research: bool = False, action: str | None = None
+) -> dict[str, Any]:
     return {"code": code, "severity": severity, "detail": detail, "needs_analyst_research": research, "action": action}
 
 
@@ -73,86 +88,156 @@ def missing_data_flags(
 ) -> list[dict[str, Any]]:
     flags: list[dict[str, Any]] = []
     if not markets_usable:
-        flags.append(_flag("MARKET_DISCOVERY_INCOMPLETE", "BLOCKING", "the game's native market menu is not proven complete; do not recommend from it"))
+        flags.append(
+            _flag(
+                "MARKET_DISCOVERY_INCOMPLETE",
+                "BLOCKING",
+                "the game's native market menu is not proven complete; do not recommend from it",
+            )
+        )
     if identity_status not in ("PASS", "RESOLVED") or content is None:
-        flags.append(_flag("FOOTBALL_IDENTITY_UNRESOLVED", "BLOCKING", f"the Kalshi game could not be matched to an ESPN game ({identity_status}); no football sections were built", research=True, action="resolve the teams manually before handicapping"))
+        flags.append(
+            _flag(
+                "FOOTBALL_IDENTITY_UNRESOLVED",
+                "BLOCKING",
+                f"the Kalshi game could not be matched to an ESPN game ({identity_status}); no football sections "
+                    f"were built",
+                research=True,
+                action="resolve the teams manually before handicapping",
+            )
+        )
     if content is not None:
         conf = content.get("confidence") or {}
-        fresh = (conf.get("freshness") or {})
+        fresh = conf.get("freshness") or {}
         if fresh.get("status") not in (None, "FRESH") or fresh.get("missing_game_ids"):
-            flags.append(_flag("FOOTBALL_LOG_INCOMPLETE", "MAJOR", f"the game log may be missing finished games: {fresh.get('rule') or fresh}", action="treat adjusted numbers as stale; check the teams' latest results"))
+            flags.append(
+                _flag(
+                    "FOOTBALL_LOG_INCOMPLETE",
+                    "MAJOR",
+                    f"the game log may be missing finished games: {fresh.get('rule') or fresh}",
+                    action="treat adjusted numbers as stale; check the teams' latest results",
+                )
+            )
         absent = [side for side in ("home", "away") if not (conf.get("games_observed") or {}).get(side)]
         if absent:
             flags.append(
                 _flag(
                     "FOOTBALL_HISTORY_ABSENT",
                     "MAJOR",
-                    f"no completed games with box scores in the log for: {', '.join(absent)} (the log collects FBS-involved games only; "
-                    "a non-FBS team's schedule appears as final scores in schedules.json when the scoreboard sweep saw them). Matchup comparison, "
-                    "baseline and reference class cannot be built from this repository for this game",
+                    f"no completed games with box scores in the log for: {', '.join(absent)} "
+                    "(the log collects FBS-involved games only; a non-FBS team's schedule appears as final scores in "
+                    "schedules.json when the scoreboard sweep saw them). Matchup comparison, baseline and reference "
+                    "class cannot be built from this repository for this game",
                     research=True,
-                    action="research both teams' results, opponents and style independently; widen every range; pass if the evidence is thin",
+                    action=(
+                        "research both teams' results, opponents and style independently; widen every range; "
+                        "pass if the evidence is thin"
+                    ),
                 )
             )
         for side in ("home", "away"):
             n = (conf.get("games_observed") or {}).get(side)
             if n is not None and n < 4 and side not in absent:
-                flags.append(_flag("THIN_SAMPLE", "MAJOR", f"{side} team has only {n} completed games with box scores; adjusted values lean on a prior"))
+                flags.append(
+                    _flag(
+                        "THIN_SAMPLE",
+                        "MAJOR",
+                        f"{side} team has only {n} completed games with box scores; adjusted values lean on a prior",
+                    )
+                )
             sch = schedules.get(side) or {}
             sos = (sch.get("strength_of_schedule") or {}).get("flag")
             if sos:
                 flags.append(_flag("SCHEDULE_QUALITY", "INFO", f"{side}: {sos}"))
         if comparables_status != "CONDITIONAL":
-            flags.append(_flag("REFERENCE_CLASS_THIN_OR_MISSING", "MAJOR", f"historical comparables are {comparables_status}; spread/total shape is less reliable"))
+            flags.append(
+                _flag(
+                    "REFERENCE_CLASS_THIN_OR_MISSING",
+                    "MAJOR",
+                    f"historical comparables are {comparables_status}; spread/total shape is less reliable",
+                )
+            )
     flags.append(
         _flag(
             "QB_NOT_CONFIRMED",
             "MAJOR",
-            "no keyless source publishes a confirmed starting quarterback; the packet shows the PROJECTED starter inferred from box scores",
+            "no keyless source publishes a confirmed starting quarterback; the packet shows the PROJECTED starter "
+                "inferred from box scores",
             research=True,
-            action="search for the confirmed starter for both teams (team/beat reports, depth chart, injury report); record source + time",
+            action="search for the confirmed starter for both teams (team/beat reports, depth chart, injury report); "
+                "record source + time",
         )
     )
     for side in ("home", "away"):
         passers = ((content or {}).get("_qb") or {}).get(side) if content else None
         if passers and passers.get("changed_in_last_3_games"):
-            flags.append(_flag("QB_CHANGE_RECENT", "MAJOR", f"{side} team used more than one primary passer in its last three games", research=True, action="establish who starts and why the change happened"))
+            flags.append(
+                _flag(
+                    "QB_CHANGE_RECENT",
+                    "MAJOR",
+                    f"{side} team used more than one primary passer in its last three games",
+                    research=True,
+                    action="establish who starts and why the change happened",
+                )
+            )
     flags.append(
         _flag(
             "NO_STRUCTURED_INJURY_SOURCE",
             "MAJOR",
-            "ESPN's keyless feeds carry no usable CFB injury report; athlete rows in the repository's injury listing are unresolved references with no name or status. The roster feed flags "
+            "ESPN's keyless feeds carry no usable CFB injury report; athlete rows in the repository's injury "
+                "listing are unresolved references with no name or status. The roster feed flags "
             + ", ".join(f"{s}: {len(rosters.get(s, {}).get('flagged_athletes') or [])}" for s in ("home", "away"))
             + " athletes. Absence of a listing is not health.",
             research=True,
-            action="search for injuries/suspensions/OL and defensive-front absences for both teams; record source + time",
+            action="search for injuries/suspensions/OL and defensive-front absences for both teams; record source + "
+                "time",
         )
     )
     flags.append(
         _flag(
             "EPA_UNAVAILABLE",
             "INFO",
-            "expected points added is not available keylessly; opponent-adjusted success rate, explosive rate, points per drive and per scoring opportunity are provided",
+            "expected points added is not available keylessly; opponent-adjusted success rate, explosive rate, "
+                "points per drive and per scoring opportunity are provided",
         )
     )
     thin = [s_ for s_ in ("home", "away") if ((period or {}).get(s_) or {}).get("games", 0) < 4]
     flags.append(
         _flag(
-            "PERIOD_SPLITS_RAW_ONLY" if not thin else "PERIOD_SPLITS_THIN" if len(thin) < 2 else "PERIOD_TEAM_SPLITS_UNAVAILABLE",
+            "PERIOD_SPLITS_RAW_ONLY"
+            if not thin
+            else "PERIOD_SPLITS_THIN"
+            if len(thin) < 2
+            else "PERIOD_TEAM_SPLITS_UNAVAILABLE",
             "INFO",
             "first-half / first-quarter team splits are RAW and unadjusted (football.period_splits_raw); "
             + (f"fewer than 4 captured linescores for: {', '.join(thin)}. " if thin else "")
-            + "opening-drive tendencies are not captured. 1H/1Q reference classes are conditioned on the full-game baseline only",
+            + "opening-drive tendencies are not captured. 1H/1Q reference classes are conditioned on "
+            "the full-game baseline only",
         )
     )
-    weather = ((extras or {}).get("weather") or {})
-    venue = ((extras or {}).get("venue") or {})
+    weather = (extras or {}).get("weather") or {}
+    venue = (extras or {}).get("venue") or {}
     if venue.get("indoor") is True:
         pass
     elif weather.get("status") != "FORECAST":
-        flags.append(_flag("WEATHER_UNAVAILABLE", "INFO", weather.get("reason") or "no weather source answered", research=True, action="check the game-time forecast if the venue is outdoors"))
+        flags.append(
+            _flag(
+                "WEATHER_UNAVAILABLE",
+                "INFO",
+                weather.get("reason") or "no weather source answered",
+                research=True,
+                action="check the game-time forecast if the venue is outdoors",
+            )
+        )
     if not markets_complete:
-        flags.append(_flag("MARKET_FILE_PARTIAL", "BLOCKING", "markets.json does not hold every contract the execution index lists for this game"))
+        flags.append(
+            _flag(
+                "MARKET_FILE_PARTIAL",
+                "BLOCKING",
+                "markets.json does not hold every contract the execution index lists for this game",
+            )
+        )
     return flags
 
 
@@ -209,7 +294,9 @@ def build_packet_files(
         ranks = fb.net_rating_ranks(league)
         for side, team, opp in (("home", home, away), ("away", away, home)):
             if not any(r.team_id == team["team_id"] for r in history):
-                schedules[side] = fb.results_from_schedule(schedule_events or [], team["team_id"], content["football_data_cutoff"])
+                schedules[side] = fb.results_from_schedule(
+                    schedule_events or [], team["team_id"], content["football_data_cutoff"]
+                )
                 rest[side] = fb.rest_and_situation(history, team["team_id"], content["kickoff_utc"])
                 continue
             sched = fb.team_schedule(history, team["team_id"], league, ranks, opp["team_id"])
@@ -243,7 +330,8 @@ def build_packet_files(
             "refs": sb.get("refs"),
             "accuracy": baseline_acc,
             "use": (
-                "a descriptive, opponent-adjusted scoring summary. It is uncalibrated and has been only slightly better than "
+                "a descriptive, opponent-adjusted scoring summary. It is uncalibrated and has been only slightly "
+                    "better than "
                 "guessing the league-average total; treat it as one input, not as the answer"
             ),
         }
@@ -256,14 +344,19 @@ def build_packet_files(
             "findings": content.get("matchup_findings"),
             "scripts": content.get("game_scripts"),
             "read": content.get("sift_read"),
-            "note": "scripts are the deterministic engine's evidence-gated game scripts (dominant / competitive / upset). They are football context, not predictions; what would flip each is in its causal chain.",
+            "note": "scripts are the deterministic engine's evidence-gated game scripts (dominant / competitive / "
+                "upset). "
+                "They are football context, not predictions; what would flip each is in its causal chain.",
         }
         files["team_profiles.json"] = {
             "schema_version": PACKET_SCHEMA,
             **header,
             "adjusted": True,
             "adjustment": {
-                "method": "ridge-regularised offense/defense/home-field effects per metric, fitted on every completed game before the data cutoff; opponent-adjusted values are what a team would do against an average opponent",
+                "method": "ridge-regularised offense/defense/home-field effects per metric, fitted on every completed "
+                    "game "
+                    "before the data cutoff; opponent-adjusted values are what a team would do against an average "
+                    "opponent",
                 "version": content.get("adjustment_version"),
                 "config": (vector.get("adjustment") or {}).get("config"),
                 "stability": (vector.get("adjustment") or {}).get("stability"),
@@ -306,14 +399,21 @@ def build_packet_files(
     files["distributions.json"] = {
         "schema_version": PACKET_SCHEMA,
         **header,
-        "tiers": {"baseline_accuracy": "HISTORICAL_ESTIMATE", "reference_class": "HISTORICAL_ESTIMATE", "league_shape": "HISTORICAL_ESTIMATE"},
+        "tiers": {
+            "baseline_accuracy": "HISTORICAL_ESTIMATE",
+            "reference_class": "HISTORICAL_ESTIMATE",
+            "league_shape": "HISTORICAL_ESTIMATE",
+        },
         "baseline_accuracy": baseline_acc,
         "reference_class": reference,
         "league_wide_shape": unconditional_summary,
         "how_to_use": (
-            "p_*_greater_than tables give P(outcome > threshold) among past games whose pre-kickoff baseline resembled this one. "
-            "They show spread and skew, including how often a favourite fails a spread. They are NOT calibrated probabilities for "
-            "this game: shift them for the matchup, QB, injuries and weather evidence, and widen your range when the reference class is thin."
+            "p_*_greater_than tables give P(outcome > threshold) among past games whose pre-kickoff baseline "
+                "resembled this one. "
+            "They show spread and skew, including how often a favourite fails a spread. They are NOT calibrated "
+                "probabilities for "
+            "this game: shift them for the matchup, QB, injuries and weather evidence, and widen your range when "
+                "the reference class is thin."
         ),
     }
     files["markets.json"] = markets
@@ -323,8 +423,11 @@ def build_packet_files(
         **header,
         "evidence_tiers": EVIDENCE_TIERS,
         "owner_rules": OWNER_RULES,
-        "kickoff_rule": "no pregame recommendation at or after kickoff_utc (and none within 10 minutes of it); compute against your own clock",
-        "files": {name: f"data/research_packets/games/{key}/{name}" for name in FILES} | {"markets_parts": markets_paths},
+        "kickoff_rule": "no pregame recommendation at or after kickoff_utc (and none within 10 minutes of it); "
+            "compute against "
+            "your own clock",
+        "files": {name: f"data/research_packets/games/{key}/{name}" for name in FILES}
+        | {"markets_parts": markets_paths},
         "teams": {"home": home, "away": away, "identity": identity},
         "inputs": inputs,
         "data_quality": {
@@ -366,16 +469,34 @@ def build_packet_files(
             "status": "NO_STRUCTURED_SOURCE",
             "observed_at": {s: (availability.get(s) or {}).get("observed_at") for s in ("home", "away")},
             "espn_core_injury_listing": {s: availability.get(s) for s in ("home", "away")},
-            "roster_feed": {s: {k: rosters.get(s, {}).get(k) for k in ("status", "observed_at", "flagged_athletes", "flagged_meaning")} for s in ("home", "away")},
+            "roster_feed": {
+                s: {
+                    k: rosters.get(s, {}).get(k)
+                    for k in ("status", "observed_at", "flagged_athletes", "flagged_meaning")
+                }
+                for s in ("home", "away")
+            },
             "head_coaches": {s: rosters.get(s, {}).get("head_coach") for s in ("home", "away")},
-            "interpretation": "an empty or null-valued list is NOT evidence of health. Confirmed injuries, suspensions, OL and defensive-front absences must come from analyst research with a cited source and timestamp.",
-            "absence_effect_guide": "for each confirmed absence: which unit (QB, OL, front seven, secondary, skill) -> which row of football.matchup_comparison it touches -> widen your range even if you do not shift the mean",
+            "interpretation": "an empty or null-valued list is NOT evidence of health. Confirmed injuries, "
+                "suspensions, OL and "
+                "defensive-front absences must come from analyst research with a cited source and timestamp.",
+            "absence_effect_guide": "for each confirmed absence: which unit (QB, OL, front seven, secondary, skill) "
+                "-> which row of "
+                "football.matchup_comparison it touches -> widen your range even if you do not shift the mean",
         },
         "environment": {"evidence_tier": "VERIFIED_FACT", **(extras or {"status": "UNAVAILABLE"})},
         "game_script": script,
         "market_summary": {
             "contract_count": markets["contract_count"],
-            "families": {f: {"contracts": v["contracts"], "coverage": v["coverage"], "estimate": v["estimate"], "gaps": v.get("gaps", [])} for f, v in markets["families"].items()},
+            "families": {
+                f: {
+                    "contracts": v["contracts"],
+                    "coverage": v["coverage"],
+                    "estimate": v["estimate"],
+                    "gaps": v.get("gaps", []),
+                }
+                for f, v in markets["families"].items()
+            },
             "price_provenance": markets["price_provenance"],
         },
         "analyst_worksheet": {
@@ -385,7 +506,9 @@ def build_packet_files(
                 "projected_score": "home/away points with a range (not a point estimate)",
                 "winner_probability": {"point": None, "low": None, "high": None},
                 "script_probabilities": {"dominant": None, "competitive": None, "upset": None},
-                "family_estimates": "for every family you price: the probability (low/point/high) of each thesis, and the contracts that express it",
+                "family_estimates": "for every family you price: the probability (low/point/high) of each thesis, and "
+                    "the contracts "
+                    "that express it",
                 "confirmed_inputs": {"qb": None, "injuries": None, "weather": None, "sources": []},
             },
         },
@@ -417,5 +540,7 @@ def _raw_defense(history: list[TeamGame], team_id: str) -> dict[str, Any]:
         "tackles_for_loss_per_game": per("def_tfl"),
         "passes_defended_per_game": per("def_passes_defended"),
         "adjusted": False,
-        "caveat": "raw counts, not opponent-adjusted; shown for pass-rush / defensive-front context only. Sack rate allowed (adjusted) is in metrics.pressure_and_protection",
+        "caveat": "raw counts, not opponent-adjusted; shown for pass-rush / defensive-front context only. Sack rate "
+            "allowed "
+            "(adjusted) is in metrics.pressure_and_protection",
     }

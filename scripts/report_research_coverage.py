@@ -5,8 +5,8 @@
     python scripts/report_research_coverage.py --date 2026-11-07  # one slate
     python scripts/report_research_coverage.py --game 26NOV06UNMNEV --game 26NOV06TCUARIZ --detail
 
-Read-only. It reads the same files a connector session reads (index -> slate -> game files) and prints counts, so a claim
-such as "every game has the same depth" is a number that can be checked, not a sentence.
+Read-only. It reads the same files a connector session reads (index -> slate -> game files) and prints counts, so a
+claim such as "every game has the same depth" is a number that can be checked, not a sentence.
 """
 
 from __future__ import annotations
@@ -60,14 +60,22 @@ def main(argv: list[str] | None = None) -> int:
                     families[fam] += info["contracts"]
                     coverage[info["coverage"]] += info["contracts"]
             for c in part["contracts"]:
-                if c["yes"]["ask"] is not None and c["no"]["ask"] is not None and c["yes"]["all_in"] and c["no"]["all_in"]:
+                if (
+                    c["yes"]["ask"] is not None
+                    and c["no"]["ask"] is not None
+                    and c["yes"]["all_in"]
+                    and c["no"]["all_in"]
+                ):
                     both_priced += 1
                 else:
                     no_side += 1
                 if "ref_freq" in c:
                     with_ref += 1
     print(f"games: {len(rows)}   contracts: {contracts}")
-    print(f"contracts with both buy sides priced and an all-in cost: {both_priced}   one side unpriced (empty/one-sided book): {no_side}")
+    print(
+        f"contracts with both buy sides priced and an all-in cost: {both_priced}   one side unpriced "
+            f"(empty/one-sided book): {no_side}"
+    )
     print(f"contracts with a historical reference-class frequency: {with_ref}")
     print("\nsections (how many games in each state):")
     for k, c in sorted(sections.items()):
@@ -79,7 +87,10 @@ def main(argv: list[str] | None = None) -> int:
     print("families:", dict(families.most_common()))
     if args.detail:
         for r in rows:
-            print(f"\n{r['game_key']} {r['title']} kickoff {r['kickoff_et']}  confidence={r['football_data_confidence']} contracts={r['contract_count']}")
+            print(
+                f"\n{r['game_key']} {r['title']} kickoff {r['kickoff_et']}  "
+                    f"confidence={r['football_data_confidence']} contracts={r['contract_count']}"
+            )
             print("  flags:", ", ".join(r["flag_codes"]))
             print("  sections:", r["sections"])
     return 0

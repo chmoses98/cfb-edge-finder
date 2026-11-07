@@ -58,7 +58,9 @@ def fetch_date(session: requests.Session, date_et: str, group: int, retries: int
     out: dict[str, dict[str, Any]] = {}
     for attempt in range(retries):
         try:
-            r = session.get(SCOREBOARD, params={"dates": date_et.replace("-", ""), "groups": group, "limit": 400}, timeout=45)
+            r = session.get(
+                SCOREBOARD, params={"dates": date_et.replace("-", ""), "groups": group, "limit": 400}, timeout=45
+            )
             r.raise_for_status()
             events = r.json().get("events") or []
             break
@@ -93,7 +95,12 @@ def main(argv: list[str] | None = None) -> int:
             rows.append(r)
     print(f"{len(rows)} baseline games")
 
-    dates = sorted({datetime.fromisoformat(str(r["kickoff_utc"]).replace("Z", "+00:00")).astimezone(ET).strftime("%Y-%m-%d") for r in rows})
+    dates = sorted(
+        {
+            datetime.fromisoformat(str(r["kickoff_utc"]).replace("Z", "+00:00")).astimezone(ET).strftime("%Y-%m-%d")
+            for r in rows
+        }
+    )
     # A game keyed by ET date may sit on the next UTC/ET calendar day in ESPN's scoreboard; fetch each date +-0.
     session = requests.Session()
     linescores: dict[str, dict[str, Any]] = {}
@@ -110,10 +117,24 @@ def main(argv: list[str] | None = None) -> int:
 
     out_rows: list[dict[str, Any]] = []
     with_periods = 0
+    reoriented = dropped_unreconciled = 0
     for r in sorted(rows, key=lambda x: (x["kickoff_utc"], x["game_id"])):
         ls = linescores.get(str(r["game_id"])) or {}
         hp, ap_ = ls.get("home_periods"), ls.get("away_periods")
         has = bool(hp and ap_ and len(hp) == len(ap_))
+        if has:
+            # ORIENTATION GUARD. ESPN's scoreboard and the baseline records can disagree about which side is "home" in a
+            # neutral-site game (two 2024 bowls did). Linescores are attached only when they reconcile to the record's
+            # own
+            # final score; a swapped pair is re-oriented by score, anything else is dropped, never guessed.
+            straight = sum(hp) == r["actual_home"] and sum(ap_) == r["actual_away"]
+            swapped = sum(hp) == r["actual_away"] and sum(ap_) == r["actual_home"]
+            if not straight and swapped:
+                hp, ap_ = ap_, hp
+                reoriented += 1
+            elif not straight:
+                has = False
+                dropped_unreconciled += 1
         with_periods += has
         out_rows.append(
             {
@@ -145,10 +166,13 @@ def main(argv: list[str] | None = None) -> int:
             fh.write((json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n").encode())
     manifest = {
         "schema_version": SCHEMA,
-        "source": "data/scripting/validation/records_<season>.jsonl.gz (baseline vs actual) + ESPN scoreboard linescores",
+        "source": "data/scripting/validation/records_<season>.jsonl.gz (baseline vs actual) + ESPN scoreboard "
+            "linescores",
         "games": len(out_rows),
         "games_with_period_linescores": with_periods,
         "seasons": args.seasons,
+        "linescores_reoriented_to_match_final_score": reoriented,
+        "linescores_dropped_unreconciled": dropped_unreconciled,
         "scoreboard_fetch_failures": errors,
         "carries_market_data": False,
     }

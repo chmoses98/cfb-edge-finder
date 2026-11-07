@@ -97,7 +97,8 @@ ESPN_SCOREBOARD_HOSTS = (
     ),
     ("cdn.espn.com", "https://cdn.espn.com/core/college-football/scoreboard"),
     # Same envelope as site.web.api.espn.com. A third host, so one blocked/blocking host no longer costs the sweep
-    # (2026-11-07: site.web.api.espn.com and cdn.espn.com were unreachable from a restricted network; this one answered).
+    # (2026-11-07: site.web.api.espn.com and cdn.espn.com were unreachable from a restricted network; this one
+    # answered).
     ("site.api.espn.com", "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"),
 )
 ESPN_CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football"
