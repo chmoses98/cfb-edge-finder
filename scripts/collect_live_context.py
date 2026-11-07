@@ -96,6 +96,9 @@ ESPN_SCOREBOARD_HOSTS = (
         "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
     ),
     ("cdn.espn.com", "https://cdn.espn.com/core/college-football/scoreboard"),
+    # Same envelope as site.web.api.espn.com. A third host, so one blocked/blocking host no longer costs the sweep
+    # (2026-11-07: site.web.api.espn.com and cdn.espn.com were unreachable from a restricted network; this one answered).
+    ("site.api.espn.com", "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"),
 )
 ESPN_CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football"
 
@@ -214,7 +217,7 @@ def _events_from(host: str, payload: Any) -> list[dict] | None:
         return None
     events = (
         payload.get("events")
-        if host == "site.web.api.espn.com"
+        if host in ("site.web.api.espn.com", "site.api.espn.com")
         else ((payload.get("content") or {}).get("sbData") or {}).get("events")
     )
     return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else None

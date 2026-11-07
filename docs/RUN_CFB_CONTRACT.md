@@ -3,10 +3,16 @@
 The exact procedure a ChatGPT betting session follows when the operator
 says **RUN CFB**.
 
-> **The repository NEVER provides the football projection or the betting
-> recommendation.** It answers one question — *what can I bet on this game
-> right now, at what price, under what settlement rules* — and nothing
-> else. The handicap happens outside this repository, in the session.
+> **START WITH [`RUN_CFB.md`](../RUN_CFB.md) (repo root).** It is the complete RUN CFB procedure: per-game football
+> research packets (`data/research_packets/`, spec in [`RUN_CFB_RESEARCH_PACKETS.md`](RUN_CFB_RESEARCH_PACKETS.md)) plus
+> every Kalshi contract with all-in costs. This document remains the authority for **market retrieval, freshness,
+> completeness and fee semantics** — everything below still applies unchanged.
+>
+> **The repository NEVER provides the betting recommendation, a fair probability, an edge or a stake.** It supplies
+> (1) the Kalshi menu, prices and rules (this document), and (2) football *evidence* with provenance — opponent-adjusted
+> metrics, exact schedules, historical distributions, availability and environment inputs, and its own descriptive,
+> uncalibrated scoring baseline with its error shown. The handicap — the probability, the range, the script, the bet —
+> is formed by the session, which must also research what no keyless source provides (confirmed QB, injuries).
 
 ---
 
@@ -285,11 +291,14 @@ Read **all 19 families**, not just moneyline/spread/total — quarters,
 halves, team totals, team-stat props, first-TD, overtime are all live
 inventory. Note Kalshi encodes "3+ touchdowns" as `floor_strike: 2.5`.
 
-### 7 — Handicap the game OUTSIDE the repository
+### 7 — Handicap the game from the football evidence
 
-Form your own view of the football game: talent, injuries, weather, rest,
-scheme, motivation, market context. **Nothing in this repository helps you
-here, and nothing in it should.**
+Form your own view of the football game. The per-game research packet
+(`data/research_packets/games/<game_key>/`, see `RUN_CFB.md`) supplies the football evidence: opponent-adjusted
+matchup metrics, exact schedules and opponent quality, QB and availability inputs with their gaps, environment, pace,
+historical outcome distributions and comparable games, and the engine's evidence-gated game scripts. **The packet
+supplies evidence, never the probability**: you still form the estimate and its uncertainty, research what the packet
+flags as missing (confirmed starting QB, injuries), and never copy a market price into your estimate.
 
 ### 8 — Use current contract prices to test for positive EV
 
@@ -503,8 +512,8 @@ is a correct outcome.
 
 ## What the repository will never do
 
-No projection, no fair value, no expected score, no model edge, no Kelly
-stake, no recommendation — asserted by test
+No betting recommendation, no fair value, no model edge, no Kelly
+stake, no probability supplied as a bet price — asserted by test
 (`test_catalog_schema_and_isolation.py`), not by convention. (The catalog and execution index remain model-free. The
 **candidate artifact** is a different file: its `fair_value` fields restate probabilities a session supplied, with
 fee-inclusive arithmetic and explicit calibration status; the repository still never originates a probability.) No bet
@@ -541,6 +550,13 @@ Kalshi credential is used on the live path.
 Before placing **stakes** or reporting any price as a calculated **bet-up-to**, also read [`docs/CFB_BET_RISK_PROTOCOL.md`](CFB_BET_RISK_PROTOCOL.md). Its factual retrospective is the Oct 22–30, 2026 Kalshi router ledger. It adds a recommendation-level risk review, same-game and cumulative-day gross exposure disclosure, amendment-aware loss reconciliation, and a prohibition on treating captured asks as fair-value price limits. It does **not** modify the authoritative Kalshi market-retrieval process, activate a model, or justify placing orders without a verified fee-adjusted value case. When a fair-probability range is not supportable, a matchup lean may be stated but must **not** be presented as a qualified positive-EV bet.
 
 ## ChatGPT full-slate handoff: no user uploads or manual CLI required
+
+> **Primary path (2026-11-07): the committed research packets.** Read `RUN_CFB.md` and
+> `data/research_packets/index.json` through the GitHub connector. Each game's `packet.json`, `schedules.json`,
+> `team_profiles.json`, `distributions.json` and `markets.json` are ordinary committed files under 250 KB: no Actions
+> artifact download, no ZIP, no upload. The Actions-artifact route below is a **secondary** source: it exists only as a
+> workflow-run upload, which is why a session that cannot reach run artifacts previously ended with prices and no
+> football evidence.
 
 **This is a separate operator path from the terminal-only workflow in
 `docs/LIVE_EXECUTION.md`.** When the operator says "RUN CFB -- afternoon",

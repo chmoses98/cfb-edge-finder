@@ -152,6 +152,7 @@ SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
     "ladder_archive",
+    "research_packet",
     # Read-only postmortem tooling (2026-11-02): reads stakes, so it must never size the next bet.
     "postmortem",
     # Kept in step with tests/test_sizing_disconnection.py, which asserts the

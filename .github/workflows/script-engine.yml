@@ -66,6 +66,16 @@ jobs:
           --football-dir "data/football/$SEASON" --catalog-dir data/live
           --out-dir data/scripting/live --ledger-dir "$LEDGER/data/scripting/ledger" --season "$SEASON"
 
+      - name: Build the RUN CFB research packets (per-game football research + Kalshi menus; no model probabilities)
+        # The ChatGPT handoff: data/research_packets/** is what RUN CFB reads. It is derived from the game log just
+        # collected, the committed execution index and keyless ESPN lookups (venue/weather/roster), so it needs no
+        # secret. FAIL SOFT: a packet failure must never cost the frozen artifacts or the ledger.
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          python scripts/build_research_packets.py --horizon-hours 120
+          python scripts/verify_research_packets.py
+
       - name: Settle finished games and rebuild the report
         run: |
           python scripts/script_engine.py settle --football-dir "data/football/$SEASON" \
@@ -86,7 +96,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/football data/scripting/live
+          git add data/football data/scripting/live data/research_packets
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "script engine: football log + frozen artifacts ($(date -u +%Y-%m-%dT%H:%MZ))"
           for attempt in 1 2 3 4; do

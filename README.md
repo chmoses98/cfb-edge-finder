@@ -13,6 +13,17 @@ not produce an edge worth wagering on -- see
 probability, no fair value, no expected score and no edge; the judgement
 about what a price is worth belongs to whoever reads the catalog.
 
+## RUN CFB: the complete handicapping handoff
+
+Say **RUN CFB** to ChatGPT and it reads [`RUN_CFB.md`](RUN_CFB.md): per-game **research packets**
+(`data/research_packets/`) holding opponent-adjusted matchup metrics, exact schedules and opponent quality, QB and
+availability inputs (with their gaps stated), environment, historical outcome distributions and comparable games, the
+engine's game scripts, and **every Kalshi contract with both buy sides, fees and all-in costs**. ChatGPT does the
+handicapping, estimates probabilities and uncertainty itself, and returns one ranked card. The repository supplies
+evidence and deterministic price arithmetic — never a probability, an edge, a stake or a bet. Spec:
+[`docs/RUN_CFB_RESEARCH_PACKETS.md`](docs/RUN_CFB_RESEARCH_PACKETS.md); audit that motivated it:
+[`docs/RUN_CFB_AUDIT_2026-11-07.md`](docs/RUN_CFB_AUDIT_2026-11-07.md).
+
 ## Prospective research (CFB research conductor)
 
 `.github/workflows/cfb-research-conductor.yml` captures every game's Kalshi game-winner quotes inside the frozen
