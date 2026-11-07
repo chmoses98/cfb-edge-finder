@@ -15,7 +15,7 @@ ENGINE = (WORKFLOWS / "script-engine.yml").read_text()
 
 
 def _steps() -> list[tuple[str, str]]:
-    return [(chunk.split("\n", 1)[0], chunk) for chunk in re.split(r"(?m)^      - name: ", PACKETS)[1:]]
+    return [(chunk.split("\n", 1)[0].strip("\"'"), chunk) for chunk in re.split(r"(?m)^      - name: ", PACKETS)[1:]]
 
 
 def _body(prefix: str) -> str:
@@ -60,8 +60,8 @@ def test_it_stages_only_its_own_path_and_never_touches_the_ledger_or_orders():
 
 
 def test_the_workflow_file_is_valid_yaml_when_a_parser_is_available():
-    """A real push of this workflow failed as 'a workflow file issue' because an unquoted step name held ': '. CI installs no
-    PyYAML, so this guard runs wherever one exists (and a text check below runs everywhere)."""
+    """A real push failed as 'a workflow file issue': an unquoted step name held ': '. CI installs no PyYAML, so the
+    parser check runs wherever one exists and the text check runs everywhere."""
     for line in PACKETS.splitlines():
         stripped = line.strip()
         if stripped.startswith("- name: ") and not stripped[8:].startswith(('"', "'")):
