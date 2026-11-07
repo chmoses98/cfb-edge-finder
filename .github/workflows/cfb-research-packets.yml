@@ -22,6 +22,11 @@ name: CFB Research Packets
 # A failed game-log refresh is annotated as a warning and the packets are built from the committed log, whose age they
 # state (`inputs.football_log_fetched_at`).
 on:
+  # TEMPORARY (PR #267 live test only; removed before merge): a workflow that exists only on a feature branch cannot be
+  # dispatched (404), so a push touching this file runs it once on the branch.
+  push:
+    branches: [claude/run-cfb-handicapping-system-xs4rkz]
+    paths: [".github/workflows/cfb-research-packets.yml"]
   schedule:
     # Thu-Sun every 30 minutes (a slate day), and every 3 hours Mon-Wed. GitHub fires these late, so cadence is a floor.
     - cron: "7,37 * * * 0,4,5,6"
