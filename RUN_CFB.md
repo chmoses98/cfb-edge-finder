@@ -14,7 +14,7 @@ requested college-football game, price every relevant Kalshi contract, and retur
 
 | Step | File | Why |
 |---|---|---|
-| 1 | `data/research_packets/index.json` | every slate, every game, kickoff, window, data-quality flags, file paths. ~45 KB |
+| 1 | `data/research_packets/index.json` | every slate, every game, kickoff, window, data-quality flags (`football_history` = `PRESENT`/`ABSENT`), paths. ~65 KB |
 | 2 | `data/research_packets/slates/<ET date>.json` | the games of one US/Eastern slate date, with the same flags and full file paths |
 | 3 | per game: `games/<game_key>/packet.json` | identity, data-quality flags, matchup comparison, baseline, QB, availability, environment, game scripts, your worksheet |
 | 4 | per game: `schedules.json`, `team_profiles.json`, `distributions.json` | exact schedules + opponent quality, opponent-adjusted metrics, historical distributions and comparable games |
@@ -22,7 +22,7 @@ requested college-football game, price every relevant Kalshi contract, and retur
 | 6 | `data/live/execution/games/<game_key>/quotes.json` | the freshest captured prices (refreshed more often than `markets.json`) |
 | 7 | `data/research_packets/reference/bet_up_to_table.json` | bet-up-to price by your lower-bound probability, so the arithmetic is a lookup |
 
-Every file is under 250 KB. **Use the paths in the index and slate rows; never construct one.** The slate date is the
+Every file is under 250 KB (the slate for a 111-game Saturday is ~165 KB; a quotes file up to ~175 KB). **Use the paths in the index and slate rows; never construct one** — the first markets file is `markets.json` and later parts are `markets.part02of03.json`, `markets.part03of03.json` …; the slate row's `files.markets` lists them all. The slate date is the
 **US/Eastern date of kickoff**, not the date inside a game key. Select games by `window` (`early` < 14:00 ET,
 `afternoon` 14:00–17:59, `evening` ≥ 18:00), or by team name / `game_key` if the operator names games.
 
@@ -32,8 +32,13 @@ Full market-retrieval rules (execution index, freshness, completeness gate, fail
 
 **Freshness.** Packets carry `inputs.quotes_captured_at` and `price_provenance.game_fingerprint`. If
 `data/live/execution/games/<game_key>/quotes.json` has a different `game_fingerprint`, **quotes.json is newer and wins**:
-take asks, sizes and fees from it and redo the all-in arithmetic (§4). A price is **captured**, never **live-verified**,
+take asks, sizes and fees from it and redo the all-in arithmetic (§4). `captured_at` is the last time the market surface
+*changed*, not the last observation, and a thin rung's `upd` can be days old: age alone is not staleness. Run the catalog
+freshness check in `docs/RUN_CFB_CONTRACT.md` (collector run history, stale after 90 min in the Thu–Sun window, 18 h
+otherwise); if you cannot reach run history say **freshness UNVERIFIED**. A price is **captured**, never **live-verified**,
 unless you made a fresh direct request to Kalshi and got the same buy-side price with enough size. Say which.
+Sizes are **contract counts**; very large sizes are market-maker resting size, not a tradable amount for a $75 unit.
+**Never infer a rung from a ticker suffix** (it is the rounded-up line: `…-53` is Over 52.5); use `line` and `yes_means`.
 
 If a fetch fails: retry, then retry at an explicit `ref: main`; fall back to the slate row, then the index. Report a game
 unavailable only after every path for it failed, and name them. Never answer "prices unavailable" after one failed read.
@@ -54,6 +59,8 @@ unavailable only after every path for it failed, and name them. Never answer "pr
 5. **Estimate outcome probabilities and uncertainty from the football evidence**: winner, spread cover, total, each team's
    points, 1H, 1Q, alternate rungs. Use `distributions.json` for *shape and spread* (reference-class frequencies, closest
    games, the baseline's real error) instead of inventing a score and assuming a normal curve. Give a low / point / high.
+   When the baseline, ESPN's predictor and the reference class disagree, say so and widen the range: the disagreement is
+   information, not noise to average away.
    **Never copy Kalshi's price or implied probability into your estimate.**
 6. **Compare your estimates against each relevant contract** — the side you would buy, at that side's ask, plus fees (§4).
    Check every family in the same thesis group (`markets.thesis_groups`): moneyline vs spread vs alternate rung vs team

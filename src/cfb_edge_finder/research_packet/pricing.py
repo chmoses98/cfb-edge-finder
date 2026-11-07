@@ -239,7 +239,17 @@ def evaluate(
         "clears_at_current_ask": clears_at_ask,
         "stake": stake_check(proposed_units, probability_low, be, quoted_contracts=quoted_contracts, price=ask),
         "qualified_positive_ev": False,
-        "qualification": QUALIFICATION,
+        "qualification": QUALIFICATION
+        if clears_at_ask
+        else {
+            **QUALIFICATION,
+            "tier": "PASS_AT_THIS_ASK",
+            "meaning": (
+                "the lower bound of the analyst's range does not clear fee-inclusive break-even at the captured ask: "
+                "this is a pass at this price, not a recommendation. The bet-up-to ceiling is the most the analyst's "
+                "own lower bound could justify paying"
+            ),
+        },
         "unit_dollars": UNIT_DOLLARS,
         "max_units_per_bet": MAX_UNITS_PER_BET,
     }

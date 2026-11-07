@@ -459,6 +459,9 @@ def _index_row(
         "football_data_confidence": dq.get("football_data_confidence"),
         "blocking_flags": dq.get("blocking_flags"),
         "flag_codes": sorted({f["code"] for f in dq.get("missing_data_flags") or []}),
+        "football_history": "ABSENT"
+        if any(f["code"] == "FOOTBALL_HISTORY_ABSENT" for f in dq.get("missing_data_flags") or [])
+        else "PRESENT",
         "sections": dq.get("sections"),
         "quotes_game_fingerprint": entry.get("game_fingerprint"),
     }
@@ -536,6 +539,7 @@ def _write_indexes(
                         "football_data_confidence",
                         "blocking_flags",
                         "flag_codes",
+                        "football_history",
                     )
                 }
                 for r in rows

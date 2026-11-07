@@ -123,3 +123,13 @@ def test_inverted_range_is_rejected():
         pr.evaluate(
             side="YES", ask=0.5, series_ticker=SERIES, probability_low=0.6, probability_point=0.5, probability_high=0.7
         )
+
+
+def test_a_contract_whose_lower_bound_misses_break_even_is_labelled_a_pass_not_a_recommendation():
+    out = pr.evaluate(
+        side="YES", ask=0.60, series_ticker=SERIES, probability_low=0.55, probability_point=0.62, probability_high=0.68
+    )
+    assert out["clears_at_current_ask"] is False
+    qualification = out["qualification"]
+    assert qualification["tier"] == "PASS_AT_THIS_ASK" and "not a recommendation" in qualification["meaning"]
+    assert out["qualification"]["empirically_validated_positive_ev"] is False

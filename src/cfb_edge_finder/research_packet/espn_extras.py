@@ -53,6 +53,18 @@ def _get(url: str, params: dict[str, Any] | None = None, retries: int = 2) -> tu
     return None, last
 
 
+def _condition(value: Any) -> dict[str, Any]:
+    """ESPN's `conditionId` is sometimes text ("Mostly clear") and sometimes an undocumented numeric code."""
+    if value is None:
+        return {}
+    if str(value).strip().isdigit():
+        return {
+            "condition_code": str(value),
+            "condition_code_note": "ESPN's numeric weather code is undocumented: not decoded here",
+        }
+    return {"condition": value}
+
+
 def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str, Any]:
     """Venue, weather and ESPN's predictor from one summary payload. Pure."""
     info = summary.get("gameInfo") or {}
@@ -67,6 +79,9 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
             "state": address.get("state"),
             "grass": venue.get("grass"),
             "indoor": venue.get("indoor"),
+            "indoor_note": (
+                "null means ESPN did not say; it does NOT mean outdoors (domes and roofs exist): check the venue"
+            ),
         }
         if venue
         else {"status": "UNAVAILABLE", "reason": "summary carried no gameInfo.venue"},
@@ -80,7 +95,7 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
             "low_f": weather.get("lowTemperature"),
             "wind_gust_mph": weather.get("gust"),
             "precipitation_probability_pct": weather.get("precipitation"),
-            "condition": weather.get("conditionId"),
+            **_condition(weather.get("conditionId")),
             "caveat": "an ESPN/AccuWeather forecast for the game's location at publication time, not an observation; "
                 "indoor "
                 "venues ignore it",

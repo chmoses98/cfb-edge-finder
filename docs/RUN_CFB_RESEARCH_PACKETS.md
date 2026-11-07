@@ -7,6 +7,12 @@ under `data/research_packets/` and is read through the GitHub connector as ordin
 > `index.json` and every `markets.json` declare `contains_model_probabilities: false`;
 > `scripts/verify_research_packets.py` and `tests/test_research_packet_*.py` fail if a contract record carries
 > `fair_value`, `edge`, `stake`, `kelly` or `bet_up_to`. The packet carries evidence; the handicap is ChatGPT's.
+>
+> **Sizing is advisory and analyst-owned.** `scripts/cfb_price_limits.py` computes all-in cost, fee-inclusive break-even and a
+> bet-up-to ceiling from the analyst's stated range; it assigns no stake (no settled-outcome evidence supports any edge-to-stake
+> rule) and only *checks* a stake the analyst proposes against the owner's mechanical limits (1U = $75, max 5U, quoted size,
+> lower bound must clear break-even). Its output is an *analyst recommendation with stated uncertainty*, never an empirically
+> validated positive-EV wager (`qualified_positive_ev` is always false); automated approval gates are untouched.
 
 ## Layout
 
@@ -73,6 +79,7 @@ index (`data/live/cfb_execution_index.json`) until their slate approaches.
 * `thesis_groups` — families that express the same underlying view, so every expression is compared.
 * `price_provenance` — `CAPTURED_NOT_LIVE_VERIFIED`, the capture time and the `game_fingerprint` to compare with
   `data/live/execution/games/<game_key>/quotes.json`. A mismatch means the quotes file is newer.
+* `side_teams` — which ticker code is the football game's home / away team, and whether that is swapped relative to Kalshi's key order. Every contract's `side` follows the FOOTBALL game, so it always agrees with `packet.json`.
 * `pricing_basis` — the buy-side rules (NO = NO ask = 1 − YES bid), the fee formula, what the fee excludes.
 
 Prices, sizes and fees are copied unchanged from the execution layer the catalog already publishes; nothing is re-fetched
@@ -113,3 +120,18 @@ fit (`scripting.adjust.fit_league`) — it adds no second model.
 * **Non-FBS vs non-FBS games** have final scores only.
 * **Player props**: none are listed in the current catalog; if one appears its family is `GAP`.
 * **Quotes** are captured, not live.
+
+## Integrity guarantees (tested in `tests/test_research_packet_integrity.py`)
+
+* **Time cutoffs.** A game's football picture is drawn from games completed before 04:00 US/Eastern on its date; the packet
+  records `football_data_cutoff` and the schedules never contain a game at or after it, nor the game itself. The historical
+  reference class is filtered by `history.eligible_reference` (kickoff before the cutoff, never the game itself).
+* **Baseline history is leak-free.** Every stored baseline record has `cutoff < kickoff`, and the 2026 baselines reproduce
+  exactly when rebuilt today from only the pre-cutoff games.
+* **Orientation.** Linescores are attached to a history row only when they reconcile to that row's own final score; a swapped
+  home/away pair (two 2024 neutral-site bowls) is re-oriented by score, anything else is dropped. Contract sides follow the
+  football game's orientation (`side_teams`), and every moneyline contract is checked against the team it names.
+* **Adjustment.** Adjusted values come from the Script Engine's league fit at the same cutoff; a regression test checks that a
+  team's adjusted-minus-raw scoring tracks the quality of the defenses it faced.
+* **Workflow.** Packet generation is fail-soft for the prospective ledger and fail-visible: a failure annotates the run,
+  discards unverified packets, and turns the run red after the ledger and data commits.

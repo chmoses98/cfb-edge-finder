@@ -274,11 +274,18 @@ def team_schedule(
     wins = sum(1 for g in lines if g["result"] == "W")
     sos_flag = None
     if lines:
-        if (non_fbs + weak) / len(lines) >= 0.5:
+        soft = (non_fbs + weak) / len(lines) >= 0.5
+        hard = strong / len(lines) >= 0.5
+        if soft and hard:
+            sos_flag = (
+                "SCHEDULE_MIXED: half the games were against FCS/non-FBS or bottom-third FBS opponents and half "
+                "against top-third FBS opponents; read the game list, not the average"
+            )
+        elif soft:
             sos_flag = (
                 "SCHEDULE_SOFT: at least half of the games were against FCS/non-FBS or bottom-third FBS opponents"
             )
-        elif strong / len(lines) >= 0.5:
+        elif hard:
             sos_flag = "SCHEDULE_HARD: at least half of the games were against top-third FBS opponents"
     return {
         "evidence_tier": VERIFIED,
