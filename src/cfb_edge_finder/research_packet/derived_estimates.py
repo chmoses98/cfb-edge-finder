@@ -277,6 +277,19 @@ def _corners(hp: float, ap: float, uh: float, ua: float) -> list[tuple[float, fl
     return out
 
 
+def reference_class_for(
+    game_row: dict[str, Any], packet: dict[str, Any] | None, history_games: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], tuple[float, float] | None, dict[str, Any] | None]:
+    """The leak-free reference class the packet's baseline implies for a game: (games, window, baseline) or empty."""
+    base = (packet or {}).get("football", {}).get("baseline") if packet else None
+    if not (base and base.get("home_points") is not None and game_row.get("football_history") == "PRESENT"):
+        return [], None, base
+    cutoff = ((packet or {}).get("inputs") or {}).get("football_data_cutoff")
+    pool = hist.eligible_reference(history_games, cutoff, None)
+    chosen, window = hist.reference_class(pool, base["home_margin"], base["total_points"])
+    return chosen, window, base
+
+
 def derive_game(
     game_row: dict[str, Any],
     contracts: list[dict[str, Any]],
