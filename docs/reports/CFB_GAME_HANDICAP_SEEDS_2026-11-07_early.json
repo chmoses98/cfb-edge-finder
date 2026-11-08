@@ -1,0 +1,3283 @@
+{
+ "schema_version": "cfb_game_handicap_seeds/1.0.0",
+ "authority": "DRAFT: reference-class statistics, NOT an analyst handicap. To use one, copy it to a cfb_game_handicaps/1.0.0 file, edit it with your own view, and add analyst, handicapped_at, evidence, thesis and opposing_case. Entries flagged draft are refused.",
+ "seeds": [
+  {
+   "game_key": "26NOV07ALBYBRY",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 26.532,
+      "away_mean": 30.553,
+      "home_sd": 12.236,
+      "away_sd": 10.854,
+      "correlation": 0.1224,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2024
+      },
+      "reference_n": 94
+     },
+     "first_half": {
+      "home_mean": 13.479,
+      "away_mean": 16.053,
+      "home_sd": 9.337,
+      "away_sd": 8.277,
+      "correlation": -0.0273,
+      "uncertainty": {
+       "margin_points": 9.441,
+       "total_points": 9.441,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2053
+      },
+      "reference_n": 94
+     },
+     "second_half": {
+      "home_mean": 12.904,
+      "away_mean": 14.404,
+      "home_sd": 7.073,
+      "away_sd": 7.317,
+      "correlation": 0.0922,
+      "uncertainty": {
+       "margin_points": 8.73,
+       "total_points": 8.73,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2037
+      },
+      "reference_n": 94
+     },
+     "first_quarter": {
+      "home_mean": 5.66,
+      "away_mean": 6.713,
+      "home_sd": 5.319,
+      "away_sd": 5.375,
+      "correlation": -0.0219,
+      "uncertainty": {
+       "margin_points": 3.955,
+       "total_points": 3.955,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2054
+      },
+      "reference_n": 94
+     },
+     "second_quarter": {
+      "home_mean": 7.819,
+      "away_mean": 9.34,
+      "home_sd": 7.011,
+      "away_sd": 6.169,
+      "correlation": -0.0371,
+      "uncertainty": {
+       "margin_points": 5.486,
+       "total_points": 5.486,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2052
+      },
+      "reference_n": 94
+     },
+     "third_quarter": {
+      "home_mean": 5.904,
+      "away_mean": 6.809,
+      "home_sd": 5.21,
+      "away_sd": 5.177,
+      "correlation": 0.1022,
+      "uncertainty": {
+       "margin_points": 4.064,
+       "total_points": 4.064,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2033
+      },
+      "reference_n": 94
+     },
+     "fourth_quarter": {
+      "home_mean": 7.0,
+      "away_mean": 7.596,
+      "home_sd": 4.881,
+      "away_sd": 5.15,
+      "correlation": 0.0945,
+      "uncertainty": {
+       "margin_points": 4.666,
+       "total_points": 4.666,
+       "sd_scale_low": 0.8563,
+       "sd_scale_high": 1.1437,
+       "correlation_delta": 0.2036
+      },
+      "reference_n": 94
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07ARKAUB",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 30.158,
+      "away_mean": 19.757,
+      "home_sd": 12.912,
+      "away_sd": 10.267,
+      "correlation": -0.167,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1561
+      },
+      "reference_n": 152
+     },
+     "first_half": {
+      "home_mean": 16.599,
+      "away_mean": 9.368,
+      "home_sd": 8.793,
+      "away_sd": 6.638,
+      "correlation": -0.2049,
+      "uncertainty": {
+       "margin_points": 8.194,
+       "total_points": 8.194,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1538
+      },
+      "reference_n": 152
+     },
+     "second_half": {
+      "home_mean": 13.191,
+      "away_mean": 10.118,
+      "home_sd": 7.708,
+      "away_sd": 6.65,
+      "correlation": -0.1707,
+      "uncertainty": {
+       "margin_points": 7.355,
+       "total_points": 7.355,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1559
+      },
+      "reference_n": 152
+     },
+     "first_quarter": {
+      "home_mean": 6.947,
+      "away_mean": 3.967,
+      "home_sd": 5.678,
+      "away_sd": 4.626,
+      "correlation": -0.1239,
+      "uncertainty": {
+       "margin_points": 3.444,
+       "total_points": 3.444,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1581
+      },
+      "reference_n": 152
+     },
+     "second_quarter": {
+      "home_mean": 9.651,
+      "away_mean": 5.401,
+      "home_sd": 6.652,
+      "away_sd": 5.358,
+      "correlation": -0.2467,
+      "uncertainty": {
+       "margin_points": 4.75,
+       "total_points": 4.75,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1508
+      },
+      "reference_n": 152
+     },
+     "third_quarter": {
+      "home_mean": 5.829,
+      "away_mean": 4.191,
+      "home_sd": 5.222,
+      "away_sd": 4.08,
+      "correlation": -0.1741,
+      "uncertainty": {
+       "margin_points": 3.162,
+       "total_points": 3.162,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1557
+      },
+      "reference_n": 152
+     },
+     "fourth_quarter": {
+      "home_mean": 7.362,
+      "away_mean": 5.928,
+      "home_sd": 5.303,
+      "away_sd": 5.34,
+      "correlation": -0.0489,
+      "uncertainty": {
+       "margin_points": 4.193,
+       "total_points": 4.193,
+       "sd_scale_low": 0.8872,
+       "sd_scale_high": 1.1128,
+       "correlation_delta": 0.1602
+      },
+      "reference_n": 152
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07BYUUTAH",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 30.927,
+      "away_mean": 22.824,
+      "home_sd": 11.904,
+      "away_sd": 11.227,
+      "correlation": -0.1464,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1349
+      },
+      "reference_n": 205
+     },
+     "first_half": {
+      "home_mean": 15.82,
+      "away_mean": 11.79,
+      "home_sd": 8.294,
+      "away_sd": 7.225,
+      "correlation": -0.1764,
+      "uncertainty": {
+       "margin_points": 8.09,
+       "total_points": 8.09,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1336
+      },
+      "reference_n": 205
+     },
+     "second_half": {
+      "home_mean": 14.707,
+      "away_mean": 10.61,
+      "home_sd": 7.536,
+      "away_sd": 7.492,
+      "correlation": -0.1588,
+      "uncertainty": {
+       "margin_points": 7.418,
+       "total_points": 7.418,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1344
+      },
+      "reference_n": 205
+     },
+     "first_quarter": {
+      "home_mean": 6.732,
+      "away_mean": 4.385,
+      "home_sd": 5.673,
+      "away_sd": 4.415,
+      "correlation": -0.1084,
+      "uncertainty": {
+       "margin_points": 3.257,
+       "total_points": 3.257,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1363
+      },
+      "reference_n": 205
+     },
+     "second_quarter": {
+      "home_mean": 9.088,
+      "away_mean": 7.405,
+      "home_sd": 5.845,
+      "away_sd": 5.759,
+      "correlation": -0.1474,
+      "uncertainty": {
+       "margin_points": 4.833,
+       "total_points": 4.833,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1349
+      },
+      "reference_n": 205
+     },
+     "third_quarter": {
+      "home_mean": 6.971,
+      "away_mean": 4.576,
+      "home_sd": 5.822,
+      "away_sd": 4.96,
+      "correlation": -0.1486,
+      "uncertainty": {
+       "margin_points": 3.383,
+       "total_points": 3.383,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1349
+      },
+      "reference_n": 205
+     },
+     "fourth_quarter": {
+      "home_mean": 7.737,
+      "away_mean": 6.034,
+      "home_sd": 5.691,
+      "away_sd": 5.26,
+      "correlation": -0.1045,
+      "uncertainty": {
+       "margin_points": 4.035,
+       "total_points": 4.035,
+       "sd_scale_low": 0.903,
+       "sd_scale_high": 1.097,
+       "correlation_delta": 0.1364
+      },
+      "reference_n": 205
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07CCSUSTNH",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 33.795,
+      "away_mean": 25.37,
+      "home_sd": 11.8,
+      "away_sd": 11.557,
+      "correlation": -0.0351,
+      "uncertainty": {
+       "margin_points": 17.75,
+       "total_points": 17.75,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.234
+      },
+      "reference_n": 73
+     },
+     "first_half": {
+      "home_mean": 17.836,
+      "away_mean": 12.247,
+      "home_sd": 8.986,
+      "away_sd": 7.859,
+      "correlation": -0.0327,
+      "uncertainty": {
+       "margin_points": 9.025,
+       "total_points": 9.025,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.234
+      },
+      "reference_n": 73
+     },
+     "second_half": {
+      "home_mean": 15.781,
+      "away_mean": 12.877,
+      "home_sd": 8.047,
+      "away_sd": 7.365,
+      "correlation": -0.0019,
+      "uncertainty": {
+       "margin_points": 8.598,
+       "total_points": 8.598,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.2343
+      },
+      "reference_n": 73
+     },
+     "first_quarter": {
+      "home_mean": 6.932,
+      "away_mean": 4.836,
+      "home_sd": 5.526,
+      "away_sd": 4.927,
+      "correlation": -0.1203,
+      "uncertainty": {
+       "margin_points": 3.53,
+       "total_points": 3.53,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.2309
+      },
+      "reference_n": 73
+     },
+     "second_quarter": {
+      "home_mean": 10.904,
+      "away_mean": 7.411,
+      "home_sd": 6.682,
+      "away_sd": 6.041,
+      "correlation": -0.1177,
+      "uncertainty": {
+       "margin_points": 5.495,
+       "total_points": 5.495,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.231
+      },
+      "reference_n": 73
+     },
+     "third_quarter": {
+      "home_mean": 7.945,
+      "away_mean": 5.507,
+      "home_sd": 6.366,
+      "away_sd": 5.116,
+      "correlation": -0.2102,
+      "uncertainty": {
+       "margin_points": 4.036,
+       "total_points": 4.036,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.2239
+      },
+      "reference_n": 73
+     },
+     "fourth_quarter": {
+      "home_mean": 7.836,
+      "away_mean": 7.37,
+      "home_sd": 6.209,
+      "away_sd": 5.906,
+      "correlation": 0.0926,
+      "uncertainty": {
+       "margin_points": 4.562,
+       "total_points": 4.562,
+       "sd_scale_low": 0.8367,
+       "sd_scale_high": 1.1633,
+       "correlation_delta": 0.2323
+      },
+      "reference_n": 73
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07CLEMSYR",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 27.72,
+      "away_mean": 23.095,
+      "home_sd": 12.034,
+      "away_sd": 10.619,
+      "correlation": -0.1173,
+      "uncertainty": {
+       "margin_points": 22.05,
+       "total_points": 22.05,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.134
+      },
+      "reference_n": 211
+     },
+     "first_half": {
+      "home_mean": 14.081,
+      "away_mean": 11.711,
+      "home_sd": 7.915,
+      "away_sd": 7.11,
+      "correlation": -0.1228,
+      "uncertainty": {
+       "margin_points": 11.192,
+       "total_points": 11.192,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1339
+      },
+      "reference_n": 211
+     },
+     "second_half": {
+      "home_mean": 13.275,
+      "away_mean": 11.014,
+      "home_sd": 8.274,
+      "away_sd": 7.019,
+      "correlation": -0.161,
+      "uncertainty": {
+       "margin_points": 10.54,
+       "total_points": 10.54,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1324
+      },
+      "reference_n": 211
+     },
+     "first_quarter": {
+      "home_mean": 6.171,
+      "away_mean": 4.37,
+      "home_sd": 5.373,
+      "away_sd": 4.653,
+      "correlation": -0.1014,
+      "uncertainty": {
+       "margin_points": 4.574,
+       "total_points": 4.574,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1345
+      },
+      "reference_n": 211
+     },
+     "second_quarter": {
+      "home_mean": 7.91,
+      "away_mean": 7.341,
+      "home_sd": 5.809,
+      "away_sd": 5.806,
+      "correlation": -0.0948,
+      "uncertainty": {
+       "margin_points": 6.618,
+       "total_points": 6.618,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1347
+      },
+      "reference_n": 211
+     },
+     "third_quarter": {
+      "home_mean": 6.033,
+      "away_mean": 4.839,
+      "home_sd": 5.817,
+      "away_sd": 5.15,
+      "correlation": -0.1303,
+      "uncertainty": {
+       "margin_points": 4.718,
+       "total_points": 4.718,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1336
+      },
+      "reference_n": 211
+     },
+     "fourth_quarter": {
+      "home_mean": 7.242,
+      "away_mean": 6.175,
+      "home_sd": 5.861,
+      "away_sd": 5.522,
+      "correlation": -0.0961,
+      "uncertainty": {
+       "margin_points": 5.822,
+       "total_points": 5.822,
+       "sd_scale_low": 0.9044,
+       "sd_scale_high": 1.0956,
+       "correlation_delta": 0.1346
+      },
+      "reference_n": 211
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07DUKENCST",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 23.931,
+      "away_mean": 30.214,
+      "home_sd": 11.045,
+      "away_sd": 11.55,
+      "correlation": 0.0787,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1635
+      },
+      "reference_n": 145
+     },
+     "first_half": {
+      "home_mean": 11.055,
+      "away_mean": 15.103,
+      "home_sd": 7.937,
+      "away_sd": 7.971,
+      "correlation": -0.0782,
+      "uncertainty": {
+       "margin_points": 7.609,
+       "total_points": 7.609,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1635
+      },
+      "reference_n": 145
+     },
+     "second_half": {
+      "home_mean": 12.483,
+      "away_mean": 14.703,
+      "home_sd": 7.147,
+      "away_sd": 8.328,
+      "correlation": -0.0022,
+      "uncertainty": {
+       "margin_points": 7.908,
+       "total_points": 7.908,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1645
+      },
+      "reference_n": 145
+     },
+     "first_quarter": {
+      "home_mean": 4.179,
+      "away_mean": 6.497,
+      "home_sd": 4.615,
+      "away_sd": 5.359,
+      "correlation": -0.028,
+      "uncertainty": {
+       "margin_points": 3.105,
+       "total_points": 3.105,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1644
+      },
+      "reference_n": 145
+     },
+     "second_quarter": {
+      "home_mean": 6.876,
+      "away_mean": 8.607,
+      "home_sd": 5.77,
+      "away_sd": 5.779,
+      "correlation": -0.0483,
+      "uncertainty": {
+       "margin_points": 4.504,
+       "total_points": 4.504,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1641
+      },
+      "reference_n": 145
+     },
+     "third_quarter": {
+      "home_mean": 5.152,
+      "away_mean": 6.759,
+      "home_sd": 4.618,
+      "away_sd": 5.891,
+      "correlation": -0.0173,
+      "uncertainty": {
+       "margin_points": 3.465,
+       "total_points": 3.465,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1644
+      },
+      "reference_n": 145
+     },
+     "fourth_quarter": {
+      "home_mean": 7.331,
+      "away_mean": 7.945,
+      "home_sd": 5.611,
+      "away_sd": 6.3,
+      "correlation": -0.0327,
+      "uncertainty": {
+       "margin_points": 4.444,
+       "total_points": 4.444,
+       "sd_scale_low": 0.8845,
+       "sd_scale_high": 1.1155,
+       "correlation_delta": 0.1643
+      },
+      "reference_n": 145
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07FORBUCK",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 28.429,
+      "away_mean": 29.398,
+      "home_sd": 11.682,
+      "away_sd": 11.163,
+      "correlation": 0.015,
+      "uncertainty": {
+       "margin_points": 17.75,
+       "total_points": 17.75,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.201
+      },
+      "reference_n": 98
+     },
+     "first_half": {
+      "home_mean": 14.52,
+      "away_mean": 15.469,
+      "home_sd": 9.594,
+      "away_sd": 8.104,
+      "correlation": -0.0989,
+      "uncertainty": {
+       "margin_points": 9.205,
+       "total_points": 9.205,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.1991
+      },
+      "reference_n": 98
+     },
+     "second_half": {
+      "home_mean": 13.765,
+      "away_mean": 13.765,
+      "home_sd": 6.773,
+      "away_sd": 7.508,
+      "correlation": 0.0583,
+      "uncertainty": {
+       "margin_points": 8.451,
+       "total_points": 8.451,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.2004
+      },
+      "reference_n": 98
+     },
+     "first_quarter": {
+      "home_mean": 5.48,
+      "away_mean": 6.561,
+      "home_sd": 5.362,
+      "away_sd": 5.003,
+      "correlation": 0.0387,
+      "uncertainty": {
+       "margin_points": 3.696,
+       "total_points": 3.696,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.2008
+      },
+      "reference_n": 98
+     },
+     "second_quarter": {
+      "home_mean": 9.041,
+      "away_mean": 8.908,
+      "home_sd": 6.996,
+      "away_sd": 6.238,
+      "correlation": -0.1648,
+      "uncertainty": {
+       "margin_points": 5.509,
+       "total_points": 5.509,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.1956
+      },
+      "reference_n": 98
+     },
+     "third_quarter": {
+      "home_mean": 5.735,
+      "away_mean": 5.857,
+      "home_sd": 4.862,
+      "away_sd": 4.778,
+      "correlation": 0.0232,
+      "uncertainty": {
+       "margin_points": 3.558,
+       "total_points": 3.558,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.201
+      },
+      "reference_n": 98
+     },
+     "fourth_quarter": {
+      "home_mean": 8.031,
+      "away_mean": 7.908,
+      "home_sd": 5.275,
+      "away_sd": 5.584,
+      "correlation": 0.0092,
+      "uncertainty": {
+       "margin_points": 4.892,
+       "total_points": 4.892,
+       "sd_scale_low": 0.8593,
+       "sd_scale_high": 1.1407,
+       "correlation_delta": 0.2011
+      },
+      "reference_n": 98
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07FSUBC",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 24.755,
+      "away_mean": 29.85,
+      "home_sd": 11.7,
+      "away_sd": 11.559,
+      "correlation": 0.0468,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.163
+      },
+      "reference_n": 147
+     },
+     "first_half": {
+      "home_mean": 12.007,
+      "away_mean": 14.599,
+      "home_sd": 8.463,
+      "away_sd": 7.675,
+      "correlation": -0.1015,
+      "uncertainty": {
+       "margin_points": 7.674,
+       "total_points": 7.674,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.1617
+      },
+      "reference_n": 147
+     },
+     "second_half": {
+      "home_mean": 12.272,
+      "away_mean": 14.878,
+      "home_sd": 6.865,
+      "away_sd": 8.608,
+      "correlation": 0.0348,
+      "uncertainty": {
+       "margin_points": 7.831,
+       "total_points": 7.831,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.1631
+      },
+      "reference_n": 147
+     },
+     "first_quarter": {
+      "home_mean": 4.381,
+      "away_mean": 6.381,
+      "home_sd": 4.62,
+      "away_sd": 5.178,
+      "correlation": -0.1069,
+      "uncertainty": {
+       "margin_points": 3.104,
+       "total_points": 3.104,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.1615
+      },
+      "reference_n": 147
+     },
+     "second_quarter": {
+      "home_mean": 7.626,
+      "away_mean": 8.218,
+      "home_sd": 6.287,
+      "away_sd": 5.665,
+      "correlation": -0.095,
+      "uncertainty": {
+       "margin_points": 4.57,
+       "total_points": 4.57,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.1619
+      },
+      "reference_n": 147
+     },
+     "third_quarter": {
+      "home_mean": 5.367,
+      "away_mean": 6.946,
+      "home_sd": 4.614,
+      "away_sd": 5.907,
+      "correlation": -0.0437,
+      "uncertainty": {
+       "margin_points": 3.551,
+       "total_points": 3.551,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.163
+      },
+      "reference_n": 147
+     },
+     "fourth_quarter": {
+      "home_mean": 6.905,
+      "away_mean": 7.932,
+      "home_sd": 5.541,
+      "away_sd": 6.203,
+      "correlation": -0.0343,
+      "uncertainty": {
+       "margin_points": 4.279,
+       "total_points": 4.279,
+       "sd_scale_low": 0.8853,
+       "sd_scale_high": 1.1147,
+       "correlation_delta": 0.1631
+      },
+      "reference_n": 147
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07ISUBAY",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 30.866,
+      "away_mean": 19.76,
+      "home_sd": 12.736,
+      "away_sd": 10.575,
+      "correlation": -0.1412,
+      "uncertainty": {
+       "margin_points": 18.9,
+       "total_points": 18.9,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1448
+      },
+      "reference_n": 179
+     },
+     "first_half": {
+      "home_mean": 16.721,
+      "away_mean": 9.497,
+      "home_sd": 8.973,
+      "away_sd": 7.035,
+      "correlation": -0.2201,
+      "uncertainty": {
+       "margin_points": 9.788,
+       "total_points": 9.788,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1406
+      },
+      "reference_n": 179
+     },
+     "second_half": {
+      "home_mean": 13.743,
+      "away_mean": 9.894,
+      "home_sd": 7.774,
+      "away_sd": 6.683,
+      "correlation": -0.1578,
+      "uncertainty": {
+       "margin_points": 8.824,
+       "total_points": 8.824,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1441
+      },
+      "reference_n": 179
+     },
+     "first_quarter": {
+      "home_mean": 7.006,
+      "away_mean": 4.162,
+      "home_sd": 5.966,
+      "away_sd": 4.606,
+      "correlation": -0.0644,
+      "uncertainty": {
+       "margin_points": 4.169,
+       "total_points": 4.169,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1471
+      },
+      "reference_n": 179
+     },
+     "second_quarter": {
+      "home_mean": 9.715,
+      "away_mean": 5.335,
+      "home_sd": 6.547,
+      "away_sd": 5.385,
+      "correlation": -0.2654,
+      "uncertainty": {
+       "margin_points": 5.619,
+       "total_points": 5.619,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1373
+      },
+      "reference_n": 179
+     },
+     "third_quarter": {
+      "home_mean": 6.318,
+      "away_mean": 4.307,
+      "home_sd": 5.134,
+      "away_sd": 4.175,
+      "correlation": -0.0607,
+      "uncertainty": {
+       "margin_points": 3.967,
+       "total_points": 3.967,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1472
+      },
+      "reference_n": 179
+     },
+     "fourth_quarter": {
+      "home_mean": 7.425,
+      "away_mean": 5.587,
+      "home_sd": 5.545,
+      "away_sd": 5.015,
+      "correlation": -0.0262,
+      "uncertainty": {
+       "margin_points": 4.857,
+       "total_points": 4.857,
+       "sd_scale_low": 0.8961,
+       "sd_scale_high": 1.1039,
+       "correlation_delta": 0.1476
+      },
+      "reference_n": 179
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07LAFWM",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 30.225,
+      "away_mean": 28.163,
+      "home_sd": 12.515,
+      "away_sd": 11.943,
+      "correlation": -0.0555,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.1741
+      },
+      "reference_n": 129
+     },
+     "first_half": {
+      "home_mean": 15.891,
+      "away_mean": 14.147,
+      "home_sd": 9.592,
+      "away_sd": 8.458,
+      "correlation": -0.1384,
+      "uncertainty": {
+       "margin_points": 9.389,
+       "total_points": 9.389,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.1713
+      },
+      "reference_n": 129
+     },
+     "second_half": {
+      "home_mean": 14.078,
+      "away_mean": 13.736,
+      "home_sd": 7.447,
+      "away_sd": 7.402,
+      "correlation": 0.0127,
+      "uncertainty": {
+       "margin_points": 8.694,
+       "total_points": 8.694,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.1746
+      },
+      "reference_n": 129
+     },
+     "first_quarter": {
+      "home_mean": 6.295,
+      "away_mean": 5.798,
+      "home_sd": 5.511,
+      "away_sd": 5.322,
+      "correlation": -0.0579,
+      "uncertainty": {
+       "margin_points": 3.78,
+       "total_points": 3.78,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.174
+      },
+      "reference_n": 129
+     },
+     "second_quarter": {
+      "home_mean": 9.597,
+      "away_mean": 8.349,
+      "home_sd": 7.201,
+      "away_sd": 6.328,
+      "correlation": -0.2158,
+      "uncertainty": {
+       "margin_points": 5.609,
+       "total_points": 5.609,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.1665
+      },
+      "reference_n": 129
+     },
+     "third_quarter": {
+      "home_mean": 6.171,
+      "away_mean": 5.612,
+      "home_sd": 5.611,
+      "away_sd": 5.041,
+      "correlation": -0.1211,
+      "uncertainty": {
+       "margin_points": 3.683,
+       "total_points": 3.683,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.172
+      },
+      "reference_n": 129
+     },
+     "fourth_quarter": {
+      "home_mean": 7.907,
+      "away_mean": 8.124,
+      "home_sd": 5.87,
+      "away_sd": 5.658,
+      "correlation": 0.0222,
+      "uncertainty": {
+       "margin_points": 5.011,
+       "total_points": 5.011,
+       "sd_scale_low": 0.8775,
+       "sd_scale_high": 1.1225,
+       "correlation_delta": 0.1745
+      },
+      "reference_n": 129
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07LINWWEBB",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 35.069,
+      "away_mean": 24.185,
+      "home_sd": 12.397,
+      "away_sd": 11.733,
+      "correlation": -0.0959,
+      "uncertainty": {
+       "margin_points": 24.15,
+       "total_points": 24.15,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.1723
+      },
+      "reference_n": 130
+     },
+     "first_half": {
+      "home_mean": 18.192,
+      "away_mean": 11.554,
+      "home_sd": 8.632,
+      "away_sd": 7.145,
+      "correlation": -0.1025,
+      "uncertainty": {
+       "margin_points": 12.124,
+       "total_points": 12.124,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.1721
+      },
+      "reference_n": 130
+     },
+     "second_half": {
+      "home_mean": 16.731,
+      "away_mean": 12.454,
+      "home_sd": 8.188,
+      "away_sd": 8.127,
+      "correlation": -0.0886,
+      "uncertainty": {
+       "margin_points": 11.895,
+       "total_points": 11.895,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.1726
+      },
+      "reference_n": 130
+     },
+     "first_quarter": {
+      "home_mean": 7.9,
+      "away_mean": 4.377,
+      "home_sd": 6.005,
+      "away_sd": 4.758,
+      "correlation": -0.1845,
+      "uncertainty": {
+       "margin_points": 5.004,
+       "total_points": 5.004,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.168
+      },
+      "reference_n": 130
+     },
+     "second_quarter": {
+      "home_mean": 10.292,
+      "away_mean": 7.177,
+      "home_sd": 6.771,
+      "away_sd": 5.575,
+      "correlation": 0.0413,
+      "uncertainty": {
+       "margin_points": 7.12,
+       "total_points": 7.12,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.1736
+      },
+      "reference_n": 130
+     },
+     "third_quarter": {
+      "home_mean": 7.985,
+      "away_mean": 5.377,
+      "home_sd": 5.969,
+      "away_sd": 5.416,
+      "correlation": -0.1677,
+      "uncertainty": {
+       "margin_points": 5.446,
+       "total_points": 5.446,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.169
+      },
+      "reference_n": 130
+     },
+     "fourth_quarter": {
+      "home_mean": 8.746,
+      "away_mean": 7.077,
+      "home_sd": 6.575,
+      "away_sd": 6.082,
+      "correlation": 0.0143,
+      "uncertainty": {
+       "margin_points": 6.449,
+       "total_points": 6.449,
+       "sd_scale_low": 0.878,
+       "sd_scale_high": 1.122,
+       "correlation_delta": 0.1739
+      },
+      "reference_n": 130
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07MDPUR",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 33.464,
+      "away_mean": 26.609,
+      "home_sd": 12.417,
+      "away_sd": 12.145,
+      "correlation": -0.087,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2394
+      },
+      "reference_n": 69
+     },
+     "first_half": {
+      "home_mean": 17.942,
+      "away_mean": 13.29,
+      "home_sd": 9.133,
+      "away_sd": 8.232,
+      "correlation": -0.105,
+      "uncertainty": {
+       "margin_points": 8.188,
+       "total_points": 8.188,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2386
+      },
+      "reference_n": 69
+     },
+     "second_half": {
+      "home_mean": 15.435,
+      "away_mean": 13.174,
+      "home_sd": 7.96,
+      "away_sd": 7.575,
+      "correlation": 0.0058,
+      "uncertainty": {
+       "margin_points": 7.501,
+       "total_points": 7.501,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2413
+      },
+      "reference_n": 69
+     },
+     "first_quarter": {
+      "home_mean": 7.188,
+      "away_mean": 5.275,
+      "home_sd": 5.534,
+      "away_sd": 5.093,
+      "correlation": -0.1542,
+      "uncertainty": {
+       "margin_points": 3.268,
+       "total_points": 3.268,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2355
+      },
+      "reference_n": 69
+     },
+     "second_quarter": {
+      "home_mean": 10.754,
+      "away_mean": 8.014,
+      "home_sd": 6.803,
+      "away_sd": 6.234,
+      "correlation": -0.1608,
+      "uncertainty": {
+       "margin_points": 4.921,
+       "total_points": 4.921,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.235
+      },
+      "reference_n": 69
+     },
+     "third_quarter": {
+      "home_mean": 7.536,
+      "away_mean": 5.435,
+      "home_sd": 6.206,
+      "away_sd": 5.115,
+      "correlation": -0.1942,
+      "uncertainty": {
+       "margin_points": 3.401,
+       "total_points": 3.401,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2322
+      },
+      "reference_n": 69
+     },
+     "fourth_quarter": {
+      "home_mean": 7.899,
+      "away_mean": 7.739,
+      "home_sd": 6.285,
+      "away_sd": 6.004,
+      "correlation": 0.0944,
+      "uncertainty": {
+       "margin_points": 4.1,
+       "total_points": 4.1,
+       "sd_scale_low": 0.8319,
+       "sd_scale_high": 1.1681,
+       "correlation_delta": 0.2391
+      },
+      "reference_n": 69
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07MORGDSU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 33.887,
+      "away_mean": 27.535,
+      "home_sd": 10.949,
+      "away_sd": 12.675,
+      "correlation": -0.001,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2377
+      },
+      "reference_n": 71
+     },
+     "first_half": {
+      "home_mean": 17.282,
+      "away_mean": 13.338,
+      "home_sd": 8.692,
+      "away_sd": 8.453,
+      "correlation": -0.102,
+      "uncertainty": {
+       "margin_points": 9.098,
+       "total_points": 9.098,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2352
+      },
+      "reference_n": 71
+     },
+     "second_half": {
+      "home_mean": 16.296,
+      "away_mean": 13.732,
+      "home_sd": 7.084,
+      "away_sd": 8.201,
+      "correlation": 0.1524,
+      "uncertainty": {
+       "margin_points": 8.922,
+       "total_points": 8.922,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2322
+      },
+      "reference_n": 71
+     },
+     "first_quarter": {
+      "home_mean": 6.38,
+      "away_mean": 5.803,
+      "home_sd": 5.114,
+      "away_sd": 5.434,
+      "correlation": 0.0927,
+      "uncertainty": {
+       "margin_points": 3.62,
+       "total_points": 3.62,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2356
+      },
+      "reference_n": 71
+     },
+     "second_quarter": {
+      "home_mean": 10.901,
+      "away_mean": 7.535,
+      "home_sd": 6.795,
+      "away_sd": 6.485,
+      "correlation": -0.2144,
+      "uncertainty": {
+       "margin_points": 5.478,
+       "total_points": 5.478,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2268
+      },
+      "reference_n": 71
+     },
+     "third_quarter": {
+      "home_mean": 7.718,
+      "away_mean": 5.408,
+      "home_sd": 5.446,
+      "away_sd": 5.541,
+      "correlation": 0.0024,
+      "uncertainty": {
+       "margin_points": 3.9,
+       "total_points": 3.9,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2377
+      },
+      "reference_n": 71
+     },
+     "fourth_quarter": {
+      "home_mean": 8.577,
+      "away_mean": 8.324,
+      "home_sd": 5.176,
+      "away_sd": 5.961,
+      "correlation": 0.1008,
+      "uncertainty": {
+       "margin_points": 5.022,
+       "total_points": 5.022,
+       "sd_scale_low": 0.8343,
+       "sd_scale_high": 1.1657,
+       "correlation_delta": 0.2353
+      },
+      "reference_n": 71
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07NCATMONM",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 31.072,
+      "away_mean": 27.488,
+      "home_sd": 12.383,
+      "away_sd": 11.911,
+      "correlation": -0.0605,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1768
+      },
+      "reference_n": 125
+     },
+     "first_half": {
+      "home_mean": 16.032,
+      "away_mean": 13.472,
+      "home_sd": 9.477,
+      "away_sd": 8.347,
+      "correlation": -0.1487,
+      "uncertainty": {
+       "margin_points": 9.195,
+       "total_points": 9.195,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1735
+      },
+      "reference_n": 125
+     },
+     "second_half": {
+      "home_mean": 14.864,
+      "away_mean": 13.752,
+      "home_sd": 7.614,
+      "away_sd": 7.56,
+      "correlation": 0.0938,
+      "uncertainty": {
+       "margin_points": 8.918,
+       "total_points": 8.918,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1759
+      },
+      "reference_n": 125
+     },
+     "first_quarter": {
+      "home_mean": 6.456,
+      "away_mean": 5.552,
+      "home_sd": 5.66,
+      "away_sd": 5.342,
+      "correlation": -0.0953,
+      "uncertainty": {
+       "margin_points": 3.742,
+       "total_points": 3.742,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1758
+      },
+      "reference_n": 125
+     },
+     "second_quarter": {
+      "home_mean": 9.576,
+      "away_mean": 7.92,
+      "home_sd": 6.856,
+      "away_sd": 6.273,
+      "correlation": -0.1958,
+      "uncertainty": {
+       "margin_points": 5.453,
+       "total_points": 5.453,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1706
+      },
+      "reference_n": 125
+     },
+     "third_quarter": {
+      "home_mean": 6.688,
+      "away_mean": 5.768,
+      "home_sd": 5.697,
+      "away_sd": 5.187,
+      "correlation": -0.1075,
+      "uncertainty": {
+       "margin_points": 3.882,
+       "total_points": 3.882,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1754
+      },
+      "reference_n": 125
+     },
+     "fourth_quarter": {
+      "home_mean": 8.176,
+      "away_mean": 7.984,
+      "home_sd": 5.875,
+      "away_sd": 5.93,
+      "correlation": 0.0924,
+      "uncertainty": {
+       "margin_points": 5.036,
+       "total_points": 5.036,
+       "sd_scale_low": 0.8755,
+       "sd_scale_high": 1.1245,
+       "correlation_delta": 0.1759
+      },
+      "reference_n": 125
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07NCCUNORF",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 28.904,
+      "away_mean": 28.928,
+      "home_sd": 12.221,
+      "away_sd": 11.786,
+      "correlation": -0.0853,
+      "uncertainty": {
+       "margin_points": 17.75,
+       "total_points": 17.75,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.2175
+      },
+      "reference_n": 83
+     },
+     "first_half": {
+      "home_mean": 14.614,
+      "away_mean": 14.807,
+      "home_sd": 9.97,
+      "away_sd": 8.678,
+      "correlation": -0.0977,
+      "uncertainty": {
+       "margin_points": 9.03,
+       "total_points": 9.03,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.217
+      },
+      "reference_n": 83
+     },
+     "second_half": {
+      "home_mean": 14.12,
+      "away_mean": 13.928,
+      "home_sd": 7.023,
+      "away_sd": 7.295,
+      "correlation": -0.0636,
+      "uncertainty": {
+       "margin_points": 8.609,
+       "total_points": 8.609,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.2182
+      },
+      "reference_n": 83
+     },
+     "first_quarter": {
+      "home_mean": 5.53,
+      "away_mean": 6.145,
+      "home_sd": 5.248,
+      "away_sd": 5.25,
+      "correlation": -0.0719,
+      "uncertainty": {
+       "margin_points": 3.583,
+       "total_points": 3.583,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.218
+      },
+      "reference_n": 83
+     },
+     "second_quarter": {
+      "home_mean": 9.084,
+      "away_mean": 8.663,
+      "home_sd": 7.334,
+      "away_sd": 6.406,
+      "correlation": -0.1289,
+      "uncertainty": {
+       "margin_points": 5.447,
+       "total_points": 5.447,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.2155
+      },
+      "reference_n": 83
+     },
+     "third_quarter": {
+      "home_mean": 5.663,
+      "away_mean": 5.867,
+      "home_sd": 5.081,
+      "away_sd": 4.777,
+      "correlation": -0.0953,
+      "uncertainty": {
+       "margin_points": 3.539,
+       "total_points": 3.539,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.2171
+      },
+      "reference_n": 83
+     },
+     "fourth_quarter": {
+      "home_mean": 8.458,
+      "away_mean": 8.06,
+      "home_sd": 5.568,
+      "away_sd": 5.913,
+      "correlation": -0.0897,
+      "uncertainty": {
+       "margin_points": 5.07,
+       "total_points": 5.07,
+       "sd_scale_low": 0.8469,
+       "sd_scale_high": 1.1531,
+       "correlation_delta": 0.2174
+      },
+      "reference_n": 83
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07ODUCCAR",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 32.055,
+      "away_mean": 18.846,
+      "home_sd": 13.126,
+      "away_sd": 10.808,
+      "correlation": -0.1666,
+      "uncertainty": {
+       "margin_points": 21.7,
+       "total_points": 21.7,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2031
+      },
+      "reference_n": 91
+     },
+     "first_half": {
+      "home_mean": 17.176,
+      "away_mean": 8.912,
+      "home_sd": 8.22,
+      "away_sd": 6.99,
+      "correlation": -0.2072,
+      "uncertainty": {
+       "margin_points": 11.122,
+       "total_points": 11.122,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2
+      },
+      "reference_n": 91
+     },
+     "second_half": {
+      "home_mean": 14.604,
+      "away_mean": 9.714,
+      "home_sd": 8.127,
+      "away_sd": 7.012,
+      "correlation": -0.2042,
+      "uncertainty": {
+       "margin_points": 10.367,
+       "total_points": 10.367,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2002
+      },
+      "reference_n": 91
+     },
+     "first_quarter": {
+      "home_mean": 7.538,
+      "away_mean": 3.648,
+      "home_sd": 5.689,
+      "away_sd": 4.324,
+      "correlation": -0.0121,
+      "uncertainty": {
+       "margin_points": 4.769,
+       "total_points": 4.769,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2089
+      },
+      "reference_n": 91
+     },
+     "second_quarter": {
+      "home_mean": 9.637,
+      "away_mean": 5.264,
+      "home_sd": 6.926,
+      "away_sd": 5.773,
+      "correlation": -0.2638,
+      "uncertainty": {
+       "margin_points": 6.353,
+       "total_points": 6.353,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.1944
+      },
+      "reference_n": 91
+     },
+     "third_quarter": {
+      "home_mean": 6.505,
+      "away_mean": 3.626,
+      "home_sd": 5.995,
+      "away_sd": 3.915,
+      "correlation": -0.1879,
+      "uncertainty": {
+       "margin_points": 4.319,
+       "total_points": 4.319,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2016
+      },
+      "reference_n": 91
+     },
+     "fourth_quarter": {
+      "home_mean": 8.099,
+      "away_mean": 6.088,
+      "home_sd": 5.245,
+      "away_sd": 5.603,
+      "correlation": -0.0506,
+      "uncertainty": {
+       "margin_points": 6.048,
+       "total_points": 6.048,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2084
+      },
+      "reference_n": 91
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07OKSTKSU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 25.818,
+      "away_mean": 30.652,
+      "home_sd": 12.916,
+      "away_sd": 12.497,
+      "correlation": 0.0947,
+      "uncertainty": {
+       "margin_points": 22.05,
+       "total_points": 22.05,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2447
+      },
+      "reference_n": 66
+     },
+     "first_half": {
+      "home_mean": 14.045,
+      "away_mean": 15.47,
+      "home_sd": 9.919,
+      "away_sd": 9.249,
+      "correlation": -0.1064,
+      "uncertainty": {
+       "margin_points": 11.525,
+       "total_points": 11.525,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2441
+      },
+      "reference_n": 66
+     },
+     "second_half": {
+      "home_mean": 11.606,
+      "away_mean": 15.136,
+      "home_sd": 7.121,
+      "away_sd": 7.334,
+      "correlation": 0.2379,
+      "uncertainty": {
+       "margin_points": 10.442,
+       "total_points": 10.442,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.233
+      },
+      "reference_n": 66
+     },
+     "first_quarter": {
+      "home_mean": 6.424,
+      "away_mean": 6.894,
+      "home_sd": 5.692,
+      "away_sd": 5.975,
+      "correlation": -0.1574,
+      "uncertainty": {
+       "margin_points": 5.2,
+       "total_points": 5.2,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2408
+      },
+      "reference_n": 66
+     },
+     "second_quarter": {
+      "home_mean": 7.621,
+      "away_mean": 8.576,
+      "home_sd": 7.466,
+      "away_sd": 6.816,
+      "correlation": -0.0585,
+      "uncertainty": {
+       "margin_points": 6.325,
+       "total_points": 6.325,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2461
+      },
+      "reference_n": 66
+     },
+     "third_quarter": {
+      "home_mean": 5.045,
+      "away_mean": 6.742,
+      "home_sd": 5.243,
+      "away_sd": 4.9,
+      "correlation": 0.1849,
+      "uncertainty": {
+       "margin_points": 4.603,
+       "total_points": 4.603,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2385
+      },
+      "reference_n": 66
+     },
+     "fourth_quarter": {
+      "home_mean": 6.561,
+      "away_mean": 8.394,
+      "home_sd": 4.817,
+      "away_sd": 5.001,
+      "correlation": 0.1867,
+      "uncertainty": {
+       "margin_points": 5.839,
+       "total_points": 5.839,
+       "sd_scale_low": 0.8281,
+       "sd_scale_high": 1.1719,
+       "correlation_delta": 0.2383
+      },
+      "reference_n": 66
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07RICHVILL",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 32.062,
+      "away_mean": 26.527,
+      "home_sd": 12.962,
+      "away_sd": 12.486,
+      "correlation": -0.1283,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1846
+      },
+      "reference_n": 112
+     },
+     "first_half": {
+      "home_mean": 16.83,
+      "away_mean": 13.366,
+      "home_sd": 9.188,
+      "away_sd": 8.243,
+      "correlation": -0.167,
+      "uncertainty": {
+       "margin_points": 9.406,
+       "total_points": 9.406,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1825
+      },
+      "reference_n": 112
+     },
+     "second_half": {
+      "home_mean": 15.062,
+      "away_mean": 12.982,
+      "home_sd": 8.427,
+      "away_sd": 7.642,
+      "correlation": 0.0491,
+      "uncertainty": {
+       "margin_points": 8.736,
+       "total_points": 8.736,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1873
+      },
+      "reference_n": 112
+     },
+     "first_quarter": {
+      "home_mean": 6.67,
+      "away_mean": 5.277,
+      "home_sd": 5.447,
+      "away_sd": 5.089,
+      "correlation": -0.126,
+      "uncertainty": {
+       "margin_points": 3.721,
+       "total_points": 3.721,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1848
+      },
+      "reference_n": 112
+     },
+     "second_quarter": {
+      "home_mean": 10.161,
+      "away_mean": 8.089,
+      "home_sd": 6.746,
+      "away_sd": 6.531,
+      "correlation": -0.2156,
+      "uncertainty": {
+       "margin_points": 5.685,
+       "total_points": 5.685,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.179
+      },
+      "reference_n": 112
+     },
+     "third_quarter": {
+      "home_mean": 7.045,
+      "away_mean": 5.571,
+      "home_sd": 6.06,
+      "away_sd": 5.047,
+      "correlation": -0.1357,
+      "uncertainty": {
+       "margin_points": 3.93,
+       "total_points": 3.93,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1843
+      },
+      "reference_n": 112
+     },
+     "fourth_quarter": {
+      "home_mean": 8.018,
+      "away_mean": 7.411,
+      "home_sd": 6.381,
+      "away_sd": 5.981,
+      "correlation": 0.1275,
+      "uncertainty": {
+       "margin_points": 4.806,
+       "total_points": 4.806,
+       "sd_scale_low": 0.8685,
+       "sd_scale_high": 1.1315,
+       "correlation_delta": 0.1847
+      },
+      "reference_n": 112
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07RMUDUQ",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 26.961,
+      "away_mean": 28.699,
+      "home_sd": 12.083,
+      "away_sd": 9.963,
+      "correlation": 0.1384,
+      "uncertainty": {
+       "margin_points": 17.25,
+       "total_points": 17.25,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.1922
+      },
+      "reference_n": 103
+     },
+     "first_half": {
+      "home_mean": 13.291,
+      "away_mean": 15.126,
+      "home_sd": 9.61,
+      "away_sd": 7.508,
+      "correlation": 0.0928,
+      "uncertainty": {
+       "margin_points": 8.807,
+       "total_points": 8.807,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.1943
+      },
+      "reference_n": 103
+     },
+     "second_half": {
+      "home_mean": 13.466,
+      "away_mean": 13.291,
+      "home_sd": 6.664,
+      "away_sd": 7.022,
+      "correlation": -0.0017,
+      "uncertainty": {
+       "margin_points": 8.293,
+       "total_points": 8.293,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.196
+      },
+      "reference_n": 103
+     },
+     "first_quarter": {
+      "home_mean": 5.214,
+      "away_mean": 6.427,
+      "home_sd": 5.308,
+      "away_sd": 5.023,
+      "correlation": 0.1135,
+      "uncertainty": {
+       "margin_points": 3.608,
+       "total_points": 3.608,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.1935
+      },
+      "reference_n": 103
+     },
+     "second_quarter": {
+      "home_mean": 8.078,
+      "away_mean": 8.699,
+      "home_sd": 6.867,
+      "away_sd": 5.819,
+      "correlation": -0.0105,
+      "uncertainty": {
+       "margin_points": 5.199,
+       "total_points": 5.199,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.196
+      },
+      "reference_n": 103
+     },
+     "third_quarter": {
+      "home_mean": 5.961,
+      "away_mean": 5.534,
+      "home_sd": 4.885,
+      "away_sd": 4.544,
+      "correlation": 0.0036,
+      "uncertainty": {
+       "margin_points": 3.563,
+       "total_points": 3.563,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.196
+      },
+      "reference_n": 103
+     },
+     "fourth_quarter": {
+      "home_mean": 7.505,
+      "away_mean": 7.757,
+      "home_sd": 5.095,
+      "away_sd": 5.287,
+      "correlation": -0.1013,
+      "uncertainty": {
+       "margin_points": 4.73,
+       "total_points": 4.73,
+       "sd_scale_low": 0.8628,
+       "sd_scale_high": 1.1372,
+       "correlation_delta": 0.194
+      },
+      "reference_n": 103
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07SAMETSU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 27.526,
+      "away_mean": 26.75,
+      "home_sd": 12.499,
+      "away_sd": 10.555,
+      "correlation": 0.0438,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.184
+      },
+      "reference_n": 116
+     },
+     "first_half": {
+      "home_mean": 13.629,
+      "away_mean": 13.284,
+      "home_sd": 9.474,
+      "away_sd": 8.204,
+      "correlation": 0.0095,
+      "uncertainty": {
+       "margin_points": 9.05,
+       "total_points": 9.05,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1844
+      },
+      "reference_n": 116
+     },
+     "second_half": {
+      "home_mean": 13.81,
+      "away_mean": 13.241,
+      "home_sd": 7.217,
+      "away_sd": 6.672,
+      "correlation": -0.0285,
+      "uncertainty": {
+       "margin_points": 9.096,
+       "total_points": 9.096,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1842
+      },
+      "reference_n": 116
+     },
+     "first_quarter": {
+      "home_mean": 5.56,
+      "away_mean": 5.914,
+      "home_sd": 5.257,
+      "away_sd": 5.417,
+      "correlation": 0.02,
+      "uncertainty": {
+       "margin_points": 3.858,
+       "total_points": 3.858,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1843
+      },
+      "reference_n": 116
+     },
+     "second_quarter": {
+      "home_mean": 8.069,
+      "away_mean": 7.371,
+      "home_sd": 6.542,
+      "away_sd": 5.992,
+      "correlation": -0.0535,
+      "uncertainty": {
+       "margin_points": 5.192,
+       "total_points": 5.192,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1839
+      },
+      "reference_n": 116
+     },
+     "third_quarter": {
+      "home_mean": 5.957,
+      "away_mean": 5.784,
+      "home_sd": 5.211,
+      "away_sd": 4.758,
+      "correlation": -0.2529,
+      "uncertainty": {
+       "margin_points": 3.948,
+       "total_points": 3.948,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1726
+      },
+      "reference_n": 116
+     },
+     "fourth_quarter": {
+      "home_mean": 7.853,
+      "away_mean": 7.457,
+      "home_sd": 5.941,
+      "away_sd": 4.954,
+      "correlation": -0.0553,
+      "uncertainty": {
+       "margin_points": 5.148,
+       "total_points": 5.148,
+       "sd_scale_low": 0.8708,
+       "sd_scale_high": 1.1292,
+       "correlation_delta": 0.1838
+      },
+      "reference_n": 116
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07STONCAMP",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 29.0,
+      "away_mean": 28.033,
+      "home_sd": 12.327,
+      "away_sd": 11.2,
+      "correlation": -0.1011,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2068
+      },
+      "reference_n": 91
+     },
+     "first_half": {
+      "home_mean": 14.912,
+      "away_mean": 14.462,
+      "home_sd": 9.995,
+      "away_sd": 8.511,
+      "correlation": -0.1196,
+      "uncertainty": {
+       "margin_points": 9.399,
+       "total_points": 9.399,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.206
+      },
+      "reference_n": 91
+     },
+     "second_half": {
+      "home_mean": 14.055,
+      "away_mean": 13.429,
+      "home_sd": 6.582,
+      "away_sd": 7.279,
+      "correlation": -0.026,
+      "uncertainty": {
+       "margin_points": 8.794,
+       "total_points": 8.794,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2088
+      },
+      "reference_n": 91
+     },
+     "first_quarter": {
+      "home_mean": 5.791,
+      "away_mean": 6.286,
+      "home_sd": 5.681,
+      "away_sd": 5.258,
+      "correlation": -0.03,
+      "uncertainty": {
+       "margin_points": 3.864,
+       "total_points": 3.864,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2087
+      },
+      "reference_n": 91
+     },
+     "second_quarter": {
+      "home_mean": 9.121,
+      "away_mean": 8.176,
+      "home_sd": 6.81,
+      "away_sd": 6.156,
+      "correlation": -0.1669,
+      "uncertainty": {
+       "margin_points": 5.535,
+       "total_points": 5.535,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2031
+      },
+      "reference_n": 91
+     },
+     "third_quarter": {
+      "home_mean": 5.879,
+      "away_mean": 5.648,
+      "home_sd": 4.855,
+      "away_sd": 4.797,
+      "correlation": -0.1497,
+      "uncertainty": {
+       "margin_points": 3.689,
+       "total_points": 3.689,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2043
+      },
+      "reference_n": 91
+     },
+     "fourth_quarter": {
+      "home_mean": 8.176,
+      "away_mean": 7.78,
+      "home_sd": 5.38,
+      "away_sd": 5.509,
+      "correlation": -0.0782,
+      "uncertainty": {
+       "margin_points": 5.106,
+       "total_points": 5.106,
+       "sd_scale_low": 0.8539,
+       "sd_scale_high": 1.1461,
+       "correlation_delta": 0.2077
+      },
+      "reference_n": 91
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07TEXMIZZ",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 25.496,
+      "away_mean": 23.736,
+      "home_sd": 13.462,
+      "away_sd": 11.907,
+      "correlation": -0.0532,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.1799
+      },
+      "reference_n": 121
+     },
+     "first_half": {
+      "home_mean": 13.479,
+      "away_mean": 11.967,
+      "home_sd": 9.158,
+      "away_sd": 7.79,
+      "correlation": -0.0903,
+      "uncertainty": {
+       "margin_points": 8.141,
+       "total_points": 8.141,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.179
+      },
+      "reference_n": 121
+     },
+     "second_half": {
+      "home_mean": 11.587,
+      "away_mean": 11.38,
+      "home_sd": 7.546,
+      "away_sd": 8.253,
+      "correlation": -0.1582,
+      "uncertainty": {
+       "margin_points": 7.348,
+       "total_points": 7.348,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.1759
+      },
+      "reference_n": 121
+     },
+     "first_quarter": {
+      "home_mean": 5.455,
+      "away_mean": 4.612,
+      "home_sd": 6.099,
+      "away_sd": 5.406,
+      "correlation": -0.0709,
+      "uncertainty": {
+       "margin_points": 3.22,
+       "total_points": 3.22,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.1795
+      },
+      "reference_n": 121
+     },
+     "second_quarter": {
+      "home_mean": 8.025,
+      "away_mean": 7.355,
+      "home_sd": 6.47,
+      "away_sd": 6.041,
+      "correlation": -0.1557,
+      "uncertainty": {
+       "margin_points": 4.92,
+       "total_points": 4.92,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.1761
+      },
+      "reference_n": 121
+     },
+     "third_quarter": {
+      "home_mean": 4.934,
+      "away_mean": 5.132,
+      "home_sd": 5.074,
+      "away_sd": 4.764,
+      "correlation": -0.1844,
+      "uncertainty": {
+       "margin_points": 3.22,
+       "total_points": 3.22,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.1743
+      },
+      "reference_n": 121
+     },
+     "fourth_quarter": {
+      "home_mean": 6.653,
+      "away_mean": 6.248,
+      "home_sd": 5.527,
+      "away_sd": 5.986,
+      "correlation": -0.0472,
+      "uncertainty": {
+       "margin_points": 4.127,
+       "total_points": 4.127,
+       "sd_scale_low": 0.8735,
+       "sd_scale_high": 1.1265,
+       "correlation_delta": 0.18
+      },
+      "reference_n": 121
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07TLSATULN",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 25.241,
+      "away_mean": 24.591,
+      "home_sd": 13.239,
+      "away_sd": 11.658,
+      "correlation": -0.0002,
+      "uncertainty": {
+       "margin_points": 18.9,
+       "total_points": 18.9,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1693
+      },
+      "reference_n": 137
+     },
+     "first_half": {
+      "home_mean": 13.321,
+      "away_mean": 12.569,
+      "home_sd": 8.993,
+      "away_sd": 7.999,
+      "correlation": -0.1071,
+      "uncertainty": {
+       "margin_points": 9.82,
+       "total_points": 9.82,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1674
+      },
+      "reference_n": 137
+     },
+     "second_half": {
+      "home_mean": 11.372,
+      "away_mean": 11.54,
+      "home_sd": 7.379,
+      "away_sd": 8.182,
+      "correlation": -0.1214,
+      "uncertainty": {
+       "margin_points": 8.69,
+       "total_points": 8.69,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1668
+      },
+      "reference_n": 137
+     },
+     "first_quarter": {
+      "home_mean": 5.504,
+      "away_mean": 5.482,
+      "home_sd": 6.049,
+      "away_sd": 5.895,
+      "correlation": -0.0745,
+      "uncertainty": {
+       "margin_points": 4.166,
+       "total_points": 4.166,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1684
+      },
+      "reference_n": 137
+     },
+     "second_quarter": {
+      "home_mean": 7.818,
+      "away_mean": 7.088,
+      "home_sd": 6.094,
+      "away_sd": 5.74,
+      "correlation": -0.0975,
+      "uncertainty": {
+       "margin_points": 5.653,
+       "total_points": 5.653,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1677
+      },
+      "reference_n": 137
+     },
+     "third_quarter": {
+      "home_mean": 5.015,
+      "away_mean": 5.088,
+      "home_sd": 5.082,
+      "away_sd": 5.097,
+      "correlation": -0.138,
+      "uncertainty": {
+       "margin_points": 3.831,
+       "total_points": 3.831,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1661
+      },
+      "reference_n": 137
+     },
+     "fourth_quarter": {
+      "home_mean": 6.358,
+      "away_mean": 6.453,
+      "home_sd": 5.34,
+      "away_sd": 5.969,
+      "correlation": 0.0156,
+      "uncertainty": {
+       "margin_points": 4.859,
+       "total_points": 4.859,
+       "sd_scale_low": 0.8812,
+       "sd_scale_high": 1.1188,
+       "correlation_delta": 0.1693
+      },
+      "reference_n": 137
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07TOWSSHU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 28.743,
+      "away_mean": 27.911,
+      "home_sd": 12.943,
+      "away_sd": 10.774,
+      "correlation": 0.0326,
+      "uncertainty": {
+       "margin_points": 17.75,
+       "total_points": 17.75,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.1978
+      },
+      "reference_n": 101
+     },
+     "first_half": {
+      "home_mean": 14.871,
+      "away_mean": 14.446,
+      "home_sd": 10.073,
+      "away_sd": 8.414,
+      "correlation": -0.0305,
+      "uncertainty": {
+       "margin_points": 9.185,
+       "total_points": 9.185,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.1978
+      },
+      "reference_n": 101
+     },
+     "second_half": {
+      "home_mean": 13.733,
+      "away_mean": 13.307,
+      "home_sd": 6.957,
+      "away_sd": 6.86,
+      "correlation": -0.0368,
+      "uncertainty": {
+       "margin_points": 8.472,
+       "total_points": 8.472,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.1977
+      },
+      "reference_n": 101
+     },
+     "first_quarter": {
+      "home_mean": 5.96,
+      "away_mean": 6.04,
+      "home_sd": 5.488,
+      "away_sd": 5.286,
+      "correlation": 0.0097,
+      "uncertainty": {
+       "margin_points": 3.76,
+       "total_points": 3.76,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.198
+      },
+      "reference_n": 101
+     },
+     "second_quarter": {
+      "home_mean": 8.911,
+      "away_mean": 8.406,
+      "home_sd": 7.061,
+      "away_sd": 6.114,
+      "correlation": -0.1043,
+      "uncertainty": {
+       "margin_points": 5.426,
+       "total_points": 5.426,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.1958
+      },
+      "reference_n": 101
+     },
+     "third_quarter": {
+      "home_mean": 6.03,
+      "away_mean": 5.653,
+      "home_sd": 5.137,
+      "away_sd": 4.691,
+      "correlation": -0.1083,
+      "uncertainty": {
+       "margin_points": 3.66,
+       "total_points": 3.66,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.1957
+      },
+      "reference_n": 101
+     },
+     "fourth_quarter": {
+      "home_mean": 7.703,
+      "away_mean": 7.653,
+      "home_sd": 5.418,
+      "away_sd": 5.399,
+      "correlation": -0.1013,
+      "uncertainty": {
+       "margin_points": 4.811,
+       "total_points": 4.811,
+       "sd_scale_low": 0.8614,
+       "sd_scale_high": 1.1386,
+       "correlation_delta": 0.196
+      },
+      "reference_n": 101
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07UCLAMINN",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 21.697,
+      "away_mean": 27.294,
+      "home_sd": 11.738,
+      "away_sd": 10.511,
+      "correlation": -0.1424,
+      "uncertainty": {
+       "margin_points": 18.9,
+       "total_points": 18.9,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1783
+      },
+      "reference_n": 119
+     },
+     "first_half": {
+      "home_mean": 10.815,
+      "away_mean": 13.454,
+      "home_sd": 7.892,
+      "away_sd": 8.141,
+      "correlation": -0.1599,
+      "uncertainty": {
+       "margin_points": 9.362,
+       "total_points": 9.362,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1773
+      },
+      "reference_n": 119
+     },
+     "second_half": {
+      "home_mean": 10.454,
+      "away_mean": 13.277,
+      "home_sd": 6.818,
+      "away_sd": 7.394,
+      "correlation": 0.0368,
+      "uncertainty": {
+       "margin_points": 9.155,
+       "total_points": 9.155,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1817
+      },
+      "reference_n": 119
+     },
+     "first_quarter": {
+      "home_mean": 4.37,
+      "away_mean": 5.387,
+      "home_sd": 4.451,
+      "away_sd": 5.178,
+      "correlation": -0.0632,
+      "uncertainty": {
+       "margin_points": 3.764,
+       "total_points": 3.764,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1813
+      },
+      "reference_n": 119
+     },
+     "second_quarter": {
+      "home_mean": 6.445,
+      "away_mean": 8.067,
+      "home_sd": 5.797,
+      "away_sd": 6.029,
+      "correlation": -0.0913,
+      "uncertainty": {
+       "margin_points": 5.599,
+       "total_points": 5.599,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1805
+      },
+      "reference_n": 119
+     },
+     "third_quarter": {
+      "home_mean": 4.261,
+      "away_mean": 5.958,
+      "home_sd": 4.177,
+      "away_sd": 5.614,
+      "correlation": -0.1224,
+      "uncertainty": {
+       "margin_points": 3.942,
+       "total_points": 3.942,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1793
+      },
+      "reference_n": 119
+     },
+     "fourth_quarter": {
+      "home_mean": 6.193,
+      "away_mean": 7.319,
+      "home_sd": 5.151,
+      "away_sd": 5.802,
+      "correlation": -0.0214,
+      "uncertainty": {
+       "margin_points": 5.213,
+       "total_points": 5.213,
+       "sd_scale_low": 0.8724,
+       "sd_scale_high": 1.1276,
+       "correlation_delta": 0.1819
+      },
+      "reference_n": 119
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07UNCCONN",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 27.669,
+      "away_mean": 27.092,
+      "home_sd": 12.372,
+      "away_sd": 10.205,
+      "correlation": 0.1095,
+      "uncertainty": {
+       "margin_points": 15.75,
+       "total_points": 15.75,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1531
+      },
+      "reference_n": 163
+     },
+     "first_half": {
+      "home_mean": 14.037,
+      "away_mean": 13.84,
+      "home_sd": 8.929,
+      "away_sd": 7.82,
+      "correlation": 0.1182,
+      "uncertainty": {
+       "margin_points": 8.018,
+       "total_points": 8.018,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1528
+      },
+      "reference_n": 163
+     },
+     "second_half": {
+      "home_mean": 13.466,
+      "away_mean": 13.08,
+      "home_sd": 7.558,
+      "away_sd": 7.659,
+      "correlation": 0.0204,
+      "uncertainty": {
+       "margin_points": 7.635,
+       "total_points": 7.635,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1549
+      },
+      "reference_n": 163
+     },
+     "first_quarter": {
+      "home_mean": 5.245,
+      "away_mean": 5.577,
+      "home_sd": 5.115,
+      "away_sd": 4.971,
+      "correlation": -0.0061,
+      "uncertainty": {
+       "margin_points": 3.113,
+       "total_points": 3.113,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1549
+      },
+      "reference_n": 163
+     },
+     "second_quarter": {
+      "home_mean": 8.791,
+      "away_mean": 8.264,
+      "home_sd": 6.597,
+      "away_sd": 5.751,
+      "correlation": 0.0826,
+      "uncertainty": {
+       "margin_points": 4.905,
+       "total_points": 4.905,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1539
+      },
+      "reference_n": 163
+     },
+     "third_quarter": {
+      "home_mean": 6.16,
+      "away_mean": 5.798,
+      "home_sd": 5.006,
+      "away_sd": 5.245,
+      "correlation": -0.0338,
+      "uncertainty": {
+       "margin_points": 3.439,
+       "total_points": 3.439,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1548
+      },
+      "reference_n": 163
+     },
+     "fourth_quarter": {
+      "home_mean": 7.307,
+      "away_mean": 7.282,
+      "home_sd": 5.341,
+      "away_sd": 5.426,
+      "correlation": -0.0703,
+      "uncertainty": {
+       "margin_points": 4.196,
+       "total_points": 4.196,
+       "sd_scale_low": 0.8911,
+       "sd_scale_high": 1.1089,
+       "correlation_delta": 0.1542
+      },
+      "reference_n": 163
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07URIUNH",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 26.426,
+      "away_mean": 28.015,
+      "home_sd": 11.38,
+      "away_sd": 11.701,
+      "correlation": -0.0478,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2426
+      },
+      "reference_n": 68
+     },
+     "first_half": {
+      "home_mean": 13.882,
+      "away_mean": 14.118,
+      "home_sd": 8.755,
+      "away_sd": 8.918,
+      "correlation": -0.1382,
+      "uncertainty": {
+       "margin_points": 9.386,
+       "total_points": 9.386,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2385
+      },
+      "reference_n": 68
+     },
+     "second_half": {
+      "home_mean": 12.338,
+      "away_mean": 13.662,
+      "home_sd": 6.914,
+      "away_sd": 6.646,
+      "correlation": -0.0027,
+      "uncertainty": {
+       "margin_points": 8.716,
+       "total_points": 8.716,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2431
+      },
+      "reference_n": 68
+     },
+     "first_quarter": {
+      "home_mean": 5.691,
+      "away_mean": 5.721,
+      "home_sd": 4.939,
+      "away_sd": 5.344,
+      "correlation": -0.156,
+      "uncertainty": {
+       "margin_points": 3.825,
+       "total_points": 3.825,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2372
+      },
+      "reference_n": 68
+     },
+     "second_quarter": {
+      "home_mean": 8.191,
+      "away_mean": 8.397,
+      "home_sd": 7.084,
+      "away_sd": 7.103,
+      "correlation": -0.0659,
+      "uncertainty": {
+       "margin_points": 5.561,
+       "total_points": 5.561,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2421
+      },
+      "reference_n": 68
+     },
+     "third_quarter": {
+      "home_mean": 4.794,
+      "away_mean": 5.926,
+      "home_sd": 4.563,
+      "away_sd": 5.053,
+      "correlation": 0.0207,
+      "uncertainty": {
+       "margin_points": 3.594,
+       "total_points": 3.594,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.243
+      },
+      "reference_n": 68
+     },
+     "fourth_quarter": {
+      "home_mean": 7.544,
+      "away_mean": 7.735,
+      "home_sd": 5.08,
+      "away_sd": 4.925,
+      "correlation": -0.0305,
+      "uncertainty": {
+       "margin_points": 5.122,
+       "total_points": 5.122,
+       "sd_scale_low": 0.8307,
+       "sd_scale_high": 1.1693,
+       "correlation_delta": 0.2429
+      },
+      "reference_n": 68
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07WAGMHU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 32.532,
+      "away_mean": 27.972,
+      "home_sd": 11.607,
+      "away_sd": 12.188,
+      "correlation": -0.0203,
+      "uncertainty": {
+       "margin_points": 20.4,
+       "total_points": 20.4,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1903
+      },
+      "reference_n": 109
+     },
+     "first_half": {
+      "home_mean": 17.275,
+      "away_mean": 14.046,
+      "home_sd": 8.914,
+      "away_sd": 8.496,
+      "correlation": -0.1201,
+      "uncertainty": {
+       "margin_points": 10.56,
+       "total_points": 10.56,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1876
+      },
+      "reference_n": 109
+     },
+     "second_half": {
+      "home_mean": 14.899,
+      "away_mean": 13.569,
+      "home_sd": 7.476,
+      "away_sd": 7.738,
+      "correlation": 0.0897,
+      "uncertainty": {
+       "margin_points": 9.598,
+       "total_points": 9.598,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1888
+      },
+      "reference_n": 109
+     },
+     "first_quarter": {
+      "home_mean": 6.67,
+      "away_mean": 5.954,
+      "home_sd": 5.311,
+      "away_sd": 5.236,
+      "correlation": -0.0545,
+      "uncertainty": {
+       "margin_points": 4.256,
+       "total_points": 4.256,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1898
+      },
+      "reference_n": 109
+     },
+     "second_quarter": {
+      "home_mean": 10.606,
+      "away_mean": 8.092,
+      "home_sd": 6.842,
+      "away_sd": 6.569,
+      "correlation": -0.1564,
+      "uncertainty": {
+       "margin_points": 6.304,
+       "total_points": 6.304,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1857
+      },
+      "reference_n": 109
+     },
+     "third_quarter": {
+      "home_mean": 6.817,
+      "away_mean": 5.578,
+      "home_sd": 5.585,
+      "away_sd": 5.444,
+      "correlation": -0.0138,
+      "uncertainty": {
+       "margin_points": 4.179,
+       "total_points": 4.179,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1903
+      },
+      "reference_n": 109
+     },
+     "fourth_quarter": {
+      "home_mean": 8.083,
+      "away_mean": 7.991,
+      "home_sd": 5.596,
+      "away_sd": 5.856,
+      "correlation": 0.08,
+      "uncertainty": {
+       "margin_points": 5.419,
+       "total_points": 5.419,
+       "sd_scale_low": 0.8666,
+       "sd_scale_high": 1.1334,
+       "correlation_delta": 0.1892
+      },
+      "reference_n": 109
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV07WOFWCU",
+   "draft": true,
+   "payload": {
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 29.308,
+      "away_mean": 27.477,
+      "home_sd": 11.737,
+      "away_sd": 11.924,
+      "correlation": -0.032,
+      "uncertainty": {
+       "margin_points": 18.25,
+       "total_points": 18.25,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2487
+      },
+      "reference_n": 65
+     },
+     "first_half": {
+      "home_mean": 15.123,
+      "away_mean": 14.046,
+      "home_sd": 9.85,
+      "away_sd": 8.724,
+      "correlation": -0.1099,
+      "uncertainty": {
+       "margin_points": 9.375,
+       "total_points": 9.375,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2459
+      },
+      "reference_n": 65
+     },
+     "second_half": {
+      "home_mean": 13.969,
+      "away_mean": 13.185,
+      "home_sd": 6.892,
+      "away_sd": 7.276,
+      "correlation": -0.037,
+      "uncertainty": {
+       "margin_points": 8.727,
+       "total_points": 8.727,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2486
+      },
+      "reference_n": 65
+     },
+     "first_quarter": {
+      "home_mean": 5.508,
+      "away_mean": 6.0,
+      "home_sd": 5.206,
+      "away_sd": 5.324,
+      "correlation": -0.1161,
+      "uncertainty": {
+       "margin_points": 3.698,
+       "total_points": 3.698,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2456
+      },
+      "reference_n": 65
+     },
+     "second_quarter": {
+      "home_mean": 9.615,
+      "away_mean": 8.046,
+      "home_sd": 7.29,
+      "away_sd": 6.544,
+      "correlation": -0.0691,
+      "uncertainty": {
+       "margin_points": 5.676,
+       "total_points": 5.676,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2477
+      },
+      "reference_n": 65
+     },
+     "third_quarter": {
+      "home_mean": 5.477,
+      "away_mean": 5.554,
+      "home_sd": 5.175,
+      "away_sd": 4.835,
+      "correlation": 0.0061,
+      "uncertainty": {
+       "margin_points": 3.545,
+       "total_points": 3.545,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2489
+      },
+      "reference_n": 65
+     },
+     "fourth_quarter": {
+      "home_mean": 8.492,
+      "away_mean": 7.631,
+      "home_sd": 5.238,
+      "away_sd": 5.7,
+      "correlation": -0.0749,
+      "uncertainty": {
+       "margin_points": 5.182,
+       "total_points": 5.182,
+       "sd_scale_low": 0.8268,
+       "sd_scale_high": 1.1732,
+       "correlation_delta": 0.2475
+      },
+      "reference_n": 65
+     }
+    }
+   }
+  }
+ ]
+}
