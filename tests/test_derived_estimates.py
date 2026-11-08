@@ -381,7 +381,7 @@ def test_verify_report_rejects_derived_posing_as_complete():
 
 
 def _live_slate():
-    """The committed slate with the most contracts: live data rolls forward as games finish, so never hard-code a date."""
+    """The committed slate with the most contracts (live data rolls forward; never hard-code a date)."""
     best = None
     for path in sorted((REPO / "data/research_packets/slates").glob("*.json")):
         rows = json.loads(path.read_text())["games"]
