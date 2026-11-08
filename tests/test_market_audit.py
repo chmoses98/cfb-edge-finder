@@ -293,8 +293,21 @@ def test_family_history_is_after_fee_context_only(tmp_path):
 # --------------------------------------------------------------------------------- real packets and the CLI
 
 
-def test_real_early_slate_reconciles_every_side_with_no_structural_defects():
-    inv = ma.load_inventory(REPO, "2026-11-07", "early")
+def _live_slate():
+    """The committed slate with the most contracts (live data rolls forward as games finish; never hard-code a date)."""
+    best = None
+    for path in sorted((REPO / "data/research_packets/slates").glob("*.json")):
+        rows = json.loads(path.read_text())["games"]
+        n = sum(g.get("contract_count", 0) for g in rows)
+        if rows and (best is None or n > best[1]):
+            best = (path.stem, n)
+    if best is None:
+        pytest.skip("no committed slate")
+    return best[0]
+
+
+def test_real_slate_reconciles_every_side_with_no_structural_defects():
+    inv = ma.load_inventory(REPO, _live_slate(), None)
     sides = ma.build_sides(inv)
     n = sum(len(v) for v in inv.contracts.values())
     assert n > 0 and len(sides) == 2 * n
