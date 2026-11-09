@@ -91,6 +91,9 @@ candidates. Before you say the slate was evaluated:
    not support a range, say `INSUFFICIENT_EVIDENCE`; never invent a number.
 3. Compare every alternate expression of the same game thesis (team total, quarter, half, moneyline, spread, prop) and
    tag them with one `thesis` so the audit can show them side by side.
+   `python scripts/audit_cfb_market_evaluation.py --derive` pre-fills every side with a research-only historical estimate
+   (`DERIVED_ESTIMATE`, `SHAPE_ONLY_REFERENCE` or named `INSUFFICIENT_EVIDENCE`). Those are inputs to your handicap, not your
+   evaluation: your own entries supersede them, and only they can make a side a candidate.
 4. Run the audit (`python scripts/audit_cfb_market_evaluation.py`, see
    [`docs/RUN_CFB_MARKET_AUDIT.md`](docs/RUN_CFB_MARKET_AUDIT.md)) and quote its first line. If it says **NOT A COMPLETE
    EVALUATION** or **COMPLETE WITH EVIDENCE GAPS**, your card must say so and state the counts; you may not describe the
