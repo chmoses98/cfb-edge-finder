@@ -311,7 +311,7 @@ def team_schedule(
         "against_similar_opponents": {
             "evidence_tier": VERIFIED,
             "definition": f"games against FBS opponents in the same adjusted-net-rating tier as the upcoming opponent "
-            f"({upcoming_tier})",
+                f"({upcoming_tier})",
             "upcoming_opponent_tier": upcoming_tier,
             "games": [
                 {
@@ -380,7 +380,7 @@ def results_from_schedule(events: list[dict[str, Any]], team_id: str, before_utc
         "points_against_per_game": round(sum(g["points_against"] for g in games) / len(games), 1) if games else None,
         "limits": (
             "final scores only: the game log collects FBS-involved games, so there are no box scores, no play log "
-            "and no "
+                "and no "
             "opponent-adjusted metrics for this team. Opponent quality is not measured; do not infer it from this list"
         ),
     }
@@ -424,8 +424,8 @@ def recent_form(schedule: dict[str, Any]) -> dict[str, Any]:
         },
         "small_sample_warning": len(last) < 3 or len(games) < 6,
         "caution": "three games is a small sample; weigh against the full-season opponent-adjusted profile, never "
-        "instead of "
-        "it",
+            "instead of "
+            "it",
     }
 
 
@@ -549,7 +549,7 @@ def pace_environment(league: LeagueFit, home_id: str, away_id: str, history: lis
         "drives_per_game": {"home": h_drives, "away": a_drives, "games": {"home": hn, "away": an}},
         "expected_possessions_per_team": expected,
         "expected_possessions_basis": "mean of the two teams' observed drives per game (raw); a pace-clash estimate, "
-        "not a forecast",
+            "not a forecast",
     }
 
 
@@ -580,8 +580,8 @@ def passers_summary(history: list[TeamGame], team_id: str) -> dict[str, Any]:
         "projected_starter_basis": "primary passer (most attempts) in the team's most recent completed game",
         "confirmed_starter": None,
         "confirmed_starter_status": "NOT_CONFIRMED: no keyless source publishes a confirmed CFB starting quarterback. "
-        "Verify by web research "
-        "and cite the source.",
+            "Verify by web research "
+            "and cite the source.",
         "season_attempt_leader": leader,
         "season_attempts_by_passer": {k: v for k, v in sorted(attempts.items(), key=lambda kv: -kv[1])},
         "changed_in_last_3_games": changed,

@@ -97,8 +97,8 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
             "precipitation_probability_pct": weather.get("precipitation"),
             **_condition(weather.get("conditionId")),
             "caveat": "an ESPN/AccuWeather forecast for the game's location at publication time, not an observation; "
-            "indoor "
-            "venues ignore it",
+                "indoor "
+                "venues ignore it",
         }
     else:
         out["weather"] = {
@@ -111,7 +111,7 @@ def parse_event_extras(summary: dict[str, Any], *, observed_at: str) -> dict[str
         out["espn_predictor"] = {
             "evidence_tier": "EXTERNAL_MODEL_REFERENCE",
             "label": "ESPN's own matchup predictor: a third-party model, not a market and not this repository's "
-            "baseline",
+                "baseline",
             "home_team_id": home.get("id"),
             "home_win_pct": float(home["gameProjection"]),
             "away_team_id": away.get("id"),
@@ -142,8 +142,8 @@ def parse_roster(payload: dict[str, Any], *, observed_at: str) -> dict[str, Any]
             "name": " ".join(x for x in (c.get("firstName"), c.get("lastName")) if x) or None,
             "experience_years": c.get("experience"),
             "caveat": "ESPN's `experience` is years of coaching experience as it reports them; it does not say "
-            "whether the "
-            "coach is new to THIS program",
+                "whether the "
+                "coach is new to THIS program",
         }
     qbs: list[dict[str, Any]] = []
     flagged: list[dict[str, Any]] = []

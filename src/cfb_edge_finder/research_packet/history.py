@@ -131,9 +131,9 @@ def baseline_accuracy(games: list[dict[str, Any]]) -> dict[str, Any]:
         "home_margin": {"bias_pred_minus_actual": round(sum(margin_err) / len(margin_err), 2), "mae": mae(margin_err)},
         "reading": (
             "the baseline's total-points error is only marginally better than guessing the league-average total: "
-            "it is a "
+                "it is a "
             "descriptive matchup summary, not a sharp scorer. Treat its point estimates as loosely informative and "
-            "widen "
+                "widen "
             "every range accordingly"
         ),
     }
@@ -260,7 +260,7 @@ def comparables(
             "orientation": ORIENTATION,
             "reference_class": {
                 "definition": "past games whose pre-kickoff baseline margin and total were within the window of this "
-                "game's",
+                    "game's",
                 "baseline_home_margin": round(pred_margin, 1),
                 "baseline_total": round(pred_total, 1),
                 "window_points_margin_total": list(window),
@@ -317,9 +317,9 @@ def comparables(
             "closest_games": [closest(g) for g in near],
             "caveat": (
                 "an empirical reference class conditioned on an UNCALIBRATED baseline: use it for shape and spread "
-                "(how wide, "
+                    "(how wide, "
                 "how skewed, how often a favourite is held below a line), not as a settled-outcome probability for "
-                "this game"
+                    "this game"
             ),
         },
         chosen,
