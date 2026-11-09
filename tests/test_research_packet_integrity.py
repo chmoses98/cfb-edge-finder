@@ -46,6 +46,15 @@ def packet_rows():
     return rows
 
 
+@pytest.fixture(scope="module")
+def frozen_games():
+    """Frozen historical extract (scripts/build_integrity_fixture.py): minimum-sample assertions run against this, never
+    against however many games happen to be on the current slate."""
+    games = load("tests/fixtures/research_packet_integrity_frozen.json")["games"]
+    assert len(games) >= 100  # the fixture itself must not shrink
+    return games
+
+
 # ---- historical reference rows ------------------------------------------------------------------------
 def test_every_history_linescore_reconciles_to_its_own_final_score_with_the_same_orientation():
     games = hist.load_games(ROOT / "data/research_packets/reference/history_games.jsonl.gz")
@@ -130,21 +139,41 @@ def test_packets_never_contain_games_from_after_their_data_cutoff(packet_rows):
 
 
 # ---- identity and orientation --------------------------------------------------------------------------
-def test_every_moneyline_contract_is_attributed_to_the_football_team_it_names(packet_rows):
+def _check_moneyline_attribution(game_key, teams, swapped_markets, swapped_packet, contracts):
+    assert swapped_markets == bool(swapped_packet)
     checked = 0
+    for c in contracts:
+        assert c.get("side") in ("home", "away"), game_key
+        assert _norm(c["yes_means"]) & _norm(teams[c["side"]]), (game_key, c["yes_means"], teams[c["side"]])
+        checked += 1
+    return checked
+
+
+def test_every_moneyline_contract_is_attributed_to_the_football_team_it_names(packet_rows):
+    """Live slate: every moneyline contract present must name the football team on its side (no minimum count)."""
     for r in packet_rows:
         packet = load(r["packet"])
         markets = load(r["files"]["markets"][0])
-        assert markets["side_teams"]["orientation_swapped_vs_kalshi_key"] == bool(
-            packet["teams"]["identity"].get("orientation_swapped")
+        _check_moneyline_attribution(
+            r["game_key"],
+            {s: packet["teams"][s]["name"] for s in ("home", "away")},
+            markets["side_teams"]["orientation_swapped_vs_kalshi_key"],
+            packet["teams"]["identity"].get("orientation_swapped"),
+            [c for c in markets["contracts"] if c["family"] == "game_moneyline"],
         )
-        for c in markets["contracts"]:
-            if c["family"] != "game_moneyline":
-                continue
-            assert c.get("side") in ("home", "away"), r["game_key"]
-            team = packet["teams"][c["side"]]["name"]
-            assert _norm(c["yes_means"]) & _norm(team), (r["game_key"], c["yes_means"], team)
-            checked += 1
+
+
+def test_moneyline_attribution_holds_across_a_frozen_historical_sample(frozen_games):
+    checked = sum(
+        _check_moneyline_attribution(
+            g["game_key"],
+            g["teams"],
+            g["orientation_swapped_markets"],
+            g["orientation_swapped_packet"],
+            g["moneyline_contracts"],
+        )
+        for g in frozen_games
+    )
     assert checked > 100
 
 
@@ -219,24 +248,25 @@ def test_swapped_orientation_keeps_every_contract_side_on_the_football_games_hom
 
 
 # ---- opponent adjustment -------------------------------------------------------------------------------
-def test_adjusted_scoring_moves_with_the_defenses_a_team_actually_faced(packet_rows):
-    """Across teams with 6+ games, (adjusted - raw) points per game falls as the average rank of the defenses faced
-    worsens: a team that lit up weak defenses is credited less than its raw number. Shrinkage toward the prior is a
-    confound, so the bar is a clearly negative correlation, not a tight fit."""
-    seen = {}
-    for r in packet_rows:
-        if "FOOTBALL_HISTORY_ABSENT" in r["flag_codes"]:
-            continue
-        profiles = load(r["files"]["team_profiles"])["teams"]
-        sched = load(r["files"]["schedules"])["teams"]
-        for side in ("home", "away"):
-            ppg = profiles[side]["metrics"]["overall_scoring"]["points_per_game"]["offense"]
-            faced = sched[side]["strength_of_schedule"]["avg_opponent_defense_rank_points"]
-            if ppg and ppg["games"] >= 6 and ppg["adjusted"] is not None and faced:
-                seen[profiles[side]["team_id"]] = (ppg["adjusted"] - ppg["raw"], faced)
-    assert len(seen) >= 60
+def _assert_adjustment_tracks_defenses_faced(seen, min_teams):
+    assert len(seen) >= min_teams
     xs, ys = zip(*seen.values(), strict=True)
     mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
     cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=True))
     corr = cov / (sum((x - mx) ** 2 for x in xs) ** 0.5 * sum((y - my) ** 2 for y in ys) ** 0.5)
     assert corr < -0.2, corr
+
+
+def test_adjusted_scoring_moves_with_the_defenses_a_team_actually_faced(frozen_games):
+    """Across teams with 6+ games, (adjusted - raw) points per game falls as the average rank of the defenses faced
+    worsens: a team that lit up weak defenses is credited less than its raw number. Shrinkage toward the prior is a
+    confound, so the bar is a clearly negative correlation, not a tight fit. Runs on the frozen historical sample so
+    the minimum team count does not depend on the current slate size."""
+    seen = {}
+    for g in frozen_games:
+        for side in ("home", "away"):
+            ppg = g["ppg_offense"][side]
+            faced = g["avg_opponent_defense_rank_points"][side]
+            if ppg and ppg["games"] >= 6 and ppg["adjusted"] is not None and faced:
+                seen[g["team_ids"][side]] = (ppg["adjusted"] - ppg["raw"], faced)
+    _assert_adjustment_tracks_defenses_faced(seen, 60)
