@@ -75,6 +75,27 @@ unavailable only after every path for it failed, and name them. Never answer "pr
    > 5U per game or > 15U per day. No recovery stakes.
 10. **Return one ranked betting card** (§5).
 
+## 2b. Market-first coverage — every contract, both sides, proven
+
+The card is built from the **whole menu**, never from a spread/total shortlist or from the repository's automated
+candidates. Before you say the slate was evaluated:
+
+1. **Every listed contract, YES *and* NO, in every family** (moneyline, spread, alternate rungs, totals, team totals,
+   1H/2H, quarters, winning margin, props) gets a disposition from you: `EVALUATED_PASS`, `EVALUATED_CANDIDATE`, or
+   `INSUFFICIENT_EVIDENCE` (name the missing evidence). A side with no ask or no size at the ask is `UNPRICEABLE`.
+   *Listing a contract is not evaluating it.* Do not prefilter by family, and do not favour or avoid a family because of
+   history: the by-family after-fee ROI and CLV in the audit are small, after-the-fact context (game spreads have been
+   the weakest cell), not a rule and not a reason to force diversification.
+2. For each side record ask, size, fees (`all_in`), a **low / point / high** probability where the football evidence
+   supports one, the **Bet Up To** from the lower bound (§4) and a specific pass/candidate reason. If the evidence does
+   not support a range, say `INSUFFICIENT_EVIDENCE`; never invent a number.
+3. Compare every alternate expression of the same game thesis (team total, quarter, half, moneyline, spread, prop) and
+   tag them with one `thesis` so the audit can show them side by side.
+4. Run the audit (`python scripts/audit_cfb_market_evaluation.py`, see
+   [`docs/RUN_CFB_MARKET_AUDIT.md`](docs/RUN_CFB_MARKET_AUDIT.md)) and quote its first line. If it says **NOT A COMPLETE
+   EVALUATION** or **COMPLETE WITH EVIDENCE GAPS**, your card must say so and state the counts; you may not describe the
+   slate as fully evaluated. The audit is research-only: it creates no probability, bet, stake or approval.
+
 ## 3. Evidence tiers — never blur them
 
 | Tier | Meaning | Where |
@@ -136,7 +157,12 @@ that mattered and what you researched), (b) the ranked table, (c) a short exposu
 * 1U = $75. **Maximum 5U per individual bet.**
 * **Never recommend betting against Auburn** — includes the Under on Auburn's own team total. Game/1Q/1H total Unders are
   independent and allowed.
-* **No pregame bets at or after kickoff** (and none within 10 minutes of it). Compare `kickoff_utc` to your own clock.
+* **Recommendations are allowed until the actual kickoff, never at or after it.** There is no pre-kickoff buffer: compare
+  `kickoff_utc` to your own clock, and if you cannot establish the time, do not recommend. A late recommendation still
+  needs a **recent, verified Kalshi capture** (age within the slate's capture budget; say *captured*, never
+  *live-verified*, unless you made a fresh direct request), **valid liquidity** (`exec` true with positive size at the
+  side's ask) and a **fee-inclusive Bet Up To** from your lower bound (§4). If any of those is missing, pass. Nothing about
+  this rule touches automated qualification, approval gates or order execution, which stay separate and unchanged.
 * **No havoc in handicapping.** The metric is excluded from every table in the packets. Do not add it from outside.
 * **No fabricated probabilities, pricing advantages, stakes, sources or live verification.** No forced bets, no loss-chasing,
   no stacking correlated legs to chase a result. Compare every relevant market before choosing.

@@ -58,7 +58,8 @@ OWNER_RULES = [
     "1U = $75. Maximum 5U per individual bet.",
     "Never recommend betting against Auburn (includes the Under on Auburn's own team total; game/1Q/1H total "
         "Unders are independent).",
-    "No pregame bets after kickoff.",
+    "Recommendations are allowed until the actual kickoff, never at or after it (no pre-kickoff buffer); they still "
+        "need a recent captured quote, valid liquidity and a fee-inclusive Bet Up To.",
     f"No {FORBIDDEN_FEATURE_TOKENS[0]} in handicapping (owner ruling 2026-11-02): the metric is excluded from "
         f"every table here.",
     "No fabricated probabilities, pricing advantages or stakes. No forced bets or loss-chasing.",
@@ -423,9 +424,9 @@ def build_packet_files(
         **header,
         "evidence_tiers": EVIDENCE_TIERS,
         "owner_rules": OWNER_RULES,
-        "kickoff_rule": "no pregame recommendation at or after kickoff_utc (and none within 10 minutes of it); "
-            "compute against "
-            "your own clock",
+        "kickoff_rule": "recommendations are allowed until the actual kickoff and never at or after kickoff_utc; "
+            "require a recent captured Kalshi quote, valid liquidity and a fee-inclusive Bet Up To; "
+            "compute against your own clock",
         "files": {name: f"data/research_packets/games/{key}/{name}" for name in FILES}
         | {"markets_parts": markets_paths},
         "teams": {"home": home, "away": away, "identity": identity},
