@@ -87,6 +87,7 @@ class Inventory:
     family_coverage: dict[str, dict[str, str]] = field(default_factory=dict)
     side_codes: dict[str, dict[str, str]] = field(default_factory=dict)
     defects: list[Defect] = field(default_factory=list)
+    price_basis: dict[str, dict[str, Any]] = field(default_factory=dict)  # game_key -> where asks came from
 
 
 # ------------------------------------------------------------------------------------------------ inventory
@@ -94,6 +95,72 @@ class Inventory:
 
 def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _overlay_fresher_quotes(
+    root: Path, key: str, contracts: list[dict[str, Any]], basis: dict[str, dict[str, Any]]
+) -> str | None:
+    """Apply ``data/live/execution/games/<key>/quotes.json`` when it is newer than the packet's markets file.
+
+    RUN_CFB.md: when the quotes file's ``game_fingerprint`` differs from the packet's, quotes win. Asks, bids, sizes and
+    executability come from the quotes file; the fee-inclusive price is recomputed with the repository's own fee
+    arithmetic for a one-unit order. Contracts absent from the quotes file keep their packet price. Returns a note when
+    anything was replaced, else None. A missing or unreadable quotes file leaves the packet prices untouched.
+    """
+    path = root / "data" / "live" / "execution" / "games" / key / "quotes.json"
+    basis[key] = {"source": "packet markets.json", "overlaid": 0}
+    if not path.is_file() or not contracts:
+        return None
+    try:
+        doc = _load_json(path)
+    except (OSError, ValueError):
+        return None
+    packet_fp = None
+    try:
+        packet_fp = (
+            _load_json(root / "data" / "research_packets" / "games" / key / "markets.json")
+            .get("price_provenance", {})
+            .get("game_fingerprint")
+        )
+    except (OSError, ValueError):
+        pass
+    if packet_fp is not None and doc.get("game_fingerprint") == packet_fp:
+        return None
+    by_ticker = {q.get("market_ticker"): q for q in doc.get("quotes") or []}
+    n = 0
+    for c in contracts:
+        q = by_ticker.get(c.get("ticker"))
+        if q is None:
+            continue
+        series = str(c["ticker"]).split("-")[0]
+        for side, ask_k, bid_k, size_k, ok_k in (
+            ("yes", "yes_ask", "yes_bid", "yes_ask_size", "buy_yes_executable"),
+            ("no", "no_ask", "no_bid", "no_ask_size", "buy_no_executable"),
+        ):
+            ask = q.get(ask_k)
+            size = q.get(size_k)
+            block = dict(c.get(side) or {})
+            block["ask"], block["bid"] = ask, q.get(bid_k)
+            if size is not None:
+                block["ask_size"] = size
+            block["exec"] = bool(q.get(ok_k)) and float(block.get("ask_size") or 0) > 0
+            if ask is not None and 0.0 < float(ask) < 1.0:
+                contracts_1u = int(75.0 // float(ask))
+                fee = pricing.order_fee(float(ask), contracts_1u, series) if contracts_1u else None
+                block["contracts_1u"] = contracts_1u
+                block["order_fee_1u"] = fee
+                block["all_in"] = None if fee is None or not contracts_1u else round(float(ask) + fee / contracts_1u, 6)
+            c[side] = block
+        c["book"] = q.get("book_state", c.get("book"))
+        c["upd"] = q.get("updated_time", c.get("upd"))
+        n += 1
+    basis[key] = {
+        "source": "quotes.json (newer than packet)",
+        "overlaid": n,
+        "packet_fingerprint": packet_fp,
+        "quotes_fingerprint": doc.get("game_fingerprint"),
+    }
+    return f"{n} contracts priced from quotes.json: its game_fingerprint differs from the packet's, so it is newer"
 
 
 def load_inventory(root: Path, slate_date: str, window: str | None = None) -> Inventory:
@@ -120,6 +187,7 @@ def load_inventory(root: Path, slate_date: str, window: str | None = None) -> In
             inv.side_codes.setdefault(key, doc.get("side_codes") or {})
             for fam, meta in (doc.get("families") or {}).items():
                 inv.family_coverage.setdefault(key, {})[fam] = (meta or {}).get("coverage", "UNKNOWN")
+        _overlay_fresher_quotes(root, key, loaded, inv.price_basis)
         inv.contracts[key] = loaded
         if not g.get("files", {}).get("markets"):
             inv.defects.append(Defect("NO_MARKETS_FILES_LISTED", STRUCTURAL, "slate row lists no markets file", key))
@@ -730,6 +798,7 @@ def build_report(
         "window": inv.window,
         "as_of": as_of,
         "read_only": True,
+        "price_basis": inv.price_basis,
         "authority": "RESEARCH_ONLY: no probability, bet, stake, approval or order is produced here",
         "verdict": verdict,
         "totals": {
