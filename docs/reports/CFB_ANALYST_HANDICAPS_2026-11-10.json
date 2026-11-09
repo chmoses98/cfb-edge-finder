@@ -1,0 +1,357 @@
+{
+ "schema_version": "cfb_game_handicaps/1.0.0",
+ "handicaps": [
+  {
+   "game_key": "26NOV10KENTBGSU",
+   "analyst": "Claude (RUN CFB analyst session)",
+   "handicapped_at": "2026-11-09T21:55:00Z",
+   "evidence": [
+    "data/research_packets packets built 2026-11-09T16:57Z (verified schedules, opponent-adjusted matchup_comparison, period_splits_raw; no havoc)",
+    "quotes.json captured 2026-11-09T19:33Z (commit 5a36864cf) used for asks; Kalshi direct API unreachable (HTTP 429), so prices are captured, not live-verified",
+    "Starting QBs from box-score history, not confirmed: BG Jay Kastantin (9 starts, 1,567 yds 11 TD 8 INT per WagerTalk preview 2026-11-09), Kent Dru DeShields (9 starts); no injury to either found (web search 2026-11-09)",
+    "Kent skill absences reported by Covers/WagerTalk (WR Stephens, WR Bierfeldt, RB Armentrout, K Tucker) may be stale (Covers dates entries to Oct 18); BG WR Trey Johnson and RB Blackmon injury concerns",
+    "ESPN forecast 53F, 0% precip, 10 mph gust, outdoor turf (packet environment 2026-11-09T16:57Z)",
+    "Common opponents: WMU beat Kent 38-7 and BG 23-10 (both at WMU); Kent road scoring 4.4 ppg in 5 road games vs 26.8 at home"
+   ],
+   "payload": {
+    "thesis": "Two bottom-third offenses (BG adj 18.5 ppg r132, Kent 16.1 r138) in a slow game (BG 30.3 s/play r137). BG at home with the better success rate (.39 vs .345 adj) and Kent's road offense collapsing; BG by about 5.5 (repo net ratings: BG -12.26 vs Kent -15.01 plus 2.5 home). Total 42.5: opponent-adjusted scoring implies ~38, the repo baseline 43.9 and both teams' games against bottom-third FBS opponents average 45-52 combined points, so I blend to 42.5 and keep the total region at +/-4.5 because the three reads disagree.",
+    "opposing_case": "Both defenses are bad (adj allowed 30.7/31.1) and Kent beat Akron 35-20 and Wofford 36-15 at home; BG lost to Ball State and Buffalo. Kent QB/skill depth and BG QB are unconfirmed. ESPN predictor gives BG 73% and the repo baseline BG by 7.4, both above my 5.",
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 24.0,
+      "away_mean": 18.5,
+      "home_sd": 10.0,
+      "away_sd": 10.0,
+      "correlation": -0.1,
+      "uncertainty": {
+       "margin_points": 4.5,
+       "total_points": 4.5,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_half": {
+      "home_mean": 11.76,
+      "away_mean": 9.065,
+      "home_sd": 7.56,
+      "away_sd": 7.56,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 2.205,
+       "total_points": 2.205,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_half": {
+      "home_mean": 12.24,
+      "away_mean": 9.435,
+      "home_sd": 7.713,
+      "away_sd": 7.713,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 2.295,
+       "total_points": 2.295,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_quarter": {
+      "home_mean": 5.28,
+      "away_mean": 4.07,
+      "home_sd": 5.066,
+      "away_sd": 5.066,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 0.99,
+       "total_points": 0.99,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_quarter": {
+      "home_mean": 6.48,
+      "away_mean": 4.995,
+      "home_sd": 5.612,
+      "away_sd": 5.612,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.215,
+       "total_points": 1.215,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "third_quarter": {
+      "home_mean": 5.52,
+      "away_mean": 4.255,
+      "home_sd": 5.179,
+      "away_sd": 5.179,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.035,
+       "total_points": 1.035,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "fourth_quarter": {
+      "home_mean": 6.72,
+      "away_mean": 5.18,
+      "home_sd": 5.715,
+      "away_sd": 5.715,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.26,
+       "total_points": 1.26,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV10WMUAKR",
+   "analyst": "Claude (RUN CFB analyst session)",
+   "handicapped_at": "2026-11-09T21:55:00Z",
+   "evidence": [
+    "data/research_packets packets built 2026-11-09T16:57Z (verified schedules, opponent-adjusted matchup_comparison, period_splits_raw; no havoc)",
+    "quotes.json captured 2026-11-09T19:33Z (commit 5a36864cf) used for asks; Kalshi direct API unreachable (HTTP 429), so prices are captured, not live-verified",
+    "WMU QB Broc Lowry started all 9 games; Akron QB Cibastian Broughton returned vs Ohio after missing 5 games with an ankle injury (22/34 vs Ohio per PFN preview 2026-11-09)",
+    "Akron TE Elijah Alexander out vs Ohio with a leg brace (fan preview, not official); WagerTalk reports no notable absences either team",
+    "Forecast ~50F, light wind, no precipitation (RX/fan preview; packet 51F, 9 mph gust)",
+    "Repo opponent-adjusted net ratings (schedules.json): WMU -0.64 (rank 76), Akron -13.09 (rank 132), Kent -15.01, BG -12.26, Ohio -0.92, Miami OH -5.59",
+    "Quality check: WMU 6-3 against a soft schedule (avg opp net rank 96); wins over Kent 38-7, BG 23-10, CMU 21-14 but lost to Toledo 38-45 and Boise 7-32; WMU defense adj allows 32.7 ppg (r129) with the worst sack rate in the nation (r138)"
+   ],
+   "payload": {
+    "thesis": "WMU has the better offense (adj SR .408, ypp 5.36) against an Akron defense that allows .440 SR and has lost 8 of 9 (average margin -19) with a home turnover problem (1.7/game). Akron's offense (r128 ppg, SR r93) faces a poor WMU defense, so Akron scores; Three independent reads disagree: matchup metrics WMU by ~6, repo adjusted net ratings (WMU -0.64 vs Akron -13.09, +2.5 home) WMU by ~10; I settle on WMU by 8.5 in a game near 47.5 and widen the margin region to +/-5. The Kalshi spread ladder (not used to form this number) is centred near WMU -14.5, so this is a deliberate disagreement with the market of about 6 points.",
+    "opposing_case": "WMU's wins are narrow against bad teams and its defense is the weakest in the matchup; Akron's adjusted defense numbers (ppg r44, ypp r78) are better than its box scores, Broughton is back, and a cold home Tuesday can compress margins. A large WMU spread could be too much.",
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 19.5,
+      "away_mean": 28.0,
+      "home_sd": 10.0,
+      "away_sd": 10.0,
+      "correlation": -0.1,
+      "uncertainty": {
+       "margin_points": 5.0,
+       "total_points": 4.0,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_half": {
+      "home_mean": 9.555,
+      "away_mean": 13.72,
+      "home_sd": 7.56,
+      "away_sd": 7.56,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 2.45,
+       "total_points": 1.96,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_half": {
+      "home_mean": 9.945,
+      "away_mean": 14.28,
+      "home_sd": 7.713,
+      "away_sd": 7.713,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 2.55,
+       "total_points": 2.04,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_quarter": {
+      "home_mean": 4.29,
+      "away_mean": 6.16,
+      "home_sd": 5.066,
+      "away_sd": 5.066,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.1,
+       "total_points": 0.88,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_quarter": {
+      "home_mean": 5.265,
+      "away_mean": 7.56,
+      "home_sd": 5.612,
+      "away_sd": 5.612,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.35,
+       "total_points": 1.08,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "third_quarter": {
+      "home_mean": 4.485,
+      "away_mean": 6.44,
+      "home_sd": 5.179,
+      "away_sd": 5.179,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.15,
+       "total_points": 0.92,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "fourth_quarter": {
+      "home_mean": 5.46,
+      "away_mean": 7.84,
+      "home_sd": 5.715,
+      "away_sd": 5.715,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.4,
+       "total_points": 1.12,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     }
+    }
+   }
+  },
+  {
+   "game_key": "26NOV10OHIOMOH",
+   "analyst": "Claude (RUN CFB analyst session)",
+   "handicapped_at": "2026-11-09T21:55:00Z",
+   "evidence": [
+    "data/research_packets packets built 2026-11-09T16:57Z (verified schedules, opponent-adjusted matchup_comparison, period_splits_raw; no havoc)",
+    "quotes.json captured 2026-11-09T19:33Z (commit 5a36864cf) used for asks; Kalshi direct API unreachable (HTTP 429), so prices are captured, not live-verified",
+    "Ohio QB Nick Poulos (978 yds, 7 TD, 0 INT, 248 rush yds) and Miami QB Caleb Heavner (68/125, 769 yds, 4 TD; sixth start) per WOUB/PFN previews 2026-11-09 via search summaries; David McComb and Thomas Gotkowski out for the season (WagerTalk 2026-11-09)",
+    "Ohio K Will Hryszko unavailable (WagerTalk); other Ohio statuses uncertain; no official injury reports retrieved",
+    "Kickoff 8 pm ET Yager Stadium per Miami athletics (7 pm on one aggregator); forecast 50F, 6 mph gust (packet)",
+    "Ohio 7-2 (5-0 MAC), last 3 allow 15.7 ppg and score 33.3; Miami 5-4, lost 31-34 to Buffalo at home; Ohio beat Akron 28-20, Miami beat Akron 34-14"
+   ],
+   "payload": {
+    "thesis": "Ohio has the better efficiency (adj SR .428 vs .397, success-rate rank 45 vs 103) and a rushing game against a Miami defense that is good vs the run but allows .439 pass success; Heavner is a downgrade from McComb. Road team by a point and a half in a slow, ~47.5-point game.",
+    "opposing_case": "Miami is at home on senior night with a stout run defense and explosive offense (explosive rate r32), Ohio's last road game was a 28-20 win at Akron with a 0.326 success rate, and Ohio's schedule is soft. Ohio has won the last two meetings but Miami's home edge could make this a pick'em or Miami lean.",
+    "period_distributions": {
+     "full_game": {
+      "home_mean": 23.0,
+      "away_mean": 24.5,
+      "home_sd": 10.0,
+      "away_sd": 10.0,
+      "correlation": -0.1,
+      "uncertainty": {
+       "margin_points": 4.0,
+       "total_points": 4.0,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_half": {
+      "home_mean": 11.27,
+      "away_mean": 12.005,
+      "home_sd": 7.56,
+      "away_sd": 7.56,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.96,
+       "total_points": 1.96,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_half": {
+      "home_mean": 11.73,
+      "away_mean": 12.495,
+      "home_sd": 7.713,
+      "away_sd": 7.713,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 2.04,
+       "total_points": 2.04,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "first_quarter": {
+      "home_mean": 5.06,
+      "away_mean": 5.39,
+      "home_sd": 5.066,
+      "away_sd": 5.066,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 0.88,
+       "total_points": 0.88,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "second_quarter": {
+      "home_mean": 6.21,
+      "away_mean": 6.615,
+      "home_sd": 5.612,
+      "away_sd": 5.612,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.08,
+       "total_points": 1.08,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "third_quarter": {
+      "home_mean": 5.29,
+      "away_mean": 5.635,
+      "home_sd": 5.179,
+      "away_sd": 5.179,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 0.92,
+       "total_points": 0.92,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     },
+     "fourth_quarter": {
+      "home_mean": 6.44,
+      "away_mean": 6.86,
+      "home_sd": 5.715,
+      "away_sd": 5.715,
+      "correlation": -0.05,
+      "uncertainty": {
+       "margin_points": 1.12,
+       "total_points": 1.12,
+       "sd_scale_low": 0.9,
+       "sd_scale_high": 1.15,
+       "correlation_delta": 0.1
+      }
+     }
+    }
+   }
+  }
+ ]
+}

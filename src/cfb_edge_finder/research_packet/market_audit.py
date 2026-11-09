@@ -48,6 +48,8 @@ ANALYST_STATUSES = (EVALUATED_PASS, EVALUATED_CANDIDATE, INSUFFICIENT_EVIDENCE)
 ALL_STATUSES = (UNPRICEABLE, NOT_EVALUATED, DERIVED_ESTIMATE, SHAPE_ONLY_REFERENCE, *ANALYST_STATUSES)
 
 SRC_ANALYST = "ANALYST"
+SRC_ANALYST_HANDICAP = "ANALYST_HANDICAP"
+ANALYST_SOURCES = (SRC_ANALYST, SRC_ANALYST_HANDICAP)
 SRC_DERIVED = "DERIVED_HISTORICAL"
 DERIVED_SCHEMA = "cfb_derived_estimates/1.0.0"
 
@@ -85,6 +87,7 @@ class Inventory:
     family_coverage: dict[str, dict[str, str]] = field(default_factory=dict)
     side_codes: dict[str, dict[str, str]] = field(default_factory=dict)
     defects: list[Defect] = field(default_factory=list)
+    price_basis: dict[str, dict[str, Any]] = field(default_factory=dict)  # game_key -> where asks came from
 
 
 # ------------------------------------------------------------------------------------------------ inventory
@@ -92,6 +95,72 @@ class Inventory:
 
 def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _overlay_fresher_quotes(
+    root: Path, key: str, contracts: list[dict[str, Any]], basis: dict[str, dict[str, Any]]
+) -> str | None:
+    """Apply ``data/live/execution/games/<key>/quotes.json`` when it is newer than the packet's markets file.
+
+    RUN_CFB.md: when the quotes file's ``game_fingerprint`` differs from the packet's, quotes win. Asks, bids, sizes and
+    executability come from the quotes file; the fee-inclusive price is recomputed with the repository's own fee
+    arithmetic for a one-unit order. Contracts absent from the quotes file keep their packet price. Returns a note when
+    anything was replaced, else None. A missing or unreadable quotes file leaves the packet prices untouched.
+    """
+    path = root / "data" / "live" / "execution" / "games" / key / "quotes.json"
+    basis[key] = {"source": "packet markets.json", "overlaid": 0}
+    if not path.is_file() or not contracts:
+        return None
+    try:
+        doc = _load_json(path)
+    except (OSError, ValueError):
+        return None
+    packet_fp = None
+    try:
+        packet_fp = (
+            _load_json(root / "data" / "research_packets" / "games" / key / "markets.json")
+            .get("price_provenance", {})
+            .get("game_fingerprint")
+        )
+    except (OSError, ValueError):
+        pass
+    if packet_fp is not None and doc.get("game_fingerprint") == packet_fp:
+        return None
+    by_ticker = {q.get("market_ticker"): q for q in doc.get("quotes") or []}
+    n = 0
+    for c in contracts:
+        q = by_ticker.get(c.get("ticker"))
+        if q is None:
+            continue
+        series = str(c["ticker"]).split("-")[0]
+        for side, ask_k, bid_k, size_k, ok_k in (
+            ("yes", "yes_ask", "yes_bid", "yes_ask_size", "buy_yes_executable"),
+            ("no", "no_ask", "no_bid", "no_ask_size", "buy_no_executable"),
+        ):
+            ask = q.get(ask_k)
+            size = q.get(size_k)
+            block = dict(c.get(side) or {})
+            block["ask"], block["bid"] = ask, q.get(bid_k)
+            if size is not None:
+                block["ask_size"] = size
+            block["exec"] = bool(q.get(ok_k)) and float(block.get("ask_size") or 0) > 0
+            if ask is not None and 0.0 < float(ask) < 1.0:
+                contracts_1u = int(75.0 // float(ask))
+                fee = pricing.order_fee(float(ask), contracts_1u, series) if contracts_1u else None
+                block["contracts_1u"] = contracts_1u
+                block["order_fee_1u"] = fee
+                block["all_in"] = None if fee is None or not contracts_1u else round(float(ask) + fee / contracts_1u, 6)
+            c[side] = block
+        c["book"] = q.get("book_state", c.get("book"))
+        c["upd"] = q.get("updated_time", c.get("upd"))
+        n += 1
+    basis[key] = {
+        "source": "quotes.json (newer than packet)",
+        "overlaid": n,
+        "packet_fingerprint": packet_fp,
+        "quotes_fingerprint": doc.get("game_fingerprint"),
+    }
+    return f"{n} contracts priced from quotes.json: its game_fingerprint differs from the packet's, so it is newer"
 
 
 def load_inventory(root: Path, slate_date: str, window: str | None = None) -> Inventory:
@@ -118,6 +187,7 @@ def load_inventory(root: Path, slate_date: str, window: str | None = None) -> In
             inv.side_codes.setdefault(key, doc.get("side_codes") or {})
             for fam, meta in (doc.get("families") or {}).items():
                 inv.family_coverage.setdefault(key, {})[fam] = (meta or {}).get("coverage", "UNKNOWN")
+        _overlay_fresher_quotes(root, key, loaded, inv.price_basis)
         inv.contracts[key] = loaded
         if not g.get("files", {}).get("markets"):
             inv.defects.append(Defect("NO_MARKETS_FILES_LISTED", STRUCTURAL, "slate row lists no markets file", key))
@@ -236,6 +306,7 @@ def build_sides(inv: Inventory) -> list[dict[str, Any]]:
                         "reference_n": None,
                         "bet_up_to_withheld": None,
                         "derived_prior": None,
+                        "handicap_check": None,
                     }
                 )
     return rows
@@ -296,6 +367,10 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
             continue
         status = e.get("status")
         reason = e.get("reason")
+        src = e.get("source") or SRC_ANALYST
+        if src not in ANALYST_SOURCES:
+            reject("BAD_SOURCE", f"source must be one of {ANALYST_SOURCES}")
+            continue
         if status not in ANALYST_STATUSES:
             reject("BAD_STATUS", f"status must be one of {ANALYST_STATUSES}")
             continue
@@ -323,6 +398,12 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
                 if err:
                     reject("BAD_PROBABILITY", err)
                     continue
+                if status == EVALUATED_CANDIDATE and float(prob["low"]) == float(prob["high"]):
+                    reject(
+                        "CANDIDATE_POINT_ESTIMATE",
+                        "low == high is a point estimate with no uncertainty; it can pass but cannot be a candidate",
+                    )
+                    continue
                 if status == EVALUATED_CANDIDATE and not (float(prob["low"]) > float(side["all_in"])):
                     reject(
                         "CANDIDATE_BELOW_BREAKEVEN",
@@ -340,7 +421,7 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
         side["reference_n"] = None
         side["bet_up_to_withheld"] = None
         side["status"] = status
-        side["evaluation_source"] = SRC_ANALYST
+        side["evaluation_source"] = src
         side["reason"] = reason.strip()
         side["reason_code"] = e.get("reason_code") or side["reason_code"]
         side["thesis"] = e.get("thesis")
@@ -354,7 +435,13 @@ def apply_evaluations(sides: list[dict[str, Any]], entries: list[dict[str, Any]]
                 "calibrated": False,
             }
             side["margin_low_vs_all_in"] = round(low - float(side["all_in"]), 6)
-            side["bet_up_to"] = pricing.bet_up_to_price(low, str(side["ticker"]).split("-")[0])
+            if low == float(
+                prob["high"]
+            ):  # a point estimate earns no conservative ceiling (as in execution.pit_review)
+                side["bet_up_to"] = None
+                side["bet_up_to_withheld"] = "POINT_ESTIMATE_NO_UNCERTAINTY"
+            else:
+                side["bet_up_to"] = pricing.bet_up_to_price(low, str(side["ticker"]).split("-")[0])
             claimed = e.get("bet_up_to")
             if claimed is not None and side["bet_up_to"] is not None and abs(float(claimed) - side["bet_up_to"]) > 1e-9:
                 defects.append(
@@ -445,6 +532,39 @@ def apply_derived(sides: list[dict[str, Any]], entries: list[dict[str, Any]]) ->
     return defects
 
 
+def apply_handicap_checks(sides: list[dict[str, Any]], check_entries: list[dict[str, Any]], source: str) -> None:
+    """Attach an INDEPENDENT cross-check from a seeded handicap to sides. It never changes a status.
+
+    ``agrees`` is whether its range overlaps the side's own estimate; ``corroborated_bet_up_to`` is the lower of the
+    two fee-inclusive ceilings and exists only when both exist and agree (disagreement is shown, not averaged away).
+    """
+    index = {(s["game_key"], s["ticker"], s["side"]): s for s in sides}
+    for e in check_entries:
+        side = index.get((e["game_key"], e["ticker"], e["side"]))
+        if side is None or side["status"] == UNPRICEABLE:
+            continue
+        p = e["probability"]
+        own = side["probability"] if side["status"] in (DERIVED_ESTIMATE, SHAPE_ONLY_REFERENCE) else None
+        cb = pricing.bet_up_to_price(float(p["low"]), str(side["ticker"]).split("-")[0])
+        agrees = bool(own and own["low"] <= p["high"] and p["low"] <= own["high"])
+        screen_agrees = bool(own and ((own["low"] > float(side["all_in"])) == (p["low"] > float(side["all_in"]))))
+        side["handicap_check"] = {
+            "source": source,
+            "low": p["low"],
+            "point": p["point"],
+            "high": p["high"],
+            "bet_up_to": cb,
+            "agrees_with_own_estimate": agrees if own else None,
+            "price_screen_agrees": screen_agrees if own else None,
+            "point_gap": round(abs(p["point"] - own["point"]), 4) if own else None,
+            "corroborated_bet_up_to": (
+                min(cb, side["bet_up_to"])
+                if (agrees and screen_agrees and cb is not None and side["bet_up_to"] is not None)
+                else None
+            ),
+        }
+
+
 # ------------------------------------------------------------------------------------------------ verification
 
 
@@ -496,11 +616,11 @@ def classify(sides: list[dict[str, Any]], defects: list[Defect]) -> dict[str, An
     """
     c = Counter(s["status"] for s in sides)
     structural = [d for d in defects if d.severity == STRUCTURAL]
-    analyst = [s for s in sides if s["evaluation_source"] == SRC_ANALYST]
+    analyst = [s for s in sides if s["evaluation_source"] in ANALYST_SOURCES]
     without_prob = [s for s in analyst if s["status"] != INSUFFICIENT_EVIDENCE and s["probability"] is None]
     priceable = [s for s in sides if s["status"] != UNPRICEABLE]
     all_analyst_with_prob = all(
-        s["evaluation_source"] == SRC_ANALYST
+        s["evaluation_source"] in ANALYST_SOURCES
         and s["status"] in (EVALUATED_PASS, EVALUATED_CANDIDATE)
         and s["probability"] is not None
         for s in priceable
@@ -635,6 +755,7 @@ def build_report(
     history: dict[str, Any] | None = None,
     as_of: str | None = None,
     derived_context: dict[str, Any] | None = None,
+    handicap_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     n_contracts = sum(len(v) for v in inv.contracts.values())
     verdict = classify(sides, defects)
@@ -649,7 +770,7 @@ def build_report(
             "sides": len(rows),
             **{k.lower(): v for k, v in fc.items()},
             "evaluated": fc[EVALUATED_PASS] + fc[EVALUATED_CANDIDATE],
-            "analyst_evaluated": sum(1 for s in rows if s["evaluation_source"] == SRC_ANALYST),
+            "analyst_evaluated": sum(1 for s in rows if s["evaluation_source"] in ANALYST_SOURCES),
             "with_probability": sum(1 for s in rows if s["probability"] is not None),
             "pct_priceable_sides_disposed": _pct(
                 len(rows) - fc[UNPRICEABLE] - fc[NOT_EVALUATED],
@@ -677,6 +798,7 @@ def build_report(
         "window": inv.window,
         "as_of": as_of,
         "read_only": True,
+        "price_basis": inv.price_basis,
         "authority": "RESEARCH_ONLY: no probability, bet, stake, approval or order is produced here",
         "verdict": verdict,
         "totals": {
@@ -688,7 +810,7 @@ def build_report(
             "status_counts": counts,
             "priceable_sides": len(sides) - counts[UNPRICEABLE],
             "evaluated_sides": counts[EVALUATED_PASS] + counts[EVALUATED_CANDIDATE],
-            "analyst_evaluated_sides": sum(1 for s in sides if s["evaluation_source"] == SRC_ANALYST),
+            "analyst_evaluated_sides": sum(1 for s in sides if s["evaluation_source"] in ANALYST_SOURCES),
             "derived_estimate_sides": counts[DERIVED_ESTIMATE],
             "shape_only_reference_sides": counts[SHAPE_ONLY_REFERENCE],
             "insufficient_evidence_sides": counts[INSUFFICIENT_EVIDENCE],
@@ -709,6 +831,8 @@ def build_report(
         "derived_leads_for_analyst_review": _derived_leads(sides),
         "direction_group_comparison": _direction_groups(sides),
         "derived_context": derived_context,
+        "handicap_integration": _handicap_section(sides, handicap_context),
+        "family_opportunity_comparison": _family_opportunities(sides),
         "history_by_family": history,
         "defects": [d.as_dict() for d in defects],
         "family_mix_of_candidates": dict(Counter(s["family"] for s in candidates)),
@@ -718,6 +842,80 @@ def build_report(
             "Nothing is ranked by attractiveness; candidates are listed by kickoff then ticker. No family is favoured "
             "or excluded and no diversification is forced.",
         ],
+    }
+
+
+def _basis(s: dict[str, Any]) -> str:
+    if s["evaluation_source"] in ANALYST_SOURCES:
+        return "ANALYST"
+    if s["status"] == DERIVED_ESTIMATE:
+        hc = s.get("handicap_check") or {}
+        return "DERIVED_CORROBORATED" if hc.get("corroborated_bet_up_to") is not None else "DERIVED_UNCORROBORATED"
+    return "OTHER"
+
+
+def _handicap_section(sides: list[dict[str, Any]], ctx: dict[str, Any] | None) -> dict[str, Any]:
+    checks = [s for s in sides if s.get("handicap_check")]
+    derived_with_check = [s for s in checks if s["status"] == DERIVED_ESTIMATE]
+    agree = sum(1 for s in derived_with_check if s["handicap_check"]["agrees_with_own_estimate"])
+    return {
+        "analyst_handicap_games": (ctx or {}).get("analyst_games", {}),
+        "analyst_handicap_rejections": (ctx or {}).get("rejections", []),
+        "analyst_handicap_priced_sides": sum(1 for s in sides if s["evaluation_source"] == SRC_ANALYST_HANDICAP),
+        "analyst_handicap_unpriced_by_reason": (ctx or {}).get("unpriced_by_reason", {}),
+        "seeded_handicap_games": (ctx or {}).get("seeded_games", 0),
+        "seeded_cross_check_sides": len(checks),
+        "seeded_cross_check_by_family": dict(Counter(s["family"] for s in checks)),
+        "derived_estimates_with_cross_check": len(derived_with_check),
+        "cross_check_agrees": agree,
+        "cross_check_disagrees": len(derived_with_check) - agree,
+        "price_screen_disagrees": sum(1 for s in derived_with_check if not s["handicap_check"]["price_screen_agrees"]),
+        "median_point_gap": (
+            sorted(s["handicap_check"]["point_gap"] for s in derived_with_check)[len(derived_with_check) // 2]
+            if derived_with_check
+            else None
+        ),
+        "corroborated_bet_up_to_sides": sum(
+            1 for s in derived_with_check if s["handicap_check"]["corroborated_bet_up_to"] is not None
+        ),
+        "seeded_unpriced_by_reason": (ctx or {}).get("seeded_unpriced_by_reason", {}),
+        "note": "A seeded handicap is a DRAFT built from the same history, so agreement checks internal consistency "
+        "(normal shape vs empirical frequency), not independence. Only an analyst handicap is independent judgment.",
+    }
+
+
+def _family_opportunities(sides: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per family: defensibly priced sides clearing fee-inclusive break-even at their LOWER bound, and by how much.
+
+    'Defensibly priced' = the side has a Bet Up To from an analyst evaluation or from a SUPPORTED, in-range derived
+    estimate. Arithmetic across families; it ranks nothing and favours no family.
+    """
+    out: dict[str, Any] = {}
+    by_family: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in sides:
+        if s["bet_up_to"] is not None and s["probability"] is not None and s["margin_low_vs_all_in"] is not None:
+            by_family[s["family"]].append(s)
+    for fam_name, rows in sorted(by_family.items()):
+        clearing = sorted((r for r in rows if r["margin_low_vs_all_in"] > 0), key=lambda r: -r["margin_low_vs_all_in"])
+        heads = sorted(r["margin_low_vs_all_in"] for r in clearing)
+        out[fam_name] = {
+            "defensibly_priced_sides": len(rows),
+            "clearing_at_lower_bound": len(clearing),
+            "by_basis": dict(Counter(_basis(r) for r in clearing)),
+            "games_with_a_clearing_side": len({r["game_key"] for r in clearing}),
+            "median_headroom": round(heads[len(heads) // 2], 4) if heads else None,
+            "max_headroom": round(heads[-1], 4) if heads else None,
+            "top_rows": [
+                {k: r[k] for k in ("game_key", "ticker", "side", "ask", "all_in", "bet_up_to", "margin_low_vs_all_in")}
+                | {"basis": _basis(r), "low": r["probability"]["low"], "point": r["probability"]["point"]}
+                for r in clearing[:3]
+            ],
+        }
+    return {
+        "by_family": out,
+        "note": "Same arithmetic for every family: (lower bound - fee-inclusive all-in). Nothing is ranked across "
+        "families "
+        "for you and no family is favoured, excluded or forced; analyst and derived bases are labelled separately.",
     }
 
 
@@ -1052,6 +1250,39 @@ def render_markdown(report: dict[str, Any]) -> str:
         "lower bound clears break-even. Cheapest-expression family mix (largest lower-bound headroom): "
         f"{dg.get('cheapest_expression_family_mix') or 'none'}. Full rows are in the JSON report."
     )
+    hi = report.get("handicap_integration") or {}
+    lines += ["", "## Handicap pricing integration", ""]
+    lines.append(
+        f"Analyst handicaps accepted: **{len(hi.get('analyst_handicap_games', {}))}** games, pricing "
+        f"**{hi.get('analyst_handicap_priced_sides', 0):,}** sides (analyst evaluation). Rejected: "
+        f"{len(hi.get('analyst_handicap_rejections', []))}. Seeded (draft, not analyst) cross-check: "
+        f"**{hi.get('seeded_cross_check_sides', 0):,}** sides across {hi.get('seeded_handicap_games', 0)} games; of "
+        f"{hi.get('derived_estimates_with_cross_check', 0):,} derived estimates with a cross-check, "
+        f"{hi.get('cross_check_agrees', 0):,} ranges overlap, {hi.get('price_screen_disagrees', 0):,} disagree on "
+        "whether "
+        f"the lower bound clears the price, median point gap {hi.get('median_point_gap')}; "
+        f"{hi.get('corroborated_bet_up_to_sides', 0):,} carry a corroborated Bet Up To."
+    )
+    for gk, m in hi.get("analyst_handicap_games", {}).items():
+        lines.append(f"* {gk}: {m['analyst']} at {m['handicapped_at']}; periods {', '.join(m['periods'])}")
+    for r in hi.get("analyst_handicap_rejections", []):
+        lines.append(f"* REJECTED {r['game_key']} `{r['code']}`: {r['detail']}")
+    for why, n in sorted(hi.get("seeded_unpriced_by_reason", {}).items(), key=lambda kv: -kv[1]):
+        lines.append(f"* seeded handicap cannot price ({n:,} sides): {why}")
+    fo = (report.get("family_opportunity_comparison") or {}).get("by_family", {})
+    lines += ["", "## Strongest-opportunity comparison across families (defensibly priced sides; arithmetic only)", ""]
+    if fo:
+        lines += [
+            "| family | defensibly priced | clearing at lower bound | games | median headroom | max headroom | basis |",
+            "|---|---:|---:|---:|---:|---:|---|",
+        ]
+        for fam_name, f in fo.items():
+            lines.append(
+                f"| {fam_name} | {f['defensibly_priced_sides']:,} | {f['clearing_at_lower_bound']:,} | "
+                f"{f['games_with_a_clearing_side']} | {f['median_headroom']} | {f['max_headroom']} | {f['by_basis']} |"
+            )
+    else:
+        lines.append("No side has a defensible Bet Up To yet.")
     ctx = report.get("derived_context")
     if ctx:
         lines += ["", "## Derived-estimate method and matchup uncertainty", ""]

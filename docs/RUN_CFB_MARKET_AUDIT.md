@@ -105,3 +105,44 @@ The report adds coverage by family and source, **derived leads for analyst revie
 clears fee-inclusive break-even: a queue, not candidates), and a same-direction comparison across families and periods
 (moneyline, spread, totals, team totals, halves, quarters) showing lower-bound headroom without picking a bet. Nov 7 early:
 `docs/reports/CFB_MARKET_AUDIT_2026-11-07_early_derived.{md,json}`.
+
+## Game-handicap pricing (`--handicaps`, `--seed-check`)
+
+One game-level handicap prices every side the repository's existing handicap pricer can express
+(`research_packet/handicap_pricing.py`, reusing `execution.evaluator.fair_from_distribution`,
+`execution.handicap.PeriodDistribution` and `execution.uncertainty.scenarios` as pure functions; nothing in
+`execution/` or `decision/` is changed or called for orders, approvals or qualification).
+
+**Analyst handicap** (`--handicaps FILE`, `cfb_game_handicaps/1.0.0`). Per game: `analyst`, `handicapped_at`, `evidence`
+(sources and timestamps), `payload.thesis`, `payload.opposing_case` and `payload.period_distributions` (per period:
+`home_mean`, `away_mean`, `home_sd`, `away_sd`, `correlation`, and an `uncertainty` region of margin/total points, sd scale
+and correlation delta). Unsigned, evidence-free, thesis-free, duplicate, invalid or `draft` entries are rejected and named.
+Every side the handicap can price becomes an analyst evaluation (source `ANALYST_HANDICAP`): the YES range is the min and
+max over the base case and every corner of the stated region, NO is its complement, and the **Bet Up To comes from the
+conservative lower bound** through the fee-inclusive pricing arithmetic. `EVALUATED_CANDIDATE` only when that lower bound
+clears fee-inclusive break-even at the ask, else `EVALUATED_PASS`. A handicap with no stated region is a point estimate: it
+can pass, can never be a candidate and earns no ceiling (`POINT_ESTIMATE_NO_UNCERTAINTY`). Manual `--evaluations` entries
+are applied afterwards and override handicap pricing side by side. Ranges are the analyst's opinion, never calibrated, never
+validated EV, never an approval.
+
+**What a handicap cannot price** is reported with a specific gap, not a number: ties (a discrete model is needed),
+overtime, the 1H-result/game-result joint (needs cross-period correlation), touchdown-scorer, team-stat and D/ST props, and
+any period the handicap gave no distribution for. Those sides keep their generated status or `INSUFFICIENT_EVIDENCE`.
+
+**Historical seed** (`--seed-check`, `--seed-handicaps-out FILE`). For every game with a reference class the audit builds a
+DRAFT handicap from reference-class statistics (means, standard deviations and the team-score correlation per period); its
+region comes from the baseline's stated uncertainty times the matchup QB/absence multiplier (scaled by the period's share
+of scoring) and from the sampling error of the spread and of the correlation. It is used only as a cross-check on each
+generated estimate: overlap of ranges, whether the lower bound clears the price on both bases, the point gap, and a
+`corroborated_bet_up_to` (the lower of the two ceilings, present only when both agree). It never changes a status. Because it
+is built from the same history it checks internal consistency (normal shape against empirical frequency), not independence.
+`--seed-handicaps-out` writes the drafts (`cfb_game_handicap_seeds/1.0.0`, every entry `draft: true`) as a starting point:
+copy one into a handicaps file, put your own view in it, sign it, and drop the `draft` flag.
+
+**Report additions.** Handicap integration (accepted and rejected handicaps, priced sides, per-reason gaps, seeded
+cross-check agreement) and a per-family comparison of defensibly priced sides: how many clear fee-inclusive break-even at
+their lower bound, by how much, on which basis (analyst, corroborated derived, uncorroborated derived). It is the same
+arithmetic for every family; it ranks nothing, favours no family and forces no diversification.
+
+Leads and recommendations stay separate: derived leads are a review queue, analyst-handicap candidates are analyst
+judgment, and neither is an order, an approval or part of automated qualification.

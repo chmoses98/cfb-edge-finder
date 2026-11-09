@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from cfb_edge_finder.research_packet import derived_estimates as de  # noqa: E402
+from cfb_edge_finder.research_packet import handicap_pricing as hp  # noqa: E402
 from cfb_edge_finder.research_packet import history as hist  # noqa: E402
 from cfb_edge_finder.research_packet import market_audit as ma  # noqa: E402
 
@@ -41,6 +42,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--derived-out", help="write the generated derived-estimates file here")
     ap.add_argument("--skill-json", default="data/research_packets/reference/derived_skill.json")
     ap.add_argument("--refresh-skill", action="store_true", help="recompute the walk-forward skill table")
+    ap.add_argument("--handicaps", help="ANALYST game handicaps (cfb_game_handicaps/1.0.0); priced for every side")
+    ap.add_argument("--seed-check", action="store_true", help="price historical-seed DRAFT handicaps as a cross-check")
+    ap.add_argument("--seed-handicaps-out", help="write the seeded DRAFT handicaps (not analyst handicaps) here")
     ap.add_argument("--wagers", default="app/latest/wagers.json")
     ap.add_argument("--evidence-join", default=None, help="evidence_join report JSON (CLV by family)")
     ap.add_argument("--as-of", help="label only; recorded in the report")
@@ -80,12 +84,65 @@ def main(argv: list[str] | None = None) -> int:
         if a.derived_out:
             Path(a.derived_out).write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8")
         derived_defects = ma.apply_derived(sides, doc["entries"])
+    hctx: dict | None = None
+    if (a.seed_check or a.seed_handicaps_out) and context is not None:
+        games_by_key = {g["game_key"]: g for g in inv.games}
+        hist_games = hist.load_games(root / "data/research_packets/reference/history_games.jsonl.gz")
+        seeds, seeded_dists = {}, {}
+        for info in context["games"]:
+            g = games_by_key[info["game_key"]]
+            pkt_rel = g.get("packet")
+            pkt = json.loads((root / pkt_rel).read_text()) if pkt_rel and (root / pkt_rel).is_file() else None
+            chosen, _w, base = de.reference_class_for(g, pkt, hist_games)
+            qa = info.get("qb_assessment")
+            if not chosen or not qa:
+                continue
+            seed = hp.seed_handicap(chosen, qa, float(qa["baseline_uncertainty_points"]))
+            if seed:
+                seeds[info["game_key"]] = seed
+                seeded_dists[info["game_key"]] = hp.seeded_distributions(seed)
+        if a.seed_handicaps_out:
+            Path(a.seed_handicaps_out).write_text(
+                json.dumps(
+                    {
+                        "schema_version": "cfb_game_handicap_seeds/1.0.0",
+                        "authority": "DRAFT: reference-class statistics, NOT an analyst handicap. To use one, copy it to a "  # noqa: E501
+                        "cfb_game_handicaps/1.0.0 file, edit it with your own view, and add analyst, handicapped_at, "
+                        "evidence, thesis and opposing_case. Entries flagged draft are refused.",
+                        "seeds": [
+                            {"game_key": k, "draft": True, "payload": {"period_distributions": v}}
+                            for k, v in sorted(seeds.items())
+                        ],
+                    },
+                    indent=1,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if a.seed_check:
+            check_entries, info_s = hp.price_sides(sides, inv.side_codes, seeded_dists, source=hp.SRC_SEED)
+            ma.apply_handicap_checks(sides, check_entries, hp.SRC_SEED)
+            unp: dict[str, int] = {}
+            for gaps in info_s["gaps"].values():
+                for why, n in gaps.items():
+                    unp[why] = unp.get(why, 0) + n
+            hctx = {"seeded_games": len(seeds), "seeded_unpriced_by_reason": unp}
+    analyst_handicap_defects: list[ma.Defect] = []
+    if a.handicaps:
+        h_dists, h_meta, h_rej = hp.parse_handicaps(json.loads(Path(a.handicaps).read_text()))
+        h_entries, h_info = hp.price_sides(sides, inv.side_codes, h_dists, source=hp.SRC_ANALYST_HANDICAP)
+        analyst_handicap_defects = ma.apply_evaluations(sides, h_entries)
+        unp2: dict[str, int] = {}
+        for gaps in h_info["gaps"].values():
+            for why, n in gaps.items():
+                unp2[why] = unp2.get(why, 0) + n
+        hctx = (hctx or {}) | {"analyst_games": h_meta, "rejections": h_rej, "unpriced_by_reason": unp2}
     # analyst evaluations are applied LAST so an independent analyst judgment supersedes a generated estimate
     apply_defects = ma.apply_evaluations(sides, entries)
     defects = ma.verify(
         inv,
         sides,
-        load_defects + derived_defects + apply_defects,
+        load_defects + derived_defects + analyst_handicap_defects + apply_defects,
         expect_games=a.expect_games,
         expect_contracts=a.expect_contracts,
     )
@@ -94,7 +151,9 @@ def main(argv: list[str] | None = None) -> int:
         found = sorted((root / "docs" / "reports").glob("evidence_join_*.json"))
         evj = found[-1] if found else None
     history = ma.family_history(root / a.wagers, evj)
-    report = ma.build_report(inv, sides, defects, history=history, as_of=a.as_of, derived_context=context)
+    report = ma.build_report(
+        inv, sides, defects, history=history, as_of=a.as_of, derived_context=context, handicap_context=hctx
+    )
     problems = ma.verify_report(report)
     if problems:  # the audit's own arithmetic must hold before anything is written
         for p in problems:
