@@ -1,18 +1,18 @@
 {
   "bet_authority": "RESEARCH_ONLY",
-  "commit_sha": "29273f009530eeb37cc869cf0eceb553c0044653",
+  "commit_sha": "a7452de4e2df5c71fde7226715a73ad308224bd8",
   "components": {
     "export": {
       "age_seconds": 0.0,
-      "as_of": "2026-11-10T11:28:13Z",
+      "as_of": "2026-11-10T18:50:03Z",
       "detail": null,
       "status": "OK"
     },
     "market_data": {
-      "age_seconds": 11810.0,
+      "age_seconds": 38320.0,
       "as_of": "2026-11-10T08:11:23Z",
       "detail": null,
-      "status": "OK"
+      "status": "STALE"
     },
     "model": {
       "age_seconds": null,
@@ -21,34 +21,34 @@
       "status": "NOT_APPLICABLE"
     },
     "router": {
-      "age_seconds": 211295.0,
+      "age_seconds": 237805.0,
       "as_of": "2026-11-08T00:46:38Z",
       "detail": null,
       "status": "STALE"
     },
     "settlement": {
-      "age_seconds": 187776.0,
+      "age_seconds": 214286.0,
       "as_of": "2026-11-08T07:18:37Z",
       "detail": null,
       "status": "OK"
     }
   },
-  "data_age_seconds": 11810.0,
+  "data_age_seconds": 38320.0,
   "errors": [],
-  "freshness_status": "AGING",
-  "generated_at": "2026-11-10T11:28:13Z",
+  "freshness_status": "STALE",
+  "generated_at": "2026-11-10T18:50:03Z",
   "kind": "health",
-  "last_export_attempt": "2026-11-10T11:28:13Z",
+  "last_export_attempt": "2026-11-10T18:50:03Z",
   "last_market_capture": "2026-11-10T08:11:23Z",
   "last_model_generated": null,
-  "last_successful_run": "2026-11-10T11:28:13Z",
-  "market_data_status": "OK",
+  "last_successful_run": "2026-11-10T18:50:03Z",
+  "market_data_status": "STALE",
   "model_status": "NOT_APPLICABLE",
-  "next_scheduled_run": "2026-11-10T11:58:13Z",
-  "overall_status": "RESEARCH_ONLY",
-  "payload_run_id": "run_d2a7004f8ac77248522b",
+  "next_scheduled_run": "2026-11-10T19:20:03Z",
+  "overall_status": "STALE",
+  "payload_run_id": "run_13952a7938e547d80700",
   "router_status": "STALE",
-  "run_id": "run_d2a7004f8ac77248522b",
+  "run_id": "run_13952a7938e547d80700",
   "schema_version": "edge_finder.app.v1",
   "settlement_status": "OK",
   "sport": "CFB",
