@@ -16,7 +16,7 @@
   "system_failures": 51
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-08T01:31:44Z",
+ "last_ledger_row_at": "2026-11-10T19:35:58Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -41,9 +41,9 @@
     "NO_SPREAD_LADDER_IN_WINDOW": 35
    },
    "next_read": {
-    "at_n": 50,
-    "remaining": 11,
-    "state": "EARLY_READ"
+    "at_n": 100,
+    "remaining": 50,
+    "state": "INTERIM"
    },
    "observation_reasons": {
     "ABS_Z_BELOW_1": 383,
@@ -55,57 +55,57 @@
     "EXCLUDED_PROTOCOL": 473,
     "PENDING": 86
    },
-   "settlement_pending": 12,
+   "settlement_pending": 1,
    "summary": {
     "ats_like": {
-     "losses": 24,
+     "losses": 27,
      "pushes": 1,
-     "rate": 0.3684210526315789,
+     "rate": 0.4489795918367347,
      "rate_ci95": [
-      0.23384219247155955,
-      0.5271604044299099
+      0.31852841068686644,
+      0.5868489178050209
      ],
-     "wins": 14
+     "wins": 22
     },
     "economics": {
-     "fee_adjusted_pnl": -5.45,
-     "hits": 15,
-     "mean_price": 0.5043589743589744,
-     "n": 39,
+     "fee_adjusted_pnl": -3.14,
+     "hits": 23,
+     "mean_price": 0.5028000000000001,
+     "n": 50,
      "roi_ci95_bootstrap": [
-      -0.5583905789990184,
-      0.02892000749344327
+      -0.3848578903460829,
+      0.14635078333970192
      ],
-     "roi_on_outlay": -0.2665036674816627,
+     "roi_on_outlay": -0.1201224177505739,
      "unavailable": 0
     },
     "home_away": {
-     "away": 25,
-     "home": 14
+     "away": 32,
+     "home": 18
     },
-    "n": 39,
-    "outright_win_rate": 0.46153846153846156,
+    "n": 50,
+    "outright_win_rate": 0.56,
     "residual": {
      "ci95_bootstrap": [
-      -6.803446602564103,
-      1.9596641025641024
+      -3.9748366999999996,
+      3.9851693
      ],
-     "mean": -2.438553846153846,
-     "median": -3.75,
-     "positive_rate": 0.358974358974359,
+     "mean": 0.027384000000000127,
+     "median": -0.68055,
+     "positive_rate": 0.44,
      "positive_rate_ci95": [
-      0.22742085458992867,
-      0.5158185144045146
+      0.3116219921125717,
+      0.5769397197834315
      ],
      "quantiles": {
-      "10": -19.66666,
-      "25": -11.25,
-      "75": 6.475,
-      "90": 16.92
+      "10": -18.15,
+      "25": -10.229175,
+      "75": 11.125,
+      "90": 18.13753
      },
-     "sd": 13.718660010631046
+     "sd": 14.510054210961616
     },
-    "verdict": "PROSPECTIVE_TRACKING"
+    "verdict": "EARLY_READ"
    }
   },
   "CFB-PROS-002": {

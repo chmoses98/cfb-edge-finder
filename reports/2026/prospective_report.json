@@ -2275,38 +2275,38 @@
  },
  "summary": {
   "H1": {
-   "break_even": 0.7447,
+   "break_even": 0.7519,
    "checkpoint": {
-    "next": "INTERIM_RESEARCH_READ",
-    "next_at_n": 20,
-    "reached": "EARLY_READ_ONLY",
-    "reached_at_n": 10
+    "next": "MEANINGFUL_EARLY_SAMPLE",
+    "next_at_n": 30,
+    "reached": "INTERIM_RESEARCH_READ",
+    "reached_at_n": 20
    },
    "coverage": {
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 19
+     "CAPTURE_OK": 21
     }
    },
-   "fee_adjusted_pnl": -0.15,
+   "fee_adjusted_pnl": 0.21,
    "football": {
-    "n": 19,
+    "n": 21,
     "wilson95": [
-     0.5121,
-     0.8819
+     0.5491,
+     0.8937
     ],
-    "win_rate": 0.7368,
-    "wins": 14
+    "win_rate": 0.7619,
+    "wins": 16
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
    "losses": 5,
-   "mean_entry": 0.7263,
-   "n": 19,
-   "roi": -0.0106,
+   "mean_entry": 0.7338,
+   "n": 21,
+   "roi": 0.0133,
    "roi_ci95": [
-    -0.2923,
-    0.2481
+    -0.2429,
+    0.25
    ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
@@ -2324,45 +2324,45 @@
      "wins": 6
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.7756,
-     "fee_adjusted_pnl": 1.02,
+     "break_even": 0.7836,
+     "fee_adjusted_pnl": 1.38,
      "losses": 1,
-     "mean_entry": 0.7578,
-     "n": 9,
-     "roi": 0.1461,
+     "mean_entry": 0.7664,
+     "n": 11,
+     "roi": 0.1601,
      "roi_ci95": [
-      -0.1608,
-      0.3761
+      -0.093,
+      0.3547
      ],
-     "win_rate": 0.8889,
-     "wins": 8
+     "win_rate": 0.9091,
+     "wins": 10
     }
    },
-   "weeks": 6,
-   "win_rate": 0.7368,
-   "wins": 14
+   "weeks": 7,
+   "win_rate": 0.7619,
+   "wins": 16
   },
   "H2": {
-   "break_even": 0.7671,
+   "break_even": 0.745,
    "checkpoint": {
     "next": "EARLY_READ_ONLY",
     "next_at_n": 10,
     "reached": null,
     "reached_at_n": null
    },
-   "fee_adjusted_pnl": -2.37,
+   "fee_adjusted_pnl": -2.96,
    "id": "H2_STRONG_CONTROL_BELOW_85_UNDERPERFORMS",
-   "losses": 4,
-   "mean_entry": 0.7486,
-   "n": 7,
-   "realized_minus_break_even": -0.3385,
-   "roi": -0.4413,
+   "losses": 5,
+   "mean_entry": 0.7263,
+   "n": 8,
+   "realized_minus_break_even": -0.37,
+   "roi": -0.4966,
    "roi_ci95": [
-    -0.8138,
-    0.0472
+    -1.0,
+    -0.0415
    ],
    "underperforming_so_far": true,
-   "win_rate": 0.4286,
+   "win_rate": 0.375,
    "wins": 3
   },
   "moderate_status": {
@@ -2374,29 +2374,29 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 38,
+  "settled_rows": 43,
   "strong": {
-   "break_even": 0.8572,
-   "fee_adjusted_pnl": -3.43,
+   "break_even": 0.8467,
+   "fee_adjusted_pnl": -3.78,
    "football": {
-    "n": 19,
+    "n": 22,
     "wilson95": [
-     0.4601,
-     0.8464
+     0.4732,
+     0.8364
     ],
-    "win_rate": 0.6842,
-    "wins": 13
+    "win_rate": 0.6818,
+    "wins": 15
    },
-   "losses": 6,
-   "mean_entry": 0.8439,
-   "n": 18,
-   "roi": -0.2223,
+   "losses": 7,
+   "mean_entry": 0.8333,
+   "n": 21,
+   "roi": -0.2126,
    "roi_ci95": [
-    -0.4737,
-    0.0076
+    -0.4413,
+    -0.0028
    ],
    "win_rate": 0.6667,
-   "wins": 12
+   "wins": 14
   }
  }
 }
