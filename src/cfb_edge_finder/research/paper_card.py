@@ -69,6 +69,7 @@ never a validation.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -246,6 +247,31 @@ def _matchup_of(game_id: str) -> str:
     if len(parts) > 3 and parts[0] == "cfb" and parts[2].startswith("wk"):
         return " ".join(parts[3:])
     return game_id
+
+
+def _home_away_of(game_id: str) -> tuple[str, str]:
+    """(home, away) display names from the canonical ``cfb-SEASON-wkNN-AWAY-at-HOME`` slug; display only."""
+    parts = game_id.split("-")
+    if len(parts) > 3 and parts[0] == "cfb" and parts[2].startswith("wk"):
+        away, sep, home = "-".join(parts[3:]).partition("-at-")
+        if sep and away and home:
+            return home.replace("-", " ").title(), away.replace("-", " ").title()
+    return "HOME", "AWAY"
+
+
+def team_spread_from_home_margin(margin: float | None, home: str, away: str) -> str:
+    """Standard spread notation from a HOME-minus-AWAY margin (display only).
+
+    ``Michigan -4.2`` = Michigan projected to win by 4.2; a negative home margin
+    names the away team. Matches SIFT ``src/lib/spreadNotation.ts``.
+    """
+    if margin is None or isinstance(margin, bool) or not math.isfinite(float(margin)):
+        return "-"
+    pts = round(abs(float(margin)), 1)
+    if pts == 0:
+        return "Pick'em"
+    shown = f"{pts:.1f}".removesuffix(".0")
+    return f"{home if margin > 0 else away} -{shown}"
 
 
 def _ticker_team_label(market_ticker: str) -> str:
@@ -556,9 +582,13 @@ def render_paper_card(card: PaperCard) -> str:
             lines.append(f"      shadow status: {p.shadow_status}")
             lines.append(f"      direction    : {p.directional_note}")
             if p.control_projected_margin is not None or p.shadow_projected_margin is not None:
+                home, away = _home_away_of(p.game_id)
                 control_m = "-" if p.control_projected_margin is None else f"{p.control_projected_margin:+.2f}"
                 shadow_m = "-" if p.shadow_projected_margin is None else f"{p.shadow_projected_margin:+.2f}"
-                lines.append(f"      projected home margin: CONTROL {control_m} / SHADOW {shadow_m}")
+                control_s = team_spread_from_home_margin(p.control_projected_margin, home, away)
+                shadow_s = team_spread_from_home_margin(p.shadow_projected_margin, home, away)
+                lines.append(f"      projected spread: CONTROL {control_s} / SHADOW {shadow_s}")
+                lines.append(f"      (raw home-minus-away margin: CONTROL {control_m} / SHADOW {shadow_m})")
             lines.append(f"      model version: {p.model_version or 'unknown'}  fee schedule: "
                          f"{p.fee_schedule_version or 'unknown'}")
             for note in p.notes:
