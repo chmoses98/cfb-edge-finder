@@ -4,19 +4,19 @@
  "capture_health": {
   "by_outcome": {
    "NO_MARKET": 490,
-   "OK": 2563
+   "OK": 2582
   },
   "in_window_by_outcome": {
    "NO_MARKET": 392,
-   "OK": 2068
+   "OK": 2084
   },
   "last_cycle_errors": [],
-  "spread_attempts": 3053,
-  "spread_attempts_in_window": 2460,
-  "system_failures": 56
+  "spread_attempts": 3072,
+  "spread_attempts_in_window": 2476,
+  "system_failures": 57
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-14T16:45:44Z",
+ "last_ledger_row_at": "2026-11-14T17:00:44Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -32,9 +32,9 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 2,
+   "awaiting_entry": 1,
    "entries": {
-    "ELIGIBLE": 58,
+    "ELIGIBLE": 59,
     "MARKET_NOT_OFFERED": 35
    },
    "entry_reasons": {
@@ -55,7 +55,7 @@
     "EXCLUDED_PROTOCOL": 545,
     "PENDING": 95
    },
-   "settlement_pending": 1,
+   "settlement_pending": 2,
    "summary": {
     "ats_like": {
      "losses": 30,
@@ -124,11 +124,11 @@
     "state": "INTERIM"
    },
    "observation_reasons": {
-    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 56
+    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 57
    },
    "observations": {
     "PENDING": 15,
-    "SYSTEM_FAILURE": 56
+    "SYSTEM_FAILURE": 57
    },
    "settlement_pending": 0,
    "summary": {
