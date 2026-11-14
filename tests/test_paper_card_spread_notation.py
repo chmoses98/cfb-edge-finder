@@ -3,7 +3,9 @@ from cfb_edge_finder.research.paper_card import _home_away_of, team_spread_from_
 
 
 def test_home_and_away_come_from_the_canonical_slug():
-    assert _home_away_of("cfb-2026-wk01-memphis-at-unlv") == ("Unlv", "Memphis")
+    assert _home_away_of("cfb-2026-wk01-memphis-at-unlv") == ("UNLV", "Memphis")
+    assert _home_away_of("cfb-2026-wk05-lsu-at-texas-a-m") == ("Texas A&M", "LSU")
+    assert _home_away_of("cfb-2026-wk05-not-a-real-school-at-byu") == ("BYU", "Not A Real School")
     assert _home_away_of("cfb-2026-wk00-texas-at-ohio-state") == ("Ohio State", "Texas")
     assert _home_away_of("not-a-slug") == ("HOME", "AWAY")
 

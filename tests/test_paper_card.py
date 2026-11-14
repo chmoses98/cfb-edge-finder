@@ -612,6 +612,6 @@ def test_projected_margin_renders_in_standard_team_notation(tmp_path):
     card = _card(tmp_path, rows, [_shadow_row(key)])
     text = render_paper_card(card)
     # Fixture margins are HOME (UNLV) minus AWAY (Memphis): +4.2 / +5.1 => UNLV favoured.
-    assert "projected spread: CONTROL Unlv -4.2 / SHADOW Unlv -5.1" in text
+    assert "projected spread: CONTROL UNLV -4.2 / SHADOW UNLV -5.1" in text
     assert "raw home-minus-away margin: CONTROL +4.20 / SHADOW +5.10" in text
     assert "Memphis -4.2" not in text

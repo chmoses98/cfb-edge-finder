@@ -83,6 +83,7 @@ from cfb_edge_finder.research.preseason.shadow_contract_pricing import (
     PROBABILITY_SEMANTICS_VERSION,
 )
 from cfb_edge_finder.schemas.common import MarketFamily, Side
+from cfb_edge_finder.teams.registry import get_team
 
 PROSPECTIVE_CAPTURE_MODE = "PROSPECTIVE"
 """schemas.corpus_row.CaptureMode's prospective literal -- the ONLY
@@ -255,8 +256,14 @@ def _home_away_of(game_id: str) -> tuple[str, str]:
     if len(parts) > 3 and parts[0] == "cfb" and parts[2].startswith("wk"):
         away, sep, home = "-".join(parts[3:]).partition("-at-")
         if sep and away and home:
-            return home.replace("-", " ").title(), away.replace("-", " ").title()
+            return _team_display(home), _team_display(away)
     return "HOME", "AWAY"
+
+
+def _team_display(slug: str) -> str:
+    """Registry display name for a team slug ("unlv" -> "UNLV"); title-cased slug only if unregistered."""
+    team = get_team(slug)
+    return team.display_name if team is not None else slug.replace("-", " ").title()
 
 
 def team_spread_from_home_margin(margin: float | None, home: str, away: str) -> str:
