@@ -24,23 +24,24 @@
  },
  "population": {
   "awaiting_kickoff": {
-   "AWAY_CONTROL_MODERATE": 2,
-   "HOME_CONTROL_MODERATE": 1,
-   "NO_CONTROL": 1
+   "AWAY_CONTROL_MODERATE": 3,
+   "AWAY_CONTROL_STRONG": 1,
+   "HOME_CONTROL_MODERATE": 2,
+   "NO_CONTROL": 3
   },
   "by_strength": {
-   "MODERATE": 32,
-   "NO_CONTROL": 118,
-   "STRONG": 27
+   "MODERATE": 34,
+   "NO_CONTROL": 120,
+   "STRONG": 28
   },
   "by_tier": {
-   "AWAY_CONTROL_MODERATE": 14,
-   "AWAY_CONTROL_STRONG": 9,
-   "HOME_CONTROL_MODERATE": 18,
+   "AWAY_CONTROL_MODERATE": 15,
+   "AWAY_CONTROL_STRONG": 10,
+   "HOME_CONTROL_MODERATE": 19,
    "HOME_CONTROL_STRONG": 18,
-   "NO_CONTROL": 118
+   "NO_CONTROL": 120
   },
-  "final_pregame_games": 177,
+  "final_pregame_games": 182,
   "missing_final_pregame": [
    {
     "event_id": "401856823",
@@ -2333,11 +2334,6 @@
     "kickoff_utc": "2026-11-14T03:15:00Z"
    },
    {
-    "event_id": "401864540",
-    "game_key": "26NOV14WYOUTEP",
-    "kickoff_utc": "2026-11-14T05:00:00Z"
-   },
-   {
     "event_id": "401866688",
     "game_key": "26NOV14BRYSHU",
     "kickoff_utc": "2026-11-14T17:00:00Z"
@@ -2736,17 +2732,12 @@
     "event_id": "401856887",
     "game_key": "26NOV14MISSOKLA",
     "kickoff_utc": "2026-11-14T21:15:00Z"
-   },
-   {
-    "event_id": "401856864",
-    "game_key": "26NOV14UTAHARIZ",
-    "kickoff_utc": "2026-11-15T00:30:00Z"
    }
   ]
  },
  "summary": {
   "H1": {
-   "break_even": 0.7455,
+   "break_even": 0.7433,
    "checkpoint": {
     "next": "MEANINGFUL_EARLY_SAMPLE",
     "next_at_n": 30,
@@ -2757,27 +2748,27 @@
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 22
+     "CAPTURE_OK": 24
     }
    },
-   "fee_adjusted_pnl": -0.4,
+   "fee_adjusted_pnl": -0.84,
    "football": {
-    "n": 22,
+    "n": 24,
     "wilson95": [
-     0.5185,
-     0.8685
+     0.5083,
+     0.8509
     ],
-    "win_rate": 0.7273,
-    "wins": 16
+    "win_rate": 0.7083,
+    "wins": 17
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
-   "losses": 6,
-   "mean_entry": 0.7273,
-   "n": 22,
-   "roi": -0.0244,
+   "losses": 7,
+   "mean_entry": 0.725,
+   "n": 24,
+   "roi": -0.0471,
    "roi_ci95": [
-    -0.2797,
-    0.2174
+    -0.3023,
+    0.1822
    ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
@@ -2795,23 +2786,23 @@
      "wins": 6
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.7692,
-     "fee_adjusted_pnl": 0.77,
-     "losses": 2,
-     "mean_entry": 0.7517,
-     "n": 12,
-     "roi": 0.0834,
+     "break_even": 0.7621,
+     "fee_adjusted_pnl": 0.33,
+     "losses": 3,
+     "mean_entry": 0.7443,
+     "n": 14,
+     "roi": 0.0309,
      "roi_ci95": [
-      -0.2126,
-      0.3129
+      -0.2417,
+      0.2658
      ],
-     "win_rate": 0.8333,
-     "wins": 10
+     "win_rate": 0.7857,
+     "wins": 11
     }
    },
    "weeks": 8,
-   "win_rate": 0.7273,
-   "wins": 16
+   "win_rate": 0.7083,
+   "wins": 17
   },
   "H2": {
    "break_even": 0.745,
@@ -2845,7 +2836,7 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 44,
+  "settled_rows": 46,
   "strong": {
    "break_even": 0.8467,
    "fee_adjusted_pnl": -3.78,
