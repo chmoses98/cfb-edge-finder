@@ -16,15 +16,15 @@
   "system_failures": 66
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-15T00:02:11Z",
+ "last_ledger_row_at": "2026-11-15T00:12:10Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
  "pros001_feature_distribution": {
-  "mean": 0.032636521739130446,
-  "n": 575,
-  "sd": 1.0949210868682349,
-  "share_abs_z_ge_1": 0.18434782608695652,
+  "mean": 0.03317157712305025,
+  "n": 577,
+  "sd": 1.093144703950063,
+  "share_abs_z_ge_1": 0.18370883882149047,
   "wave1_mean": 0.13804024626610417,
   "wave1_sd": 1.4218539928759784
  },
@@ -42,68 +42,68 @@
    },
    "next_read": {
     "at_n": 100,
-    "remaining": 44,
+    "remaining": 41,
     "state": "INTERIM"
    },
    "observation_reasons": {
-    "ABS_Z_BELOW_1": 469,
+    "ABS_Z_BELOW_1": 471,
     "FEATURE_NO_PRIOR_HISTORY_AWAY": 28,
     "FEATURE_NO_PRIOR_HISTORY_BOTH": 51,
     "FEATURE_NO_PRIOR_HISTORY_HOME": 30
    },
    "observations": {
-    "EXCLUDED_PROTOCOL": 578,
+    "EXCLUDED_PROTOCOL": 580,
     "PENDING": 106
    },
-   "settlement_pending": 11,
+   "settlement_pending": 8,
    "summary": {
     "ats_like": {
-     "losses": 30,
+     "losses": 32,
      "pushes": 1,
-     "rate": 0.45454545454545453,
+     "rate": 0.4482758620689655,
      "rate_ci95": [
-      0.33025280252016564,
-      0.5847730975813876
+      0.3274985404778122,
+      0.5754791687415537
      ],
-     "wins": 25
+     "wins": 26
     },
     "economics": {
-     "fee_adjusted_pnl": -3.26,
-     "hits": 26,
-     "mean_price": 0.5025000000000001,
-     "n": 56,
+     "fee_adjusted_pnl": -3.82,
+     "hits": 27,
+     "mean_price": 0.5023728813559322,
+     "n": 59,
      "roi_ci95_bootstrap": [
-      -0.3515413672604138,
-      0.1509817197020988
+      -0.35316946959896506,
+      0.10750087827948498
      ],
-     "roi_on_outlay": -0.11141490088858516,
+     "roi_on_outlay": -0.12394548994159643,
      "unavailable": 0
     },
     "home_away": {
-     "away": 36,
-     "home": 20
+     "away": 38,
+     "home": 21
     },
-    "n": 56,
-    "outright_win_rate": 0.5535714285714286,
+    "n": 59,
+    "outright_win_rate": 0.576271186440678,
     "residual": {
      "ci95_bootstrap": [
-      -2.8436325000000005,
-      4.8817191964285715
+      -2.88011529661017,
+      4.500965296610172
      ],
-     "mean": 1.0277982142857145,
-     "median": -0.18055,
-     "positive_rate": 0.44642857142857145,
+     "mean": 0.7693237288135594,
+     "median": -0.25,
+     "positive_rate": 0.4406779661016949,
      "positive_rate_ci95": [
-      0.3238672125478337,
-      0.5758678521006054
+      0.321502117676121,
+      0.5671064517084132
      ],
      "quantiles": {
-      "10": -16.55,
-      "25": -9.33855,
-      "75": 11.453125,
-      "90": 19.02085
+      "10": -15.679999999999998,
+      "25": -9.1979,
+      "75": 11.0625,
+      "90": 18.358360000000005
      },
-     "sd": 15.146400240795185
+     "sd": 14.82308866219717
     },
     "verdict": "EARLY_READ"
    }
