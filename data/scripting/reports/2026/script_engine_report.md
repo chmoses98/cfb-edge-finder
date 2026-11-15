@@ -1,16 +1,16 @@
 # CFB Script Engine — prospective report
 
-Publications: 907 game(s), 30550 ledger row(s). Settled: 385.
+Publications: 907 game(s), 30735 ledger row(s). Settled: 386.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.1584
-- PRIMARY or SECONDARY: 0.187
-- Any published script: 0.2416
+- PRIMARY described the game: 0.1606
+- PRIMARY or SECONDARY: 0.1891
+- Any published script: 0.2435
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
-| AWAY_CONTROL | 67 | 0.194 | ok |
+| AWAY_CONTROL | 68 | 0.2059 | ok |
 | COMPETITIVE_GRIND | 43 | 0.2093 | ok |
 | COMPETITIVE_SHOOTOUT | 28 | 0.1429 | insufficient |
 | COMPETITIVE_TOSSUP | 37 | 0.5405 | ok |
@@ -25,24 +25,24 @@ Publications: 907 game(s), 30550 ledger row(s). Settled: 385.
 
 | group | tier | n | win rate | P/L per contract |
 |---|---|---|---|---|
-| MULTI_SCRIPT | ALL | 1095 | 0.747 | -0.1044 |
-| MULTI_SCRIPT | HIGH | 653 | 0.7243 | -0.1252 |
+| MULTI_SCRIPT | ALL | 1103 | 0.7489 | -0.1031 |
+| MULTI_SCRIPT | HIGH | 661 | 0.7277 | -0.1227 |
 | MULTI_SCRIPT | MEDIUM | 39 | 0.9487 | 0.0566 |
 | MULTI_SCRIPT | LOW | 403 | 0.7643 | -0.0863 |
-| BEST_EXPRESSION | ALL | 313 | 0.77 | -0.0691 |
-| BEST_EXPRESSION | HIGH | 180 | 0.7611 | -0.0796 |
+| BEST_EXPRESSION | ALL | 315 | 0.7714 | -0.068 |
+| BEST_EXPRESSION | HIGH | 182 | 0.7637 | -0.0775 |
 | BEST_EXPRESSION | MEDIUM | 28 | 0.6786 | -0.1743 |
 | BEST_EXPRESSION | LOW | 105 | 0.8095 | -0.023 |
-| SINGLE_SCRIPT | ALL | 1784 | 0.7035 | -0.0337 |
-| SINGLE_SCRIPT | HIGH | 1000 | 0.719 | -0.0233 |
+| SINGLE_SCRIPT | ALL | 1809 | 0.7076 | -0.0294 |
+| SINGLE_SCRIPT | HIGH | 1025 | 0.7259 | -0.016 |
 | SINGLE_SCRIPT | MEDIUM | 144 | 0.7222 | -0.044 |
 | SINGLE_SCRIPT | LOW | 640 | 0.675 | -0.0477 |
-| AGGRESSIVE | ALL | 2864 | 0.5712 | -0.0487 |
-| AGGRESSIVE | HIGH | 1615 | 0.5628 | -0.0537 |
+| AGGRESSIVE | ALL | 2891 | 0.5749 | -0.0459 |
+| AGGRESSIVE | HIGH | 1642 | 0.5694 | -0.0487 |
 | AGGRESSIVE | MEDIUM | 190 | 0.6158 | 0.0259 |
 | AGGRESSIVE | LOW | 1059 | 0.576 | -0.0543 |
-| CONTRADICTED | ALL | 2810 | 0.2769 | -0.0582 |
-| CONTRADICTED | HIGH | 1643 | 0.2818 | -0.0535 |
+| CONTRADICTED | ALL | 2843 | 0.2737 | -0.0606 |
+| CONTRADICTED | HIGH | 1676 | 0.2763 | -0.0576 |
 | CONTRADICTED | MEDIUM | 185 | 0.227 | -0.101 |
 | CONTRADICTED | LOW | 982 | 0.278 | -0.0581 |
 
