@@ -1,31 +1,29 @@
 {
  "capture_health": {
-  "expected_games": 91,
-  "game_winner_markets_found": 62,
+  "expected_games": 74,
+  "game_winner_markets_found": 41,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 0,
-  "pending": 11,
+  "pending": 7,
   "price_1_00": 0,
   "primary_window_coverage": 1.0,
   "statuses": {
-   "CAPTURE_OK": 78,
-   "CAPTURE_PENDING": 11,
-   "QUOTE_NOT_EXECUTABLE": 2
+   "CAPTURE_OK": 64,
+   "CAPTURE_PENDING": 7,
+   "QUOTE_NOT_EXECUTABLE": 3
   },
   "system_failures": 0,
-  "unexecutable": 2,
-  "valid_primary_captures": 78,
+  "unexecutable": 3,
+  "valid_primary_captures": 64,
   "window": {
-   "from": "2026-11-14T17:30:00Z",
+   "from": "2026-11-14T18:30:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 80
+  "windows_closed": 67
  },
  "population": {
-  "awaiting_kickoff": {
-   "NO_CONTROL": 1
-  },
+  "awaiting_kickoff": {},
   "by_strength": {
    "MODERATE": 25,
    "NO_CONTROL": 111,
@@ -2331,16 +2329,6 @@
     "kickoff_utc": "2026-11-14T03:15:00Z"
    },
    {
-    "event_id": "401858298",
-    "game_key": "26NOV14LOUUNC",
-    "kickoff_utc": "2026-11-14T05:00:00Z"
-   },
-   {
-    "event_id": "401858524",
-    "game_key": "26NOV14MINNPSU",
-    "kickoff_utc": "2026-11-14T05:00:00Z"
-   },
-   {
     "event_id": "401858519",
     "game_key": "26NOV14PURIOWA",
     "kickoff_utc": "2026-11-14T05:00:00Z"
@@ -2358,11 +2346,6 @@
    {
     "event_id": "401856885",
     "game_key": "26NOV14TEXLSU",
-    "kickoff_utc": "2026-11-14T05:00:00Z"
-   },
-   {
-    "event_id": "401871100",
-    "game_key": "26NOV14TROYUSA",
     "kickoff_utc": "2026-11-14T05:00:00Z"
    },
    {
@@ -2721,11 +2704,6 @@
     "kickoff_utc": "2026-11-14T20:00:00Z"
    },
    {
-    "event_id": "401856858",
-    "game_key": "26NOV14BAYBYU",
-    "kickoff_utc": "2026-11-14T20:30:00Z"
-   },
-   {
     "event_id": "401858294",
     "game_key": "26NOV14BCND",
     "kickoff_utc": "2026-11-14T20:30:00Z"
@@ -2809,6 +2787,36 @@
     "event_id": "401856887",
     "game_key": "26NOV14MISSOKLA",
     "kickoff_utc": "2026-11-14T21:15:00Z"
+   },
+   {
+    "event_id": "401856858",
+    "game_key": "26NOV14BAYBYU",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
+   },
+   {
+    "event_id": "401858298",
+    "game_key": "26NOV14LOUUNC",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
+   },
+   {
+    "event_id": "401868322",
+    "game_key": "26NOV14MCNSSELA",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
+   },
+   {
+    "event_id": "401858524",
+    "game_key": "26NOV14MINNPSU",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
+   },
+   {
+    "event_id": "401864538",
+    "game_key": "26NOV14SJSUAFA",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
+   },
+   {
+    "event_id": "401871100",
+    "game_key": "26NOV14TROYUSA",
+    "kickoff_utc": "2026-11-15T00:00:00Z"
    }
   ]
  },

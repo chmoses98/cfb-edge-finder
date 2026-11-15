@@ -4,27 +4,27 @@
  "capture_health": {
   "by_outcome": {
    "NO_MARKET": 490,
-   "OK": 2883
+   "OK": 2891
   },
   "in_window_by_outcome": {
    "NO_MARKET": 392,
-   "OK": 2315
+   "OK": 2318
   },
   "last_cycle_errors": [],
-  "spread_attempts": 3373,
-  "spread_attempts_in_window": 2707,
-  "system_failures": 63
+  "spread_attempts": 3381,
+  "spread_attempts_in_window": 2710,
+  "system_failures": 66
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-14T23:03:53Z",
+ "last_ledger_row_at": "2026-11-15T00:02:11Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
  "pros001_feature_distribution": {
-  "mean": 0.038372377622377635,
-  "n": 572,
-  "sd": 1.0924987567940012,
-  "share_abs_z_ge_1": 0.18356643356643357,
+  "mean": 0.032636521739130446,
+  "n": 575,
+  "sd": 1.0949210868682349,
+  "share_abs_z_ge_1": 0.18434782608695652,
   "wave1_mean": 0.13804024626610417,
   "wave1_sd": 1.4218539928759784
  },
@@ -32,9 +32,9 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 3,
+   "awaiting_entry": 1,
    "entries": {
-    "ELIGIBLE": 67,
+    "ELIGIBLE": 70,
     "MARKET_NOT_OFFERED": 35
    },
    "entry_reasons": {
@@ -46,16 +46,16 @@
     "state": "INTERIM"
    },
    "observation_reasons": {
-    "ABS_Z_BELOW_1": 467,
+    "ABS_Z_BELOW_1": 469,
     "FEATURE_NO_PRIOR_HISTORY_AWAY": 28,
     "FEATURE_NO_PRIOR_HISTORY_BOTH": 51,
     "FEATURE_NO_PRIOR_HISTORY_HOME": 30
    },
    "observations": {
-    "EXCLUDED_PROTOCOL": 576,
-    "PENDING": 105
+    "EXCLUDED_PROTOCOL": 578,
+    "PENDING": 106
    },
-   "settlement_pending": 9,
+   "settlement_pending": 11,
    "summary": {
     "ats_like": {
      "losses": 30,
@@ -124,11 +124,11 @@
     "state": "INTERIM"
    },
    "observation_reasons": {
-    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 63
+    "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 66
    },
    "observations": {
     "PENDING": 15,
-    "SYSTEM_FAILURE": 63
+    "SYSTEM_FAILURE": 66
    },
    "settlement_pending": 0,
    "summary": {
