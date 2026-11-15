@@ -1,14 +1,14 @@
 {
- "catalog_captured_at": "2026-11-14T22:28:51.072748Z",
+ "catalog_captured_at": "2026-11-14T23:36:34.856579Z",
  "counts": {
-  "KICKED_OFF_FROZEN": 87,
-  "NO_SCRIPT_CLEARED_EVIDENCE": 60,
-  "SCRIPTS_GENERATED": 108,
+  "KICKED_OFF_FROZEN": 98,
+  "NO_SCRIPT_CLEARED_EVIDENCE": 59,
+  "SCRIPTS_GENERATED": 96,
   "SINGLE_SCRIPT": 37
  },
  "football_manifest": {
-  "fetched_at": "2026-11-14T23:31:38Z",
-  "games_in_log": 713,
+  "fetched_at": "2026-11-15T01:08:04Z",
+  "games_in_log": 727,
   "play_log_coverage": 1.0
  },
  "games": {
@@ -46,23 +46,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14BAYBYU": {
-   "artifact_hash": "8a5351ecce51c2661542c32d4e6ede1420672734e8a3f8e3a93c98e07a28e3f3",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 152,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:PACE_DRIVEN_OVER",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 8,
-   "v2": {
-    "claims_artifact_hash": "98dbe8ee88bf2d02620f96da0ebda720eca36a71990e415b1966f75405b2a4ac",
-    "control": "HOME_CONTROL_MODERATE",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14BCND": {
    "status": "KICKED_OFF_FROZEN"
@@ -89,7 +73,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14CSUWSU": {
-   "artifact_hash": "a8122caa24f8a90fd5a13e183d90b03e20ddf44c41dd2415876d68ec4e31a8d3",
+   "artifact_hash": "bc52bf739969dfd1a015e00bc04a26acf2a7dc9cfa4555e343d142ec55d1e780",
    "data_confidence": "LOW",
    "expressions_mapped": 160,
    "freshness": "FRESH",
@@ -102,7 +86,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 18,
    "v2": {
-    "claims_artifact_hash": "d01875f852d3e10eac5dee7bc631162664972bb764decfacc634de23f29dd702",
+    "claims_artifact_hash": "3a6ce46041d4aa1a709c6e39adcdd5782fdef4877bd0b4a646dbc4f5b5a16f62",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -111,9 +95,6 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14DAVDAY": {
-   "status": "KICKED_OFF_FROZEN"
-  },
-  "26NOV14DRKEUST": {
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14DSUHOW": {
@@ -153,23 +134,6 @@
    }
   },
   "26NOV14FAUTLSA": {
-   "artifact_hash": "6eee1835ddad7b014fe8e0b9850539edb229cd11dd2eb89b958378378018b613",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 162,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
-   ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "ee18f513f841eeaab5adf1aa1a20002f126e13c2e00a5a36b5e79d4b9c9896b7",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
-  },
-  "26NOV14FIUDEL": {
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14FLAUK": {
@@ -211,9 +175,6 @@
   "26NOV14ILSTYSU": {
    "status": "KICKED_OFF_FROZEN"
   },
-  "26NOV14JKSTALST": {
-   "status": "KICKED_OFF_FROZEN"
-  },
   "26NOV14JMUCONN": {
    "status": "KICKED_OFF_FROZEN"
   },
@@ -239,40 +200,10 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14LOUUNC": {
-   "artifact_hash": "6510c5f5ad1af4f4e04eb8bc945114a7ff144ac0e1ea47c84169c2ed99a57f02",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 156,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 9,
-   "v2": {
-    "claims_artifact_hash": "173c6791af2757b4d7d64f8916d8213dfbd84b9750153975276a64db59a7c9e2",
-    "control": "AWAY_CONTROL_MODERATE",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MCNSSELA": {
-   "artifact_hash": "1e86ae8bbe9b4a0f9da105ae71b81ee2feb7f75212826891aba965f53693a153",
-   "data_confidence": "LOW",
-   "expressions_mapped": 52,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT",
-    "DANGER:COMPETITIVE_GRIND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "d65ee3fc71ec68683cff426afff7a8949a791979381628e152b03cfcfbe3b203",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MEALBY": {
    "status": "KICKED_OFF_FROZEN"
@@ -287,26 +218,10 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MINNPSU": {
-   "artifact_hash": "de0edc5d5f38532fe80595b3d603ecc0a7289faa88a0081584185fad49aa4f20",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 146,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:COMPETITIVE_GRIND",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 8,
-   "v2": {
-    "claims_artifact_hash": "f0c29ca22b3ad245df41a154c75a1443542600a15818738c94e53e464d256b76",
-    "control": "HOME_CONTROL_MODERATE",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MISSOKLA": {
-   "artifact_hash": "723a802abb1e9d0533d3cc872cf7969a895fc00a461f46405c3e7cd9cf2b53b3",
+   "artifact_hash": "a15d97cde82df56d6ca0ff50e9e7eee0efd4166e2da2652b0235d97616782321",
    "data_confidence": "HIGH",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -317,7 +232,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "876442f6dbaf485dba3eb6ef0d100d2bd88362edd5f2b41ea6178f9cbb5e685a",
+    "claims_artifact_hash": "09cf0acc6a7041dc333ebd235dfe0506e3095717488626dff061f529a3aece7f",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -326,19 +241,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MTSTUNCO": {
-   "artifact_hash": "d8bba2904f03011cd300fd2ab240d3725cc757870b59c48b047b1b82746fa675",
-   "data_confidence": "LOW",
-   "expressions_mapped": 52,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [],
-   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "3b7fb442bd0c9087c626c7b9f0eb894544c84c2cf691d2f9802190f903e86adc",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14MTULIB": {
    "status": "KICKED_OFF_FROZEN"
@@ -353,7 +256,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14NDSUHAW": {
-   "artifact_hash": "388e45c41ee761f4dcc4be1b921d6910d7e5ed09bfb6893e5d4d2e615583c044",
+   "artifact_hash": "fc7c5b1869c8fbd994f808811bc50c0e70f5b0fac2623a805e210548726c131b",
    "data_confidence": "HIGH",
    "expressions_mapped": 148,
    "freshness": "FRESH",
@@ -365,7 +268,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "154247f5359138c98042961ba888f1787241fce197ce05c6fef53ba67927f152",
+    "claims_artifact_hash": "e6d9fd6deac0f1bc4e17a8c72dd25b6d9818a9e19ab62af3baaf1c2d7c4bbb4c",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -398,44 +301,13 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14PURIOWA": {
-   "artifact_hash": "9673ae79f2a4007779aff417f32871a16a55c133222d4e5e82c46b3d74e0fbe9",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 144,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY",
-    "ALTERNATE:TURNOVER_DISRUPTION"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 18,
-   "v2": {
-    "claims_artifact_hash": "c18edfc7214008e10a0d1b930e1379b95360165915cad07d4ef5628698f09a96",
-    "control": "HOME_CONTROL_STRONG",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14PVARPB": {
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14SCARARK": {
-   "artifact_hash": "4c534d143395d510d944dd89f23b20801f8ad57b3c4ebd0d6c379175ea212f3f",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 154,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 8,
-   "v2": {
-    "claims_artifact_hash": "7972b4d9981971bc6a6cdef4780c0bbd4bda6cc0a73f8e750d0c1495f9dfa45e",
-    "control": "AWAY_CONTROL_MODERATE",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14SDSTSIU": {
    "status": "KICKED_OFF_FROZEN"
@@ -447,40 +319,10 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14SJSUAFA": {
-   "artifact_hash": "3715cc60b2b768925c941801fbea6f44f38e0cbebf4c1e3dad814eb963f5b61d",
-   "data_confidence": "LOW",
-   "expressions_mapped": 154,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 20,
-   "v2": {
-    "claims_artifact_hash": "44eb011b1b451051ed831f3f9d21dfeb3d6e27553bf46a41ffd0c141a545fb8d",
-    "control": "HOME_CONTROL_STRONG",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14STANVT": {
-   "artifact_hash": "bff6038bf06dbd4ba2291250e0fb819feb3da6866707531d5928f69d82f26def",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 154,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 18,
-   "v2": {
-    "claims_artifact_hash": "bdb5e5f7f94ffe11fc6a970a3629f1e757f0254c91b147754f5f34228783bf6f",
-    "control": "HOME_CONTROL_STRONG",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14STONUNH": {
    "status": "KICKED_OFF_FROZEN"
@@ -495,39 +337,13 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14TEXLSU": {
-   "artifact_hash": "2e8953f81fa2293226f9c8a2f10318f14db4847173fe28f9a8d0ce98c0b1004d",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 142,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_GRIND"
-   ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 2,
-   "v2": {
-    "claims_artifact_hash": "78ce70117bfcd692fc0f9bd757b0ceca284dfeb1bf99f422b08a43aa7c75e781",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14TROYUSA": {
-   "artifact_hash": "ff343cb9ac27a9def0e9e1c67bf3b05cc2f9c1f4b288e1bb4fb27eeee0c291e5",
-   "data_confidence": "LOW",
-   "expressions_mapped": 148,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [],
-   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "fa5e4a01181196d4e16749771d314c934f20ba8abc009bec226e96339ce01a0d",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14TTUOKST": {
-   "artifact_hash": "b11cc37de79234542a1bad6ed90f1dfb1b3a95021a9d250fa64e820fd38ba29a",
+   "artifact_hash": "07c9e1fd485a2832c1812963c6ea04817e56097bd34c094fbde320e6186be1a3",
    "data_confidence": "LOW",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -540,7 +356,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 15,
    "v2": {
-    "claims_artifact_hash": "a03d1eaa6edb7ee44b0b68b41c353000f9221878e3a06048cadc47ce0cd545ff",
+    "claims_artifact_hash": "997a0386f2651513d2ff432b603bd58bea7c67a5a18c1df6918f8e8e4b12ec0a",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -555,21 +371,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14UCDIDHO": {
-   "artifact_hash": "b80d09b4a331afc46008a9ed52a88429fcd13430d820149ea5c3159847c28890",
-   "data_confidence": "LOW",
-   "expressions_mapped": 52,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT"
-   ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 2,
-   "v2": {
-    "claims_artifact_hash": "33e9d1555201473114ce56502684227f3bfb692d89a97a9a9b361b19a288a389",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14UNAUWGA": {
    "status": "KICKED_OFF_FROZEN"
@@ -578,26 +380,10 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14UNLVUNM": {
-   "artifact_hash": "d55e4c8a3c1091534ec767b8e7cf8d40580a0e6e187f90301926009132c561b9",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 154,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 22,
-   "v2": {
-    "claims_artifact_hash": "542684ee52d82079e97cfd237bc995a1e57b62dafdf8d2bc6964c9040a8c9c50",
-    "control": "HOME_CONTROL_STRONG",
-    "status": "CLAIMS_PUBLISHED"
-   }
+   "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14UNTUTSA": {
-   "artifact_hash": "b029d8ec39c51d75ae45edb51d00313b80201f24c3f7bdf258ae31cd7b95798b",
+   "artifact_hash": "b07978f9440f8d458b975270afcfb5264c318ccc4d3cc719515ca6e694335b22",
    "data_confidence": "HIGH",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -610,7 +396,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "2677e9b641f81634af03457fd1e24d56c6625e69296e4768b8feb7a868577bbc",
+    "claims_artifact_hash": "1daa70240b25098baa9ab880ce48840aeb491cd511f9451f3a72082ab2e5af1a",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -622,7 +408,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14USUSDSU": {
-   "artifact_hash": "c90791d6b158f672a4540f4046cdf02ff5be7a328de95db40ee1fe9ae0d5ee8f",
+   "artifact_hash": "12f389cba2b8ff68e0a2feee67d86890d922cbe3713a87c8e0f52539eea662b7",
    "data_confidence": "LOW",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -635,13 +421,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 9,
    "v2": {
-    "claims_artifact_hash": "0bacc3b31a3de6628a07a04cffcb29819a46736d7e725d4d65dae7208e381650",
+    "claims_artifact_hash": "bd9fc615d204c14038227065f4c48cdec3c9babd9a40ffa9ad177e5f9abe254a",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV14UTAHARIZ": {
-   "artifact_hash": "aca908179d16e4dafa766c4ac46b5b67ddb8d73320de0910a25e2b31580b3143",
+   "artifact_hash": "6e7391cbb1f7ceafd93f64c03434ed6d33fac0554189ca5bafe20091ceafdc58",
    "data_confidence": "HIGH",
    "expressions_mapped": 136,
    "freshness": "FRESH",
@@ -652,7 +438,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "288d00f0c4b5ca9bf0aade1c4539b0ccde2da883238cf08615c5536554d7af86",
+    "claims_artifact_hash": "0ff3c965843aa02139cc8d54678521fb06a56b1bf430c73513486cd723bed690",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -682,7 +468,7 @@
    "status": "KICKED_OFF_FROZEN"
   },
   "26NOV14WYOUTEP": {
-   "artifact_hash": "f7df7a22bc5603231ffa7ac067943a611f36536ae21e81d32fa121361327edf9",
+   "artifact_hash": "c58b6f1c92fb3e825565d40f9a5cc4f0035c882d9092f8191f3fb57f9a936791",
    "data_confidence": "LOW",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -696,13 +482,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 16,
    "v2": {
-    "claims_artifact_hash": "482e2d1b93ae2832d73c5ffb91146fe7c1dfb632f9e8a76610a0abb3a787ac63",
+    "claims_artifact_hash": "33d810c3eb7c557224d021683416cb2f76d51b38c687b6af6609950a6b55f391",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV17BALLOHIO": {
-   "artifact_hash": "d8f292c3be493a280149d27791996f968afadb62a7433d0e354db79a6948e423",
+   "artifact_hash": "eb85ed7401494a657c7b765005b275fcbb20b6a56922842038c6bd64daf74819",
    "data_confidence": "HIGH",
    "expressions_mapped": 106,
    "freshness": "FRESH",
@@ -714,13 +500,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "bb497620ac61ccffd81dccf99533c8f13360862c69d10d4ff2cb87dbdb17a866",
+    "claims_artifact_hash": "2d4015f3fe3cbb1bd0de70ff1431d7d0ede2674b96ed4170fa86fcfaa85d5ba9",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV17EMUWMU": {
-   "artifact_hash": "3be8c37d2dbada6fdef5e0d661906fe291813ce848194015dfdd3ec8047b7a8b",
+   "artifact_hash": "5414aee01d0b9d77a15201ad69f5e52ed999fa5a5082d2e38c2eecc0ea5853ea",
    "data_confidence": "LOW",
    "expressions_mapped": 104,
    "freshness": "FRESH",
@@ -732,13 +518,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "84a724b21086efd729069002bf8b48450224d143a7d55ed0e81ca4a027ea6699",
+    "claims_artifact_hash": "d5bb0333c66a613cee0d17099fd8027895012577d1f59b676b43edf7e9164c1a",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV17MOHKENT": {
-   "artifact_hash": "15f146c33fad2eadac0f293a03e404912fc789b51cca45b2bf524fcfec948f28",
+   "artifact_hash": "ab4debd6e6c65632ba13cd805002979a1b4c0c55cc3b19d69381fb92a75fe33d",
    "data_confidence": "LOW",
    "expressions_mapped": 104,
    "freshness": "FRESH",
@@ -751,13 +537,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 22,
    "v2": {
-    "claims_artifact_hash": "ce0f529724c1940f8f7a7bf2e2700fe39fb0d5184490715066227a4c1531f105",
+    "claims_artifact_hash": "0dd265416c4bd2ec1cb50f1a4460eb2745f716355cdb719e020616f54ef18845",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV18AKRMASS": {
-   "artifact_hash": "a6525d19fd92ac33b23e4f04f16d558ad5064ad0aa272ad207aee2b331510971",
+   "artifact_hash": "4d2de7147f84367b1ad9670f895186a792313ec803d3a740896d367133fa0e66",
    "data_confidence": "LOW",
    "expressions_mapped": 100,
    "freshness": "FRESH",
@@ -769,13 +555,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "d7b37d906b53b04ce9d2c3f957be676aca9f4a6e6a527992cb060181d3567da6",
+    "claims_artifact_hash": "9372d448ebce88ec811a17060af445965c5ceac03a92cf7692435ca2e8b30890",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV18CMUBUFF": {
-   "artifact_hash": "a699ebf62271b337e6591719f6bffd7e88c60e70cd08ba8ea3f3576731cc4343",
+   "artifact_hash": "8ba0f7221a453e2a0968e929bfaa0d360ae3632c34c5075b8b6230247d30e110",
    "data_confidence": "HIGH",
    "expressions_mapped": 100,
    "freshness": "FRESH",
@@ -786,13 +572,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "f4ae213f86a2cdbfb445eba1ea1aa1887f6ed8a00e21d978b7b54b43d310b750",
+    "claims_artifact_hash": "673bcbac697e6d163737c42cec210696b14a6cfe64999624ec3d748cb8068613",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV19NWSTSFA": {
-   "artifact_hash": "ce4fd9eeda1d081541eb06c82bec0e9b6cf0caa70055df456cb47d6c687825c6",
+   "artifact_hash": "bb2712c3f4c6b778407662c3056f412176f21367ba757bdbf685458f6e89b149",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -801,13 +587,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6ee1d79ae447d6ea5fe8b69afe98aee1c7c237c32166aafbf84f3e6385862536",
+    "claims_artifact_hash": "6debacdbdd0a805ffd230931ffae88c98590fc18cda8c38aabddff45c4862639",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV19RICETEM": {
-   "artifact_hash": "2dd8c2dcb49c9cfd10ac934a66c25e65317d7e17960cf2efb047288779880c4b",
+   "artifact_hash": "4ee909381021e924acd675d8d505088f0e1945d0b616328c040c45d7e81e870c",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -818,13 +604,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "5dc397f4ef381ba5b5dfc81670c946d483895497ad99284d5d742593e2e6ce9a",
+    "claims_artifact_hash": "cea313321ba4d5e59cbad7e8f8a0ba917e6919391cdd6fe71caedc4a25dfe478",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV19SELANICH": {
-   "artifact_hash": "0e6de5a490891d28a09e4da2786ea840d71c2a8d72111aa1cfb4717c01f96d41",
+   "artifact_hash": "4cb1bfac66e183ead4353f4caea71f0e755b578ba1249932162dff47d41091f3",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -837,13 +623,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "41f2c5c4aaf25d7681f7066fa400d855e2280fb2f307ad0d4cf4f76af23d10e2",
+    "claims_artifact_hash": "9d48424514a77ee4d009bf0b8803a3b1628efbe1aa6bd5388b168d2bb5204228",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20BGSUTOL": {
-   "artifact_hash": "97c5fa3a36c163160bc24a493a52cddeec401bd9852236b65bd8173a5b5b891e",
+   "artifact_hash": "7ea9784d44e15692c40840705d30a01ff54c970d733cfcbfb17e12915e71e8f8",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -856,32 +642,32 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "539a46e9a9269be9b4f55608c1d571d2af7949440cdb30aaeb6a2c6fd0c6d08d",
+    "claims_artifact_hash": "a3846da55ebbb790f54e0e27f55e63017d41ca74745c6b99918aff7198a43eed",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20CLEMDUKE": {
-   "artifact_hash": "500de3a455cf2a72016ec98d38bb8ea4ca231170e76610e2b7e0c1268f10b030",
+   "artifact_hash": "7b1eb787ff158359392cc8ce20bfcdc200104d3ceaee862de2f52c46e15447d1",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:UNDERDOG_HANGS_AROUND",
-    "DANGER:COMPETITIVE_GRIND"
+    "SECONDARY:COMPETITIVE_GRIND",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "48b4d269ad84cfba512dff05528433e795eedbd30b29ee15c14bc3d4c656c34c",
+    "claims_artifact_hash": "56d16bf302061b5f4feb1a99c0035feb1f03e7bbb7dfd8ed43f55fc5c8617c5f",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20ISUUCF": {
-   "artifact_hash": "778da2ef51c3eebb5395c3b0e148afa8949b9992702b08bef8efda6f4a1fb5fe",
+   "artifact_hash": "4779b5442ced90125c6e6f9f0fd87aee908a1aed1f9397edb8f1c18bb91f9371",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -893,13 +679,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "325a1444b4cfdb42a96079468491a4ce7964c329bacc0b3eabd3717d5200b008",
+    "claims_artifact_hash": "411fbf916a1dc3961045ce40140604d2ecd17894a311ddece24fd38ead665e83",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20OREMSU": {
-   "artifact_hash": "c26248f4c8a3919ef1b3d634c5c48fd8f19c4dc6ba81bf7f7332602ec63afe3e",
+   "artifact_hash": "624bbca9a5b1c642e0595a432fc7a4bfba615470d5b2493238e6285f989a019b",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -912,13 +698,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "8417ef6d0c043d1a211fce16acfd72c8c0d5855436ede5cd49b66e826e675371",
+    "claims_artifact_hash": "3ee1e0922fcea89beb18b30629faeeaaaf64f38f2d6843c482a7456baa4f6ef8",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20UNMWYO": {
-   "artifact_hash": "1f618b66dc8d2fb6941aedfce7d124e4f6b176b10f223ffd1a58e5a4de618f40",
+   "artifact_hash": "9f87d9b89b18d86510f1bc0f28c8858522abefb8798c8e57dd2e200477dea973",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -931,13 +717,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "a02e51e18c952921b2f53e2e6c9664642302f82a2b1a032f708ed703374f6ebe",
+    "claims_artifact_hash": "99caee20a997d3c61382c4a6365d82a254fc6c760f854eafee92e1205420a5c0",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20UTEPAFA": {
-   "artifact_hash": "59003e6b7313e6e3a92f9460c6936075d0f78d1f48d506c63d1675663fd92fb1",
+   "artifact_hash": "557733eaa63c55e5f997a11ffd67f1d0c71f413fce49fb059528662ffe343f55",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -949,13 +735,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "a442b8b0b41fac0ca439f53e4a2bbb6af647c7eefd223963663a62a3a87e203a",
+    "claims_artifact_hash": "47303e7d8aaad9cff7749b2f12fd02712a55c0193a93fc36d1335138acb58977",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21AAMUMVSU": {
-   "artifact_hash": "a894aaed33716dcea48d053c61e21d0756fa6aed1134fa4b82630c6f5ffe23a2",
+   "artifact_hash": "552549372694653f1484a1ee8cd220ab9990e6af1da3930694953a2ee00fa270",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -964,13 +750,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "9bb0d962acf12c9003d0b35840ab4de8f0ec689fe42e88d6283758ae7761f71c",
+    "claims_artifact_hash": "46c9199aa17dc1094a5babe73ae32c22d2919948704d7e4889acc11aae17d76d",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21ALBYNCAT": {
-   "artifact_hash": "be114971e39fe3da3555cf50dfc47ff106a362735555bb8b29f6a9522659c30a",
+   "artifact_hash": "ff9aa00814646b74e520ff189aa858165768fac51aa5c14d4e82f9cd7095c574",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -979,13 +765,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6159eadc8f3c952537c937bd4ecd7d6bc54bd1eab9f29dee94cf4c3830b822dc",
+    "claims_artifact_hash": "29e378fa258acf5e884af5e2626cd21ea369f388e3e2f11181a1686b95fe2daf",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARIZKSU": {
-   "artifact_hash": "31f15a8a110c332eaf24ac005a806299425f6f3383b196b60ea18b4ba2e8a591",
+   "artifact_hash": "142a1c2db50b4f4c5e346a70dde19d73b03880da1c3bde8a2b66a3fc0ff50839",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -994,13 +780,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "093957faa0c0abcb30c6228e0dbabb14cdcc28dee1afedba2d324094aa684774",
+    "claims_artifact_hash": "35fb50c80153e7284053bc4d2ed188a63e8448df7dab376adbe6b281c79baf08",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARKTEX": {
-   "artifact_hash": "bd35c972e5c03cbf4a690f14050a5569990267fa298e571fe3e1ec093d0d001d",
+   "artifact_hash": "af397f78775f1f9e8771bb3113626215d676862625d014aa0ee16e875ef3fef0",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1012,13 +798,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "4d3a7d8efc0157a58ba86ac924e90372a85c16c5e7c2bc3b500d2fc2eb87eb3c",
+    "claims_artifact_hash": "24ebf943dcceb7aea441d6ac93bdbbcf3c5803311fede24b51617e8fa75b91d6",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARPBTXSO": {
-   "artifact_hash": "1a73136212435c172b9d09528b5cbb0f10e70aa6f261fc72c000b1d822defb39",
+   "artifact_hash": "eb7a3ebaabecf23d4a087efa1414aaff00f31555ddb3cbc46ce4d50bcbea3781",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1030,13 +816,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "507e84315e9b819d821aab111bf3f17229c7134d93e3099bc4ce7caef78ab020",
+    "claims_artifact_hash": "9a5f67b79734cf5fd44f187f844d2713828e09acd68ac15ffb1f02de9839aa7b",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARSTLT": {
-   "artifact_hash": "22e964acdf2b26350f0864afd565560ed16eecc02e6d1ed6fa56c3a3a2792758",
+   "artifact_hash": "cc46333117da6b00d06dc82be0d0df54d9b07b487ea1dcbed3b245cfb60d58b4",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1048,13 +834,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "4b5c7a168a5696fc90c33ad40b78f06577d612492b9df475376b4851ae0f71d1",
+    "claims_artifact_hash": "064137a82010b9b84006c32f0e61c35da4287f88375e05a5dbf69a792f6ecdca",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21BRWNDART": {
-   "artifact_hash": "ab090de7a01579ec70b46f3c12341d05c69795d86bfc721c7ec051730dc5fdaf",
+   "artifact_hash": "f9e0ce9c1315b02cb276b9c7a6d8b45cd85033aa86e86e8ce05783d0df75d112",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1063,31 +849,30 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "26d1aa39b2bf5293c621f6457ba3f3c964a9dcbfc5b25ab6e139dae44665a9ab",
+    "claims_artifact_hash": "58948150308d681aefad6eabad792137257cc81b5f84168622741a533bcf9d49",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21BYUKU": {
-   "artifact_hash": "4004b4698c0f1bd63b97c4063c519f3e3721f55a554efef8279f361d0a1b4e14",
+   "artifact_hash": "ea1508fb9a4a0d5304325aa35a27c83cb8597b16cc66a4ad7aea0df13aa40aed",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "DANGER:UNDERDOG_HANGS_AROUND"
+    "PRIMARY:COMPETITIVE_TOSSUP"
    ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 1,
+   "status": "SINGLE_SCRIPT",
+   "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "9f877ed1fb8880838f502bfa3fe06a0fff16c9e028df9526ea14ac8ffa9091bb",
-    "control": "AWAY_CONTROL_MODERATE",
+    "claims_artifact_hash": "1c0c279c8776282e29efc4d5506441dcf26404ef12d85eb5b9ee0c71909a8698",
+    "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CCARULL": {
-   "artifact_hash": "2882a62cf0b0d5c4a4fb8189ed3475e268ed7571f2bfb489b60d9191b6b55cd2",
+   "artifact_hash": "603c0551ead1f308543240a66bda288b2687493915d6af66781f2b3b2ff42989",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1099,13 +884,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "621c70806b95036cf7d592cae235cacb38ce651ef5416d82f41eeeeff1d5d39a",
+    "claims_artifact_hash": "a1b52d6d1de8186280c689a89c20225944e51d3fe439cb597979312ea50a46d6",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CHARTLSA": {
-   "artifact_hash": "cce54eee92ce18a8cf579548ea18a625737e197441f000a9c32ff0a7ee291e5c",
+   "artifact_hash": "3a4edeed4fab148b213022608055c3b32aef9f19128ddcbcdd0bd3117de51610",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1118,13 +903,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "a5e59b268456b0731ca300e61539e8d9540ffebc4af15c2d2ebb491a4aad58b8",
+    "claims_artifact_hash": "5d3fbcf8904031a3c2dc55a1fa919e127e43f0691e2113c1ca2295e063e5bd5d",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CHATALA": {
-   "artifact_hash": "58748a5324dbdf52159bceb3ed507b13a2369c41a8b83cb8e1ad061934b039a7",
+   "artifact_hash": "b61d207ec84bb52de56505c369b60a6d9d7dc08a57ed904a8ba612f7892d7ef3",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1133,13 +918,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "597d6ac432b50332bc6afcec397b72ff253fc2c6c6a6039f4ba36c07b2824b3b",
+    "claims_artifact_hash": "00e8dc75a9d9f0d815092575528e920eee277b8ae0e24264ecdced2396915086",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21CHSOEIU": {
-   "artifact_hash": "576907705e69dc0d46bd61c6a4f63511e7292ed555ac2a4e1ae71ca9791e422d",
+   "artifact_hash": "9e70b2bb0bd182548b93c68060fe7e782df71fcd72b27e28293a2fac043d0bdb",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1148,13 +933,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e7887b9153661f46d7bfbad9a74e4a99405f2cfba23c890d62bdfb41259363d1",
+    "claims_artifact_hash": "cb91080d68a7d73bce694efa0d3158d6557328f11f5cf739598c308a67f75e72",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CHSSUU": {
-   "artifact_hash": "562474733259635ac2b2c128179b22da3999290493a3263550b1c337e7a8e017",
+   "artifact_hash": "710abd9b79af7b4a2f5cf17f3b8185442bcbee6eacfe98f6469bf94c30fa8d84",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1163,13 +948,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "172785b583b3f222d2eaf3c6d7dd6ad362f9ed928e811b2311000110b2191c92",
+    "claims_artifact_hash": "635e8d7bf75848a1b535a3ad93fb61be5b66e9149c8dfaf39cde4ff379e0d5f9",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21CITWCU": {
-   "artifact_hash": "373fa65783cae23762893cffb18033c30a5a40b3a22d5737c2762955bdd77d7c",
+   "artifact_hash": "4a28d0e825e025d9f9efac3bc70a5311437f59edbab8eee75a79d8c0cd199a59",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1181,13 +966,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f8568376d3c2b6446da213d9b4486ac87ed69ad0e510a037fcd96700d8d19462",
+    "claims_artifact_hash": "241e7b3087b533bfe2d5d38907e1f557f8412a9801e6f9ec42ba8a7c57d9d655",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21COLGBUCK": {
-   "artifact_hash": "0f151b670332acf217cc8d106cb0e4e094114dc9df789219251056a38b9c8f5d",
+   "artifact_hash": "a85de9cccf1a946afd5f9b4ace5521cdb8caa86c4a7d287543a12cce4c8bc295",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1196,13 +981,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "300ac49cc47498419616a6797fd839ec2cbdbb6858ce70f024b09bca315c484a",
+    "claims_artifact_hash": "90b9726387daf7b305a57607c929a0206f83941253013f08ded95e5a06a67dfa",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21COLOCIN": {
-   "artifact_hash": "2df9ccba9882b5b13d80a35976a72665ea293df93c2650bed16b76ea42923b0b",
+   "artifact_hash": "625533c0a89f016a09060b2be2d629650891d4d8258ed8c4930e1ffd6236459d",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1213,13 +998,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8846d7fe34853ecda458a23e2fc1672345b0d2ef2919c30b96cc7ffbcd0d9a09",
+    "claims_artifact_hash": "66ac4c43fe88de2d043144e5521e91ab30dba4f508d08504752dafc86b8babfe",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CORCLMB": {
-   "artifact_hash": "2280ae5916ba22295fd2ed54caf4d72c66faf28550a4089d2528251ad4fe7cec",
+   "artifact_hash": "0e97c9b1247dcfdcb5b9a0f0d2f3dfcd458b36eb0fc8f51775e81b391dda351c",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1228,13 +1013,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "820484b3315401273cf2cbf92e735bbb4f28dd2bb50cc481b29027b9610e4a25",
+    "claims_artifact_hash": "726d0f26e15b09bdd5b6858c78af9a7b2fed1582e4ecea176e72d812c4697e24",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21CPUCD": {
-   "artifact_hash": "e908af3b09302a352cff5870b4d6190e4f1ff48252b7319c9e89340df6c89e8a",
+   "artifact_hash": "6c80e6902397051bd4e504921858d0cb4172e49ed9982b315fdb4c83d6ab53fa",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1245,13 +1030,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "16697d0c7dfa9616f943ef4729112f2567b2fa845da3d32d6129029ab47e5bfc",
+    "claims_artifact_hash": "e032b4f1e1e4049e61059cfcc44ed68557f7ec82c231b3aebba38619e73e0d9a",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CSUFRES": {
-   "artifact_hash": "07a5648993ee20faa0af23c36f765ae616d45b60819ed76301739029a18ceb81",
+   "artifact_hash": "1d38e2084caceff6c5dd29156a4be1b12e6974dc720755d30f804a003c9ca50a",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1263,13 +1048,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "018260253543d7683890e9d0aaf5b5a1e98b50fa7fdae512a63efa0657dd4eea",
+    "claims_artifact_hash": "ff817cd82e1b7a03cea60324a2338dc982e7f2ac88de22c4066533f04cc27768",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21DAYPRE": {
-   "artifact_hash": "2f877f06252458a94c9ef5e36c32c5682746c123219c45c9427621c9015a0620",
+   "artifact_hash": "ceec5d6d31a51bef96de28032820825011840ae6cf613e89552221ec5b770691",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1278,13 +1063,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f1a54758f2da00fc6d1138076fcb4b57b5d38cf7a4fd28cc32322d1a6bdba427",
+    "claims_artifact_hash": "1bb6a5071b61ae104993e804bbab5d949fe58ebf499c0431df4f3b864ee9f3d1",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21DELNMSU": {
-   "artifact_hash": "67f4444f408f99dee0f7696eec3fab3e76b2d5d56c483f676c1e56c5f21c6ab9",
+   "artifact_hash": "7ffec67d91322eb1e71512ab5e8ba8fe61b9cf6483cb5a298ce756a7b11badff",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1293,13 +1078,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b8d6d882f3cfe095a2ad4b8dd4c027a03544f60c1cad5e53e6285a487e0c6bce",
+    "claims_artifact_hash": "b11d8cb93ec2691420a2374980398698877140ac03bb7d691ad354eb238a188d",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21DSUSCST": {
-   "artifact_hash": "07ec92d66a5e8d0a2c775cfe76d18b6c355175abf715ee6f7560350c36be537a",
+   "artifact_hash": "e99da62c0141359f88c73e2b0135a4857e64dac12e64de844bdd3720132ac82d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1308,13 +1093,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "aaf93a3a65421066e57f6d8dc898ca8c55395d32b33caedd70351e109593399d",
+    "claims_artifact_hash": "c25148f730285bad78680de1c31ac0fbe2a0b1d8eda096d95cb96b5845ae1230",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21DUQCCSU": {
-   "artifact_hash": "a3afedf150f81215169353bd6696669a37ed7dcf252885ec4372eb1f320432e7",
+   "artifact_hash": "4cbb41aba520ea7762cf99d048f31aeeaf90c090440434a2ecc6f3ecb725371b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1323,13 +1108,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6f2068be962ab5337b76d585739ad2da1573bee1b43d80e82fae5272fada86c7",
+    "claims_artifact_hash": "3f774e491caa4ef7fef2110237ee1391d37149fa05fbf341a32e9d79eaeec95b",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ECUARMY": {
-   "artifact_hash": "c07c246ceedea8fe5a73b05404ae99d5e4ebe4a415567d2026c83d85ea106325",
+   "artifact_hash": "ce4d71fb70b9287a85cda342b8df7dec6254498543c77e13f186a272e6575ef5",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1338,13 +1123,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "24b95152bd10bf17bff08b698269be4521c660b8a2438ddffc8504b1a98410ff",
+    "claims_artifact_hash": "77edf1778416ee99e44168b314f59848138e9efb4c636540c287702f8ee77583",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21EKYAC": {
-   "artifact_hash": "9cf1b2374007f5956d68d591f42178490842ce5c7cfdd08c3bb24790e566aa08",
+   "artifact_hash": "f7704d4de9326132a4a9f7701f12c8d4741f597bb49ef281a046cb2f37002751",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1353,13 +1138,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "9931023264e655f607bd43c4ef23e2c8a49f2c519b378668af4cdfdcd424c483",
+    "claims_artifact_hash": "46ed596a3ee05d88acb5602dc9a24fb784bbb1a6764ed4566bfc85a76ab763f4",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ELONTOWS": {
-   "artifact_hash": "99ec1c610193bb881cbe8d26ffa1211bd0ba4aa8c660cd3f80cddd97b1280d60",
+   "artifact_hash": "b983a7dc45f0d61c0163409a6e677331f7c6562e25b757b2ad7fb8a0b87feffd",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1368,13 +1153,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "51431b14caded03694f13fb5ad8ca7975274d60c4cd1f41a430035899ed518d9",
+    "claims_artifact_hash": "0331f707ccfded57e17dec9e0c34587fe2a91626eb2b2f304d943364f712a672",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ETSUMER": {
-   "artifact_hash": "c90e1ed3b2e0f4e7469367f48de7b72bbbe806fc1c843441d7558a9a203ab43a",
+   "artifact_hash": "797580d997ce888d8974a7c48b4f7b9097ced62bba0fee1912482384a85d6ad8",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1386,13 +1171,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "59b58c7bb290085a4b82c6cb9741b35cb029b450856c841fcd83f8ce2ac23881",
+    "claims_artifact_hash": "48446184320acc88d577f502dcf163794ccba8d88e30ead0a51a5b680fd96443",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21FAMUCOOK": {
-   "artifact_hash": "94615adfe647bd1cd9ed5a88cb896d917deca9f01ce0cda430932a5440acd4ce",
+   "artifact_hash": "dd78b7a4d3dc8b798cb387b2ab2dd6c78746def17c5fa3229385d527ff703127",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1404,13 +1189,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f9ae3665a07eb756fa6ba657b822e3c494acf45009eb682467edce3fe34e7e87",
+    "claims_artifact_hash": "ae660efdedbee123e67a412403f53ed607bd77b2dece5a4b4ea546bd29c131ac",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21FIUKENN": {
-   "artifact_hash": "cd563584f2e9e41df12416fc383ad4265c3e0b5dce1b1454bfc9ff701116b954",
+   "artifact_hash": "9d7e46208a7d59c3fefa3fd8dd6a95a58621625bd36f611500643bcc0da67f92",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1421,13 +1206,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "3c08a2ce21c015f7c6b2f6cb78c04558186c9066d77e94bf73036d01d1321a61",
+    "claims_artifact_hash": "54a364a5d3efb420dd3f373db2e36f1badc7f133f65a86a9d61322b13cb851f9",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21FORHC": {
-   "artifact_hash": "b150cdbcd4157908064d7569e84820f450b5e0c0ca27e8e4a26680dce856fbe3",
+   "artifact_hash": "4a8a3a27b0f19756fb5ca1ba2bd7f0b816e2db39816884801280c75462d30b58",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1436,13 +1221,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "443f9e31820a92bab7da7498f42e98293671196e1f55a58fd954d67d68483b55",
+    "claims_artifact_hash": "5ee8eb5aa654730cf5ea865fd07b42337d9aabb6512339977396468b9523c605",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21FURVMI": {
-   "artifact_hash": "d7a6168a750f884c27f5a5143d450be317673aef9292d68f9477f2a5e4252d35",
+   "artifact_hash": "61e5b4c111d61c5d70f6901d1943285a5d8e0600dc2239b99b06de0dedc852b7",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1454,51 +1239,49 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "21b467bb35df66148b3384c3c8eddc893268de0963ffe0a4afbc958d98986aef",
+    "claims_artifact_hash": "41e20ced670a4396c12881455d1fb0da7bed94bff7e8dcd9e4dcb43c566b2e3f",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21GASOTROY": {
-   "artifact_hash": "9c373c590f8e8297ae74ac675af86a8b12e016cea1a4afcc34d249b9855db0e4",
+   "artifact_hash": "d673b7b4953caab666c76213e520b6e537c0f83cf544932e365ab6dbe51e596a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:AWAY_CONTROL",
-    "DANGER:UNDERDOG_HANGS_AROUND"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "ALTERNATE:TURNOVER_DISRUPTION"
    ],
    "status": "SCRIPTS_GENERATED",
-   "survivors": 1,
+   "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "21bfd1de8677c2d599ac394c7fce8b7fad1b4c28da7c0907fa86ea3f4dc7560d",
-    "control": "AWAY_CONTROL_MODERATE",
+    "claims_artifact_hash": "f0cb1b19227c045ef760ccb24d8558fc7930783d234d6f7f7e6c69ff524a588b",
+    "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21GASTMRSH": {
-   "artifact_hash": "ec64cce92e7561b264bf646f46f267bf3c2f1424288805c2a2828ab9b09abad3",
+   "artifact_hash": "db503970e0c49b9173b3299f48625ea27d40b2b1e687b5bf78d53147444ee51b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "SECONDARY:TURNOVER_DISRUPTION",
-    "ALTERNATE:UNDERDOG_HANGS_AROUND",
-    "DANGER:EXPLOSIVE_UPSET"
+    "PRIMARY:TURNOVER_DISRUPTION"
    ],
-   "status": "SCRIPTS_GENERATED",
+   "status": "SINGLE_SCRIPT",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "83c00a9e1b018e2ef97176c7b5580233c524ed880c4ecd9ec8277c595ef7e419",
-    "control": "AWAY_CONTROL_MODERATE",
+    "claims_artifact_hash": "4aa207f38209ebb185c55a27a492ad3ea5b8daac57b325858b9ab0a1e8938cc9",
+    "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21GTWNVILL": {
-   "artifact_hash": "ac3e94daeeb8062d331ac12740633400bdc51b9129534677a035e94a1f730e47",
+   "artifact_hash": "6e0642a976c2ea2b037464bbbbb870aa915539d99903b58a378d4441b7821d19",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1507,13 +1290,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8819714144b5b0af6d0fcc9ab89bcf8bf489afc876e8acb16b6fc764f6894204",
+    "claims_artifact_hash": "94dd21be22a73d611eec8a7b1fd3fd62e1fa0f4d10643a1aa07ead4b505d321b",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21HAMPSTON": {
-   "artifact_hash": "5554578721cc2064c1f94d6b01a84b043402b6378d631e4bee2e1e233bd0c4a1",
+   "artifact_hash": "0dc8aff3e0d09199fb9187a703c611c03772e54aceb4e804c4cb850af0a87275",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1522,13 +1305,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "027f720f7314395963cf5be1b0b97cb260c70e59497f160b479e7d4f4c45fc7e",
+    "claims_artifact_hash": "77c953a118775dbb0a9eb62a86ca80a9dc55c91d7698a8ffa6c516ad7f1d2769",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21HAWNEV": {
-   "artifact_hash": "a26939c8d0452623550ca133253f144b1a3df71d5ce2559fc20100746f03ff88",
+   "artifact_hash": "5786c71576af73ff487f9f316bacef294f39dcdfd05f6440ebcb6aa16bfc30dd",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1539,33 +1322,33 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f9c48f8174d59b551e7e3e1bf436876219cdc8e37217312a8f1fe6119a63b126",
+    "claims_artifact_hash": "e98fd5d76094f7771db7ee36757c69ea149f454297e5347dac60e6bbb9f485cd",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21HOUWVU": {
-   "artifact_hash": "ac22f38c1cf688327fbb6aef8b3f15771b48731412d7a73ecb704f3bd852aa24",
+   "artifact_hash": "80f8f8a47126d25cd89c7d7c714e87ddf652b4ce05fddaf5792d165c6d8622fb",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:EXPLOSIVE_UPSET",
-    "SECONDARY:PACE_DRIVEN_OVER",
-    "ALTERNATE:FAVORITE_PULLS_AWAY",
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "ALTERNATE:PACE_DRIVEN_OVER",
     "DANGER:AWAY_CONTROL"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "2b11d69421379004485af779310adbfcb2646b7e7ee73a5993bf7a8a3e8dea51",
+    "claims_artifact_hash": "23b688825a79c9fd5498bde7b195efbf1e349a114a168d208867db10e9aa31af",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21HOWNORF": {
-   "artifact_hash": "c17bc9c7701511a52dabe0fa8e21f4a9af783a7b01032a7ad8ab73221192722b",
+   "artifact_hash": "4486cba5ae1b886b21eba9eca5904e34a5339619866649168fd8ef19ff769547",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1574,50 +1357,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "cc5814dcb7243decca02cb8d4989f7b24306eafbf9252f1bb7e22bbd51765c45",
+    "claims_artifact_hash": "aadfeb4605856d9411a1fc0c8f794cea30d7e4d3b990bf3e83df331ccf8274ad",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21IDHOIDST": {
-   "artifact_hash": "f69e751fc600dddb3a55c3e452489d22796f14340f5809e20e6488f4a4362d57",
-   "data_confidence": "LOW",
-   "expressions_mapped": 4,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT",
-    "DANGER:COMPETITIVE_GRIND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "5696d58ec6ed470aadb60a20c111818a1cae226f7e61fda7a0cd3fc61f152eae",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
-  },
-  "26NOV21INDWASH": {
-   "artifact_hash": "28cf5d3ff8f397f8d646af5ce8c205df63ae2d8f92c1616f785e724323184b48",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 4,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 2,
-   "v2": {
-    "claims_artifact_hash": "0cceb751f96ea962c820ac8bc37b947aa82504116da1aca486ebabbf45c59a0c",
-    "control": "AWAY_CONTROL_STRONG",
-    "status": "CLAIMS_PUBLISHED"
-   }
-  },
-  "26NOV21INSTSDST": {
-   "artifact_hash": "3b2824b54fbff229479ecc7b62fb41763583e42a175edc803fa8ebe73b53edb3",
+   "artifact_hash": "e3fa00a112d4e03a85335d8de839dd1bfa4a960a76046d45e8db6ae53da5fda6",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1628,13 +1374,48 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "5936e1058fb337d34dd694759f50b2aa5033ab667feb72b57ef3330c37fd3db2",
+    "claims_artifact_hash": "3c2c06644c5bbcbb2332b05eb3cea44c53c577363ef47974bca94cfd116d4275",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV21INDWASH": {
+   "artifact_hash": "075f32e2c3b0dcc4619b3f77e7516da5015d2df7e6aea930f9616754e3d0dc7c",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "DANGER:AWAY_CONTROL"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "e32b01ee60ba0c224bcf97d42e532a12c776d368196c40933fd9efbee25741d0",
+    "control": "AWAY_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV21INSTSDST": {
+   "artifact_hash": "54f61fce032fd62aab30ce35f0798f19b81ab3ea635c16f5d36e015ad60f461e",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_SHOOTOUT"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "2410643285ada8a2c420ad91ce1de08f257fec631e4cd16e5ca25fe39740bc48",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21IOWAILL": {
-   "artifact_hash": "481309c5bd13f78bb64e6c7a9739218bc5dc329ff410c13cf52f34cb450dd786",
+   "artifact_hash": "68620c96d8f864c6b8ee8248bf5743bef2e4361fcb4aee6f01ba39408fefb440",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1646,13 +1427,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "fbb279d6ec1588951ecbb9e2d5f2f680be7d7af6e1af43c3450189b0422b766c",
+    "claims_artifact_hash": "5b314d25a8dd41e7fa21147b2a1b5130a01fe1e629205f59d5a8ade533c401f4",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21IWETAM": {
-   "artifact_hash": "228fabd3dcc7908900d2f2801480bd294659664b2db2086733dac42258181fc3",
+   "artifact_hash": "94ec01b052791526a963676fa4870a3aa0c0d1267454e5be049a9d9315efbd7e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1661,13 +1442,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f19931eba4aaca3d93d3055dae7099e722e94fb5c9365bf03503811efc7d8a05",
+    "claims_artifact_hash": "c8d2231a97ac8b744632fc718ed602917af2a61a708fa2b124bd9e2645704b1e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21JKSTALCN": {
-   "artifact_hash": "a2adc7784755f5123f6eeab8070785a2e85e9055820ef3832e6469fb97d5cda6",
+   "artifact_hash": "1cbef8a23f0f235f98d543f42746f75c2272ccc3ab572cbf32a58f91d6792ed0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1676,13 +1457,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "0e5f2168e3e8ce0c1abfd07dc238bbe3620dde40d1e8489fd8ee8e11a1d54673",
+    "claims_artifact_hash": "f7d917db77ed47c3de16d2c157aae96d63cc78f83b9d52cd9eecfbcff17ff4c3",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21LAMMCNS": {
-   "artifact_hash": "d0305fcea03be3a2cdc7f951e41657d7ba5845cb2fe88736fc4ec1c971540add",
+   "artifact_hash": "9f4dd660c4ddbaea35d74c9f7358411f25a3adb29d5d1d39ffefb0981f0378bd",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1694,13 +1475,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "9b2a7ccd0883e4a6ebd86eb88d07bbb09e9ba24073a0c08010e402ccad9fe709",
+    "claims_artifact_hash": "5798cff38514b3987f31125fef0f436dd91684452204e285166b9e6450cb027e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21LEHLAF": {
-   "artifact_hash": "7abfbba22ad7806f1767673fb82923698bb42087ebd7ecfcc104d75825205642",
+   "artifact_hash": "43e4e2732ce5de592b890f1939e0a6d588dc7bca5778c14ca59cec0a1aa8257f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1709,13 +1490,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "66cebf0e7e93091c486869a3620a93f4fcca7b2f5936acce160f03b47973f5ea",
+    "claims_artifact_hash": "530d56fea26118b0df421d6d138d031fbf44b7420517e7a9e64f02ceccdf15cb",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21LIURMU": {
-   "artifact_hash": "cc1f8db54246a17cc01651741d484798270e0a0d590ccabddf73f4fd25aa169c",
+   "artifact_hash": "0a31b598faa6d5542dda5b5ae02fce9df6a8fe2df099105e7383385118cec795",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1726,13 +1507,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "aebc134c67cd733fd2fd9c2f8ea4599a20a98077f7f7fc28a208d0105dd08719",
+    "claims_artifact_hash": "6e436342a0cb1c5f5fc70b3e49c9435949810f57b505a8f0a3959919cc4f8caa",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21LSUTENN": {
-   "artifact_hash": "0eabff015b9922c8cc4309376263ecaf27b9b6c842fee732b4e1ca24440b710b",
+   "artifact_hash": "a2a32401cd7b9fb2590d40b569d7b7275df9ebbec07c040c47dceca5d8ba30e9",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1745,13 +1526,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "c72766742847ea0f6c337eff804c66ff94c9cbb595f5c2ba427285b7c435fd45",
+    "claims_artifact_hash": "37730a52c0bc2148159571ca0959d82f9c55483eab492db3c1ee6bab3d05d5fb",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MDUSC": {
-   "artifact_hash": "d4018eb37ba102d90476acfa6d8933f87c8a9987182f6b0b1b8cd72903b7dd63",
+   "artifact_hash": "e772bf7e7ce0d8d00d13e5ed2164f5165afc16202513e6ed1498fd996fe9769d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1763,13 +1544,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "05148b62a93bc2c13f17fc20d3199c9352907bdf97a56121016e018977f35a10",
+    "claims_artifact_hash": "d0cf078f2a1ad86c5311084080990e1eb4deda9273da78db6caae88e19ea8fc9",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MEMNAVY": {
-   "artifact_hash": "2cb709e5c5decb70e371822ac6dda68cf4802c1dbdf6609e0093457d37d1832d",
+   "artifact_hash": "642c1df1fe6157414a0a42d6676c91df0513f89d92d99ddb56fbaf3854f9d92d",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1781,13 +1562,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "55c1a224198a7eac1631db4be9020e683f5c023fa47c03fe4b44f8b1a79823fb",
+    "claims_artifact_hash": "e8041f7dab88d265e4dacd75669adade86a4a19890cb62a92515f0e286b7c979",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MONMCAMP": {
-   "artifact_hash": "75b3f023bf98e631d6bb4bc45d48b3706ec0ff188eb15bda0dd45f8acdf0f00b",
+   "artifact_hash": "51ade76f76e958a0156f90cc10311e119298fd861b262ac56799448fcfec91ea",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1796,13 +1577,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "fc26762286669e15f7780988926def215a3ed9f1bf5860e3c50e146320b847c6",
+    "claims_artifact_hash": "6389e36d64bc19df7fd4ffb35efee9180c46c45c692500f3b15ba16240a1f95e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MONTMTST": {
-   "artifact_hash": "db6a7d97e52d5f21114dd5fc7e773ca733a7642fe794743e4c620b1bb5be8889",
+   "artifact_hash": "fc93930d1db2ddcfa220912abeb392477b81c86c5f7a2847d021dad4f3889493",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1814,13 +1595,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "fb18dc3eff8f9f76300b17a5a1f73fa9b6787f903e3116fd5ad804060ac6bc4d",
+    "claims_artifact_hash": "b40f5299d9643cdcde41a85c8e1e90ad7fa9e81589dc07b75247a1f12f2a8326",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MOREBUT": {
-   "artifact_hash": "d11ff7ebffeb63773ff95901dca8ee156e7280fb576a50f9ed24f9b01be35823",
+   "artifact_hash": "e71f67563015eb60702e681a3eee656a5b9fb85c5e08dacae67cdd429ad3ad60",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1829,13 +1610,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "406001970e026437f898cf745d69c9312054cef9e5a95c44e986b3cf64299a45",
+    "claims_artifact_hash": "7228773d81f6ff0dd5532574c326c2cbb2a2273b7aa44802df4f0412160a4c8c",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21MORGNCCU": {
-   "artifact_hash": "8d2bca5f6b1232f8700d497a450ea906736ada067aa43c17b6810038b983dc35",
+   "artifact_hash": "d37e79b7388417f6c13f447854a2214aa2640283ec86905e98f591532663c2ab",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1847,31 +1628,31 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "d2195ce857d7438ef81e10216229a3189c841a05252861d0db5bba2f53990bb8",
+    "claims_artifact_hash": "8f9a2528e069e0de729117a3c944d00e9548fd263bd1e588ccd8f20fbe559420",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MOSUJVST": {
-   "artifact_hash": "f4a3734f127f116b26e30f8cb55b1e2d4f8f8bc54d69d85deabdf2ee487c1400",
+   "artifact_hash": "df3e77ce77c839bebf86021fd7439a1f684341efb0a791cbfeccf0e854982ce6",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "DANGER:HOME_CONTROL"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "3f351edf54f182ed416c9e89bea9dd8e0dae8912585246b8b002fa01bf4b9cd7",
+    "claims_artifact_hash": "5c9871df4bd76955ac580ac1c623dae8ba649094fcbb4ca5b072b4fb994c96c6",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MRSTDAV": {
-   "artifact_hash": "2a720fd6c8e856249e4a14063160975780e016a745bb4b4b4caeeb4ad7691649",
+   "artifact_hash": "39cda99f0339748ada54b4dfddf805de50bcb81dac7a6f1765cbcebe0ab48b22",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1880,13 +1661,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8354bf610516670b4a8308c48053a1d76b1221415cd250cf0909da011a47aeae",
+    "claims_artifact_hash": "38cc5bb87f46b1f8d70dc9df0b5bfa6f027443e320af298d1a8cd2a6bb70cc4c",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21MTUSHSU": {
-   "artifact_hash": "a43f4892c621efac71c76e4d746a06a2188a6bbf6014bb34c861bd6976532275",
+   "artifact_hash": "44d9fcaf6009dd92d4c7b74878a3737fbb78e48c7345c39947a216b83fdf61e6",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1897,13 +1678,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "75600aa51ec5182ee8e93fb84148d76e0541e10d531806bcff10347da9802039",
+    "claims_artifact_hash": "348b5654797a281d4a3c7400f7dfac2887ef6d96e1da056c08c790bf1917affa",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21NCSTFSU": {
-   "artifact_hash": "5b8aeab68e6c1d3a6dbdeb3cbf4a77b94b1dcb2b7d2ff44e348fc6d955a7760a",
+   "artifact_hash": "a8a2fbbd0521df9362e3c0fdf8f4573820fd137db26debd64d9fe27ace5251e9",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1915,13 +1696,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "9aeb5aee41e9d1373da749eb6505f2af8a4af0f5b38846fe931bc442935c6bf7",
+    "claims_artifact_hash": "8664e0e27076cf23a71d18693f82b1e7f4937d276acbd0b45395115a870c6fea",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21NHCMHU": {
-   "artifact_hash": "3b949a2fa717876e762a46c1806948c7996cab7ad0a39562d777c0b2903a0c80",
+   "artifact_hash": "73fa6376c10e2c571744a723a5b2b11faab3c0103fd223e8f99636428f9d6b5d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1930,13 +1711,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "4fc436015a0f3073dc105f90dd64d4a4c9a36d33005a7378589db3d4a36f92a8",
+    "claims_artifact_hash": "e05cc823129d544416b66a8b31bb889ef928aea8c33b9dd8e348a21a53049594",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21NIUNDSU": {
-   "artifact_hash": "cab3589baf3a1faa9ee3f81240518ae5b7c9985dc18c19c79825c81309884306",
+   "artifact_hash": "007e8f6112cec3da9037519e403d00094019a9ce9e9548ce1c4e5fb4f6cb0815",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1948,13 +1729,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "1c4eea6e918caba876f69fdf860f3a7c9879fb7de038c53f6b6da90515ba9eec",
+    "claims_artifact_hash": "fda3d20bc4d4d65adc3d8b8ec31e56b3a7f7ed7f0806f7190b7c641731bb485b",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21NWMINN": {
-   "artifact_hash": "d5c1308a99969acefa89dccf92c080dc768fa2704453203c9c8e4b82e02559bb",
+   "artifact_hash": "2989b93c636dbc92fc75acfd6d7a8d8fd1fb133fc004523dc3c4db78ba80f4d0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1966,13 +1747,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "1e5703fb84b4277e8fed0be35aaf3b56643245c820551c8aa7bcb27dc01df353",
+    "claims_artifact_hash": "cc321edbd1ec524a7b186da06f8891fb91f704b74cd212555fc66cad69039964",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ODUCONN": {
-   "artifact_hash": "c6cb4dba55accc711ef2591be83e7a48bd6807f63255b6bcb38e67ffa8403de5",
+   "artifact_hash": "2ebd9363678a2fb4490aa7d9f68332da33c0555a35113317478cf425cad2efb5",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1985,13 +1766,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "9b63e38ec5af489a8741316af58b38d98cc7b2b7df305c2e28b9f06e9d2f1c41",
+    "claims_artifact_hash": "f7297e173726c776e164abe786418bc14ae1315c5b9682257fc85d80097d0b6e",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21OKSTASU": {
-   "artifact_hash": "e40dc5bc17a8d39508e9f54107b713236635d2d49fb327476f2188e3acac352b",
+   "artifact_hash": "382635e0b13b10fcdde0edfca02148c2327d9cb8383a397597a1b912c8af8308",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2004,13 +1785,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "88c9d412bd0516d30350f8ab230382e224c7bd034edff0d1e17e332dd96ee567",
+    "claims_artifact_hash": "fafb60eb07792c3544c5cf7849a0ef203fb05682a376755c642f54e3c9d4adb2",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21OSUNEB": {
-   "artifact_hash": "29959ab7d1448002cbf661f6ea0607c1a25c8607e7c583b4fea7936301a56d63",
+   "artifact_hash": "03ee79ac0ffc6723cce1c7695c91a174ef184118719a0611e1a04733d7ad2531",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2022,13 +1803,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "ba3226f28e3653fec0352548f065e28be753b09c3f9f81202ef2fc3046e7492c",
+    "claims_artifact_hash": "d16091153d10c904bf3957fccd80f773d861d9e5d226bbb946b4e5b8e427d811",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21PEAYCARK": {
-   "artifact_hash": "8e089d47a0a168936e388959b74bd1d453bee2130e2a16c8828c1a08b3d69245",
+   "artifact_hash": "95ec585549e8a249eb1f61f0e14007957abc5e04746fee3d444ec77cb9a07e48",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2040,13 +1821,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "72300a828ecacf8027d5bc288c0bb4bbe2b679399ad407395f0d052d0970a34f",
+    "claims_artifact_hash": "77f4de4c8cd035adef325fe9c283622d181e0eed706182f4173d9063e4075a75",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21PENNPRIN": {
-   "artifact_hash": "0a676254a5799fdd3150e852ea211e81222c0f705165741d74fdce99c3792d5c",
+   "artifact_hash": "f2579564a3166e5cbcdbefd0ff957e30bcbf0b411387461b23ac74d101b9690a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2055,13 +1836,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "aed58c47dd11863c26020bc01b26b5e5d5528a4eee95232c8ac54d17c95bfcc8",
+    "claims_artifact_hash": "c9e7b910f305150345c0537e55d1287a2a97cbdb2069ab1a9fa9c95419fb3680",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21PITTLOU": {
-   "artifact_hash": "8eec4b725d9eb705ab08198a9b0db2fe8ca960f3d563841765c2dbe142729ba5",
+   "artifact_hash": "e6596d8ba9e74159548b378fb594b9e10f67972a1e5b683ae9965a3375f00449",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2072,13 +1853,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b2481763212c811b7354e180461e3977b1a8a9785519f200a0a0c8b2f7368a1d",
+    "claims_artifact_hash": "86f7d46ec9aa1b59ac0fd553d553c1f8158ce70f978d6093d9a2b77698e53249",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21PRSTEWU": {
-   "artifact_hash": "b7885d7b8c28d68b1bb5a6b18e3247326f795527b88727e917f1967e6f7eac64",
+   "artifact_hash": "00c89ea0deedbe7e77bb0fc3420fabdfa6dc9af6eafed1205e5350550e2cd3ef",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2090,13 +1871,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "d022e40fc60412cda04c4c5507d56d4f76ecb9ab351c44845d05bbd0dd7bb521",
+    "claims_artifact_hash": "f312f5b10c377af14af176b4aece2981e08a245676738b952c385e087688cd99",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21PVALST": {
-   "artifact_hash": "f299c5f7a93f3a8993464600c1f30a4315e07d937efbad53930a53904ed55826",
+   "artifact_hash": "f6e96e637f87b8a455f02f99ccf3138656e25f86a388574c2b8adb1e65739f42",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2105,13 +1886,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "4888905f0c9fc59371728fe91bd3f3ada5137f7aceab07077150b4603be38958",
+    "claims_artifact_hash": "7958ccd69b34909b7fbdd11fb74df1b152537681de57e7b8e2e6d44086c17ef2",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21RUTGPSU": {
-   "artifact_hash": "28e60b9bc5f2c991db61ca0d82bf2d219142d119ae7e706487fa06770c0ad21f",
+   "artifact_hash": "6bd2564a643c90b9ae4fce00a53ddddc65b9e0838f5050b91f3bbe3b075b638f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2124,31 +1905,32 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "1db1e3b9c2877303ed39ea45eafa498e60a84cae9276690980c990795ecf3797",
+    "claims_artifact_hash": "e93b14ded3b3ff81185dc11ab6178448b2bca7261232eeac0aec3a5ce18a1b68",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SAMAUB": {
-   "artifact_hash": "89a7edb61797428b86bf016e5967bc3c531ae8ef16eb28a91401c5b24a3edba5",
+   "artifact_hash": "db0c6935b603fdcf1773950187c6b90b7a52ddb5b5c1703f715270907ad4f08f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:FAVORITE_PULLS_AWAY"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "ALTERNATE:TURNOVER_DISRUPTION"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "dc985065ba797859d2e26930d6250d7d5fe215d8356455466dd77d6042776da0",
+    "claims_artifact_hash": "dcf3c5752963ef144ddd488a28df7db836b0318481ab5fa02c546f7772d1e3e3",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SDAKILST": {
-   "artifact_hash": "0e17f7c523e9e729aa3935f0a73658ce66ec0ae4ad00f4a46d9991e8b6c1a9fa",
+   "artifact_hash": "812e7e83fe7152a5a91da02468dabe0d401aa98630941dbc17d74e8a8346efa0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2157,13 +1939,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b57fab201b3f95e06be04d0a7e19e054bfdc0735322bed6a46cfbed0b3e911be",
+    "claims_artifact_hash": "a0cca5379aa5c046eeedf2a20d95d81399a9304629a9d0665ad610345be4c109",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SDSUBSU": {
-   "artifact_hash": "0f7a9595dc2a4fdb5aab87a9df1b159b01a5eef49387cd89204ada9bfa98a724",
+   "artifact_hash": "37121754672ad2e9f1d61388550a67d9b9f2e697c9d92061afc1fcc800a61038",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2175,13 +1957,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "626751e19cf3b11d99915fce5fd655a3702eb97286fddf8bca729c24b84a5c8d",
+    "claims_artifact_hash": "76a789036a9f9febc7d6530ccd3f25c01e0bfbb2f1aceebd530ab13f0b878066",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SHUMRMK": {
-   "artifact_hash": "c280e9cf74b7e46136bc8c4d2ecb74152e5dcce307f5ff8413c76f5225d2f347",
+   "artifact_hash": "4e900722c923e5a1c98a84d75db51a3484adf044977fa60216186141ae9db765",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2192,13 +1974,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e9f14807222653afb601585c4578d3953cb321bb61e16fb0ceb790c71dd85b1e",
+    "claims_artifact_hash": "89d870ad00abaa8c3edd9a14b71635ded870d6895f89e8e291e6c5996536f67d",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SIUUND": {
-   "artifact_hash": "2122937565f74c437ad2f03de84e632fa84206b1162b82b22da90445302d8ec7",
+   "artifact_hash": "78d0329fbe788d135045546594bd859fcaa7d0d5625de09ae24c4b5cac3e811d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2207,13 +1989,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "c1d1cd7ecad105afd813aa42ba2044ea0d8d3a83a8e9e550ba2739669e1e3e41",
+    "claims_artifact_hash": "785871a12e9321afcf82424e44407ee816a2fd9a1d8e56cd5a944babdd2abe20",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SMUND": {
-   "artifact_hash": "9b86f225f558b4b90e8c7b308d0c81c0252f87c5fd41843982de8057a1387682",
+   "artifact_hash": "bbf3fd3b02e32e37bd4750f356daec819a887a555c3dd7f1d3eeab3bfed69815",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2225,13 +2007,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "99fc56d467acac2c979d0ca23dbfd63b956c19bbae5664234befd1018b7bb840",
+    "claims_artifact_hash": "5a74d2d1307cbcc759d4e9890425c7f9d8da042cb7d372ab5550a7c9cc83b497",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21STANCAL": {
-   "artifact_hash": "9b6a124c75ab5ad77fda880c06d5a4f6a00bd49427ee314cf407428102d82f1f",
+   "artifact_hash": "59c231bfdf203865b565cf67516a976cb13e5a806a918c90b0a634c8b88f3567",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2242,13 +2024,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "355fc8b2cbe34e3e7144520cb87801fe360990cccd7bcb83358f62a1484d3301",
+    "claims_artifact_hash": "65e5a6689db59f18df08ac2c9c828460cd3a0b6ca642259c2f2580695a58787a",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21STETUSD": {
-   "artifact_hash": "2888e8caab1cc5be962e08886f27e1a940fd919159124873b6c8431e16213ef5",
+   "artifact_hash": "b17627e679132c9237611b0a0dffeda8694d1fd64c2f01e1cd8ff66bdd9f5135",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2257,13 +2039,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "c7bfde408bd67511552f6e71ad90bfd43cbe28d6b33817d0476bfd48b281479c",
+    "claims_artifact_hash": "cbc97b5519b02aa899b33f7942c770376bf3fd1487069970779429cf3ce49d36",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21SYRBC": {
-   "artifact_hash": "329bc126d816d9fc0fbc97379e5ca6934b4632177ce809f090ca611579cdcc3e",
+   "artifact_hash": "65b64acc32d6ec872761a189bf22746a09d2938d656495ba364ff6e16fb9bfed",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2274,13 +2056,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "a6206343b35a0615edd540e5f82dfe677175a4269efdff0d58e829e882a6c03b",
+    "claims_artifact_hash": "e69bdc32e9f235fd6d8e7a397f6271192bdd086801b6a6f8b0ef3dfe0de4fc92",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21TARLUNA": {
-   "artifact_hash": "78de404c00733c9e1051029a0110982c1ea5cf150a0bb8e30d13ab3a16a567ec",
+   "artifact_hash": "ba28ec052a1fd6231b605856aa844d4e19b57204c64e49c06b40de12ad8ce031",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2289,13 +2071,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "c9d4d1a2836bddd3e1b8dd7b75f4f9748f47b55754db02bf70c3d593cb160994",
+    "claims_artifact_hash": "eb25a632d576f3640b36677234a0d8f9fa3add87424790d82fb231655c025970",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21TNSTWEBB": {
-   "artifact_hash": "f77e2748e57a9ae0bb082503c097288c9d7e623107282c927965edfe67579756",
+   "artifact_hash": "3cbcf20039820d71d2f816ec8a1fe2931b776c21ae89b8d96fd5df63c3ccbdcc",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2307,13 +2089,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b33e889144872d8ee67aaa18358aeaeaa9daf1984b05106cc85d54bb0a84c163",
+    "claims_artifact_hash": "1b3b043a452470d16350b6a1c5c523a653a65c79f5e7f27a121848f737e8a146",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21TNTCMSST": {
-   "artifact_hash": "4fa8bc61f03b8594fb1459753e51672b7f49c1ccbe4863c0f171206abf9bb564",
+   "artifact_hash": "4bea53361a06fb9fe1d2aa9e4b790524cd19b900ab14d595371690c7622e188a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2322,13 +2104,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6578e4956c4ead3c98ae50c19589cd1e8f3f1e5bbce950d686583d9b81be4982",
+    "claims_artifact_hash": "0151b197e2db62ebc107a5d39a12c47bb5824806d977e131d8b6e630bbc8dfe4",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21TTUBAY": {
-   "artifact_hash": "634a90af3be202127aa0ffbe7ab0540af77e95ddead58412e9f3a0193090ae60",
+   "artifact_hash": "2c679b22d2f876264867b4c43c531a2f454247dd049d2096dc1580cf81f09e76",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2340,13 +2122,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "b42ce6a686411a819907a3e0331e3f32862b9ae5f0f864e1597caeb023bc8174",
+    "claims_artifact_hash": "321a235e624b55458591a2f96b2350c344614bdfa60dea3f4209f527e5828d06",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21TXAMOKLA": {
-   "artifact_hash": "335089f3139087b480ce388e7e7c66087eca386ab483dd1330e22a5f61c7a01f",
+   "artifact_hash": "ce5d7ce606cc420ee8a3659853dec05072cce77e85b9d765963f1210ecb50380",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2357,13 +2139,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "7141f756a4d3884f2cda347e1b0b62b0d34eb04e96f34d4855b95e9b27827680",
+    "claims_artifact_hash": "8a99dd1ecc5defbd53ae19dbcf693808a52e48c31369ae49241cbe0cebbe89e7",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UCLAMICH": {
-   "artifact_hash": "a2882e9273167ea4ec33d23130b89ef126809af7c5b350c206bf23ffb7ebb4d9",
+   "artifact_hash": "16f5722667fff6c6e72cbfe8a920be1184a6f37a47148ac1a1d64815b0d73039",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2371,18 +2153,19 @@
    "scripts": [
     "PRIMARY:AWAY_CONTROL",
     "SECONDARY:COMPETITIVE_GRIND",
+    "ALTERNATE:TURNOVER_DISRUPTION",
     "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "231548002d9de18d068b060c1b7089009f34b48e96d42fe6b31eed78a80de14a",
+    "claims_artifact_hash": "3384aa799b8d685bda0cc32c370d4a6f608027879e2549cbb0496a02782dd403",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UGASCAR": {
-   "artifact_hash": "2b7431ee85d62e5a8c14da39350c26de5a9c2b335f155c6c5ea488bf09224ada",
+   "artifact_hash": "7559dcb11fa551aabe6fe19e4c3adfe8c41778ba90f0757edef4d1b54b264393",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2394,13 +2177,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "e550e5e4447bac7a0e399ec45312a7383929653f64e64942afb924b56e87f414",
+    "claims_artifact_hash": "d1ac1131dbb04c3bb18d51c41bc969acc4a44be301b9577f6be5130efd31c89f",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UKMIZZ": {
-   "artifact_hash": "4a2da03ecdcc38e6c51a563396808f14a8c1413fae97098eb913e0c98233fcf9",
+   "artifact_hash": "ecd9481be981aaf03e464406cac79e5b9ed2cc5c9e46af717b5a28c1128a63ae",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2411,13 +2194,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6429d7a20ce726cdb3a5f494b945b8eb4c6b98988edbe5f4a232870996f5cdd2",
+    "claims_artifact_hash": "d2c9f47b19b45d69f9aa00796e56c93b3b4d31ef91981dc776783d292b93e40b",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ULMAPP": {
-   "artifact_hash": "ee694119dc54e079697a2da4f1035a64343cd123fb07e0c75db2b42acb01ee5e",
+   "artifact_hash": "91bcfecc9d7f51d62e6df38c7db9cec280d23cc3020404a5307fa5b0dca5d2a5",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2429,13 +2212,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "4622d0526bd0f9fa29c16c6e009adaee73ae4e97a0042c32544d712685602f4e",
+    "claims_artifact_hash": "f5075ce2e7e55625be73e7769b8b38242e603cd627497d97589668687bb12ae3",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNCONAU": {
-   "artifact_hash": "8f8aac1fbcdaccbe5aac2a1346efc11bda75d24d01546660f4408bed08f08c74",
+   "artifact_hash": "c320508f90a5a406f759a305550b2e440f4d2301ef7d655f2ceb3a893ec28e29",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2444,13 +2227,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e60c4f20c3ccc8e7ab3d4e6bae77d072f453d93891ae7d272a821d431b7aa107",
+    "claims_artifact_hash": "b0c931d0c691cb3741f3239a5e261b8ccf868453e21a19efae929d90cb434d05",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNCUVA": {
-   "artifact_hash": "50e6b19972b00239b6adbf67bcae2b53c052c79e68b3094e8dc31c5800a89aab",
+   "artifact_hash": "6a2b4cc505d31cd4ab8c350ca973fd75aae3c38b13b467a7b25b18c4eade3ad4",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2461,13 +2244,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "57a26a4438aefe21212bf25ca7a3e9e4d50914c68cd23abaa0e40176ff57ec20",
+    "claims_artifact_hash": "87afcec9b930ba2eff06f34c3291f5811f98f9103ee243dc69c60870063b713c",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNHME": {
-   "artifact_hash": "34cbf2a1582797b1478e81dab843b2c54665ff1c75679942398512d0792dd2d8",
+   "artifact_hash": "03a1c9d5162b74a15a2155c10fa79b84af492995f42c7f40ce02e4fc5fed4c39",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2476,13 +2259,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "091d3637c70474abd35eace684264167da4b805c3fb9b95e7baf97d372954abd",
+    "claims_artifact_hash": "2eedd47055685aff3349054d1f747f637d701a761c7445c26a4e509e8bf0f319",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNIMURR": {
-   "artifact_hash": "cb045cf3906afea451cac4863f4d36926ce0998f4127ec8cfbc70777cb5c427d",
+   "artifact_hash": "495e486978d7310d59a64a862556836d386af686893a894cbb7608517d871c9b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2491,13 +2274,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "599e5895764346fa27a6a93b8d9feb841cd6a52fbce7eda1a137badcbbcdde46",
+    "claims_artifact_hash": "a6cd37447f5512a87aa9833186c2534a1119250396f7aad2bfc0fddccdc85677",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNLVSJSU": {
-   "artifact_hash": "6c48cf41fac8166d819fb64a7c72b49254b441adc8c57aa4c756c18d0bed6d3f",
+   "artifact_hash": "296106cc9559b32fc955d28eb171b880f26a0ae11645b3d55f76bb92ecc8b0d7",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2509,13 +2292,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "8c257bbb99c9105f5e0533ec53477fc2b2537fe80abc5783a472f58bd478ae08",
+    "claims_artifact_hash": "a86549a451bb872be52c84b48792b726b94781cae398c4c01b4de6eaa8c0dd24",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNTTULN": {
-   "artifact_hash": "b28135c954d739740132d47541869aa29431a9cbf567f915524b217f4d06ec4a",
+   "artifact_hash": "8a7b296259870946c10e964aad735f7065bff6d5438e0b14d4ed00abad0e4796",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2527,13 +2310,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "e72e9cf21f020515035bb3c3ef9abf722f1615320a66237a050e1c23e91131e7",
+    "claims_artifact_hash": "1002dc0e9e343f6b0bccb4889e58b45c589f2daa5cef7005dd0c21448e799b61",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21URIBRY": {
-   "artifact_hash": "9fdd34a3c872ceef1528adda7476f9525db7557bbe549a138a7a94d71ca01723",
+   "artifact_hash": "32b92149f006d34f45afa04ccf9e09c22a24e1967273fd587873502c1e29c880",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2542,13 +2325,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6c065c6ed16299e3f2c24de8c939798c26f2998704a4b890b3835bf72f20ca02",
+    "claims_artifact_hash": "986edd21a858be31aa91d3c07174b3c181fc10e44165e3606b98a3b2887aec03",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21USAUSM": {
-   "artifact_hash": "8d47824b11f4162ce222b68fd72c9b07dda9a3e99d895cc8d742e9126d99cf3c",
+   "artifact_hash": "f8164b1301211c1304c589350ad28151e8cde4a5afd0aa809d806b1bc2e69439",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2559,13 +2342,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "1392d4fed77e07b4578c71515c8bd5e1dc1cdf0b7f269b0e4dd2e5eadb2e7683",
+    "claims_artifact_hash": "9911bbcecff5bbcd354f03e4be833316c19d342fbfd55ca1cd5cc206aed52a17",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21USFFAU": {
-   "artifact_hash": "43d488fd1d6db7674782a0672df38c2d38f6c5ffa957fad14312b2af4177dd3c",
+   "artifact_hash": "1df17bfc756878885596f4479ea78e953fcbfca67c5c6ae1eba7f5b75531e994",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2576,13 +2359,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6339979955d827fecf24ab02bb85d90e697b1d28d5c3238dc2f3e8cf36461080",
+    "claims_artifact_hash": "dc69f2391b722ae659040065ac57201bb4a41b89d7cfeead035240b3542088c1",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21USTVALP": {
-   "artifact_hash": "fdeb921c4511ee07d963e3674465e93f488b27f390982c963bd51a8d1e67316f",
+   "artifact_hash": "afc5fe382ab44232fde6d1a38d1978b30302ed254a975e934a489413be4d7cf1",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2591,13 +2374,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "385b7b29fc8cd38467e5839aa6f0acb87449c12329e5cb0b1236ef6cc769a932",
+    "claims_artifact_hash": "c339a14647ae64d3377d05106f4543767cd75170d6564c982171ca1245a87fb8",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21USUORST": {
-   "artifact_hash": "0454314db1f09fd74c547d07af3c41f63e2a241f68af8011060fbb1f41cec94a",
+   "artifact_hash": "049b68c53cac5c30d91c4c3d480797a3c76b9b99d022e3a8704d8ae7c9d7a521",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2609,13 +2392,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "7608242e53976f30d33007ce2ce056823668c1b6552ccd3ec98ea7c79ec10aa0",
+    "claims_artifact_hash": "0e343ccc547c881b5ce4a7b872377c1a390bb23decad69d85cfb9b30d0d7273a",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTAHTCU": {
-   "artifact_hash": "a6c840fbd8af8db054e7ac9d9b4cd9ddabe36b0a1f18ed98148e1ad2949c63db",
+   "artifact_hash": "5698da5f7f87407dfa3c0f7952d3ef53273be3cc0c7b53fc9a1203e5e1bfc920",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2628,13 +2411,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "176d217b01caa9ee2d174f20e15f237b96f80d55bdef1958d8ef0058a59c3328",
+    "claims_artifact_hash": "ed5ef26947261ab7d373dc8d83b6bcc585f124d78e896b82ec17c8dd0ebceefb",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTMSEMO": {
-   "artifact_hash": "67b4e0db120aa0e3220b0826a96b48e3b79aafc91ea78bd6b387da82bd7da8b0",
+   "artifact_hash": "80fd21a2ae3162a6893d8216f0997c6335556e8c03f0dc17d093886c47e70959",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2643,13 +2426,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f56fdac6941a9790263df93157ccff7ed99b5c2657a46845bb012d6b2b6e0937",
+    "claims_artifact_hash": "a42088364b7f3e95277c3322ec746f6fc53340fbbc67c1ec61f9aec67a575733",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTRGVHCU": {
-   "artifact_hash": "12c13d2425b1bab792fd3517b00621455133cfdb6b66cd4c14936957cf96c656",
+   "artifact_hash": "7be55d5a0503779ad81c2f206b0ef191053097df07fb47fbe187531a5f114bd8",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2658,13 +2441,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "40399b168fa15cd6757b4b4135e5b0b131ece3f53a35762037df3c4072d092ea",
+    "claims_artifact_hash": "174fa3cf808f3e324ca11af4e3e1f6a1437133ec2c55557667d8c1c5240a53a2",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTSAUAB": {
-   "artifact_hash": "d062589bf0eeaba66cb5397ede2f4dc7fb76dbdf8e8271f1019f8bba31455cce",
+   "artifact_hash": "20e95109e967abea5ff6b623b2da3bcb812682917aa44abfcf6459eb37c891a6",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2675,13 +2458,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "0e701191e6f26aa6cac11ed35ec78b69d63475bfa0d879cc06d75e9d5cdf8e75",
+    "claims_artifact_hash": "0677ca2f288e228b8e984922fe6b70185a06596ce3dd1de0e034ab37f5bf085e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTUWEB": {
-   "artifact_hash": "bb26c3239a993222a99bda4cfea492d4ce7fe7442c24134157fd33006384818f",
+   "artifact_hash": "256bbd4ebe901fe333afbdd6d956c1265a1a1e531b17df67b091411e22f302f1",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2693,13 +2476,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e873b7dd912d4928ec32d837f35e74c9530713251aa31ae65a0527d8d83a2fa5",
+    "claims_artifact_hash": "b44456eed7822855e91cdb02c3c0ad5b0b6ff6ac092ae930262cda61eb1de38d",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UWFLUWGA": {
-   "artifact_hash": "a71e289d5b4dc2b92f4388f24700c214ed2cb94c3924a027c03adce04b7e2a6c",
+   "artifact_hash": "6b1637b61c4f443f35a35299de69696a106f2b78718d94357ea9dfeab88f6f1f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2708,13 +2491,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "aa815930dd0308c9d8d59800ec22936d84af2b84f8eed3d493a6b03ef2ae1554",
+    "claims_artifact_hash": "59600a74d57906111cdb668bd86c0003770c3a6d4a8c8c59ecfd5dca1729ed1e",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21VANFLA": {
-   "artifact_hash": "da31825254d0e5c0bc78ffc3e36f492b7dfb3fc660a7e36bbd8589281529c05b",
+   "artifact_hash": "2913ddc3e67a0e9be0573e7958d3f0bc2269a3b142e1a71bc7d4424d9870ac9b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2726,13 +2509,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "73ae4f29650bd3f62fe576e53e8453fda5b75d6d0353696716039e8018525fae",
+    "claims_artifact_hash": "0180c9f250989d6bcf82e9f7848bedcdf247e2d441e8b4bba489254586ed283d",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WAGSTNH": {
-   "artifact_hash": "5b66d43f14893f81a40a82de5c7496d931bdbed66c6af5a43a154e56c716e861",
+   "artifact_hash": "1c9616cefcde83f95d194394adf16cc9db873d376058fad6d750095c4b59c9b7",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2741,13 +2524,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "51a9ebfbbac04fd22210f738c9fbe4d80de6db2e15daf0dca542489be66db5d2",
+    "claims_artifact_hash": "406ccd34730fae85f58dc8165a1bf9a8d3570fbe16c5d250a2ec1f1c2e2ec720",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WAKEGT": {
-   "artifact_hash": "7c1de0ffb9145552d353da38876c9f22d2ee5443ad133a1f8d11b5a646d9da00",
+   "artifact_hash": "fc56cac7d468feef9edc60ed54210eb8852275f1d04f5642bc4e292d7c94ae1d",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2759,13 +2542,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "45e4e13e9a57809b26e85a454da2ad3c464a6b29aba507d5cc109fcfb2715344",
+    "claims_artifact_hash": "5211702b676b7d1f656bdac3391ca0fdcfc07513f444a7dc5d2d35c9851c911e",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WISPUR": {
-   "artifact_hash": "48a119c5fe5d7fad3456b28586264b03e0f795fb43c43307570b27e915af634d",
+   "artifact_hash": "e57b8be58075c8f4b2f9b92053ba33790809cf37fa26333a5d956d84d343307e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2777,13 +2560,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "31afccb001af23791f8347337048cc877f23ee8e31aaa20b67598588fd265df5",
+    "claims_artifact_hash": "9bc9583423df3ae0022b20a3a8b8fc936236eee4639ec40f321fe41b4e270cd8",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WIULINW": {
-   "artifact_hash": "387900599c0b587f3115d78e3b4fd325e62cf48e0ebd5caefacba6654d76e27d",
+   "artifact_hash": "c09b6bb1b7f80cb4f7bf4c378dd86e52afe9006d7d94d57bdd2a7b7c50529346",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2792,14 +2575,14 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "1677fad1e5a108d9872efb3823543c045ed3da5631f7c9b7710cfa1845bd895c",
+    "claims_artifact_hash": "6b003a7d69b85b2129aa5b4e019246a766593c9867eba6e2db57a452d6a81bde",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WKULIB": {
-   "artifact_hash": "1386d701ecb45113742ee639e69428afd3b61e640cbf54595c742afd0fafcf53",
-   "data_confidence": "HIGH",
+   "artifact_hash": "5bf6fada792a217b2da6858ea5e712c1d418c2e4b8f3f3d406f74503de45c822",
+   "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
@@ -2810,13 +2593,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "6c248072d56972d08a9595cad71dcd9b415c1b31595052618896934514eb8b44",
+    "claims_artifact_hash": "5437c30abe97f656550c924c32f0f7976bc7e7fe3b8b731d29213ad549df4d9a",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WMRICH": {
-   "artifact_hash": "09cf6e877dd832a62bba903731cca058e0d9dc9ddf67d3a69ca6da103bfe8912",
+   "artifact_hash": "107b0c77c82c5b7394ca832bdcf9aa22a7ca9d52774d426b160dc6b1dfe12a0d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2827,13 +2610,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "daa6eb7a8ff191d1616d9d21e7917ff5d3747702bcb80bf7f6eed07782fcb9f4",
+    "claims_artifact_hash": "0e62b3e8a0bcce7d9deda80c7731b479782c6b0c9af21bb2f489f700bf4a2874",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WOFMISS": {
-   "artifact_hash": "6c794d5545a4c6aeb7c948134f686e538027fb65d55540300f8f4fba1b25aed6",
+   "artifact_hash": "a9f24bdc72c38ef3835adeb89b8693a9283a020035757411610f67b8129f1c94",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2845,32 +2628,32 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "27c2b1bcd1f62eed769156a7ac1768ac4f52c570d89e2d9af48d89d0a0441bd9",
+    "claims_artifact_hash": "34bda19221f6ac12f9936119049d39efc251b16aa6abd15002deb7590b74a34e",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WSUTXST": {
-   "artifact_hash": "1825aa32409643ba9c421f20a5c24551a6b854ba32dafb52a1906a8e6af9f85e",
+   "artifact_hash": "785e76403acfefec28123506da09986a9afde1850f7773ec64b6ad80f89564c1",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:PACE_DRIVEN_OVER",
-    "DANGER:UNDERDOG_HANGS_AROUND"
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "ALTERNATE:PACE_DRIVEN_OVER"
    ],
    "status": "SCRIPTS_GENERATED",
-   "survivors": 1,
+   "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "8069b754cb8d5a08bb5d26cabc90d076714ab4054c2ef4d8b40c5e3b7d3c5ea6",
-    "control": "HOME_CONTROL_MODERATE",
+    "claims_artifact_hash": "dce5063fb9a698748b72d4c48080130123efef725066fe08d2a5cb2bd3603c17",
+    "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21YALEHARV": {
-   "artifact_hash": "5135656ff96f18db9847cc5b283e31663c101a2711f593cd18911f7237bc4fdc",
+   "artifact_hash": "75bb54fefd43e5b8b1d9cf8c747343ccdbe9f114b6e2de7733b4e78827d5dcb7",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2879,13 +2662,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "58b59780a9cc591ade87fa4db62fcd22f8af3256ddbd2ae906edf018378b2d52",
+    "claims_artifact_hash": "0474f3cbc7ef4b69eca6769ce75a046989e0386fee355f1ba3df63564dcd2a1e",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV24KENTEMU": {
-   "artifact_hash": "78865b9aaed7d13198533c433d061331efd01a08acd9efb2ca944de446fed3dc",
+   "artifact_hash": "783d393a8e09174a7e3b8f3eecb6761eb01503c6383fdf4edf2bc425ddc26a1b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2894,13 +2677,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "477690f0c78f2f68e9edf90b8620f913d544d496ddbf9c74171fca5e742db7e8",
+    "claims_artifact_hash": "3e5a56f55c6e6a641b9602b987b4ddc814d9a9e1f0572164a637c891ee8fbc77",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV24MOHWMU": {
-   "artifact_hash": "b4e01430b06c4878b43fbe0c9d6d2f612fc7765f280d03f01e77c6b0b6fc0e1f",
+   "artifact_hash": "c287893749c8354082a1264277032bcdfb548020fe7dc8b34836669c3a7e4109",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2909,13 +2692,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "24942256c90c63cfdff954ced63bbe78ea43ba149f1563dd5647fa21f3d4186a",
+    "claims_artifact_hash": "5b5ffa62f52612e29cbb31746dbb4f0c1196a16aeef34ac49ffb8da4e12e69cd",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV26TCUTTU": {
-   "artifact_hash": "1b9cc55641ecf8fe799533977ceb2b0f91a680c51a0b4be47a00d2a1245f755d",
+   "artifact_hash": "be062bc567cb93cd94d44a9b5313a0acf2cb8ff117b99a03561e1f5799153a48",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2926,13 +2709,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f27bf554caea76dd1c59711642f2fbd6683beea780e837ebe12d41cba1e48855",
+    "claims_artifact_hash": "071f4205b7fcc038ecfa18ae4db68ab6e55cbc8de7a7dcc61c4a7a76b8e6694c",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27AFAUNM": {
-   "artifact_hash": "0f6643a2c814768af29e1fc87f86bc15e26e064d7077ed850f786c4bf0b4ea91",
+   "artifact_hash": "eda7f9cebda5650119f8eba30e28b1dc85f37f11223d919d828d7116a0b069c0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2945,13 +2728,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "b167e6a8ecb113796937be41c9a164a9d65d5ea2d2cd7a405125f6f6b168df5c",
+    "claims_artifact_hash": "826937d8fee0a6bb318c1cafa2e56af4b12a0afcbfbeabf086319c8821fa26c3",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27APPUSA": {
-   "artifact_hash": "9e14fb9becda5f3c90fcc73600b140f22904b6b1f833077a30cb8adfb1187108",
+   "artifact_hash": "6d8fc48cde5fae032f8a1059ef51cc5203e4e75c46e7b4e0830178cf08f7f6c4",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2964,13 +2747,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "4e70bd425799d522e5ec729c44507c2497d31ad71a8c5da624cb4e720909e261",
+    "claims_artifact_hash": "1ef632421a6fc64c2ccbf2b6574f6a75a615eef995797f7f54721718baddccc6",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27BUFFAKR": {
-   "artifact_hash": "2f66d8d652c40ab16baa8450483421102708922b95a74c1ce7bd02dce2cdd232",
+   "artifact_hash": "4c0176fc2bf4cf68a5e00e36017ecf5f0e22c53b1e70349ed285a257e85e4ad2",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2979,13 +2762,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "64a09d32b4c7c6e28e4e5c27ec970cb95a8e313c0525de44422bca9eb43e2532",
+    "claims_artifact_hash": "4e76a4c512614d5d07b9c5f38d82c4980df71c84313b2dfa18706fba0786771b",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV27FLAFSU": {
-   "artifact_hash": "1656bbc6eba22fa327c1da9c8b9748f30e74e0a5c67c9f00ef2f6a889cf9c7e9",
+   "artifact_hash": "8654f902d978ab671dac619ccc04825cdedcc3748ae0b0135fdfb6ef58d2f361",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2996,13 +2779,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "d7bf49f05bb32b2130dcb871273040d93c7c8854e9b0a3e70dffd6b584713fca",
+    "claims_artifact_hash": "988a32aca64360f4478fd6b9f440298729fbe5b9fa5528a7f238669ea3bad937",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27MINNWIS": {
-   "artifact_hash": "860b8abe061b2ddb3884390de163438846acd149b46a2a3de87cd917d7f8edcc",
+   "artifact_hash": "0e7f323e99041f9fabd4681131ed255402981a3fecc172bfe9d66e43942ae488",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3015,30 +2798,33 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "c70ba670d2cd3ffc1153bd7fb62b1c23b73c37962ff45b16be3baad92c8c7f78",
+    "claims_artifact_hash": "4bfe48907513fa72b7a67e744a4f1d1fcd9e3cc53b3b29f29dce9b92170a8be8",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27MSSTMISS": {
-   "artifact_hash": "87ba41241722e59eac5fb4ba752826b4e0172201e912219f6637df024ee5f1a8",
+   "artifact_hash": "ca95599414783ea51a3d9eb77f78e5af7eb63ccaa6380a61b5d7e703956f259e",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:PACE_DRIVEN_OVER"
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:TURNOVER_DISRUPTION",
+    "ALTERNATE:PACE_DRIVEN_OVER",
+    "DANGER:UNDERDOG_HANGS_AROUND"
    ],
-   "status": "SINGLE_SCRIPT",
-   "survivors": 0,
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "d4538dba1ed9c3e241b525c4ebb4e27b274abd1e3765f2d6a556b42ed4f591b1",
-    "control": null,
+    "claims_artifact_hash": "919bf914c130eea071cae946eee8d47baa3f390eb86c030add43e34a35cce5f1",
+    "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27NDSUSJSU": {
-   "artifact_hash": "65e8d2d9e4798b9773a77cb0d31ec7040398d26c7603a8543bad39346da94321",
+   "artifact_hash": "cabc4f9d8f0f3f02c450e631ab01149984fa8ae0d5ea8a92472d75a975af4327",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3050,13 +2836,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "b008575424a8761abbf0cba64f43ddade6cfc36a7d1da78cd05f3f223ebd7422",
+    "claims_artifact_hash": "8f0c3bb2421d99e888075958b24e738c55839f56ee6afe702a43874fe69fca22",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27NEBIOWA": {
-   "artifact_hash": "cd1db80680f7e7ff88e8b823f2dd949d6c8960b630426d534eefaa867aeda267",
+   "artifact_hash": "182cb8d6ee9940e4576ddb2149d18cba0a8346e617b0b6a8dfb66d235ef50ec1",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3067,13 +2853,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e3f144cef5b3e8a7fc35a2524d4abc1ded7412df41a7deaa2d90a0afa060c027",
+    "claims_artifact_hash": "a2653724299b768fd4fffaa17090c97efb9db059d798745e440e74e856bab88c",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TEMMEM": {
-   "artifact_hash": "1dc4d422f67f873bae77a6944b65e3a8be95e4f56daeee64b9abe48493c6852f",
+   "artifact_hash": "336bd343a6270423fe44047aa1098caff07ce68c6f7dc31c47a4b97cf49c6d60",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3087,13 +2873,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "1e2025a339a61597621f4c0095b79f1d00fb8b2c12c993febb606f43af69cd3b",
+    "claims_artifact_hash": "dae99a8196258a54380899de81e99001d9b915693a6db1f3eff8828a90408b4e",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TEXTXAM": {
-   "artifact_hash": "fde80529ffe757c4486c1d78bd4b34e5a2af10096b34f73f933acc3ecc761f7d",
+   "artifact_hash": "104b74ed4525fa1335a40b8ae9a6171522b7580d539f8e10a844ae936bb64a1f",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3105,13 +2891,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "4b4e4bdcbeedcdf3156a4c9b54ec867cd2ac341915157c5371c4b9ea51d754fe",
+    "claims_artifact_hash": "f068a2c5abb68977e0ae22344cfeb1b0be5aa4c6e9ed161b305bef235264fba8",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TLSAUTSA": {
-   "artifact_hash": "9dc14c9f2c2c0cc50d6653845dd0276b0f52188273f776db92a188974ad1fe34",
+   "artifact_hash": "53b233c402df0cecab50fd67ec06fe8a61a696eef4d3526f9fd4e04e3018eece",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3122,13 +2908,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "d2d80cb971109815a0650aefe696e342c29dbebe2526b9ebd9cb04a12be4926a",
+    "claims_artifact_hash": "fc16762cedf29203ae29d7863821af858aed6dafbc15d965743d42716431af07",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TOLOHIO": {
-   "artifact_hash": "de208bbd78edf9bc65359f1164872d1fdd61b6310c858da6040720654e775e81",
+   "artifact_hash": "98a16aa06fd05f3933c9b693d8cf110eb4d8b52d5253febda2cf55a502e527c6",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3139,13 +2925,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "c3815e9b5e478a28989eac4c46ac7db995ff7f1ec8fdca95529d583d9187eada",
+    "claims_artifact_hash": "cd6d513bbd23ab1e18eb06ba4ac176966ff4413ed55bedd41901d96347054741",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27WVUUTAH": {
-   "artifact_hash": "53a1b7c47917f077570ad851402b64f1f2538b96f8db254be0eb96cc30976c81",
+   "artifact_hash": "39631394ce0f2623b7b3ffc4dbabb225215bbedd650c6f44a86a7b10978a8f1e",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3159,31 +2945,30 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "fc0611901d9be7bcb22bb77e09c02980b1e2f72b394033b6ab41ce2a5e4d5c67",
+    "claims_artifact_hash": "7b44b2d30bd573f1e3b4ce40fc98cbd65d436aaf124d2846418e320e6d6934c3",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28ARMYRICE": {
-   "artifact_hash": "c569dc29f08a262c0bb3abbdc2a9301f95ef19c4b233efbe994e1bf52b4f890f",
+   "artifact_hash": "91e2ccb1458fe931dfad9fd9426648ada9d6d53e3f8163b94190844f0145afe5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_GRIND",
-    "DANGER:COMPETITIVE_SHOOTOUT"
+    "PRIMARY:COMPETITIVE_GRIND"
    ],
-   "status": "SCRIPTS_GENERATED",
+   "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b8528df465d972eeef7891350f92480ae8cbbe2b7b7adf31ebbca467c7d87e5a",
+    "claims_artifact_hash": "0956d3d54a4ea12140730f16b9fe0a1683eebeec2d06bf0fe9eb3edb13464479",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28BAYHOU": {
-   "artifact_hash": "c205c4cfeb946a2fefa50326a691fdf91efaf7e4872fcf4ac38457832191498f",
+   "artifact_hash": "a50c6da568a6f4d47145df54f6ba37c3bc98a8b0af5913bbfdd66631f799c449",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3194,13 +2979,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8f90c0a35bbc8173e66e56d3ee25166217b8086acaf569081aef1d3af023ba13",
+    "claims_artifact_hash": "5b866dfba7aacde07f344c02a3d1a846f91863b674670afa7e564c50ad7460c4",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28BCMIA": {
-   "artifact_hash": "beefa0aaa56f07529cad90a492d4ac2f6601375fc49514d8706ec7df3c294631",
+   "artifact_hash": "96d8a9cf5ffc14051593889133fd6c8fea018a3b684681ad871d299ef52c0024",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3213,13 +2998,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "fbd58f80f716ef5f0aab49cd712fc0386df1a79ef10f3cd32be8b4abd0dff9f7",
+    "claims_artifact_hash": "66080a7234f0a6359574adbcc1b9113d8af7d7b97616c0608daee9169f87cd8d",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CCARJMU": {
-   "artifact_hash": "6e79d7972db5ffc274ca391774f4ad71db33c1bb5496dbaad91eb3caf234b53e",
+   "artifact_hash": "47f8aa7d4bde181728a3ffbc57827a56d5b429ebd7b59f231ec4d73d7bc19f0a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3231,13 +3016,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0fc087c1022096c96d5ea4cda7405200f435e3e4863b034d6d6dbe3fb11e2663",
+    "claims_artifact_hash": "a0f79ab115c07e146d5e72cabba2b26e4039db41248b5e8c1c47a9363bc18866",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CINBYU": {
-   "artifact_hash": "c4ee00be32925622dcb08d9977366bccb7721cfe102a25a31dc38d7bc0e52598",
+   "artifact_hash": "baf8ec3eb7c7629016047cc5cd846bdce9f9b9d0d5b4c800d2dfcf1b6464ffdf",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3250,13 +3035,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "74db466960d61a3a077163258b0751f6c196312e48f279d194ddc7c9849f3a92",
+    "claims_artifact_hash": "1890e896190886b83ddc79e2f2743a35d64bf8c8c711caeafdc6c358e3900784",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CMUBALL": {
-   "artifact_hash": "0e11d6f71ac8145730fb2008897b07dfa8dd7bfcf38b4ddb01660db15cf20762",
+   "artifact_hash": "2f2e8eef1d57e75e6b6df7dd2df2addb5e9597e4d4b249602e33360d31d3c959",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3265,13 +3050,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "dfdb0e635f6c17a754f0ba7fa30129389776a35dd7bd019db288fa7ff6a66896",
+    "claims_artifact_hash": "b608e690847bb0827f0c984bd8e35bb035a6f6da7f9abe86c5825d5580ab8ac1",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28CONNWYO": {
-   "artifact_hash": "e51ff9ac769cf1982cd3396f177391967029a40dc20613a101b48cbf0057ba0c",
+   "artifact_hash": "175c80d314f18f6c6dc22db9e2e7e6b87730a1077c716ef44eff0ccceddbb928",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3280,13 +3065,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "6bd70b0194d726389f75b2f8223a7aaa1eb8df364d923627f94fc0b68075d445",
+    "claims_artifact_hash": "518224c634c1475b84d1cc7b9d47bfc3328a325dc29198d403b07c77490bb667",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28DUKEWAKE": {
-   "artifact_hash": "524eba3046839ba0c6423c8e4136c003099074547e01f9dccbc899594e683a64",
+   "artifact_hash": "3fe57603cc087e3fc9665ac358a08024aa35d90058533c088a2dde19223da7af",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3298,13 +3083,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "bd2779dd6fe36054419fc8f382a67ccff43d038b5f7243b07026dd09b8780ba4",
+    "claims_artifact_hash": "40d5a29d4e3675567840c9f99a5e89efe32625befff3e149130f5149e5c7222e",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28FAUECU": {
-   "artifact_hash": "260ce79ed3391a683cbb15887352689387bbe989cfc5d24a96612a29984b21d4",
+   "artifact_hash": "1036656ed6335f7543d69feb3cc2d12f15e8aec158e88358278daa6f771a7e39",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3315,13 +3100,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "4e43218de6aa0c1168ca944addf8f1bf409336a0c9c2fd7ed2cbbcd7d2c783fa",
+    "claims_artifact_hash": "0a6179b6a57c7694838569d7dd9030f2d1262105f8edd0035a09c256bb38fa29",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28GRAMSOU": {
-   "artifact_hash": "a35b3ffe2a76602bd2ab1980b8d6430f1ae13ff80ace27526d2cf83bf470866a",
+   "artifact_hash": "80224fde072da374a2b301bf249e9daa672b511e149189991043cc58b66248cd",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3330,13 +3115,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "a781bc24b4fb1bfa68d646e28af4276c722e4f8793bb71a4e2b47655175499fb",
+    "claims_artifact_hash": "cf39a6d4ea677f0e9884aef6ae58abdff56d0c128460220e3de6616e12124479",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28GTUGA": {
-   "artifact_hash": "b0360022d4348c73213de8c1eb3d8a01b0fdbf2ec607838f23194c81efd2b9c3",
+   "artifact_hash": "cccce5bb61213d2627673cc37c51b1f5c7f0b7d36820cf4fbc404628a2e9b2cb",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3348,32 +3133,48 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "32a2aad4a4f15b1e1e4760a0741ab748bf8f990ff11abe0775844d701346076f",
+    "claims_artifact_hash": "47aad947a4a6f2927947ea57d7a9b1a7cb1723f733dcd5097a8b121ec4a51ad4",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
-  "26NOV28KENNWKU": {
-   "artifact_hash": "39b2c702cbb9dd9c170657cb0fe883afe10e2e8d938cd9b71973cc9552283804",
-   "data_confidence": "LOW",
+  "26NOV28JVSTDEL": {
+   "artifact_hash": "20d023a2cb4ca9e48eb5b3229905e747041d68ac151f24286ab083c21e6bb9f7",
+   "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:AWAY_CONTROL",
-    "SECONDARY:PACE_DRIVEN_OVER",
     "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "8fb69e6d0ee34c8c2f069487e8406b629232573e7752229f1f9352cbf6e6ce74",
+    "claims_artifact_hash": "ace9a5e886ddc167bc931b7d5525d626523c5b986105dd32d9cfbda8356df64b",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
+  "26NOV28KENNWKU": {
+   "artifact_hash": "bd4f9b55f18cf740f1d9fbc834764e2cf01a52562b687ba47eaeadeef4a20c1e",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:PACE_DRIVEN_OVER"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "d8f415a4ddecd4bc350e0021583e89c2809616835706d021e04308945850793e",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
   "26NOV28KSUISU": {
-   "artifact_hash": "43ef94edf22e0dbbc8f83b9d754ab30924b32ee7a85d0fd93a09467371c0ea95",
+   "artifact_hash": "ba14e824d56d660fa95f70b0951b2866130e7b5f1d89876246552de22e353c59",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3382,33 +3183,32 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "38ede79dda133126a7373cff7e9f729effb53b73d997b3e4ab2a3d6b9f3ef1b6",
+    "claims_artifact_hash": "1e3b47bae5cca134f91acba0c96af9401a9f03f449b915e57f5c12bd031b6649",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28KUOKST": {
-   "artifact_hash": "86c61b7a466a2df3a45db6b320bb38b62052e7bf41c27130675c38d54bc29ff5",
+   "artifact_hash": "4bdd74cf8730d8fda5e0520bbf8eff169f6a21555762a6d9ccf3c89d82196506",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
-    "PRIMARY:COMPETITIVE_SHOOTOUT",
-    "SECONDARY:EXPLOSIVE_UPSET",
-    "ALTERNATE:UNDERDOG_HANGS_AROUND",
-    "DANGER:HOME_CONTROL"
+    "PRIMARY:EXPLOSIVE_UPSET",
+    "SECONDARY:UNDERDOG_HANGS_AROUND",
+    "ALTERNATE:PACE_DRIVEN_OVER"
    ],
    "status": "SCRIPTS_GENERATED",
-   "survivors": 2,
+   "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "d2a3554cff46518a52e8988a0a5809eab4096d8ad27c39f74c346bb3f9b8cf57",
+    "claims_artifact_hash": "d63d5580260e6a1672eb71466cbd214caf52bde7d13b89d74810700e6a4c8eb7",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LIBMOSU": {
-   "artifact_hash": "92f001583a746d2e10d958ce6c3379b26a97a8816a4a678961e83f4b47971c99",
+   "artifact_hash": "2a155c3cdf5a007ea685809d5f30fef3a3bdde57583ffbefade63a1fb03604fd",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3420,13 +3220,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "4873ed92ca9a1bbe46b130db4f3d8cef19293a35c2e60ece547de68a8439e5ef",
+    "claims_artifact_hash": "dddaed2f61321ddc5d278050ea0edb05340f0bd97f6f22efe36e38894120cd91",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LOUUK": {
-   "artifact_hash": "656660b3f05a727fb23d84f988ce5cb35a692bc590f54d196b65cedafe7d7fb4",
+   "artifact_hash": "8e12a2021d8156f197ae6d434a6b54f13338898570615099f085381f2ba900bd",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3439,13 +3239,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "84cdd7bc77e416e0b6d264f4af7bfeee7a518828b7cc4af49554da2d7144df39",
+    "claims_artifact_hash": "bbd45a1cc857441fea07cee096ea967cb48c4c8f7831df6e2089376917e35248",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LSUARK": {
-   "artifact_hash": "fcd8fa2974bf80dc9a4d3bccaea9e7d57a2c2abe2a2d6e686a7e8e92018e8fb9",
+   "artifact_hash": "e16dfcd5b90ef50593b98cd3c11fe3cecaa7717197cd796965a550e901a1cc3b",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3457,13 +3257,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "ecf51befc14d5051342455a6a90cc21567c3317afe206d0b926db6aaa84d0172",
+    "claims_artifact_hash": "1f38176ff20a7ebf9de0e3c77b2bf45eb9821644f9f946b92aa9e32116e517b5",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LTGASO": {
-   "artifact_hash": "662206b395d453a90f77fb1d2f9c70103b9d44969758b3df667e7a04d3c16873",
+   "artifact_hash": "bcb0c12374ceb3e6424b501816b1c0b71e19629a6381c5004a6f7401c14988e3",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3474,13 +3274,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "80c27a3093402e6894d7e2c9ac922017f6f012c2336c08a75a2972e3a9e51107",
+    "claims_artifact_hash": "0f3bb75eeacb7137ed0d5b16d8902f0e1a7d2aa23fadf8bb75edca70d7443d61",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28MASSBGSU": {
-   "artifact_hash": "86f592498710628427f444acac5b107986822e8009147fcca7c52397af8dcff9",
+   "artifact_hash": "94be3192a3026a9ce35b0de11c6237d46adad0cdd9426c82fe3f270e8912983d",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3493,13 +3293,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "a521e53365c407606abd7972f0b75c66afbda2454cb5a59065234f8cf3288a68",
+    "claims_artifact_hash": "de3ce2be14b1f42b66f2384aabcff398861d27372c5829f01defd20d2e37115c",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28MICHOSU": {
-   "artifact_hash": "a0efcb3223c7dadb195dad2189ea849fb19708f2de95d25b5233e7a46dd64c51",
+   "artifact_hash": "afe5195467ba7c0ea2fc6e124e0c6fd942fc247dd3ee4ecc41157995663706bf",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3511,13 +3311,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "f01127bc27c9f7fe168962c9aae5a1315e7ea652d17c1f5631a5b020715fcd7b",
+    "claims_artifact_hash": "ca2a73d019471b4ecd1267989bdc57aea1cd6b4257dd572225d41f8abcdea0df",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28MRSHULM": {
-   "artifact_hash": "3193fdf540c2ed2f1e6b5053a2aa0037506d1458846d8dca88f87fa56f9aaf13",
+   "artifact_hash": "f287b26421a0d4eb8034afbe356670342116ea02179241f89992f775a2313de3",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3526,13 +3326,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "19ccecfdb0411dd2b59d5525839e61074642a3b11d221c9e24764213cc2e0d4f",
+    "claims_artifact_hash": "61125fdd36306e5b3c7c65369536e987f3d259b2a4b918894e43dd773d06b0c5",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28MSURUTG": {
-   "artifact_hash": "9b456a6a43cdd6eb448a46a05600db29f712719375fb3a1ebd54e389b93d25f6",
+   "artifact_hash": "95e5ad29f54abe12d043a279c7c2847fbf1ac11eb77fc44db3fec52aa652db27",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3545,13 +3345,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "fed462e63f023e1ba8c0525f62bcfe6a90a9df8f61583716201ed35acd85045b",
+    "claims_artifact_hash": "9be6fb5bed09f79bdc00c38e1bca93fc7e724574f270e29b65e814ad0d472959",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NAVYCHAR": {
-   "artifact_hash": "82d8f69e5134c514f384071346f091dd260b86d4412419e52627e72fb866e985",
+   "artifact_hash": "eb8cb78c7996ae80cb2a87c5f090127dfdfc4c7342c0bc9a94673167c33ccf07",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3564,13 +3364,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "00f65590731de994f574baa65f7e16874bc6497ffed8a58e428eca57e4a1eaf4",
+    "claims_artifact_hash": "1027a70319487b1d7f317ec45709541a784c8dbf99e929c31d2de4edc3c17a73",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NDSYR": {
-   "artifact_hash": "2a02049c9443f87e479b231c64e7c13ae9782a36695548d0f35c7b648bfb6c00",
+   "artifact_hash": "1b677a831efe761b94663d8598af9f6446533582c516d12d5a19b735a0ee6a5e",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3582,30 +3382,28 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "8ee6a1a0f54c907f3cf348be3473907989d5a025b56fd9406bf3c5cbfe8462b4",
+    "claims_artifact_hash": "e9e88b5338d3fe5472c2fa4635679a5dcf5488d6f1f4bd8cdfccab2fcd6a4409",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NMSUMTU": {
-   "artifact_hash": "06a8b54edf1b0d3deaf1960ae58bfa25c41c61d87d4a42975cefda811c50cb50",
+   "artifact_hash": "6f8f9657de194030614783ad15f592e423135f7c067558e50badfef22429c4d4",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
-   "scripts": [
-    "PRIMARY:COMPETITIVE_GRIND"
-   ],
-   "status": "SINGLE_SCRIPT",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "ceb44552d28f27352c7b0a4d2babada81d367b66af3f687bb438d3d02b38957f",
+    "claims_artifact_hash": "ceca3bdc4381047b6a575d6275e68300b52cd766a548b84f439f4938463606f0",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28OKLAMIZZ": {
-   "artifact_hash": "153da52e1e18f3320382edd34f668e4a1e82831be1b768f57c775fb695d2eadd",
+   "artifact_hash": "40387279b9de331652178f06eec37ab01765b5ff57d21a82d200d5bed5cfcd6c",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3616,13 +3414,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "9e03b0f39f87dfc396d414bc906765a82bfc11387169fa301595f6a00bc7f1c2",
+    "claims_artifact_hash": "9ff4b516c6e58641cf4c4fde04fa11c98f80acbf0f749d510f2edf4975e30f3f",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28PITTCAL": {
-   "artifact_hash": "d2e46a144f10aeafd50522d92d7f10ba3f95635c42f023d5f6a089768959e191",
+   "artifact_hash": "6f0c8321a148a69c0e570ebbfe51310cd199b5aa3f14356dba5748c915abc96b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3634,13 +3432,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "c8f0c90429a5f8a429a5efe518f5b4d6b35d2a39dab2bab91e8c5b0a972e073d",
+    "claims_artifact_hash": "8c73e71dae7def786bf8c5156050f20466b6d1cf9cf13d7912cacdd3b47c38b5",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28PSUMD": {
-   "artifact_hash": "dbb6f2ea2bb0b20944ddd1c7a792f5cfa1b5591cf441497a01190a3371f87930",
+   "artifact_hash": "967c10e649fd475362895c4e10ee908aa9134b8091cea5f03ed515c312a50d9f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3649,14 +3447,14 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "7163d768c2b00fbfe6b99fb028c72223387c4a3432729c5cb54a4542a20d1886",
+    "claims_artifact_hash": "2a626a8c57822d36c711b91a254947159869d8dda7621606ca823dd32d466218",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28PURIND": {
-   "artifact_hash": "edc145e547f6682e704128876feddfee77bd0c862143f7a8c3397a0744d76b81",
-   "data_confidence": "HIGH",
+   "artifact_hash": "485ea01a4a8e743b1c58cfeaa8fe9b4c453910ae5c29ac7206a0f462d433261b",
+   "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
@@ -3668,13 +3466,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "8636d7ee491ba3d74c3f39b6b4734297418453428a4cb9db3a4b8a1f0fa957f6",
+    "claims_artifact_hash": "f577b730847d873590f208fcbebb6654e7ac92cc688000d2234f6c3a9f248e3c",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28SHSUFIU": {
-   "artifact_hash": "0cb901f24a794df0e7d6acf36ab0c845b8ff3140daae768209d4c65056b61fb3",
+   "artifact_hash": "f3115d1930c8e2ad3811af5d39a3d48bc7162f10d57f53c2ffbeb39d841bcc51",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3685,13 +3483,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "dd10911fec1edae92be7b02f66082b67a77f1dfec2d98cf0ae31f509869cba36",
+    "claims_artifact_hash": "422a37f8ee6b6144a0c43b32a6279e24eaa9fd48460e3fbfa829614c4b6a942e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28SMUSTAN": {
-   "artifact_hash": "6e0a9d8c7e91a995318141f9904106618d466e61d1eb7eceb9779c2a99d17e12",
+   "artifact_hash": "48263f8fb7a401a228058717952b87c4ba6c0201fb50064b86408d7beb3750b9",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3703,13 +3501,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "cc0072af479c4fe6e1878fda75ee0c61ce7b356126206208bd3b3ef962088522",
+    "claims_artifact_hash": "f5572b02b5f865b2c2a45f8e4d7d2abb7b7cbea6d077ece063c7c05ac8b5d7e3",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28TROYARST": {
-   "artifact_hash": "a6cff0e1ca3c94597339dfaebf6b8a25c72222cac9a77c484f8971d4b045ff2e",
+   "artifact_hash": "22dc598cd8137b636ed99c2865fd059d6850508511c6d408d13ab8ffeed3769f",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3718,33 +3516,32 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "f2eb5b366736f7b338f83dc0629b6056152c571125fc7917200f37809aad3b4d",
+    "claims_artifact_hash": "c4956eaecf17cd84c8b72c1dc648a8c293dc3f825f3351637699320c69343030",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28TULNUSF": {
-   "artifact_hash": "5a20aad5296e2cd3caf420123941a5e8bd0c3780476e62d4b1c514a07be9eacf",
+   "artifact_hash": "ee0fd7c4016bd13250f7c6cc6da8a53b72b5fa8747cff1a0760c977ffa368b25",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
    "identity": "PASS",
    "scripts": [
     "PRIMARY:HOME_CONTROL",
-    "SECONDARY:TURNOVER_DISRUPTION",
-    "ALTERNATE:COMPETITIVE_GRIND",
+    "SECONDARY:COMPETITIVE_GRIND",
     "DANGER:UNDERDOG_HANGS_AROUND"
    ],
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "88df923b63a4b1cf1fab34dcf3dd500660682f4a5b2d96af2880d9e47807cef1",
+    "claims_artifact_hash": "8086e54e890d7fff34f660317ffde89c506fecbdd1f9e1c0c185fb2baaefddc5",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28UABUNT": {
-   "artifact_hash": "860e55f814cad9335816d82541f49a080bd35f4b0126e1cc71c261c04d2488a4",
+   "artifact_hash": "0b4c997eb45751ebb018c9ecf00d2fc9571309e7a4fc6db54c93d23b1ee7eefe",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3757,13 +3554,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "6d9a7b627f03a8f1f608833fa9500701f4350e5e42be19388582130e59b518af",
+    "claims_artifact_hash": "7ebf423ff5e8902cd27951fbfc5befc4d83da7fafd1b27fe8c8adfba48696063",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28UCFCOLO": {
-   "artifact_hash": "33b8f3fb89f128019a8fef1df6ef7c7d2ef4924a9aa82a7d56ae31c5c7327c5d",
+   "artifact_hash": "1ea40c467a27912625c3306be62cfc0b2b91a013d092ad4a1a7437717b3d7d08",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3772,13 +3569,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "842bb48f5c8a794a2d3d00f98fcb89b0a279ecbe5f0578dc04376d6aa55f2857",
+    "claims_artifact_hash": "9d521e2ca4dbb9b01143feda4c332a30e5f978149f1a30a95eb817ce7531604b",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28ULLGAST": {
-   "artifact_hash": "344668edb4ed4c0e723ef90cd2b58e7e8b11b1ac24719d4db268b41960cd5a5f",
+   "artifact_hash": "38c24375228f3ff3b1f3d0a49a9594929d76f19ece3c5f1bfd2105220ebf1726",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -3790,16 +3587,16 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "13378e2b042e8b75ce7ea3daa7f43ccce39d0d30e3c0f8ff9e34452df574e3e5",
+    "claims_artifact_hash": "3872a88a40f3778718ab00a1cc5d983bc30054f016a22edb9e09867c3171f689",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   }
  },
- "ledger_rows_written": 218,
+ "ledger_rows_written": 198,
  "methodology_version": "cfb-script-engine/1.3.0",
  "v2": {
-  "ledger_rows_written": 218,
+  "ledger_rows_written": 198,
   "methodology_version": "cfb-script-engine/2.0.0",
   "status": "SHADOW"
  }
