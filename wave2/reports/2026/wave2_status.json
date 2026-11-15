@@ -16,7 +16,7 @@
   "system_failures": 66
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-15T04:52:10Z",
+ "last_ledger_row_at": "2026-11-15T05:37:42Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -42,7 +42,7 @@
    },
    "next_read": {
     "at_n": 100,
-    "remaining": 33,
+    "remaining": 32,
     "state": "INTERIM"
    },
    "observation_reasons": {
@@ -55,55 +55,55 @@
     "EXCLUDED_PROTOCOL": 580,
     "PENDING": 108
    },
-   "settlement_pending": 6,
+   "settlement_pending": 5,
    "summary": {
     "ats_like": {
-     "losses": 35,
+     "losses": 36,
      "pushes": 1,
-     "rate": 0.4696969696969697,
+     "rate": 0.4626865671641791,
      "rate_ci95": [
-      0.35430428496377675,
-      0.5884231427340136
+      0.3485844371949035,
+      0.580835423953701
      ],
      "wins": 31
     },
     "economics": {
-     "fee_adjusted_pnl": -3.02,
+     "fee_adjusted_pnl": -3.54,
      "hits": 32,
-     "mean_price": 0.5026865671641791,
-     "n": 67,
+     "mean_price": 0.5026470588235294,
+     "n": 68,
      "roi_ci95_bootstrap": [
-      -0.31467732724157627,
-      0.14383757506434083
+      -0.323753169907016,
+      0.12837368065184349
      ],
-     "roi_on_outlay": -0.0862364363221017,
+     "roi_on_outlay": -0.09960607765897585,
      "unavailable": 0
     },
     "home_away": {
      "away": 40,
-     "home": 27
+     "home": 28
     },
-    "n": 67,
-    "outright_win_rate": 0.5970149253731343,
+    "n": 68,
+    "outright_win_rate": 0.5882352941176471,
     "residual": {
      "ci95_bootstrap": [
-      -2.8305157089552235,
-      4.1165917164179096
+      -3.41961,
+      3.7700262499999995
      ],
-     "mean": 0.6083805970149256,
-     "median": -0.1111,
-     "positive_rate": 0.4626865671641791,
+     "mean": 0.07921323529411793,
+     "median": -0.18055,
+     "positive_rate": 0.45588235294117646,
      "positive_rate_ci95": [
-      0.3485844371949035,
-      0.580835423953701
+      0.34304882927391533,
+      0.5734339357131498
      ],
      "quantiles": {
-      "10": -16.919999999999998,
-      "25": -9.6979,
-      "75": 11.0625,
-      "90": 17.606679999999997
+      "10": -18.45,
+      "25": -10.08855,
+      "75": 11.0,
+      "90": 17.55501
      },
-     "sd": 14.610303021925883
+     "sd": 15.143189907509475
     },
     "verdict": "EARLY_READ"
    }
