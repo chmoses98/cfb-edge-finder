@@ -1,13 +1,13 @@
 {
- "catalog_captured_at": "2026-11-17T08:30:42.884939Z",
+ "catalog_captured_at": "2026-11-17T20:36:29.784758Z",
  "counts": {
-  "IDENTITY_FAIL": 43,
-  "NO_SCRIPT_CLEARED_EVIDENCE": 47,
-  "SCRIPTS_GENERATED": 73,
-  "SINGLE_SCRIPT": 28
+  "IDENTITY_FAIL": 3,
+  "NO_SCRIPT_CLEARED_EVIDENCE": 59,
+  "SCRIPTS_GENERATED": 94,
+  "SINGLE_SCRIPT": 35
  },
  "football_manifest": {
-  "fetched_at": "2026-11-17T20:19:41Z",
+  "fetched_at": "2026-11-17T20:53:29Z",
   "games_in_log": 752,
   "play_log_coverage": 1.0
  },
@@ -25,7 +25,7 @@
    "status": "IDENTITY_FAIL"
   },
   "26NOV18AKRMASS": {
-   "artifact_hash": "3d615819d53e8f775e65ca04d210ed457e6fa5e550591e16fabae4e457cf3661",
+   "artifact_hash": "be1579f63bf1dca1a510b56bb84dc97c060580202726c9a6b89103174f7bee38",
    "data_confidence": "LOW",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -36,13 +36,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "59b9b94647043dbaeba3763ad096f0e7fad8436ab44e0d48c1e21db0cc9c0d4a",
+    "claims_artifact_hash": "1dd3c821f496adc702f7f9e60244091ff70ea9fb43790c05da2683e999c92735",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV18CMUBUFF": {
-   "artifact_hash": "334fce4b6028f8f126657bc75d9e506efafd7b3e3513918fec92841e652cc353",
+   "artifact_hash": "5cf568911e24259ec2fe12aa618f750612581d1d277764a8c20dbf8403b7e985",
    "data_confidence": "HIGH",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -53,17 +53,28 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "882b395098bb78b302d109c87d898a99b62d651954917141d51eb398cf1526c4",
+    "claims_artifact_hash": "6e7b4ec4ef4878b53e6bb31509541d174f2f5281fe3515ad7b514bbd7a24df05",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV19NWSTSFA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "7a7b20d2f982582397b4fed4f2d1c6024bd02438189e1850e5236dbc95479c75",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "4a87445b0b9ffaadc368f36c56bab8f00e38dbdd053b01939c7e15aa4ad4b828",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV19RICETEM": {
-   "artifact_hash": "17c77032608abd11523916c257e7c51961a9e6d9437b17332139a7e244769065",
+   "artifact_hash": "ec0b8ed97678dceff64d332ccdf11be8ba0bc2828e56dd5d593a1d27846af7ba",
    "data_confidence": "LOW",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -74,7 +85,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0de22bc0d11de919c71c950a8d159874af9594831e07d09c5f00bfee04d67b4c",
+    "claims_artifact_hash": "4a04e933bb0262b949442fd2855056ecc488702836853f8b75b8b20d5033b404",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -99,11 +110,26 @@
    }
   },
   "26NOV20BGSUTOL": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "262fd1ba85bb278b227b1a37e66cbb61c8c5748de8f0b33162c5c71cec5bcbed",
+   "data_confidence": "LOW",
+   "expressions_mapped": 154,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 22,
+   "v2": {
+    "claims_artifact_hash": "c015e1881147ab03086ee27cb8cdcea2662b3a1e2f28080af3bb080e500dc3ce",
+    "control": "HOME_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV20CLEMDUKE": {
-   "artifact_hash": "87210d204e3b9f372a41f1a0d08d631f643eadd76b938e65cc40b53b1429b06c",
+   "artifact_hash": "a617b5db05ff8d623b60ca3eb1dfe5caaea662625319b8068c7b5a947bfb6ba1",
    "data_confidence": "LOW",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -116,13 +142,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "c1dc26e4bfb48545730d84db9ce87147dd2229652916c5efadb0ac3ec962a801",
+    "claims_artifact_hash": "812000638572b93bd096f37ce5a3efeb91fd4e5b87ae9047b5c0df42973399ca",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20ISUUCF": {
-   "artifact_hash": "7e4ada2ac0a8be6a16e2823dcd906c5fe8b38a4d523155d1fdb72e1f2d2b7c08",
+   "artifact_hash": "bd1ea53a187d603f3409040b30aa2b766c45b196f793fb9223243c87b2b36828",
    "data_confidence": "LOW",
    "expressions_mapped": 134,
    "freshness": "FRESH",
@@ -131,17 +157,32 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "da4326590a448089dcd09201c49b3bbabf4742ea4a758d3a0abb3f9aa2c9fd4c",
+    "claims_artifact_hash": "dc9bb8f598a8bad81258cee711f61c680df2552a30b6da447808020552865c47",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20OREMSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "325415c63337b38b83a25ab352b3d1fb1e4849002230684c857957327db664d3",
+   "data_confidence": "LOW",
+   "expressions_mapped": 152,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "SECONDARY:TURNOVER_DISRUPTION",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 16,
+   "v2": {
+    "claims_artifact_hash": "05194499c4426074fe0c5d479ea49e4e54313341c882b9b4f8070a2d304c4d18",
+    "control": "AWAY_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV20UNMWYO": {
-   "artifact_hash": "757b2b3226fd2146d7a077552820ec93a9494afd4c46af122abe587f00c81b1a",
+   "artifact_hash": "d97d8d90ad14c9e1da7b65d8526bd14442a0c99c21d6961566ef599082126d98",
    "data_confidence": "LOW",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -154,14 +195,28 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 22,
    "v2": {
-    "claims_artifact_hash": "b2fefa49b429fa0a2247af5e04d2cbd1ae61940d3bc34d1b399ff9815a29028f",
+    "claims_artifact_hash": "4463b7b328cc96f8330d54d701c36a128143f39cd3f6c0792fb6120830376779",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV20UTEPAFA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "c312a037c51f969980a7ff391bdcf4d864fa0906b09c2ea2ae24cc8fd68a815a",
+   "data_confidence": "LOW",
+   "expressions_mapped": 138,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 9,
+   "v2": {
+    "claims_artifact_hash": "3cca245ae4a66e43a8668535e009f5f81f8c4c8b78936608d41648273e70b6bc",
+    "control": "HOME_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21AAMUMVSU": {
    "artifact_hash": "cfac4720125dfb673fe4e4005229d57cabbc2ef911c42c2cbaa07483558867dc",
@@ -179,15 +234,37 @@
    }
   },
   "26NOV21ALBYNCAT": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "1b9efe908abc62866507c56de01c874414ef4c5cbbcf2021f07e26a0e809c7b8",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "1e035e8c8f2358421d13a3ab68342c5194e1d9221155bcafc91b410886e79d5f",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21ARIZKSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "6a366c9c1230153cedb8c2ab1b241635efc76165f32b24ce22bf549095617984",
+   "data_confidence": "LOW",
+   "expressions_mapped": 154,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "563294a36389cdc017cf7f9fc8a93c333fd74520b626620df63fd02c18a7bd65",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21ARKTEX": {
-   "artifact_hash": "f34e11333be24b1fab3733a0d873b8bca84d2b803b87d92322f2e580d81c1718",
+   "artifact_hash": "61a44f1677d8d86d6071750ad99e9d1c92dae8a84903bcddb21d722709e11ef0",
    "data_confidence": "HIGH",
    "expressions_mapped": 136,
    "freshness": "FRESH",
@@ -200,13 +277,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 15,
    "v2": {
-    "claims_artifact_hash": "d2c8367bd6e5c25407b3db4c315db2d65163ae1a1fdf5f39f52aba6377860cfe",
+    "claims_artifact_hash": "4b21d4d0801897f7a64709d2bb935b5c94d54e7ffc8efc06b283e92622519168",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARPBTXSO": {
-   "artifact_hash": "a7b677f61fb1d9384ccc81857a2083b1279e10fc5182b3a1e442f71d3a8a3dc8",
+   "artifact_hash": "fb2292b5cc6b1298c3b688088b060c80d95bde843a4304a920cf751f65de2a70",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -218,13 +295,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "b76dc6ba5fdb3da530e0f6c027de0cd5d7f738e87d8a89456c998eca6863e74f",
+    "claims_artifact_hash": "c56fae1bb3d06245e605ca84be1b2fd4c9ef8ac29d23175b5085370ea19f6ae3",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ARSTLT": {
-   "artifact_hash": "f41a26b05b7000f454e6032984fe31fe2fdeb7a6ce19ca0c67a4012fde49c516",
+   "artifact_hash": "33ec593746ac3e3505d6e294ebde337195c60203c2d7fd101b4cea717e7ac0ed",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -236,7 +313,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 6,
    "v2": {
-    "claims_artifact_hash": "40b5767a767513f3d50f168477d60fb7d2edf85e610c0399364f3e3c8793be53",
+    "claims_artifact_hash": "a4bf991e5880340f8988f6a0855b24fb11866479c00f1dfacaab90cb18926f98",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -257,7 +334,7 @@
    }
   },
   "26NOV21BYUKU": {
-   "artifact_hash": "e4410a3e4b4320c1f13660821639c830203ac0525d2ecf4b8a8a2774e0e62c74",
+   "artifact_hash": "fd22df2c07e8f3dcc9b93b33c07913c4cc41977ce128c5e85ff6b50b09c5e36f",
    "data_confidence": "HIGH",
    "expressions_mapped": 144,
    "freshness": "FRESH",
@@ -266,13 +343,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "45e2f45df9207b50cbfe2e137bd579628e23ecac1c10bb0d5e7d4de09bb2dda6",
+    "claims_artifact_hash": "651f81924cf196697b769c5f435ccf05555d1b1f12bc29c8b9ca53b6031fec77",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21CCARULL": {
-   "artifact_hash": "39d48f08aeef74d864228d4be8cfe87f6c5723ff840795528a14ba3b1f1de61c",
+   "artifact_hash": "9f14a25a1a3e00c7ec549f59058226ee370d43e99a886d440de87249f0e281cd",
    "data_confidence": "HIGH",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -284,13 +361,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "f0a809196ef334d69e5c2ff15e748d2f6a13c269d0680534070cb033d899de36",
+    "claims_artifact_hash": "37093c81f51eef9325fc9e8e8b6021526fbc161b9e6226f6a732a86eff8bac26",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CHARTLSA": {
-   "artifact_hash": "fb0b15f2a5d224281a9f0eb16d36ef09b88c09decf90b5ade95b926ee32dfe5e",
+   "artifact_hash": "5187f5d6a55f0ecd55305476f48486bdde05fdf513178793c53ac1585e430c59",
    "data_confidence": "HIGH",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -303,13 +380,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 16,
    "v2": {
-    "claims_artifact_hash": "7c5ce235aca45d42012e72d5f7791b7cd78c75eff0dbd82d6373bc0276f5444b",
+    "claims_artifact_hash": "4287c6a0c1cecd7ec0f9d91c6df7a3fd0adcdac6b5d56003c8c1aad53d446ac6",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21CHATALA": {
-   "artifact_hash": "d0e500161c6c7e50a22ea783e9b1f4f0d79c1b92d495149449ef2d87fdcb11ae",
+   "artifact_hash": "a329d10545fcbc033d6c10e9e740a6a54a3c7c3d74e1e4d135ca6e0fe7a398c4",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -318,7 +395,7 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "ce8d776764e1ca9b061434bb9a4ee2e759fedcda6ce4145e2c25c8d0a0c6c074",
+    "claims_artifact_hash": "b4368a28d6a465016145d848a27c42c2eaa9be615daf553537523bbd8ead243f",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
@@ -339,8 +416,19 @@
    }
   },
   "26NOV21CHSSUU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "3fb86f5b0a191ec4bac6cc366f339975dd00124d16eb57c98db07e32465c0611",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "0ec0da5795b04b4362de6887ec0c77bffefb86c8bd530e16b8277588331bdbf6",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV21CITWCU": {
    "artifact_hash": "27c4b28a20f4d995d5b0b45dc7c3470d69661853cdca746013f9506be7d681f7",
@@ -376,7 +464,7 @@
    }
   },
   "26NOV21COLOCIN": {
-   "artifact_hash": "52e4c965c08d67061ea855cfd5ae116b1a67a3a987daaa0c7ebcd7cd2bf772f1",
+   "artifact_hash": "3d53de4def8773b17569d9c47abcd8409b37a8e84bbb8a56b8980dd96d7cee9e",
    "data_confidence": "HIGH",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -387,7 +475,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "ed9d571d177bd215720a1e8bfbcc4243bf9ab60af0f853fd40a0739829337d05",
+    "claims_artifact_hash": "e73797a4595c029b5dffcfa3d287b3d92fd51ffb40f08fb869a207fa15a546a5",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -425,7 +513,7 @@
    }
   },
   "26NOV21CSUFRES": {
-   "artifact_hash": "7121a8f75dec868e823f60c9dd83d04f86c502791360780ba66dacf8e13614b0",
+   "artifact_hash": "85d4a133993a53503c1cf5d78fa911dc7aa57155268f133dec7c64a7a54e50ea",
    "data_confidence": "HIGH",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -437,7 +525,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 11,
    "v2": {
-    "claims_artifact_hash": "827770868062fa62e8ec11bba7a963b49220f665c87b2ecd06b73502f95eafec",
+    "claims_artifact_hash": "23783218023c9abbc2b0f4adee6e6edce0539b9cb339f112c86c9a47e8106143",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -458,8 +546,19 @@
    }
   },
   "26NOV21DELNMSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "a0b75d811d47ae82ebf9d89af511333df7bcb712cd3f2d6ab731ba951aeeb041",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 150,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "8b5ad591306bb32560d1b7d2d6d90de900a210ffd3bce25677058aa488e3440d",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21DSUSCST": {
    "artifact_hash": "5189a5f9925a65b08fc062b87b072fe694996b51e9417d8138fb9ff0c77e8803",
@@ -492,7 +591,7 @@
    }
   },
   "26NOV21ECUARMY": {
-   "artifact_hash": "aa3acb1a4dfc7dffec26a4bf7ce03605088b54253242fc38cc2bf158aa573261",
+   "artifact_hash": "d829023612ba2122f1565e0448f190e843f9d9265461b694665cfb41eee8c98f",
    "data_confidence": "HIGH",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -501,14 +600,25 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "90d10db6fb10f63a9420c6414385ecbeba5e041678ced54012dc26cdea1d94ae",
+    "claims_artifact_hash": "b218237a5285728cf9ab7617104fce3fc4540a64281aa4469ab28b7ce44d3313",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21EKYAC": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "fd2e64f77b3ff0a3046199082aa1bd8a202e2390253386e792b565707c760957",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "7c62c74227b2391ed7ae219f35e34331c2542ac09b6c318d78bbb8e9006e14c8",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21ELONTOWS": {
    "artifact_hash": "4233ba32601dc2c3bd110710c26747a0da4c39c4ecc1335be8b0d78fb2eefb4d",
@@ -526,8 +636,22 @@
    }
   },
   "26NOV21ETSUMER": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "b698f58726e1ad2104b3327516594d8a6840b79c9cac6cdfd83bc67c2b5ed1be",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_SHOOTOUT",
+    "DANGER:COMPETITIVE_GRIND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "7c80dfb53ecee24c1c6bb7a7e069778a7c4fb75aa8a10b45726304e9c6a57e29",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21FAMUCOOK": {
    "artifact_hash": "7af86b8ff6f4a97b81770fcb954359cdb8a9ba74e4d98c4950faf9863ce4865f",
@@ -548,7 +672,7 @@
    }
   },
   "26NOV21FIUKENN": {
-   "artifact_hash": "255ca940d7c2c1034080270495dbfcb5fda18a42e57b5fa69f7d029a86f3254d",
+   "artifact_hash": "f081e037a6d8a7b83c6ca883e737909b504f8a55d4541f08da84dfa3b1a958ad",
    "data_confidence": "LOW",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -559,7 +683,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "e0891b161716877498b4c20500bae8b1a9fe23d4a62f6b36c52d96d858f18f6c",
+    "claims_artifact_hash": "8d8b299e1fa19bd067fa2520b87b8a33859e64d8ab37a79cc2698f5f5e230123",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -598,7 +722,7 @@
    }
   },
   "26NOV21GASOTROY": {
-   "artifact_hash": "f45e90ab6654c89f2b2a48cd2244ce9768e62455162ed1e1cd46113903d0af72",
+   "artifact_hash": "242e56219bbe79457ee5c95b0809cf08bfe2b0fe16cbfb00c46a133c16b1eb88",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -610,13 +734,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 21,
    "v2": {
-    "claims_artifact_hash": "29018c60ab597c6503d169815228add33c100abd099af201c8842fa5944a85ab",
+    "claims_artifact_hash": "f557c5bd31049ab652a178dd129d1a866411451194d3e5b051a722db2565efac",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21GASTMRSH": {
-   "artifact_hash": "9b32c7ee5eeded242ff8a89d702fc076a4ede4aed46974390472589470d83c22",
+   "artifact_hash": "4c078729ba3e0e2f5030397cfaf596391b89148b9e96487812c18758880b4b10",
    "data_confidence": "LOW",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -627,7 +751,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "3860ea544dabf6e84b60dc1a407139b80943375cec4c00142f7ff8a338f49813",
+    "claims_artifact_hash": "6b9b98d15178fbe59bf2fb34344d436e237e78b2f4345f61c0d90956ff716a3e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -663,11 +787,24 @@
    }
   },
   "26NOV21HAWNEV": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "203cdc04b50f7f8011d47208388bbfe5c49443a8ef7c2a500e220b06da2b6976",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 144,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_GRIND"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "41b9d18d2336d7adf0a96a9a0f075675dea7e8e8742b61ea4aebd43d888c1473",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21HOUWVU": {
-   "artifact_hash": "505d2a41fe610cc0d39c50baa4c128c23ee4544ab7a99595189708822a8fc2e2",
+   "artifact_hash": "2f70cc154636892070ceaf55d33b31f8d883dafbf076da5a767a7862009e88bf",
    "data_confidence": "HIGH",
    "expressions_mapped": 166,
    "freshness": "FRESH",
@@ -681,7 +818,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 3,
    "v2": {
-    "claims_artifact_hash": "b2baf750bdd0919f7c1871db95905e85b413dbf6cd987ae85bedcf0f5a25478e",
+    "claims_artifact_hash": "3ea2cdeca9616f3b1a74b6c30c53e533c2411610d95ae1d95e772c1076d59d87",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -719,8 +856,23 @@
    }
   },
   "26NOV21INDWASH": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "8150b1d8dab80406412101137653b21200374ca4fa64b6701b35fd43acd4c232",
+   "data_confidence": "LOW",
+   "expressions_mapped": 146,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "SECONDARY:TURNOVER_DISRUPTION",
+    "DANGER:AWAY_CONTROL"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 21,
+   "v2": {
+    "claims_artifact_hash": "8a9f928b9f773dd4ee38e0807908f9ad2045a2d07708dac4a15af70d6ecfe8a9",
+    "control": "AWAY_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21INSTSDST": {
    "artifact_hash": "dbd1897c638aefb871643cdfc4113e5e163936d5a634a89739cef1a532c3ef3e",
@@ -740,7 +892,7 @@
    }
   },
   "26NOV21IOWAILL": {
-   "artifact_hash": "aaf25a6ac20d71e095bc65e62881a52d8dab7de7616d3be61226d8a98bd2d6f3",
+   "artifact_hash": "8b823a85d02d2226254adb8db1b1516dfd2fbb7289dd9854c26b489887e2d891",
    "data_confidence": "HIGH",
    "expressions_mapped": 148,
    "freshness": "FRESH",
@@ -752,7 +904,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "2a40d54954d1689856da1002b004e50869ba47ce50226d6b56103bc83a1f82e9",
+    "claims_artifact_hash": "507a29c3087efb35be5e8ce33f7400aceba5cc59c61920a97793ceb02b173c5f",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -773,8 +925,19 @@
    }
   },
   "26NOV21JKSTALCN": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "19e7ef6f5abd4dc422400933bfab3772a7d806a37f466dd7d9783c47de312697",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "cfcdceb2987980bef0af132c9420727d6ed62b415847d56ba27edad92af42e26",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV21LAMMCNS": {
    "artifact_hash": "61d03fd11e5fc632cf7b281d4df40c107e5f4595dc338fb76ed95142e24d6319",
@@ -795,8 +958,19 @@
    }
   },
   "26NOV21LEHLAF": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "f0766c08d7843ebe62567db5d729c2b26a881210bf7c54705a12dfaa8453d04f",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "352eb9c02064a45f49aabd06ec713008ba12afd22920904b828c42fe4d124332",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV21LIURMU": {
    "artifact_hash": "cc6cc32979b88f63c4b24407400563db758d1e78a73ff780fd4de39bbed0ea01",
@@ -816,15 +990,44 @@
    }
   },
   "26NOV21LSUTENN": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "e28303322e5697bcea9b359a9534ba59c7e0f7de3eaf65e9dc3fa999747e49a6",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 134,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 22,
+   "v2": {
+    "claims_artifact_hash": "2fc0eb3cb7e5200e380460799cde2c1855691fed48555348823ca891981d9b1b",
+    "control": "AWAY_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21MDUSC": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "a70b2f497d8244082c2463efca40d760970e320144f8ec903ed2d7a115ac19ab",
+   "data_confidence": "LOW",
+   "expressions_mapped": 144,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 13,
+   "v2": {
+    "claims_artifact_hash": "3b7cfd9c2a0cad807e169633967178df4782172138b016d36cfbf44ab83cc0dc",
+    "control": "HOME_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21MEMNAVY": {
-   "artifact_hash": "9fddf7cdc5bb7311100788fb9ed7a00f2c45a0f6d1f27e22d2e5e61725f6c498",
+   "artifact_hash": "a4ae2389f9273edf000289aa27a2ccf01ea7066896aafeebc05e8d27ffacec6c",
    "data_confidence": "HIGH",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -836,7 +1039,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "9cec9a5b21eb41c3ebff28524c489db58c33392945d743e17f21b29019c1f116",
+    "claims_artifact_hash": "7397ef5525307baf38876a2b0c8ef36483c8a9360014362f7082bb2f391f27b9",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -857,7 +1060,7 @@
    }
   },
   "26NOV21MONTMTST": {
-   "artifact_hash": "ca3a11a938d00f016d379a87a4962e90b1c7a8d87c4019562b2910d8817c7aea",
+   "artifact_hash": "b959ee268a988e585cca019d301f8ea4fb1f1caf49806a3e1a3a702fb8645fe0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -869,14 +1072,25 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "ab7f5e5b5f130d70009bc73de6425631d2ad74f946b7f2985c9ad58fe3082595",
+    "claims_artifact_hash": "8fa53c175a3ec97b12d3f32d9a8662a45ea466526094fd42d51ad94eba96a8d9",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21MOREBUT": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "de6c9b399dbf546485dc5aa9d8c0a34d6086e6d056fd4929ab71edd8976c3726",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "b586db78c4a75688e105e9562dceff837d8f450920696b8f90ff5059bd7bddb5",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV21MORGNCCU": {
    "artifact_hash": "a7b41700748968e2f0f120e4e9ed583ebab6e287b10a4db6421e56a16b5ae734",
@@ -896,7 +1110,7 @@
    }
   },
   "26NOV21MOSUJVST": {
-   "artifact_hash": "0ad98a4e7111cdf0cb86e68b3a22c06f827817fc541925c9f148472cb8d9fad9",
+   "artifact_hash": "918493b9b6f10aba7267d98fcd8852564a3405e06b21ab8bf13de51d8320fd88",
    "data_confidence": "HIGH",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -908,7 +1122,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 20,
    "v2": {
-    "claims_artifact_hash": "5b1d6d9c196a9b99043bb853ca93b55a948b2c3a1532954d7fbaea5008c24109",
+    "claims_artifact_hash": "9e21e289357afa5d286e2d88ecbe576be35148e22d81a432a4ac19444163227d",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -929,7 +1143,7 @@
    }
   },
   "26NOV21MTUSHSU": {
-   "artifact_hash": "2321fb01a7acbbffd45f392940fa306f88c70a4813f465b0616a7345968fe2ab",
+   "artifact_hash": "fe1a8596118063bd92e76d4bd56d95ed143a68fded8e6c3fe80afad880d9cc63",
    "data_confidence": "HIGH",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -940,13 +1154,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "cdd42d0e644462530903233782815289f315a3345fe76df38ab7c7cce6c57db2",
+    "claims_artifact_hash": "c54dd217e29507ee4fa6cf36bb06b9ee8fece73d5ad01765652f80f52eb6b193",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21NCSTFSU": {
-   "artifact_hash": "6105705ab93444ee3c186109b9c5bb56759a94a19f5ac8d1cf51b8741e66a6a8",
+   "artifact_hash": "237aa4d7450a866275d6d9d765448abe0059f57a44e09f927f1f4b52a1600a20",
    "data_confidence": "HIGH",
    "expressions_mapped": 158,
    "freshness": "FRESH",
@@ -958,7 +1172,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "f7c2ae12edc290863a8f5ef38f3488aa8ed33cf1b6ee53a2c44dca1ede530c77",
+    "claims_artifact_hash": "07e4f03856185b41b5bb76cfdf1b65b6a17497736fb74c1d5cb80ef6373e3997",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -979,7 +1193,7 @@
    }
   },
   "26NOV21NIUNDSU": {
-   "artifact_hash": "54045426656d0883e1f052cfa348ce3cf59749399080a4e56f21e6a5e4c2729b",
+   "artifact_hash": "d4be84f3b3b81b84b10578f1f5a3692d1a24621a64e45c2966c97ac8d43f1ca3",
    "data_confidence": "HIGH",
    "expressions_mapped": 132,
    "freshness": "FRESH",
@@ -992,17 +1206,31 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 14,
    "v2": {
-    "claims_artifact_hash": "67871574454d0a46d58b5c7e2179e40b3f7408e2ff1f224dcba6fb3c36446aa3",
+    "claims_artifact_hash": "ee193906f87d6769be58ef3a061779715117fde1c9a3adff219b8fc86613a260",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21NWMINN": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "abc57d1ee5ce7580af8e5e66baa4b0561d0a28ebd8b942f74299238dafe9fb32",
+   "data_confidence": "LOW",
+   "expressions_mapped": 140,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 9,
+   "v2": {
+    "claims_artifact_hash": "afdd2cc996e78a0a190b8f0f1ff226c128921d5111b9bde6e59337c719ee5f04",
+    "control": "AWAY_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21ODUCONN": {
-   "artifact_hash": "22e4ac8150a08e3c433be81fa77da5b8da444b5dd3513a0b66c35c46903067db",
+   "artifact_hash": "58c254f8cceb90df8292ad9a961bc42f1b25316f1c35d908a1eadadde7cdfb74",
    "data_confidence": "HIGH",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -1015,13 +1243,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 16,
    "v2": {
-    "claims_artifact_hash": "909b7d75b77e42ea0def0440a7e08b0a51cb4e9cffbb0ded4aaf199154b9ba00",
+    "claims_artifact_hash": "735b8d61e32d62fb9512467c77f8f888eb4f8afcce5fe005a749baf6cacfa30f",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21OKSTASU": {
-   "artifact_hash": "28f922cd892056775c1865b6ffd1239917699b33f7ea0109a16dd8c6200602e6",
+   "artifact_hash": "ac5b4a940e9142a43cb23657049389aac3f200694a7d7262646418fd475ab3c7",
    "data_confidence": "LOW",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -1034,13 +1262,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 16,
    "v2": {
-    "claims_artifact_hash": "119c5c63cd439ef1025b628c6bdf0c9c55c9148eec47fd574654c98d32ad626e",
+    "claims_artifact_hash": "19dc1f168dabc2fb24e7fbc7056ee2d64b14d5fd7fc96942a10126f190e70caa",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21OSUNEB": {
-   "artifact_hash": "27bbf2a78e9a7b2f2d309b7dd4e4214ef51409a0493b8c1b2bf19b260b3dd8b9",
+   "artifact_hash": "3afe67db29364c5932f11a968767092442b0ebc5b1fba67e502b1d0997452305",
    "data_confidence": "LOW",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -1052,7 +1280,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 9,
    "v2": {
-    "claims_artifact_hash": "9adbdfb50fb8e6d541eede2c006f34f12f074361baecc3dbcc2fb1788bd428fa",
+    "claims_artifact_hash": "a264f6f60c9235506d43254d129068bc1ffc4b49e61830610186d78b01e44ec4",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1091,8 +1319,22 @@
    }
   },
   "26NOV21PITTLOU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "9ef9ecd0d20cb61a8d7bf682e40540d44ab87343b8f2e95dbe81c1f7466bdeae",
+   "data_confidence": "LOW",
+   "expressions_mapped": 152,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 8,
+   "v2": {
+    "claims_artifact_hash": "367c8cf279eeae1f7e8c940c1a70d3f9e74df11e66fb0e5bd1f2d6bb472f7157",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21PRSTEWU": {
    "artifact_hash": "3ba0d740a1889fb051ce9a5161f0aea99a4d555eb15ad716742192321d59d510",
@@ -1128,7 +1370,7 @@
    }
   },
   "26NOV21RUTGPSU": {
-   "artifact_hash": "f534efe3d59dfc70e976cb31b03c8fbb356156c6a90e030be5d6d5701dda114c",
+   "artifact_hash": "6224638f7988a83ba05fdd57ee0c56cdcb76f3da696cdeebe373d3bac2ce01b7",
    "data_confidence": "LOW",
    "expressions_mapped": 136,
    "freshness": "FRESH",
@@ -1141,13 +1383,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 15,
    "v2": {
-    "claims_artifact_hash": "ad292d0b59f2a692062127f4dfad263aae9fc04b966b78c82fcdf347602b08b3",
+    "claims_artifact_hash": "df8d1245b7f5ae26d7423e7fa61fd49d08d0bedeeb17edb99524376ee66d7b65",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21SAMAUB": {
-   "artifact_hash": "04236c4c28f441dc747ce1f62cdb1bec90315d0d491bb68d485472c028991703",
+   "artifact_hash": "0431385a3da341d12f731f8b648501594c03661a52d11d84c31957802b2701df",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1160,7 +1402,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "f491d04e6592740a01351dde60c5cb596ceff458611257fbe36ff3d0188fa069",
+    "claims_artifact_hash": "26d2875b6c01bb6e948327b2f13c737197895772fa9186e2c9a4c46d7de9c3e7",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1181,7 +1423,7 @@
    }
   },
   "26NOV21SDSUBSU": {
-   "artifact_hash": "f8b4a0899f231fe8ff8ba7f053e7e4ee86297197f1f7bd1f9c19b9a6a9cc100f",
+   "artifact_hash": "7b95d328a543cd04fd9cefaafaa2d905e0204c48dd705b8c3a02794d04e5ba4c",
    "data_confidence": "LOW",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -1193,7 +1435,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 13,
    "v2": {
-    "claims_artifact_hash": "e4c6a709cc859587cba5299b8c4c02c1338887d11892bda9fb20e1fabb9fdc0c",
+    "claims_artifact_hash": "4b75ef2b9f90c7ee5aaf74bfc7ebdbce9e637503e1c66308ca06b1d267467c20",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1231,11 +1473,25 @@
    }
   },
   "26NOV21SMUND": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "e284b077481c4650701c4f79a869568d627c1700199f5f80746360b0ee906853",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 146,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 7,
+   "v2": {
+    "claims_artifact_hash": "83d58264d0cdba31c072fd46f14594c727f96269838b0679ca3b93063794af22",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21STANCAL": {
-   "artifact_hash": "c2226026c8df394edb2eb84f30f6cdcde8fb6ffd17713a5e5a91c2fb494748e1",
+   "artifact_hash": "7d5d9447b4f12da806626b8bbd036999f5ced54b96c778528d26c3a973c5145c",
    "data_confidence": "HIGH",
    "expressions_mapped": 148,
    "freshness": "FRESH",
@@ -1246,7 +1502,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "9f4c80201fba4271f32d9c673f3de0d7f2076e57a37cb3d792d29ae1a278e602",
+    "claims_artifact_hash": "e44b4422cdc3545f3aa7e31721da2948dae9042d6228f23a49f424e5c20e43d2",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1267,8 +1523,21 @@
    }
   },
   "26NOV21SYRBC": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "4c110995b6b37337c6a59b213c05fcd2433507eb5707a69c154d3f1757d22027",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 140,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:TURNOVER_DISRUPTION"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "7da82055304f619925be02564d41c733c9b5aa7a20a0ef839c977591dc57c362",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21TARLUNA": {
    "artifact_hash": "ffde27da37721a5ce71675579e46c25ce9d2600b00958deb7bd99cc642a62f33",
@@ -1304,7 +1573,7 @@
    }
   },
   "26NOV21TNTCMSST": {
-   "artifact_hash": "d10063576be2bd27c7e525de0edb814d2bfd0e3994c6038153c6a4de350af368",
+   "artifact_hash": "365935635e721cdde14c978b635a2bbc52996784ed4d42b8a841e2f38493cead",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1313,13 +1582,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "4d46953e91fa563be410ec35769e225a6f32e95ba1ae45d899126a0d66f2885d",
+    "claims_artifact_hash": "c1538b8961e0ce584f3ebdbd35018eb2c0ae65ce5ff19270a5685fac15889dd8",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV21TTUBAY": {
-   "artifact_hash": "921dc71541b44aa47285dab68546a2172905650b48b1c36559b879dc55d06c63",
+   "artifact_hash": "b38388134cef09e46dc7c54101011a6dcbd6ddd82a5983a4c33e007bd1504d83",
    "data_confidence": "LOW",
    "expressions_mapped": 150,
    "freshness": "FRESH",
@@ -1331,17 +1600,30 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "9c9ab31acee5b3cff2bd7ec8234b0e76550ff0ba723bcc60b726fd58b658e020",
+    "claims_artifact_hash": "13338d5b13401f3d9fdbd707b3b1cac92bc55b62f8263d872acbd0d9abf58d6c",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21TXAMOKLA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "ba30bb10a8a1ef99acf64db5aa939a304b2dcbf7567fc93cd43f6895c6d8a059",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 144,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_GRIND"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "9609b917b25c6ff351426d14deaaa2688b984529a6de66acd229201d796c84f6",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21UCLAMICH": {
-   "artifact_hash": "acce99f6fd76590bb9e06a5685dd29c75cd5038aee89b9dcf74ca40608556b2d",
+   "artifact_hash": "60fcf936b80f9cef7b182d738008e9aff8bd4c18b526fc4d62ec246be2c561c4",
    "data_confidence": "LOW",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -1355,13 +1637,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "53a651a89d9662030ee546c09fba77ebf474f44d2632baf9d778c78cc30f1a7c",
+    "claims_artifact_hash": "afb4fefb307d9fbfabf4dcff55a3825ee2f4ba058ccf673150a8a9d82868d18f",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UGASCAR": {
-   "artifact_hash": "8c042cf5e1614c37f2209521ef3e8305fc0c5bb4f463ec90a47b5be692c328b4",
+   "artifact_hash": "3e314e0fcc053de130b51cbe094a3330c6792525d1dadda5ab1b71413462725c",
    "data_confidence": "LOW",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -1373,13 +1655,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 18,
    "v2": {
-    "claims_artifact_hash": "862866c7dbaa60ea8835939f2fb0b4b4a2a23913898b1f1ba3c5c37505705a3d",
+    "claims_artifact_hash": "85801d5e05366348edb68fe6129c91d3b58fa2ecb07e71eedda15d8011053243",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UKMIZZ": {
-   "artifact_hash": "d3910de04ec6ff350c0229fd904e083edd60378bdae54e7d6acd981746d5d67f",
+   "artifact_hash": "d0ca5f156fea182f491e36618ed83d1428726f2fecf3732a5c3ea00193ca6b08",
    "data_confidence": "HIGH",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -1390,13 +1672,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "787354fb93ba040aa10890d1655ed65ea20e31bb339d2eb1347ba8ff6a39bf40",
+    "claims_artifact_hash": "abe7d8576caaacd0d55c0c1b617ed050b7ccb4753c8a34302b8c0d955dd09aed",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21ULMAPP": {
-   "artifact_hash": "658cbbc880a406161d29a9836ad448bc2ef7516f189193207cd4a196119e8764",
+   "artifact_hash": "ac9e3b957d4f9210c8628136fc5004118b6e5dc0efb47f5ffc5253f3a0ad807e",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1408,7 +1690,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "4c119c8889a538aac45c5373cf4aafbde8015dba13b3ee233ec2e8636b2a09bf",
+    "claims_artifact_hash": "6cefbb121ccd9f13ff52e056effea04b9ae175c41bdee73d581aa5804ae35fab",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1429,8 +1711,21 @@
    }
   },
   "26NOV21UNCUVA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "474921b43190360155dc75823169a4c6eb61f5e76b60677f8c779e4a0448cb5a",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 138,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_GRIND"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "099038d3547d88f2a97bb78c42d60d4162b58861bbfe2591b6ce20a51bfbcaca",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21UNHME": {
    "artifact_hash": "b76700c1d8b7308c5e44aa1b7db84a9d0a557239cdb1f04c940779b7e6f4f3fc",
@@ -1463,7 +1758,7 @@
    }
   },
   "26NOV21UNLVSJSU": {
-   "artifact_hash": "fdfdf22b1484a313124b827783e47054029f7660dca696eb918159b5ee3d3754",
+   "artifact_hash": "5a152ebe777505ebe04fb8cdd1d43705925bd71da7d33b33bfc0c459c72ebf7f",
    "data_confidence": "HIGH",
    "expressions_mapped": 140,
    "freshness": "FRESH",
@@ -1476,13 +1771,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 16,
    "v2": {
-    "claims_artifact_hash": "6844510dcddf7bd47fee5a01a30357634c9e984be1d69d445358a0896037f12b",
+    "claims_artifact_hash": "aab55c318725cab94278982706f80a5d991a58a4282dd15c271dab6c436fd39f",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UNTTULN": {
-   "artifact_hash": "8ad1fbb68376dc66cccc9e85e45bb7913005512bd2e385681c57ea28f33a0d8c",
+   "artifact_hash": "b190c903d38fac8995bb6dcb1f3b97c9d2ef593c04a8168977cdd62c287a67f3",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1494,7 +1789,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 21,
    "v2": {
-    "claims_artifact_hash": "bb05714fbdc615a9cbd1d9cab94cc7480d44cde29467d1d98d37519444970d6a",
+    "claims_artifact_hash": "c4080dc4e3246214fe4fde14b6dcd42222bc3df9182fafa597c46a5c713cbe96",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1515,7 +1810,7 @@
    }
   },
   "26NOV21USAUSM": {
-   "artifact_hash": "ab26e56396f351003544479013980cc511d6d2992b4bfd48902cf596ce38627e",
+   "artifact_hash": "614b9702433fb422402e9ffcbc68396149337ca8a67e33c1efc39cfed673d237",
    "data_confidence": "LOW",
    "expressions_mapped": 156,
    "freshness": "FRESH",
@@ -1526,14 +1821,27 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "7dafe15716a14c479e8738bc73c2a672f6576a089403e1853b574f5fb812ff1c",
+    "claims_artifact_hash": "8e16aa3919730130f98ca098905d6e189292e019a8dd5edb4d8ee3f4b892be0e",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21USFFAU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "7758946a5642c67c3200828209bc65ea5f6bdb5271b0dfe25dffa9f0aae7a6e7",
+   "data_confidence": "LOW",
+   "expressions_mapped": 154,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_SHOOTOUT"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "4b6b5db5e6186cb11df6477c9726e8ee539008e62f4bb178369f940ca519005f",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21USTVALP": {
    "artifact_hash": "1bac51017ac3343b8f6b3150f0eeb6b9e1a5c0a944a86ae696dd43840e2f2e0c",
@@ -1551,7 +1859,7 @@
    }
   },
   "26NOV21USUORST": {
-   "artifact_hash": "f98184fbc10f06c826061314b5c55cdc242f408aff049acf7fc3d828d8825f63",
+   "artifact_hash": "a2a6321e857b32dd63f9e107584d3c8e251b78879c76385642892984a916685a",
    "data_confidence": "LOW",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1563,13 +1871,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "0299a51fe261e65cfab5e7a3e470bcb6d41225107149c3483151db13870641a2",
+    "claims_artifact_hash": "479acb5fb87a9a47bcc8f814926111a636e51d276485ecde58c336453d77136e",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21UTAHTCU": {
-   "artifact_hash": "d785de530059b71f7188e501d88a885933f45319cdf39d7299a1f7ea2c8add80",
+   "artifact_hash": "0d944085269f3f81caf29fafc09af41455c650eba15d1a0f7b860a6dbdcc940a",
    "data_confidence": "HIGH",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -1582,7 +1890,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "18401d98ff56457043dbd0d06d4edbee70e98cb44cd89ab2f5e65e78ed69187c",
+    "claims_artifact_hash": "e9c6b5807c1dcbac0235a54f4d22032e07bf81acf2549727b6ca4a7e09eb56cd",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1618,7 +1926,7 @@
    }
   },
   "26NOV21UTSAUAB": {
-   "artifact_hash": "5a5190d1d9733a5d4fd7575b3820290c11598836dddc000b0e5e9b9a63e41f06",
+   "artifact_hash": "0bebee6efb5181d85acaa2caf1b58b5bf7a6ce48ea0379f2cadfc728f0a259d5",
    "data_confidence": "HIGH",
    "expressions_mapped": 152,
    "freshness": "FRESH",
@@ -1629,7 +1937,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "9c14b01dd25680a9131f5d6b0c67a7a1fd98df534c1d83a273082f9a185c51f0",
+    "claims_artifact_hash": "6fc3db77b04a49cfc316ea79ccb8bd34e7fa7b501d5c6df70eded1ad673f2510",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1668,7 +1976,7 @@
    }
   },
   "26NOV21VANFLA": {
-   "artifact_hash": "848640b0dc37265ba6b308e73822197eca70133eb921b2cf99af46a79e6c3888",
+   "artifact_hash": "8ceb0e6434bae5512a2af8e1e9c06c72a8e0ef95e7cbfb5ea460c1f2870445a9",
    "data_confidence": "HIGH",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1680,13 +1988,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "5fb89fba7b007f4a1be245dfde16bdf2ffd2df379c6e3eee4812ff4b3730b580",
+    "claims_artifact_hash": "3b1086524719d621f497ee05e4a1b2bb076a39c18c3817d6380aa638b8204e9a",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21VTMIA": {
-   "artifact_hash": "7a3b4b70706a3c00fad0b435facb1220332eb962e173618db570fe510e1055b3",
+   "artifact_hash": "4f0da2ea38fd0c4599baa0edeb5ceb77d2293bb28fd5223aab5e954b37821241",
    "data_confidence": "HIGH",
    "expressions_mapped": 146,
    "freshness": "FRESH",
@@ -1698,7 +2006,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 10,
    "v2": {
-    "claims_artifact_hash": "a5ccf2b2237c1e14648d625e38c0aa9169394381591ba8b60aa3869d4263b6c2",
+    "claims_artifact_hash": "7a351cb8849a47ba3943bc7671d490d2eda3797aa3cde986ec977b4ff3572c18",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1722,11 +2030,25 @@
    }
   },
   "26NOV21WAKEGT": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "4609cdfcefc5ef82ba60926f56a20d4d7f158cbf4dd8de398861139e8668bffa",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 140,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 9,
+   "v2": {
+    "claims_artifact_hash": "b98ce3b3b7dbcfc99286fa0c3a0e7a8b202d88744829775fb91c7ed0d669749c",
+    "control": "AWAY_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV21WISPUR": {
-   "artifact_hash": "ee41d7a635924e8c7b230ba985bf1bf2eeca27b49a76ecf726cc2dd7397a2d18",
+   "artifact_hash": "80cade3fe321ed13cb8c6841a51f27b1361728e3627edfc8a461a300f407c84b",
    "data_confidence": "LOW",
    "expressions_mapped": 142,
    "freshness": "FRESH",
@@ -1738,7 +2060,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 9,
    "v2": {
-    "claims_artifact_hash": "eb6b1a986723ec8670bba7519939cb5f02f7b45e66199b1ac00d1dcbf0943f59",
+    "claims_artifact_hash": "b2aec40fd38175d2f52f037805bdc2a730b4a97af44c5a64b28bf8b91ddd5444",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1759,7 +2081,7 @@
    }
   },
   "26NOV21WKULIB": {
-   "artifact_hash": "fdc7f2e8c0cec4f5acf668c2c4238c6bc8795096244e3a958372c3efb9f66c29",
+   "artifact_hash": "dfaf059aeca1ea70dfb003acc4b227119925124ce2af7c5689a03abacd775a62",
    "data_confidence": "LOW",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1771,7 +2093,7 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 18,
    "v2": {
-    "claims_artifact_hash": "297c69f0d9ffcc8b1449d1ae3541b517797d0547f0097fbf53f5609aaeb5cdf6",
+    "claims_artifact_hash": "14f569de34a5707de7a2204cca82f6b5053ba456d7dfb54ccfa120c7ae8aab91",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
@@ -1794,7 +2116,7 @@
    }
   },
   "26NOV21WOFMISS": {
-   "artifact_hash": "d9214939e14791fa5375aa0bfc42f2df431ce0912336aa79604ab7bc07f28fbf",
+   "artifact_hash": "512257f590b7166c9723c4757f8b612d0a8efd3fead0943e0422eda57c2b50ca",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1807,13 +2129,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "d2918ca05303154994cffe189e5256c77fc736d263cc2d8cc0e059c5556e9ada",
+    "claims_artifact_hash": "0e579c28cb562684fe8769a197ee39ae36ffd564305d07ee531a1775deef5cc0",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21WSUTXST": {
-   "artifact_hash": "362a2bec4167e3cb93ccfc78875f77e32c7f2b73b89c3fb34dbf6a21f02c535e",
+   "artifact_hash": "b8c637150fdd4b72d0c444bbcb188f3e5951962673f264dbe07c0c758b870d1c",
    "data_confidence": "LOW",
    "expressions_mapped": 154,
    "freshness": "FRESH",
@@ -1826,17 +2148,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 8,
    "v2": {
-    "claims_artifact_hash": "465ad10f08a5e019d73e58ea951ad5f7e2b11725ec0bfa2a3bf4b686c2377754",
+    "claims_artifact_hash": "7bff181465ea635c346493b59e6b022435675300972dd17aff801275ed886e03",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV21YALEHARV": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
-  },
-  "26NOV24KENTEMU": {
-   "artifact_hash": "4e6955c4ca6cafc53bf6a71c1e0262bc7087f2177ae2179e5009ac072eed56d3",
+   "artifact_hash": "8befd91645e6ea68c35284cb8626d92b9907b13d6d69ff4fff61d7da35a6e44a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1845,13 +2163,28 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "1b1c704f404047a30f12265d6921e82dcb343ca48a362df59598c58eb1376fa0",
+    "claims_artifact_hash": "de4faf7927464a4b489bbf63a43ebc4c324cbd37d2fa2ea28897a93c7f4ba330",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
+  },
+  "26NOV24KENTEMU": {
+   "artifact_hash": "483a8277f6f3e52ebd38ed914a70dcb68faf6759c65691f3cbbd41316e58f2d9",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "5454489ad5aee0dfbe30812c73cd3e1d8a90dcafabe1c07eaa8828be10db44e0",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV24MOHWMU": {
-   "artifact_hash": "2c82fc449c83ae45ff00c470d970f2a88e24f78e8348a452e9b085106aa16f86",
+   "artifact_hash": "b557911d2bee4b2f1c8d9e772e493154c54376790a271bf6bb0863c56c3b811b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1860,13 +2193,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "bda51f90a76ef2e88f81069a55f6deb05cdc3f2319f5ea7148f762b71fae2c86",
+    "claims_artifact_hash": "9e95b1d05b3eaebba7514ffd7c2a5311d130374f538a36b3249c3cf0194ac173",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV26TCUTTU": {
-   "artifact_hash": "a00c863765bb3004670cf640afca4b8d48512cbdc1fd5c62d8281747c4fa7657",
+   "artifact_hash": "25368cd204122170457487cb8682abcd2f53ec957862864132b9fec83f134d63",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1877,13 +2210,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "d1b92e0f62f43e107ab5621d9c61e8fbd2fe126aa672a301ad779dffe519fb0f",
+    "claims_artifact_hash": "aa23e3695f5e60004d3ffdd8e0d234b50ac56563f90dca01f72e209bb9351e99",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27AFAUNM": {
-   "artifact_hash": "2a1edf369e49f4f34b9786d278129e185f7fe1a042b66b51d343cc2ccf05a4c7",
+   "artifact_hash": "3787daf77d05d25ed6ac4812bfc3c4df5bce0bd7d02d737d28b4fc8765233f22",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1896,13 +2229,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "a1061a86e9b2067d69c2b4b2d4db1d8cbf38215112bccd77b2910b62acce0b34",
+    "claims_artifact_hash": "85facca8ea55ae95b575851cbf90593c27a4e87920ef742f5e684489d74962dd",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27APPUSA": {
-   "artifact_hash": "e0a5b4139823ea7e8bffaf330c0a298b7ba419f1ec06d05da19b02db6e458259",
+   "artifact_hash": "fe62a57d3faafa5664d5ba35340896d14bd1153c449546b61b1803c11339dea9",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1914,13 +2247,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "a077a71c3b97abbe1d0c18d21a5cf798ed0c23c281c049fd0aae9a95d7801af2",
+    "claims_artifact_hash": "42a6f9e5666bedd1833fde8d850485d39bebf297924a7e49d0d7447b63ffbea0",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27BUFFAKR": {
-   "artifact_hash": "884f67c598094c74732a3772132f1f1121deb01cea8799f74d7814e21c675212",
+   "artifact_hash": "058366ad6fd906c0abc48ef862390534d44d712bc1d402902d6de7677f164550",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1929,13 +2262,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "bb07309f1ebd32b9b4086d9151dc165012aa3c81b65c8660b1c1a6bfcb536c90",
+    "claims_artifact_hash": "a63d436117371572091aaedaa346d81724b5fb5c37e97f58bae3222d9394228b",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV27FLAFSU": {
-   "artifact_hash": "81588f54c2a611a835fda4e1189e439e79abe7b789aa8c972ff499eaa5a77f02",
+   "artifact_hash": "2cf5fb12d28ea08faa54033bbed9cb25e738daa115138a5cf25756d3eaa07921",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1946,13 +2279,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "00d1b6d77f3ea76dceb407c27302267fb00163c8867b508d5868133d3dd6b1f3",
+    "claims_artifact_hash": "f4032160ac538402a21a2d99d88ccd34bf8fdc1aad2ba15b513caf0851782048",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27MINNWIS": {
-   "artifact_hash": "b2bd2691ad306ef40aad8316cb66f2e2b7383b304410ad5f4bdd903d457c151d",
+   "artifact_hash": "64311dcf709ba9b35ba30803d38567277639f2fe30e68bc0ed6fca92e1120025",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1965,17 +2298,32 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "c2518ca8d70543b58715e599afe43b4ea17b9966a40e701e06fb556c33394c9c",
+    "claims_artifact_hash": "c61f655b609e9e0caaef71b3f6f9caa54a5a739c5b848faa433b490a7f86b016",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27MSSTMISS": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "ea5226229b43becebf4e5211c121431d0594b60d3bbdee1080ab3423eca26272",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:PACE_DRIVEN_OVER",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "6699f75d5d00d907759686349a5697a853ecb8e25b65f80d62a5b6fda2619252",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV27NDSUSJSU": {
-   "artifact_hash": "4620973ce34156be545f03bc4dd7190d8c3a94d09bc023a204a7823b3ec3231e",
+   "artifact_hash": "7b69a24bdc94ae0b2dd293e6d839ca8b4f4cd2678a8cb9e7f9bca9968417116b",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -1987,13 +2335,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0691a21f10df9b7c6414dba7d9c8ed3e4decc5f47bf97c50703d968b49119da3",
+    "claims_artifact_hash": "36b3a071b26546fe3a4fe61160509c68fbacaf1555ad9de1aee44cb3117c6df8",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27NEBIOWA": {
-   "artifact_hash": "22e80b83c30e181804fc4a97660d93ffb6d11a9be25202b85b26c0e8f0c21747",
+   "artifact_hash": "aecd96e700fda1a8195667c6ead99d174dbd36639faa6a9e471a24480dc6f63c",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2004,13 +2352,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "34601d2c2a193f6542ea31db4ad6468936121ce8650ec2cd7a7c810997e53877",
+    "claims_artifact_hash": "b675fcf3430bb78f715bcca4f9f86dfae1514323be1990c393743df6a0fc6c29",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TEMMEM": {
-   "artifact_hash": "f17aa1f9fa2b364294665e29afd5d8f78f65bfff83a52063c3d5c5724ca8ef9b",
+   "artifact_hash": "68efcf79488fbc335f5842d6448259f7e25621dad3967608908fbfe9a173d4e6",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2024,13 +2372,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "52082b045888b91cd9f463bfef71e5565b421c998f082770d78eaa295d80433b",
+    "claims_artifact_hash": "32032c021f1ec0a6c4e40541245b10e61293dac429a8efa8ac74c5ef11667a4e",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TEXTXAM": {
-   "artifact_hash": "e81bc4a2691338d430fd65aa86e9944cedfd411558d4b5b0852cc2882454ff93",
+   "artifact_hash": "bca2072602a52e31c3602f05e24bd8f6940edb3f2504883a3538afdd8908ed43",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2043,13 +2391,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0e5a3d881d36ff8552fa12ba1060dc70d7228aa3a0850fbfc9b8732f6de54625",
+    "claims_artifact_hash": "1a32630ea89e7ffadce0d167caa9aeb8ef651b9b9f4f3dd10b131307ec3b12b8",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TLSAUTSA": {
-   "artifact_hash": "a792102a3d05626ee3f21f31fecf25fbda03932e9c1c40e6adb5ab2def21841a",
+   "artifact_hash": "af48f390fb692e1796fa9a79937ed39303db1632a794de34300ca04277d5b876",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2061,13 +2409,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "a122ced2234d79e686e9a98a698fc175bcde0cdc0f27956131632ff4b372a798",
+    "claims_artifact_hash": "1fc0731806c951e5366a26ed4b44c3d459f23ce0e4c85f2a9d50eb331338ed69",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27TOLOHIO": {
-   "artifact_hash": "d353306bf494a94220fe63c8d79613bd043bb449d211d25d0624447f79743159",
+   "artifact_hash": "fb3946cfed8c971aea7976a3d0c60aefb0c18ef16df69986834dda4c148c455c",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2078,17 +2426,33 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8f221aa44074bdc0a8ae0e46e4c14c34f552f53ed988ef1e1040b2d7448ae947",
+    "claims_artifact_hash": "cdf6148beb983140ed168089df8a1f0a279f518516e107a7db81ac852f4d7741",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV27WVUUTAH": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "494c9075a7e8a422cb7e46285e3012cf397615f1347577998475ad4cf4fc7507",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:FAVORITE_PULLS_AWAY",
+    "SECONDARY:PACE_DRIVEN_OVER",
+    "ALTERNATE:EXPLOSIVE_UPSET",
+    "DANGER:HOME_CONTROL"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "27ddb86a015fb9260fa5be829983c6985cb027ff6b6f2a2ac127ebafaebec5c9",
+    "control": "HOME_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28ARMYRICE": {
-   "artifact_hash": "90ef1c755391bd154174c6b0f07046441f91c95547243e897de84f2364762e4a",
+   "artifact_hash": "edc14ddd6a5f65bff14010105c84fe0d5a505a80721138a555b82ffa4042ebdf",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2100,21 +2464,49 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "c9b6072e8afac5d73edb205cc66f1a9c101444afc4ce4ebf04d430d697108436",
+    "claims_artifact_hash": "4e8dac58cc9862104e523dc5dd49f1d805cf2860f1801b75d4bd19ebb422ea4d",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28ASUARIZ": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "570bcfc4f8173430c24a9b2522a2f9d8b0b71827e7a48c99ffa55280e4e69e1a",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "66ca68acfedc60edd48d48e78e13057951b1cdfef5c3e9cbd0c8b0ee128cd810",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28BAYHOU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "15a94535bb3d71eff8d627f8ae15a560e14b823ccb3a9fdd95faad480fb5327d",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_TOSSUP",
+    "SECONDARY:PACE_DRIVEN_OVER"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "b4be4bf29684c98f80fbde4304ad80e44a577277ca3e04ac1162a397effb4a7a",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28BCMIA": {
-   "artifact_hash": "58e3becf0a617b2e30730b68fa56f119b90eaf0b8fd1915f58f9485e3e9a12ae",
+   "artifact_hash": "71bd2660894c17ad1a193507959a70c34283e4cbf6ebfd0b223500857e212b32",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2127,13 +2519,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "ead8990ee2aa33d9a7cf09c2fb9a609ae0faa1ef9e74bca6909b8aa1069634fa",
+    "claims_artifact_hash": "a2f5e750124b588d1069eb47eacdb8c72ecbab961ff633f006ab721711eb08a6",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CCARJMU": {
-   "artifact_hash": "21a326d000dcabb4d317cc04cb967a85678c79d7800356b75b795264e00af545",
+   "artifact_hash": "b39e130cc6163914865083a3e9c17c5c41b71d0a0ac56e59059c147621172e8b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2145,13 +2537,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "fca9250afb9c352d54b57b18e91479a842f4617416b445c364626d5858172228",
+    "claims_artifact_hash": "e9dd3075aba7b8912552c5d24afb04f7572f827ef1bc895fffb490b9a08c1dc1",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CINBYU": {
-   "artifact_hash": "1f57791a8c45c1f353d5647fce78e35b83cd9e7ffc00d2fb272359ac1440f66b",
+   "artifact_hash": "e1fb46b46263302107336dd122a1e4b600b3ad8fc77280198e5339d9d4fee0f4",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2164,13 +2556,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "da1a4186bf14dfa44192f78d09dc6761786b17dc5cd4d3e6bdecafb386bc6e7d",
+    "claims_artifact_hash": "8adc6322af45fcb7103bc05fc4e37f4fc5996a870c369a18f8d400a03587ca9c",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28CMUBALL": {
-   "artifact_hash": "5646eb0fe5047f30c06472c04bb2e8c09230fde7d65dbf538516ba926408197f",
+   "artifact_hash": "f75a41e5bae5b15f04aa1c752e33e52f5ba0e443d9d6b2d4c6a3bcfa56180dfe",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2179,13 +2571,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "8c15b3910b7b334c095933244320122576199ebc2cd3e10a6eb8716ff423e9f2",
+    "claims_artifact_hash": "6ac0b3c116e54243c9005b9b8aa76299557e5924af35a2b85571e8f3b594c836",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28CONNWYO": {
-   "artifact_hash": "6330f0c2efd673bd3417d51421cdd255e132b4bd1891cda0944ade864b7ba8af",
+   "artifact_hash": "da8320d7118ae46ef99dcb068f6e39f90cd9c605e69a996eca1a3a2605685a71",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2194,13 +2586,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "665252bc5e6937ca6642935f41da4838ce7ecb2b00cfa585aea45d81234b68be",
+    "claims_artifact_hash": "7c5efcc8cca25ee0d1be78b96df0b4348e36c664a85a79ff91c04630822d671c",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28DUKEWAKE": {
-   "artifact_hash": "449634d7408ee50cecfa774c3ce30dda7291c652d7b87fbff594e58edc792f72",
+   "artifact_hash": "645affa3bc6adad326014d0245914ce7d0649a6f9e03b08e2ae627f8bc58ca29",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2212,13 +2604,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "3b5a190f89a7f2d8f8e687dc80b79e5e8ad7cad5fc6cd40b6223d76789ab7d25",
+    "claims_artifact_hash": "3a0a0c6120ac408699f4bdf688efa5973c6c37a43291229c0e761d00dfb7b30d",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28FAUECU": {
-   "artifact_hash": "cdfc2fa208f4ba8bcd835f1bf0ab2600e2c45243588e984f38de6edba3ec0148",
+   "artifact_hash": "612d638d6ac1d6930e03a8e57a8ceeae1f285b63005255f3d50321a5f2bb4b8e",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2229,7 +2621,7 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "17df40d569e8bde3ace2531cc03ba3c876f68a50002b5abf5fedd66808f5c9e2",
+    "claims_artifact_hash": "991f5423bacaa069330ca6b3729ae572ad5f1e1fed6f595c90308bcc5990f090",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
@@ -2250,7 +2642,7 @@
    }
   },
   "26NOV28GTUGA": {
-   "artifact_hash": "8d125774c46f270a6797b85251931f3d479b5ae79bc38ea65a3ad95f9897ee6e",
+   "artifact_hash": "115790f79e4dcd4bff6630f6edbbd0043f85e183d60b3997cc297b73d9eda0ac",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2262,17 +2654,31 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0dfaf854b6b2bb82806a73756a2a009f2a8a0ef16d64ce21cfdbca7008973d2d",
+    "claims_artifact_hash": "2e3f1f49044bc768ae753d610941c2d429ea80b4d374fc61edf72d3d0d45db6f",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28JVSTDEL": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "1dd8869bb860af87a73ce6334b614fdbda0b81d1beef8931cf1bf446957ac8f4",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "e6918fdd7cbc0704a269786068fa0df1975489a6b1e9a6fc7802d1ab97e9fc09",
+    "control": "AWAY_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28KENNWKU": {
-   "artifact_hash": "df7b1b13562bb48f537e9881e68477fa15b782164e469bcd7391156dcb1c62bb",
+   "artifact_hash": "9cfea07db365491a457265769b2a2fa02c4db30d93f78086f63b491396ce5756",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2283,13 +2689,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "2f88207f777294fd9156670750cca2d9833516025166bc17bf32224671ad83f6",
+    "claims_artifact_hash": "693a674faabcf7a67f3f32e04aed94b2ff33355ac993756e759e954c1491aba5",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28KSUISU": {
-   "artifact_hash": "4a189684c9796ec34c7195d9484e626548b0ab8137863c17bfdf01097678af58",
+   "artifact_hash": "43cbbebaa24f020ec182668928854a89b8d1454ce7a67cbfdca63c965c397519",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2298,13 +2704,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "dc4c4f3666b8c00fb2712f7ddb118fd696158a5616b2712459f2e61d6d943968",
+    "claims_artifact_hash": "3d9baeee0b73b572ab3b88ca9e450c9c9de1b5b2c9d28160da0e58c805239e67",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28KUOKST": {
-   "artifact_hash": "49e52cf0428bce0547e4a518109835d266164a453e50f4b3e53e9ee020719594",
+   "artifact_hash": "facfd2567789b0479e7aa9bb374595773314a7bdc2668e004f5a751c6bea1317",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2317,35 +2723,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "b0c345fe880d6884ed9394428ecf17633f2dc3245268ee4ba7be89887bc478ba",
+    "claims_artifact_hash": "9c2e060258c62943195321d601eb034b6bed3e5f531a3e8e97271f70905818c2",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LIBMOSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
-  },
-  "26NOV28LOUUK": {
-   "artifact_hash": "a701720b352e1b060760a90db27c6a0fa94ec4ea5224f70f2f518fb368823515",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 4,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [
-    "PRIMARY:AWAY_CONTROL",
-    "DANGER:UNDERDOG_HANGS_AROUND"
-   ],
-   "status": "SCRIPTS_GENERATED",
-   "survivors": 1,
-   "v2": {
-    "claims_artifact_hash": "c0c6b8b9b0c7c3649b24dc8a62f6bc99a5f080a1b7b9f1dcf85a4e63bcafdc4b",
-    "control": "AWAY_CONTROL_MODERATE",
-    "status": "CLAIMS_PUBLISHED"
-   }
-  },
-  "26NOV28LSUARK": {
-   "artifact_hash": "87fe1eef7b6b94a8c54e406d4279c444626cfcdb4d97abed27d5fc9405d910e1",
+   "artifact_hash": "506068ef633b849939b86d16f9b4b698c43d70a164aa2affb43b97e937a52a44",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2357,13 +2741,49 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "6c31a50136fa5d3118542aa3d44676c0f9e5dccfa6d16e4cdaad62033939fd64",
+    "claims_artifact_hash": "ca04c71a0f6acb74c78eb0fa9be5ac56044fa8012e5caab9b461ab63e9a94453",
+    "control": "AWAY_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV28LOUUK": {
+   "artifact_hash": "cec5473c84ca75fc66ceefb51db3a6450c614379fff1354c766a6e61938f5515",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "8f542f5c86ff13d9246ebc840ea47af14728a2254451ba8672d566b0dade6411",
+    "control": "AWAY_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV28LSUARK": {
+   "artifact_hash": "5094301a3821765071d64bf0fa14076eabd75575e236ed0177bb4275e689344e",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:AWAY_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "421362c9ba759266db37ad4785e5760463cb0b21a38a69c96b455a8890cd3236",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28LTGASO": {
-   "artifact_hash": "a1e6e34c233d7b7afdf39b380ff245035e9723ad9d58b43d350d49bc1fc44123",
+   "artifact_hash": "454f5a00c39512b6e59b58e1dbb085c9f6f73ebe0944d93dd4498e615dd786fe",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2374,13 +2794,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "022cb29cdbf9d53d0f53ea431b913da5e3cd40b61c75fc572ca280137c35bdc1",
+    "claims_artifact_hash": "70d59ddc0e0bac3ab5054eafbd4a462ef31ed77c5b2e36ebb5b28109afcda30a",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28MASSBGSU": {
-   "artifact_hash": "213d9b82ddb049f93ee0cf1dde48abb077a6cf691ae47943bd5892e089ddfd31",
+   "artifact_hash": "941336f4ff30b44e62f87f21de823c8d6a6a063674cdaa054fc41b9bdaf4d8aa",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2393,17 +2813,31 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "8fc65e3c2e94149f4e0d1f1050d5f0908e1308ebeb18625d90cadbb59d6248c4",
+    "claims_artifact_hash": "e3cfee60109436c1ffada97c20cd12e283059f12ad7e8dc43a4e4db0f9337aa2",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28MICHOSU": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "168a9117292ec662cdec37fd07a8ae6137122e359eb460fef6e5d6364fb556e6",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:FAVORITE_PULLS_AWAY"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "c8970643a1f302334537cb61453b025bee56706191533eb6ab84e89860643513",
+    "control": "HOME_CONTROL_STRONG",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28MRSHULM": {
-   "artifact_hash": "8b6572c82cdb55c716cb839566751e98665834a98f38dadfa41f0debc4ffbb88",
+   "artifact_hash": "6cbd68d3f0ceee82002aeddbd2b690db5106257e1405c2c8030b5bf4f5ec6933",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2412,13 +2846,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "ead23dd3db8e1d9398ceddbd77ab7f0556d3cb2f9b7c5af51486bffa5e632872",
+    "claims_artifact_hash": "22fa25fe1eaa5d851007c4a26d3666d61951359c476061da913aa4e779a73de5",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28MSURUTG": {
-   "artifact_hash": "881a5a4e816d7d5cc42eb80bd72065a561c10d86fe9ca9d7c7527ef4a8f8bf53",
+   "artifact_hash": "7784426ffa1d0557cdc3a622b2a8c016c07a9c9ed84cb25df55a67403bedd7e0",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2431,13 +2865,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "9e3689c6ecabe857ce0e4db5b8882c2ab33e41b4bd57ac10b48789cbf458946b",
+    "claims_artifact_hash": "e0367417d934b1ebce9f999967a2e58ef29ed322c8fca423941f277b7c061ddf",
     "control": "AWAY_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NAVYCHAR": {
-   "artifact_hash": "6de4d7eca18b4abb2635d168d55e5fc3852e02aac8c61e687630e0637f23e05f",
+   "artifact_hash": "cbdd34ce105251018fb8e7eb132207688797a4944ae8c1cfd91bd62b563d3699",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2449,13 +2883,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "93ee5aadfcbae5489174e777cc7e65b29cda01eb73450f85aafd3bd5484bab28",
+    "claims_artifact_hash": "bb45205464445ed5c80bc803393c70ef7ca3f8e943da2c14984126c28c627b56",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NCSTUNC": {
-   "artifact_hash": "d362c9c808b025591814e0a167ef78416062f9295286a10d68e2067137857483",
+   "artifact_hash": "fafdda53ae1a96fb0acf0a23f6e464e44bf822e229470c71bae9b709b27aabf0",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2467,13 +2901,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "696781d58248a2bc2aacb08897b9e4ef4658421f4024c39723433f4f3c324cb4",
+    "claims_artifact_hash": "f47e72f45d2764599069809f644d87a63c7bde22f74ab8a8617c4504a26b02fa",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NDSYR": {
-   "artifact_hash": "4d83721d59da262fc50389b380523624fe99fde04bcba4db832457f4f6824293",
+   "artifact_hash": "215a4ba6af163993bec017c9b38caf3c8e6478eb0804a89fc8dc407a61dffb6c",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2485,32 +2919,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "81fc180e4e66a942566677dd9d78c2a1806e007db9ee58be7b12efe1cd3ce31f",
+    "claims_artifact_hash": "8c2ecdad9586f59e8c0f898d97109d524a8789e26491af09430e30c0ed4534de",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28NEVUNLV": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
-  },
-  "26NOV28NMSUMTU": {
-   "artifact_hash": "602257b3a600fee4929d71e38c084da3eb3d27cf84f0f3ff092131b6db044974",
-   "data_confidence": "HIGH",
-   "expressions_mapped": 4,
-   "freshness": "FRESH",
-   "identity": "PASS",
-   "scripts": [],
-   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
-   "survivors": 0,
-   "v2": {
-    "claims_artifact_hash": "b9968167395bfe51cebc0e34e8857efc89ae250c3228471551343800e1815448",
-    "control": null,
-    "status": "CLAIMS_PUBLISHED"
-   }
-  },
-  "26NOV28OKLAMIZZ": {
-   "artifact_hash": "a83e31deb9e665a3aa6013d36c5810bdce6917e53f6bd997f6abbcdaa1e4ed99",
+   "artifact_hash": "7f24842f6b7e5034f8b96edf6eeeab3fbb07ececcc608f60b50425e0edf585ea",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2521,13 +2936,45 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "2ea87d2057a066058d41298d5a29ab8efaf600cb4c20238ddb0863f0cf5088e4",
+    "claims_artifact_hash": "071f91658fc41df9f1cb6cc5a8cd12b9ba3616ac264fb36565234929b5dda133",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV28NMSUMTU": {
+   "artifact_hash": "83c3f9204cc3f13a58597e314533c0dba1483c45add1703edb3c1e9dc89b10f4",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "87cb1c1dd85537341cdf4e8404af8ce4dbf91469cb3a063f57c350f39c5429c6",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
+  },
+  "26NOV28OKLAMIZZ": {
+   "artifact_hash": "6d80302e4a6b787a8a2cd2964b585cfa32da356b23915ed42e76e1c27638540b",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_GRIND"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "9ca63e72028f28085b84b0b53d75467d4f5177e1de80940a7997738ef800a347",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28PITTCAL": {
-   "artifact_hash": "a772c00bf90a270ff214c452946e8d5406c3239a13214c9dc6970f655f1ba4d9",
+   "artifact_hash": "f99d5d71e9554e6fb6fa3f7f82016cf4bc343ddac0795b38ab49fa7ad3ebfb3b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2539,13 +2986,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "0c2e5e4b003404c19dafddd12251f74778ac5796f7d31c025d46b5a2d016df89",
+    "claims_artifact_hash": "9ab2bcf524db48c40b946cf7ad1a85f559555de11bfab706d7c1efe3dc5ba7d5",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28PSUMD": {
-   "artifact_hash": "4f4ee460d334d939457a72bc062f02c4fdd36ff6057522fe8c74a63d267bf85c",
+   "artifact_hash": "fdb7bdb5c738c81ea044c9155288857df24dbc0663b295c6dfb30bc36a206c2b",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2554,13 +3001,13 @@
    "status": "NO_SCRIPT_CLEARED_EVIDENCE",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "e41b93b706137d0be23de87e829e31902babdfd3f38383dabc0ed248a98b9e7c",
+    "claims_artifact_hash": "3309c18c18f76ccb5ada9e389662502edd8259088827991004dca79a215b2783",
     "control": null,
     "status": "NO_SUPPORTED_CLAIM"
    }
   },
   "26NOV28PURIND": {
-   "artifact_hash": "60b601dbb41d40b6a2b2c03a585d120099883f0f3bf7ba29e3f8ee383349bc57",
+   "artifact_hash": "5e29757eeb467b88406ea12f4cbe78f5d58b3f366a8325373d243c7a2f4c66ee",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2573,13 +3020,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "4ab7d2cf417f01791ee24d33da9e90adfe20068c3f13f397095bb5db5cfc0058",
+    "claims_artifact_hash": "a04637742cdb9c80344b376df0a5dcd947abcc19869a4ba57e586961866d157f",
     "control": "HOME_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28SACHAW": {
-   "artifact_hash": "a92149a3fa59cc00c4103e53de7062de2304e002ddb4da617d16c5ff76142c90",
+   "artifact_hash": "421146c0b927ea801c543b88524b1c427bd01c9fa47adb22148163e1a05465d5",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2591,13 +3038,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "f858933e81748427e106b843b6c57f22abc6203d7f36c926f31a08cf1525413f",
+    "claims_artifact_hash": "947e60bd0cd123904d975773603c781dddecd7ef6af7916400134ca54e7ddb92",
     "control": "HOME_CONTROL_MODERATE",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28SHSUFIU": {
-   "artifact_hash": "5efda9da210383bb598c873b969b3ce9127e6856f1671887d308e55842f04ce8",
+   "artifact_hash": "bb898666aa72d9c484ff9813943756575976e0854ef318dc5b1f9e0e597816fa",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2608,13 +3055,13 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "2a0d4f1c8735e9507bbabd775832924730f2bf1a487345614dfc0783f681c4b1",
+    "claims_artifact_hash": "feea7b9448a86b8593e513c337f42146a8eda9ac40db564843b045571a3be83f",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28SMUSTAN": {
-   "artifact_hash": "9afedda7248d56bd1cb518ad376466e02a9cd10945f2bd5858c81b81b0724521",
+   "artifact_hash": "1e8f9d23b51518ae0384f2fc4746d77bc9d43de1284217c1409690776a756981",
    "data_confidence": "HIGH",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2626,29 +3073,84 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 2,
    "v2": {
-    "claims_artifact_hash": "87009482f1396ea5320a5f3319bbb158619f3317eb0481179d7bbd24d00ce7b1",
+    "claims_artifact_hash": "70a8e02c1f77bd4c3784f65611e8f43e670c36da9f27be994a0e430f58f0e717",
     "control": "AWAY_CONTROL_STRONG",
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28TROYARST": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "d5e09fc4ba25966f508368c03b121edb7107501ba1c1624f412471f10e8978ba",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "dccb8cc4c78ede2285dacce041ec8fec46e4507efaf239aebd29b0dcb6c526ff",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28TULNUSF": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "7d04c883a69fac62a25fc1c5de296ec8f0c6f4422c89ab16e63181c054f842df",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:HOME_CONTROL",
+    "SECONDARY:COMPETITIVE_GRIND",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 1,
+   "v2": {
+    "claims_artifact_hash": "019979298dd27d2fd69fdfdf883b847c1f8fcc907c8481ba3cf5421aa993b8fb",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28UABUNT": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "770e0c3e639492533699a5cfb0112fe1705b990637e4132c3e67ca3596cd1917",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:TURNOVER_DISRUPTION",
+    "SECONDARY:HOME_CONTROL",
+    "DANGER:UNDERDOG_HANGS_AROUND"
+   ],
+   "status": "SCRIPTS_GENERATED",
+   "survivors": 2,
+   "v2": {
+    "claims_artifact_hash": "359717e4a02ca7e34618b22b4d9638eec05a81866f64311660fc327c90b378c9",
+    "control": "HOME_CONTROL_MODERATE",
+    "status": "CLAIMS_PUBLISHED"
+   }
   },
   "26NOV28UCFCOLO": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "223d0ce0e7ea24234fe6978560a1aea71ede1a948d1d2b5d4a70904256b46aa0",
+   "data_confidence": "LOW",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "2acd23034d3d56b83cb028dc53e120fbb631de159179a1b6332cdaa59c5b208b",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV28ULLGAST": {
-   "artifact_hash": "90767b371f3120c853cca9cf375b37340b3583cb38d5b4e99a488c8251803bbd",
+   "artifact_hash": "f068d85ab1192a9cdd97e3ed9963ae6f29ff4e616a4c1ea95baaa03fd3f77cc6",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2660,17 +3162,28 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "c77bb761d64aec5c0991faec4f11e5f2ee9aaf7aefdbcb7599b3ec296227e573",
+    "claims_artifact_hash": "5a01fcb39f9505aade3ef6699287c4f2bcd45edf06b42523aef4f500fed0a3f2",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28USCUCLA": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "1d440f2edb604fe17cdbb98bf490d74c01ee58a1c55b3243a5d44d9df75cd563",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [],
+   "status": "NO_SCRIPT_CLEARED_EVIDENCE",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "f293cfca7665c91917ece477afde471bc7e05aeee2a1eab5f8ac7019e37bd6fa",
+    "control": null,
+    "status": "NO_SUPPORTED_CLAIM"
+   }
   },
   "26NOV28USMODU": {
-   "artifact_hash": "865b5eb5c3ead1882549b64a35e80e81092066234566d07252b5ca643b643944",
+   "artifact_hash": "e3133c95ebb50260212a8846ec9ad66e01bb966f61b3b642ff621c546663e88a",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2683,13 +3196,13 @@
    "status": "SCRIPTS_GENERATED",
    "survivors": 1,
    "v2": {
-    "claims_artifact_hash": "9e79eea0664f3816b968a9878967174678610d021e6e58b62013d5ac986ae1a1",
+    "claims_artifact_hash": "ba34330bf06bbd24531231cf7d29fc9bdaf6f3f84e98f3c5b47a00e22f286435",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28UTEPNIU": {
-   "artifact_hash": "07942921e5f5f102cb6425449b8362360c75578bc10ca93c6144d64cde870681",
+   "artifact_hash": "b3e87c37b3d9047fd06068ef7d5ad3297f29b130d7991ae55beb29f99133c294",
    "data_confidence": "LOW",
    "expressions_mapped": 4,
    "freshness": "FRESH",
@@ -2700,20 +3213,33 @@
    "status": "SINGLE_SCRIPT",
    "survivors": 0,
    "v2": {
-    "claims_artifact_hash": "4c32e6038965d1c567fd10a7ed55aeb84450cd2902d71d08680258a376e45a9e",
+    "claims_artifact_hash": "60893d93b90e20f4f3bd5c9a6f215ff26e2abfca58ac3fa49272eea9f58d45cc",
     "control": null,
     "status": "CLAIMS_PUBLISHED"
    }
   },
   "26NOV28UVAVT": {
-   "reason": "no football-schedule event matched both teams near kickoff",
-   "status": "IDENTITY_FAIL"
+   "artifact_hash": "e50ba0e9a742fa524776416d51c811ccfa5284a2c1b35e1aa85c6be0996b35c3",
+   "data_confidence": "HIGH",
+   "expressions_mapped": 4,
+   "freshness": "FRESH",
+   "identity": "PASS",
+   "scripts": [
+    "PRIMARY:COMPETITIVE_TOSSUP"
+   ],
+   "status": "SINGLE_SCRIPT",
+   "survivors": 0,
+   "v2": {
+    "claims_artifact_hash": "5a34c3ec6b598b040cb0ea9a2042c7fc26350b8b5992d8314bc31c0cfcf4d7b5",
+    "control": null,
+    "status": "CLAIMS_PUBLISHED"
+   }
   }
  },
- "ledger_rows_written": 148,
+ "ledger_rows_written": 138,
  "methodology_version": "cfb-script-engine/1.3.0",
  "v2": {
-  "ledger_rows_written": 148,
+  "ledger_rows_written": 138,
   "methodology_version": "cfb-script-engine/2.0.0",
   "status": "SHADOW"
  }
