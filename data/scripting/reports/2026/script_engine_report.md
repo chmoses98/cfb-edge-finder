@@ -1,6 +1,6 @@
 # CFB Script Engine — prospective report
 
-Publications: 911 game(s), 33830 ledger row(s). Settled: 387.
+Publications: 911 game(s), 33957 ledger row(s). Settled: 387.
 
 ## Script accuracy
 
