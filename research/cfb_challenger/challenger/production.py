@@ -106,3 +106,18 @@ def espn_to_slug(games: pd.DataFrame) -> dict[str, str]:
             votes.setdefault(eid, {}).setdefault(slug, 0)
             votes[eid][slug] += 1
     return {k: max(v, key=v.get) for k, v in votes.items()}
+
+
+def load_b1_2025() -> pd.DataFrame:
+    """Reference only: production stack WITH current-season ingestion (Wave-2E 'B1'), 2025 replay rows."""
+    rows = []
+    for x in gzip.open(P0_HIST):
+        r = json.loads(x)
+        if r["season"] != 2025 or "in_eh" not in r or "in_sigma" not in r:
+            continue
+        raw = r["in_eh"] - r["in_ea"]
+        c2 = 0.0 if (r["c2_identity"] or not r["fbs_vs_fbs"]) else r["c2_a"] * raw + r["c2_b"] - raw
+        rows.append({"game_id": str(r["game_id"]), "b1_margin": raw + c2 + r["talent_delta"],
+                     "b1_total": r["in_eh"] + r["in_ea"], "b1_sigma": r["in_sigma"],
+                     "b1_home_pts": r["home_points"], "b1_away_pts": r["away_points"]})
+    return pd.DataFrame(rows)

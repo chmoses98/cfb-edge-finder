@@ -152,6 +152,12 @@ def cmd_holdout():
            "all": E.compare(ev)}
     for s in HOLD:
         res[str(s)] = E.compare(ev[ev.season == s])
+    b1 = P.load_b1_2025().merge(ev[ev.season == 2025], on="game_id")
+    b1 = b1[(b1.home_pts == b1.b1_home_pts) | (b1.home_pts == b1.b1_away_pts)].copy()
+    b1.loc[(b1.home_pts == b1.b1_away_pts) & (b1.home_pts != b1.b1_home_pts), "b1_margin"] *= -1
+    b1["b1_p"] = P.win_prob(b1.b1_margin, b1.b1_sigma)
+    b1["b1_home"], b1["b1_away"] = (b1.b1_total + b1.b1_margin) / 2, (b1.b1_total - b1.b1_margin) / 2
+    res["reference_2025_vs_B1_inseason_production_stack"] = E.compare(b1, "ch", "b1")
     early = ev[(ev.n_h + ev.n_a) / 2 < 3]
     res["early_season_lt3_games"] = E.compare(early)
     RESULTS.write_text(json.dumps(res, indent=1))
