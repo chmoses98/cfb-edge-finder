@@ -21,3 +21,15 @@ MODEL_VERSION = "cfb-oae-1.0.0"
 def enabled(env: Mapping[str, str] | None = None) -> bool:
     """True only for the explicit value ``"1"``; anything else (unset, empty, "0", "true") is off."""
     return (os.environ if env is None else env).get(FLAG, "").strip() == "1"
+
+
+# Authority labels (same convention as production model.authority = research_only); never bet authority.
+AUTHORITY = {"status": "not_activated", "activated": False, "authority": "research_only", "role": "shadow",
+             "bet_authority": False, "operating_forecast": False,
+             "operating_forecast_ref": "top-level `model` / `games` of this artifact (unchanged by this block)"}
+
+
+def unavailable_block(reason: str) -> dict:
+    """Explicit stub published when the challenger block cannot be built (production fields untouched)."""
+    return {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": False,
+            "unavailable_reason": str(reason)[:500], "games": [], "skipped": []}

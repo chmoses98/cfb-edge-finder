@@ -177,9 +177,44 @@ def test_block_fails_closed_outside_frozen_season():
     sched, games, rows = _schedule_and_games()
     blk = B.build_block(games, dict(sched, season=2027), rows, datetime(2026, 11, 20, tzinfo=UTC), FBS)
     assert blk["games"] == [] and all("no frozen inputs" in s["reason"] for s in blk["skipped"])
+    assert blk["available"] is False and "season 2027 not covered" in blk["unavailable_reason"]
 
 
 def test_started_games_are_skipped():
     sched, games, rows = _schedule_and_games()
     blk = B.build_block(games, sched, rows, datetime(2026, 11, 21, 17, tzinfo=UTC) + timedelta(seconds=1), FBS)
     assert blk["games"] == [] and {s["reason"] for s in blk["skipped"]} >= {"already started"}
+
+
+def test_settlement_basis_and_tie_handling_match_the_validation():
+    """Q1-Q4/1H are regulation-only (period_points[0..3]); FG includes OT; period winner is 3-way with no tie mass."""
+    sched, games, rows = _schedule_and_games()
+    blk = B.build_block(games, sched, rows, datetime(2026, 11, 20, 12, tzinfo=UTC), FBS)
+    assert set(blk["settlement_basis"]) == set(blk["families"]) == {"fg", "q1", "q2", "q3", "q4", "h1"}
+    assert "INCLUDING overtime" in blk["settlement_basis"]["fg"]
+    assert all("overtime EXCLUDED" in blk["settlement_basis"][q] for q in ("q1", "q2", "q3", "q4"))
+    assert "Q1 + Q2" in blk["settlement_basis"]["h1"] and "3-way" in blk["period_winner_basis"]
+    g = blk["games"][0]
+    assert g["fg"]["p_home_win"] + g["fg"]["p_away_win"] == pytest.approx(1.0, abs=2e-4)
+    q1 = g["periods"]["q1"]
+    assert 0.03 < 1 - q1["p_home_win"] - q1["p_away_win"] < 0.4          # tie mass left out (both sides settle NO)
+    # an OT game: regulation quarters come from the first four periods only, the 5th (OT) never enters Q4
+    raw = {"game_id": "9", "season": 2026, "kickoff_utc": "2026-10-03T16:00:00Z", "team_id": "1", "opponent_id": "2",
+           "site": "home", "points_for": 31, "points_against": 24, "period_points": [7, 7, 3, 7, 7]}
+    c = rt.compact_from_log(raw)
+    assert (c["pp_q1"], c["pp_q2"], c["pp_q3"], c["pp_q4"]) == (7, 7, 3, 7) and c["points_for"] == 31
+
+
+def test_preseason_snapshot_is_bound_to_the_frozen_season():
+    """Talent/returning production is a pre-opener 2026 snapshot (research: identical to the 2026-08-28 fetch); the
+    block refuses every other season, so the table can never be applied to a season it post-dates."""
+    F = fz.load()
+    assert F.season == 2026 and len(F.preseason) == fz.provenance()["files"]["preseason.json"]["teams"]
+    assert max(r["season"] for r in F.prior_rows) < F.season
+
+
+def test_forecast_at_kickoff_is_skipped_not_forecast():
+    sched, games, rows = _schedule_and_games()
+    g = games[1]                                                              # an FBS-vs-FBS game
+    blk = B.build_block([g], sched, rows, rt.parse_utc(g["start_utc"]), FBS)   # now == kickoff
+    assert blk["games"] == [] and blk["skipped"] == [{"game_id": g["game_id"], "reason": "already started"}]

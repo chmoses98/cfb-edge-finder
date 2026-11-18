@@ -327,13 +327,16 @@ def stage_publish(ctx) -> dict:
 
 def _oae_extend(ctx, out: dict, now: pd.Timestamp):
     """Flag-gated additive OAE block (src/cfb_edge_finder/oae). Flag unset: returns None and `out` is untouched.
-    A failure never blocks the production publish: it is logged and no block is added."""
+    A failure never blocks the production publish: it is logged and an explicit `available: false` stub is added."""
     src = str(paths.REPO_ROOT / "src")
     if src not in sys.path:
         sys.path.insert(0, src)
     from cfb_edge_finder import oae
     if not oae.enabled():
         return None
+    if oae.ARTIFACT_KEY in out:   # never overwrite an existing key; production publish proceeds unchanged
+        ctx.log(f"oae challenger: artifact already has {oae.ARTIFACT_KEY!r}; not overwritten")
+        return {"error": f"existing key {oae.ARTIFACT_KEY!r} not overwritten"}
     try:
         from cfb_edge_finder.oae.block import build_block
         from cfb_edge_finder.oae.ratings import load_log_rows
@@ -342,11 +345,11 @@ def _oae_extend(ctx, out: dict, now: pd.Timestamp):
             raise RuntimeError("FBS conference ids unavailable")
         blk = build_block(out.get("games", []), _load_sched(ctx), load_log_rows(_gamelog_raw(ctx)),
                           now.to_pydatetime(), fbs)
+        json.dumps(blk, allow_nan=False, default=_default)   # strict JSON or nothing (no NaN, no partial block)
     except Exception as e:  # noqa: BLE001
         ctx.log("oae challenger block failed (production fields unaffected):", repr(e))
+        out[oae.ARTIFACT_KEY] = oae.unavailable_block(repr(e))
         return {"error": repr(e)}
-    if oae.ARTIFACT_KEY in out:
-        raise SystemExit(f"publish: refusing to overwrite existing artifact key {oae.ARTIFACT_KEY!r}")
     out[oae.ARTIFACT_KEY] = blk
     return {"games": len(blk["games"]), "skipped": len(blk["skipped"]), "model_version": blk["model_version"]}
 

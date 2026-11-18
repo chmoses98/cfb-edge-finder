@@ -14,8 +14,11 @@ per-game entry for FBS-vs-FBS games already in the artifact's `games`:
 * `fg`: `expected_margin` (home − away), `spread_home`, `sigma_margin`, `p_home_win`/`p_away_win`, and `spread_ladder` (half-point
   strikes within ±14 of the mean, with `abstain: true` outside p ∈ [0.10, 0.90]).
 * `periods`: q1 spread + winner, q2 total, q3 spread, q4 spread + total, h1 total (ladders from the empirical score PMFs).
-Existing fields are never modified. The hook refuses to overwrite an existing key, and if the block fails it is logged
-and the production artifact is published unchanged. Consumers read fields by name (`cfb/narrative_md.py`, `live/smoke.py`, tests).
+Labels: `authority: research_only`, `role: shadow`, `bet_authority: false`, `operating_forecast: false`; `settlement_basis` per
+family (FG includes OT; Q1-Q4 regulation only, OT excluded; 1H = Q1+Q2) and `period_winner_basis` (3-way, tie not emitted).
+Existing fields are never modified. If the block cannot be built (missing/invalid input, hash mismatch, season not
+covered, non-finite value, any exception) the production fields publish unchanged and `oae_challenger` is a stub with
+`available: false` and `unavailable_reason`. Consumers read fields by name (`cfb/narrative_md.py`, `live/smoke.py`, tests).
 No SIFT reader of `projections/cfb/latest.json` exists in sift-alpha.
 **Not emitted:** FG total and team totals (PARTIAL), Q1/Q3 totals, 1H spread/winner, 2H and ties.
 
@@ -38,11 +41,12 @@ No SIFT reader of `projections/cfb/latest.json` exists in sift-alpha.
 
 ## Rollback
 Unset the flag (or set it to anything but `1`). The next publish writes an artifact byte-identical to main, tested in
-`research/projection_foundation/tests/test_oae_hook.py`. A stale `oae_challenger` key in `latest.json` is replaced by the next publish.
+`research/projection_foundation/tests/test_oae_hook.py`. Unset after set leaves no residue: the next `latest.json` is main's bytes (tested, same archive).
 
-## Approvals needed before activation
-1. Owner approval to set `CFB_OAE_FORECASTS: "1"` in `.github/workflows/projection-foundation.yml` (run job env).
-2. Owner sign-off that the block stays `not_activated` (shadow) until a prospective scorecard exists. Any use for
-   pricing or trading needs a separate decision.
-3. Season roll-over: the frozen inputs cover the 2026 season only. Other seasons fail closed with `skipped: no frozen inputs`.
-   2027 needs rebuilt prior rows (2025-26) and a pre-opener talent/returning-production snapshot, which is a new approval.
+## Two-step approval
+1. **Inert merge** (PR #309): code, frozen assets and tests only. The flag is set nowhere; artifacts stay byte-identical.
+2. **Activation** = add `CFB_OAE_FORECASTS: "1"` to the `run` job env of `.github/workflows/projection-foundation.yml`. Preconditions:
+   owner approval; season still 2026 (other seasons publish `available: false`); the activation PR's own `projection-foundation` run (a
+   dry run on real data, flag ON; never exercised in CI so far) logs `publish: ... oae_challenger` with games > 0 and no
+   `error`; agreement that the block stays shadow (`bet_authority: false`) until a prospective scorecard exists.
+   Pricing/trading use and the 2027 roll-over (rebuilt prior rows + pre-opener talent snapshot) are separate approvals.

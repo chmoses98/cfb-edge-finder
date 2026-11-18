@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 from datetime import datetime
 
-from . import ARTIFACT_KEY, FLAG, MODEL_VERSION
+from . import ARTIFACT_KEY, AUTHORITY, FLAG, MODEL_VERSION, unavailable_block
 from . import forecast as fc
 from . import frozen as fz
-from .ratings import local_date, parse_utc, rate_date
+from .ratings import PregameViolation, local_date, parse_utc, rate_date
 
 # Families rated RELIABLE on the 2025-26 holdout (research/cfb_challenger/phase15/RESULTS_P15.md, results_p15.json).
 FG_FAMILIES = ("winner", "spread")
@@ -26,7 +26,14 @@ Q_SPREADS = [k + 0.5 for k in range(0, 15)]
 Q_TOTALS = [k + 0.5 for k in range(0, 31)]
 H1_TOTAL_HALF = 10
 
-
+# Contract basis of every emitted family, identical to the #308 validation (ESPN linescores; Kalshi CFB rules).
+SETTLEMENT_BASIS = {
+    "fg": "full game, final score INCLUDING overtime; winner is 2-way (no ties); p_home_win + p_away_win = 1",
+    **{f"q{i}": f"regulation quarter {i} points only; overtime EXCLUDED" for i in range(1, 5)},
+    "h1": "regulation Q1 + Q2 points only",
+}
+PERIOD_WINNER_BASIS = ("3-way (home / away / tie): a tied period settles both team contracts NO; tie probability "
+                       "is not emitted, so p_home_win + p_away_win = 1 - P(tie)")
 def _r(x: float, nd: int = 4) -> float:
     return round(float(x), nd)
 
@@ -88,16 +95,18 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
     prov = fz.provenance()
     season = int(schedule.get("season", 0))
     ev = {str(e["id"]): e for e in schedule.get("events", [])}
-    block = {"model_version": MODEL_VERSION, "status": "not_activated", "activated": False,
-             "flag": FLAG, "authority": "research_only", "role": "shadow",
+    block = {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": True,
+             "unavailable_reason": None,
              "note": "Additive challenger block; never overrides any production field. Not approved for use.",
              "sign_convention": ("margin = home - away; spread_home = -expected_margin; "
                                  "ladder p = P(side wins by more than k)"),
+             "settlement_basis": SETTLEMENT_BASIS, "period_winner_basis": PERIOD_WINNER_BASIS,
              "families": {"fg": list(FG_FAMILIES), **{k: list(v) for k, v in PERIOD_FAMILIES.items()}},
              "excluded": EXCLUDED, "provenance": {k: prov[k] for k in ("sources", "season")} |
              {"files": {k: v["sha256"] for k, v in prov["files"].items()}},
              "forecast_utc": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"), "games": [], "skipped": []}
-    if season != F.season:
+    if season != F.season:  # covers 2027+: frozen prior rows / preseason table exist for F.season only
+        block["available"], block["unavailable_reason"] = False, f"season {season} not covered by frozen inputs"
         block["skipped"] = [{"game_id": str(g["game_id"]), "reason": f"no frozen inputs for season {season}"}
                             for g in games]
         return block
@@ -127,10 +136,12 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
             cache[d] = rate_date(rows, season, d, now_utc, p)
         R, gp, n_rows = cache[d]
         fcst = forecast_game(R, gp, F, home, away, bool(e.get("neutral_site")))
+        if not start > now_utc:                       # forecast time strictly before kickoff (redundant guard)
+            raise PregameViolation(f"game {gid} kickoff {g['start_utc']} is not after the forecast time")
         block["games"].append({"game_id": gid, "start_utc": g["start_utc"], "home_id": home, "away_id": away,
                                "neutral": bool(e.get("neutral_site")), "ratings_game_date": d,
                                "n_training_team_games": n_rows, **fcst})
     return block
 
 
-__all__ = ["ARTIFACT_KEY", "build_block", "forecast_game"]
+__all__ = ["ARTIFACT_KEY", "build_block", "forecast_game", "unavailable_block"]
