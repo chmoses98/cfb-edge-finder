@@ -1,0 +1,45 @@
+{
+ "files": {
+  "frozen_p15.json": {
+   "sha256": "c05b55af387b0defe0e07f1bb7f372e5c6d1f67b91e0cee03f00274153d60c5a",
+   "source": "7ebddfc6e3e07c6840288ff7e658df68b0301134:research/cfb_challenger/phase15/frozen_p15.json"
+  },
+  "frozen_params_p307.json": {
+   "sha256": "17fd61db9f44c065a02a7d4ade70efc6eb36bf2291bb53a7f801d40c48db51a9",
+   "source": "8742f2a95f7d843b640314617785dbe55ce9e2f5:research/cfb_challenger/frozen_params.json"
+  },
+  "period_nb.npz": {
+   "sha256": "170d7eb9af93672d49a09cecb7fba07efee8a09a62df2bea66c1106fc7996cce",
+   "source": "7ebddfc6e3e07c6840288ff7e658df68b0301134:research/cfb_challenger/phase15/frozen_p15_period_nb.parquet",
+   "source_sha256": "e415c188ceb17a424bea5a49db97f067bc1f4c1f1e036c8906274b4384809870",
+   "transform": "parquet -> npz per segment, original row order"
+  },
+  "preseason.json": {
+   "sha256": "b7d9b505194d4a919866e0b79917e32d3bc8a1805f8b42bfe47962837ab3db12",
+   "source": "vault cfbd_api_cache v1-292f3aac talent + returning_production, z-scored within season (challenger.model.preseason_table)",
+   "teams": 138
+  },
+  "prior_team_games.jsonl.gz": {
+   "rows": 3706,
+   "seasons": [
+    2024,
+    2025
+   ],
+   "sha256": "764861c3c4b65675760a9d7253c0103b790dbd6b3e8913e614b1a3908b56bee7",
+   "source": "research team_games.parquet (vault espn_summary_postgame collected-20261116, repo parser) + periods.parquet (ESPN header linescores, valid only)"
+  }
+ },
+ "season": 2026,
+ "sources": {
+  "p307": {
+   "branch": "claude/sift-predictive-breakthrough-j1m6df",
+   "commit": "8742f2a95f7d843b640314617785dbe55ce9e2f5",
+   "pr": 307
+  },
+  "p308": {
+   "branch": "claude/sift-phase-15-sports-forecasting-rz966p",
+   "commit": "7ebddfc6e3e07c6840288ff7e658df68b0301134",
+   "pr": 308
+  }
+ }
+}

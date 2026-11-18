@@ -151,6 +151,7 @@ def probe_safety_locks() -> dict[str, bool]:
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    "oae",
     "ladder_archive",
     "research_packet",
     # Read-only postmortem tooling (2026-11-02): reads stakes, so it must never size the next bet.

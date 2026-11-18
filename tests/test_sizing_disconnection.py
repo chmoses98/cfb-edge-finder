@@ -21,6 +21,9 @@ SRC = REPO_ROOT / "src" / "cfb_edge_finder"
 SIZING_PACKAGE = "cfb_edge_finder.sizing"
 
 GUARDED_PACKAGES = (
+    # Flag-gated OAE challenger forecasts (2026-11-18): additive shadow block in the projection artifact, not activated.
+    # Probabilities only; guarded so a forecast can never be turned into a stake.
+    "oae",
     # RUN CFB research packets (2026-11-07): football evidence + deterministic price arithmetic for an ANALYST's stated
     # probability, with an owner-rule-capped unit tier. It must never reach the Kelly sizing library or any order path.
     "research_packet",
