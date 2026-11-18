@@ -64,3 +64,7 @@ Files: `frozen_params.json`, `results.json`, `challenger/{data,model,production,
 Week-dependent uncertainty and a stronger week 0-3 prior (prior-season adjusted ratings as an explicit ridge
 centre instead of down-weighted games, plus coaching/QB change flags), since the early-season slice is where
 neither model is reliable and where the gain did not reach significance.
+
+## Phase 15 independent validation
+Reproduced exactly from vault inputs, leak-tested on real data, talent-timing sensitivity and period models:
+see `phase15/RESULTS_P15.md` (stacked branch `claude/sift-phase-15-sports-forecasting-rz966p`).
