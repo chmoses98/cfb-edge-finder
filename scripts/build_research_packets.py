@@ -222,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     rows, schedule, availability, manifest = se.load_football(args.football_dir)
     ref_path = out / "reference/history_games.jsonl.gz"
     reference_games = hist.load_games(ref_path) if ref_path.exists() else []
+    reference_by_id = {str(g["game_id"]): g for g in reference_games}
     baseline_acc = hist.baseline_accuracy(reference_games)
     unconditional = hist.unconditional(reference_games)
 
@@ -232,12 +233,25 @@ def main(argv: list[str] | None = None) -> int:
 
     horizon = now + timedelta(hours=args.horizon_hours)
     wanted = set(args.game or [])
-    entries = [
-        g
-        for g in sorted(index["games"], key=lambda g: (g["kickoff"], g["game_key"]))
-        if (not wanted or g["game_key"] in wanted)
-        and (wanted or (now - timedelta(hours=1) <= parse_utc(g["kickoff"]) <= horizon))
-    ]
+    previous_index = load_json(out / "index.json", {}) or {}
+    previous_rows = _previous_rows(out, previous_index)
+    if args.markets_only:
+        # A markets-only re-price runs in the catalog commit (scripts/resync_packet_markets.sh). It re-derives the
+        # markets of the games ALREADY in the packet index from the execution index in the same tree and nothing else:
+        # it never adds a game (football packets are the packet workflow's job, built from a refreshed game log) and it
+        # drops a game only when the execution index no longer lists it, which is exactly when the verifier would fail.
+        entries = [
+            g
+            for g in sorted(index["games"], key=lambda g: (g["kickoff"], g["game_key"]))
+            if g["game_key"] in previous_rows and (not wanted or g["game_key"] in wanted)
+        ]
+    else:
+        entries = [
+            g
+            for g in sorted(index["games"], key=lambda g: (g["kickoff"], g["game_key"]))
+            if (not wanted or g["game_key"] in wanted)
+            and (wanted or (now - timedelta(hours=1) <= parse_utc(g["kickoff"]) <= horizon))
+        ]
     cache = LeagueFitCache()
     rows_index: list[dict[str, Any]] = []
     series_by_multiplier: dict[float, str] = {}
@@ -253,9 +267,15 @@ def main(argv: list[str] | None = None) -> int:
                     series_by_multiplier.setdefault(float(m["fee_multiplier"]), m["series_ticker"])
         usable = bool(entry.get("usable"))
 
-        if args.markets_only and (gdir / "packet.json").exists():
+        if args.markets_only:
+            if not (gdir / "packet.json").exists():
+                # Indexed without a packet file: keep the row as it was so the verifier reports the missing file,
+                # rather than building a football packet here or silently dropping the game.
+                rows_index.append(previous_rows[key])
+                continue
             old = load_json(gdir / "packet.json")
-            stored = (load_json(gdir / "markets.json", {}).get("price_provenance") or {}).get("game_fingerprint")
+            head = load_json(gdir / "markets.json", {})
+            stored = (head.get("price_provenance") or {}).get("game_fingerprint")
             if stored and stored == entry.get("game_fingerprint"):
                 unchanged += 1
                 rows_index.append(
@@ -264,20 +284,33 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 )
                 continue
-            chosen_cached = None
-            comp = load_json(gdir / "distributions.json", {}).get("reference_class") or {}
+            ident = (old.get("teams") or {}).get("identity") or {}
+            reference_chosen, exact_reference = _stored_reference_class(head, reference_by_id)
             markets = mk.build_markets(
-                game_key=key, quote_files=quotes, event_files=shards, capture=capture, reference_games=[]
+                game_key=key,
+                quote_files=quotes,
+                event_files=shards,
+                capture=capture,
+                reference_games=reference_chosen,
+                # The packet's football orientation and team names, exactly as the full build passed them: without
+                # them a re-price of a game whose identity was swapped would flip every contract's home/away side.
+                orientation_swapped=bool(ident.get("orientation_swapped")),
+                team_names={
+                    "home": ((old.get("teams") or {}).get("home") or {}).get("name"),
+                    "away": ((old.get("teams") or {}).get("away") or {}).get("name"),
+                },
             )
-            # markets-only keeps the football packet; frequencies are re-derived from the full builder, so carry them
-            # over.
-            prev = {c["ticker"]: c.get("ref_freq") for c in _old_contracts(gdir)}
-            for c in markets["contracts"]:
-                if prev.get(c["ticker"]):
-                    c["ref_freq"] = prev[c["ticker"]]
+            if not exact_reference:
+                # Packets built before the reference class was recorded: carry each existing contract's frequency
+                # over; a newly listed contract has none until the next full build (stated as an absent ref_freq).
+                prev = {c["ticker"]: c.get("ref_freq") for c in _old_contracts(gdir)}
+                for c in markets["contracts"]:
+                    if prev.get(c["ticker"]):
+                        c["ref_freq"] = prev[c["ticker"]]
+                markets.pop("ref_freq_reference_game_ids", None)
             parts = split_markets(markets)
-            _write_market_parts(gdir, parts, built_at)
-            _ = (old, chosen_cached, comp)
+            if _write_market_parts(gdir, parts, built_at):
+                written += 1
             rows_index.append(_index_row(entry, old, markets, gdir, parts))
             continue
 
@@ -400,10 +433,46 @@ def main(argv: list[str] | None = None) -> int:
         sources_dir.mkdir(parents=True, exist_ok=True)
         (sources_dir / "event_extras.json").write_text(_dump(extras_cache))
         (sources_dir / "rosters.json").write_text(_dump(roster_cache))
-    reference_tables(out, series_by_multiplier, built_at)
+    if args.markets_only:
+        # The football side of every packet is unchanged, so the index keeps describing the game log and horizon of
+        # the full build that made it, not the (possibly older) committed log this re-price happened to load.
+        manifest = {
+            "fetched_at": previous_index.get("football_log_fetched_at"),
+            "games_in_log": previous_index.get("football_games_in_log"),
+            "window": {"through": previous_index.get("football_log_through")},
+        }
+        args.horizon_hours = previous_index.get("horizon_hours", args.horizon_hours)
+    else:
+        reference_tables(out, series_by_multiplier, built_at)
     _write_indexes(out, rows_index, index, manifest, args, built_at, wanted)
     print(f"research packets: {len(entries)} games, {written} files written, {unchanged} unchanged")
     return 0
+
+
+def _previous_rows(out: Path, previous_index: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """The per-game rows of the committed packet index (the slates it names), keyed by game."""
+    rows: dict[str, dict[str, Any]] = {}
+    for slate in previous_index.get("slates") or []:
+        path = out / "slates" / Path(slate["path"]).name
+        for row in (load_json(path, {}) or {}).get("games") or []:
+            rows[row["game_key"]] = row
+    return rows
+
+
+def _stored_reference_class(
+    head: dict[str, Any], reference_by_id: dict[str, dict[str, Any]]
+) -> tuple[list[dict[str, Any]], bool]:
+    """The reference class the full build chose for this game, from the ids it recorded in markets.json.
+
+    Returns (rows, exact). ``exact`` is False when the packet predates the recorded ids or an id is no longer in the
+    committed reference history; the caller then carries the previous frequencies over instead of guessing."""
+    ids = head.get("ref_freq_reference_game_ids")
+    if not isinstance(ids, list):
+        return [], False
+    rows = [reference_by_id.get(str(i)) for i in ids]
+    if any(r is None for r in rows):
+        return [], False
+    return rows, True
 
 
 def _markets_stub(gdir: Path) -> dict[str, Any]:
