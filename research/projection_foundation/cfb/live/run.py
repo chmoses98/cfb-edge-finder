@@ -321,6 +321,8 @@ def stage_publish(ctx) -> dict:
     res = {"written": wrote, "defense_league": league}
     if oae_note is not None:
         res["oae_challenger"] = oae_note
+        # own line: the publish summary below is truncated, and activation is verified from this note (games, activated)
+        ctx.log("oae challenger:", json.dumps(oae_note, default=str)[:1500])
     ctx.log("publish:", json.dumps(res, default=str)[:500])
     return res
 
