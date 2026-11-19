@@ -19,6 +19,13 @@ FIX = Path(__file__).parent / "fixtures" / "oae"
 FBS = {"1", "4", "5", "8", "9", "12", "15", "17", "18", "37", "151"}
 
 
+@pytest.fixture(autouse=True)
+def _keys_off(monkeypatch):
+    """Hermetic: no test inherits CFB_OAE_FORECASTS / CFB_OAE_OPERATING from the job environment."""
+    monkeypatch.delenv(oae.FLAG, raising=False)
+    monkeypatch.delenv(oae.OPERATING_FLAG, raising=False)
+
+
 def _rows_2026():
     raw = gzip.decompress((FIX / "team_games_2026_research.jsonl.gz").read_bytes())
     return [json.loads(x) for x in raw.splitlines()]
@@ -235,6 +242,7 @@ def test_operating_key_is_off_unless_exactly_one(monkeypatch, value):
 def test_operating_key_declares_the_operating_forecast_without_bet_authority(monkeypatch):
     sched, games, rows = _schedule_and_games()
     now = datetime(2026, 11, 20, 12, tzinfo=UTC)
+    monkeypatch.setenv(oae.FLAG, "1")
     shadow = B.build_block(copy.deepcopy(games), sched, rows, now, FBS)
     monkeypatch.setenv(oae.OPERATING_FLAG, "1")
     blk = B.build_block(copy.deepcopy(games), sched, rows, now, FBS)
@@ -244,3 +252,81 @@ def test_operating_key_declares_the_operating_forecast_without_bet_authority(mon
     assert blk["games"] == shadow["games"] and blk["model_version"] == shadow["model_version"] == oae.MODEL_VERSION
     monkeypatch.delenv(oae.OPERATING_FLAG)  # rollback
     assert B.build_block(copy.deepcopy(games), sched, rows, now, FBS)["status"] == "not_activated"
+
+
+def _assert_not_operating(blk):
+    assert {k: blk[k] for k in oae.AUTHORITY} == oae.AUTHORITY
+    assert blk["activated"] is False and blk["operating_forecast"] is False and blk["bet_authority"] is False
+
+
+@pytest.fixture
+def _promoted(monkeypatch):
+    monkeypatch.setenv(oae.FLAG, "1")
+    monkeypatch.setenv(oae.OPERATING_FLAG, "1")
+
+
+def test_unavailable_stub_is_never_operating_even_when_promoted(_promoted):
+    blk = oae.unavailable_block("FrozenAssetError('sha256 mismatch')")
+    _assert_not_operating(blk)
+    assert blk["available"] is False and blk["games"] == [] and "sha256" in blk["promotion_withheld"][0]
+
+
+def test_unsupported_season_is_never_operating_even_when_promoted(_promoted):
+    sched, games, rows = _schedule_and_games()
+    blk = B.build_block(games, dict(sched, season=2027), rows, datetime(2026, 11, 20, tzinfo=UTC), FBS)
+    _assert_not_operating(blk)
+    assert blk["available"] is False and any("not covered" in w for w in blk["promotion_withheld"])
+
+
+def test_empty_block_is_never_operating_even_when_promoted(_promoted):
+    sched, games, rows = _schedule_and_games()
+    blk = B.build_block(games, sched, rows, datetime(2026, 11, 22, tzinfo=UTC), FBS)   # all started
+    _assert_not_operating(blk)
+    assert blk["games"] == [] and "no forecast games" in blk["promotion_withheld"]
+
+
+def test_operating_key_without_the_forecast_key_does_not_activate(monkeypatch):
+    monkeypatch.setenv(oae.OPERATING_FLAG, "1")
+    sched, games, rows = _schedule_and_games()
+    blk = B.build_block(games, sched, rows, datetime(2026, 11, 20, 12, tzinfo=UTC), FBS)
+    _assert_not_operating(blk)
+    assert any(oae.FLAG in w for w in blk["promotion_withheld"])
+
+
+def test_tampered_frozen_asset_after_load_withholds_promotion(_promoted, tmp_path, monkeypatch):
+    sched, games, rows = _schedule_and_games()
+    now = datetime(2026, 11, 20, 12, tzinfo=UTC)
+    good = B.build_block(copy.deepcopy(games), sched, rows, now, FBS)
+    assert good["activated"] is True                          # valid inputs: the gate admits it
+    for f in fz.FROZEN_DIR.iterdir():
+        (tmp_path / f.name).write_bytes(f.read_bytes())
+    (tmp_path / "preseason.json").write_bytes((tmp_path / "preseason.json").read_bytes() + b" ")
+    monkeypatch.setattr(fz, "FROZEN_DIR", tmp_path)            # load() stays cached; verify_all re-hashes from disk
+    blk = B.finalize(good)
+    _assert_not_operating(blk)
+    assert any("sha256" in w for w in blk["promotion_withheld"])
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda b: b["games"][0]["fg"].__setitem__("p_home_win", float("nan")),
+    lambda b: b["games"][0]["fg"].__setitem__("p_home_win", -0.1),
+    lambda b: b["games"][0]["fg"].__setitem__("sigma_margin", 0.0),
+    lambda b: b["games"][0]["fg"].__setitem__("spread_home", 3.0),
+    lambda b: b["games"][0]["fg"].pop("p_away_win"),
+    lambda b: b["games"][0]["periods"]["q1"].__setitem__("p_home_win", 0.9),
+    lambda b: b["games"][0].pop("game_id"),
+    lambda b: b.__setitem__("model_version", "cfb-oae-0.9"),
+    lambda b: b.__setitem__("unavailable_reason", "x"),
+    lambda b: b["provenance"].__setitem__("season", 2027),
+])
+def test_finalize_demotes_any_invalid_or_forged_block(_promoted, mutate):
+    sched, games, rows = _schedule_and_games()
+    good = B.build_block(games, sched, rows, datetime(2026, 11, 20, 12, tzinfo=UTC), FBS)
+    assert good["activated"] is True and B.operating_blockers(good) == []
+    bad = copy.deepcopy(good)
+    mutate(bad)
+    bad.update(oae.OPERATING_AUTHORITY)                        # forged activation labels are recomputed, not trusted
+    blk = B.finalize(bad)
+    _assert_not_operating(blk)
+    assert blk["promotion_withheld"]
+    assert B.finalize(B.finalize(good)) == B.finalize(good)    # idempotent on a valid block

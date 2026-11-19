@@ -60,6 +60,23 @@ nothing SIFT serves:
 2. **Consumer key** in sift-alpha `sift_feed/operating_models.json`: `CFB.promoted.model_version = "cfb-oae-1.0.0"`. The feed then serves
    each FBS-vs-FBS game in the block (margin, `spread_home`, win probability, period means); every other game stays unavailable.
 
+**Activation gate (fail closed).** The producer key only *requests* promotion. `oae.block.finalize` is the single place that grants
+`OPERATING_AUTHORITY`, and it recomputes the labels from scratch on every publish (forged labels on the input are discarded). It grants
+them only when every check passes:
+- both keys are exactly `1` and `model_version == cfb-oae-1.0.0`;
+- `available: true` with no `unavailable_reason`, so the season is covered by the frozen inputs;
+- at least one forecast game;
+- every frozen asset is re-hashed from disk (`frozen.verify_all`, uncached) and matches `PROVENANCE.json` and the block's provenance;
+- strict JSON with finite numbers;
+- every `p_*` lies in [0, 1], and each game has a complete full-game forecast with `p_home_win + p_away_win = 1`,
+  `spread_home = -expected_margin`, `sigma_margin > 0`, and period winner probabilities summing to at most 1.
+
+A block that fails any check is published with the non-operating labels and a `promotion_withheld` list of reasons. The
+`unavailable_block` stub (missing or invalid input, build exception, frozen-hash mismatch, non-finite output) is **always**
+non-operating. A missing, invalid, unsupported-season or hash-failed forecast can therefore never be `activated` or
+`operating_forecast`. This is tested in `tests/test_oae.py` and `research/projection_foundation/tests/test_oae_hook.py`, where every
+failure path also runs with both keys set.
+
 Incumbent / fallback: CFB production publishes **no** model projections today, so the fallback is "no operating CFB forecast" (the
 feed's current `unavailable` status), not a different model. Rollback (immediate on the next publish): unset `CFB_OAE_OPERATING`, or revert
 the manifest entry.

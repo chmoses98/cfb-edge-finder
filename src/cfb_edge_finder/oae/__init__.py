@@ -47,10 +47,17 @@ def operating(env: Mapping[str, str] | None = None) -> bool:
 
 
 def authority(env: Mapping[str, str] | None = None) -> dict:
+    """The authority the promotion key REQUESTS. Never stamp this onto a block directly: only
+    ``block.finalize`` may grant OPERATING_AUTHORITY, and only to a block that passes every activation check."""
     return dict(OPERATING_AUTHORITY if operating(env) else AUTHORITY)
 
 
 def unavailable_block(reason: str) -> dict:
-    """Explicit stub published when the challenger block cannot be built (production fields untouched)."""
-    return {"model_version": MODEL_VERSION, **authority(), "flag": FLAG, "available": False,
-            "unavailable_reason": str(reason)[:500], "games": [], "skipped": []}
+    """Explicit stub published when the challenger block cannot be built (production fields untouched).
+
+    Fail closed: an unavailable block is NEVER activated or operating, whatever CFB_OAE_OPERATING says."""
+    blk = {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": False,
+           "unavailable_reason": str(reason)[:500], "games": [], "skipped": []}
+    if operating():
+        blk["promotion_withheld"] = [f"forecast unavailable: {str(reason)[:200]}"]
+    return blk

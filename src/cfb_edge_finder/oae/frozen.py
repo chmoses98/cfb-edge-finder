@@ -38,6 +38,17 @@ def _verified(name: str) -> bytes:
     return path.read_bytes()
 
 
+def verify_all() -> dict:
+    """Re-hash EVERY frozen asset from disk now (uncached; ``load`` is cached per process) against PROVENANCE.json.
+    Raises FrozenAssetError on any missing or mismatched file. Returns {name: sha256}."""
+    rec = json.loads((FROZEN_DIR / "PROVENANCE.json").read_text())
+    if rec != provenance():
+        raise FrozenAssetError("PROVENANCE.json changed since it was loaded")
+    if not rec.get("files"):
+        raise FrozenAssetError("PROVENANCE.json lists no frozen assets")
+    return {name: hashlib.sha256(_verified(name)).hexdigest() for name in rec["files"]}
+
+
 @dataclass(frozen=True)
 class Frozen:
     p307: dict                 # research/cfb_challenger/frozen_params.json (#307), verbatim

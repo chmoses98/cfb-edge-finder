@@ -292,7 +292,7 @@ def stage_publish(ctx) -> dict:
     if not os.path.exists(fp):
         raise SystemExit("publish: no projection_out.json (run the project stage first)")
     out = json.load(open(fp))
-    oae_note = _oae_extend(ctx, out, now)   # no-op unless CFB_OAE_FORECASTS=1 (additive block, never activated)
+    oae_note = _oae_extend(ctx, out, now)   # no-op unless CFB_OAE_FORECASTS=1 (additive; operating only via oae finalize gate)
     wrote = []
     stamp = now.strftime("%Y-%m-%dT%H%MZ")
     if _write_json_if_changed(os.path.join(ctx.root, "projections", "cfb", "latest.json"), out):
@@ -338,7 +338,7 @@ def _oae_extend(ctx, out: dict, now: pd.Timestamp):
         ctx.log(f"oae challenger: artifact already has {oae.ARTIFACT_KEY!r}; not overwritten")
         return {"error": f"existing key {oae.ARTIFACT_KEY!r} not overwritten"}
     try:
-        from cfb_edge_finder.oae.block import build_block
+        from cfb_edge_finder.oae.block import build_block, finalize
         from cfb_edge_finder.oae.ratings import load_log_rows
         fbs = _fbs_conference_ids()
         if fbs is None:
@@ -346,12 +346,18 @@ def _oae_extend(ctx, out: dict, now: pd.Timestamp):
         blk = build_block(out.get("games", []), _load_sched(ctx), load_log_rows(_gamelog_raw(ctx)),
                           now.to_pydatetime(), fbs)
         json.dumps(blk, allow_nan=False, default=_default)   # strict JSON or nothing (no NaN, no partial block)
+        blk = finalize(blk)   # the single activation gate: re-checks everything, grants operating only if all pass
     except Exception as e:  # noqa: BLE001
         ctx.log("oae challenger block failed (production fields unaffected):", repr(e))
         out[oae.ARTIFACT_KEY] = oae.unavailable_block(repr(e))
-        return {"error": repr(e)}
+        return {"error": repr(e), "activated": False}
     out[oae.ARTIFACT_KEY] = blk
-    return {"games": len(blk["games"]), "skipped": len(blk["skipped"]), "model_version": blk["model_version"]}
+    note = {"games": len(blk["games"]), "skipped": len(blk["skipped"]), "model_version": blk["model_version"],
+            "activated": blk["activated"]}
+    if blk.get("promotion_withheld"):
+        ctx.log("oae challenger: promotion WITHHELD (published non-operating):", blk["promotion_withheld"])
+        note["promotion_withheld"] = blk["promotion_withheld"]
+    return note
 
 
 def _gamelog_raw(ctx) -> list[dict]:
