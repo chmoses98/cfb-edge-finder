@@ -77,6 +77,13 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    # ACTIVATION + PROMOTION of cfb-oae-1.0.0 (owner approval required; see docs/OAE_CHALLENGER_INTEGRATION.md).
+    # CFB_OAE_FORECASTS publishes the oae_challenger block; CFB_OAE_OPERATING declares it the operating CFB game forecast.
+    # SIFT serves it only when sift-alpha sift_feed/operating_models.json also promotes cfb-oae-1.0.0.
+    # Rollback: delete these two lines (or set either to "0"); the next publish reverts.
+    env:
+      CFB_OAE_FORECASTS: "1"
+      CFB_OAE_OPERATING: "1"
     outputs:
       changed: ${{ steps.pack.outputs.changed }}
     defaults:
