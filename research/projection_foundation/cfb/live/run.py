@@ -292,6 +292,7 @@ def stage_publish(ctx) -> dict:
     if not os.path.exists(fp):
         raise SystemExit("publish: no projection_out.json (run the project stage first)")
     out = json.load(open(fp))
+    oae_note = _oae_extend(ctx, out, now)   # no-op unless CFB_OAE_FORECASTS=1 (additive; operating only via oae finalize gate)
     wrote = []
     stamp = now.strftime("%Y-%m-%dT%H%MZ")
     if _write_json_if_changed(os.path.join(ctx.root, "projections", "cfb", "latest.json"), out):
@@ -318,8 +319,52 @@ def stage_publish(ctx) -> dict:
         ctx.log("defence shadow publication failed:", repr(e))
         raise
     res = {"written": wrote, "defense_league": league}
+    if oae_note is not None:
+        res["oae_challenger"] = oae_note
+        # own line: the publish summary below is truncated, and activation is verified from this note (games, activated)
+        ctx.log("oae challenger:", json.dumps(oae_note, default=str)[:1500])
     ctx.log("publish:", json.dumps(res, default=str)[:500])
     return res
+
+
+def _oae_extend(ctx, out: dict, now: pd.Timestamp):
+    """Flag-gated additive OAE block (src/cfb_edge_finder/oae). Flag unset: returns None and `out` is untouched.
+    A failure never blocks the production publish: it is logged and an explicit `available: false` stub is added."""
+    src = str(paths.REPO_ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    from cfb_edge_finder import oae
+    if not oae.enabled():
+        return None
+    if oae.ARTIFACT_KEY in out:   # never overwrite an existing key; production publish proceeds unchanged
+        ctx.log(f"oae challenger: artifact already has {oae.ARTIFACT_KEY!r}; not overwritten")
+        return {"error": f"existing key {oae.ARTIFACT_KEY!r} not overwritten"}
+    try:
+        from cfb_edge_finder.oae.block import build_block, finalize
+        from cfb_edge_finder.oae.ratings import load_log_rows
+        fbs = _fbs_conference_ids()
+        if fbs is None:
+            raise RuntimeError("FBS conference ids unavailable")
+        blk = build_block(out.get("games", []), _load_sched(ctx), load_log_rows(_gamelog_raw(ctx)),
+                          now.to_pydatetime(), fbs)
+        json.dumps(blk, allow_nan=False, default=_default)   # strict JSON or nothing (no NaN, no partial block)
+        blk = finalize(blk)   # the single activation gate: re-checks everything, grants operating only if all pass
+    except Exception as e:  # noqa: BLE001
+        ctx.log("oae challenger block failed (production fields unaffected):", repr(e))
+        out[oae.ARTIFACT_KEY] = oae.unavailable_block(repr(e))
+        return {"error": repr(e), "activated": False}
+    out[oae.ARTIFACT_KEY] = blk
+    note = {"games": len(blk["games"]), "skipped": len(blk["skipped"]), "model_version": blk["model_version"],
+            "activated": blk["activated"]}
+    if blk.get("promotion_withheld"):
+        ctx.log("oae challenger: promotion WITHHELD (published non-operating):", blk["promotion_withheld"])
+        note["promotion_withheld"] = blk["promotion_withheld"]
+    return note
+
+
+def _gamelog_raw(ctx) -> list[dict]:
+    fp = os.path.join(ctx.football, "team_games.jsonl")
+    return [json.loads(x) for x in open(fp) if x.strip()]
 
 
 # --------------------------------------------------------------------------- 4. results
