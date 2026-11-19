@@ -83,8 +83,12 @@ index (`data/live/cfb_execution_index.json`) until their slate approaches.
 * `pricing_basis` — the buy-side rules (NO = NO ask = 1 − YES bid), the fee formula, what the fee excludes.
 
 Prices, sizes and fees are copied unchanged from the execution layer the catalog already publishes; nothing is re-fetched
-from Kalshi and no price is modelled. `markets.json` is rebuilt with the packets (every ~2 h); the execution `quotes.json`
-is refreshed more often, which is why the fingerprint check exists.
+from Kalshi and no price is modelled. `markets.json` is re-derived from the execution index **in the same commit** as
+every catalog change (`scripts/resync_packet_markets.sh`, run by the catalog workflow and again by both writers after
+every rebase), so on `main` its `game_fingerprint` and contract count always equal the committed execution index's. The
+re-price is offline and keeps every football file; it reproduces a full build's markets exactly, including `ref_freq`
+for newly listed contracts (from `ref_freq_reference_game_ids`, the reference class the full build chose). The
+fingerprint check remains for readers holding an older copy.
 
 ## Data-quality flags (`packet.json → data_quality.missing_data_flags`)
 

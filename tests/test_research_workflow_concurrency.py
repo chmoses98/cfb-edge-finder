@@ -78,6 +78,13 @@ def _grants_write(text: str) -> bool:
 # and Script Engine runs before they started (3 of 9 on 2026-10-17, all with
 # zero jobs). Every property that makes the carve-out safe is pinned by the
 # MAIN-ONLY WRITERS tests at the bottom of this module.
+#
+# One declared overlap: the packets' market files (data/research_packets/
+# games/*/markets*.json) are DERIVED from the catalog's execution index, so
+# the catalog re-derives them inside its own commit through
+# scripts/resync_packet_markets.sh, and both writers re-derive again after
+# every rebase. That is what keeps the two from racing; it is pinned in
+# tests/test_packet_market_resync.py.
 MAIN_ONLY_WRITERS = {
     "kalshi-market-catalog.yml": "data/live",
     "cfb-availability-evidence.yml": "data/evidence/availability",

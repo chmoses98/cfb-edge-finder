@@ -152,6 +152,20 @@ jobs:
         # byte-identical market content and is skipped entirely. Prices ARE
         # in the fingerprint -- a price move is a real change worth
         # recording.
+        #
+        # *** THE RESEARCH PACKETS MOVE IN THE SAME COMMIT ***
+        # data/research_packets/games/*/markets*.json are derived from the
+        # execution index this step commits. Committed separately, main held
+        # a catalog its packets disagreed with until the next packet build
+        # (up to 9 hours on 2026-11-18), and the strict packet check failed
+        # main and every PR (cfb-edge-finder #309). scripts/
+        # resync_packet_markets.sh re-derives those files from THIS tree,
+        # verifies strictly, and stages them; after every rebase it runs
+        # again (--amend), so a packet build that landed meanwhile is
+        # re-derived against our index before we push. A rebase conflict
+        # (both sides rewrote a market file) is resolved by construction:
+        # scripts/reapply_owned_path.sh keeps upstream's packets and our
+        # data/live, and the resync re-derives the shared files.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -162,48 +176,50 @@ jobs:
           # its file pruned -- both of which `git add data/live` records.
           git add -A data/live
 
+          MSG=""
           if git diff --cached --quiet; then
-            echo "catalog byte-identical; nothing to commit"
+            echo "catalog byte-identical"
+          else
+            # Did anything but the clock move? Compare fingerprints, not bytes.
+            NEW_FP=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['content_fingerprint'])")
+            OLD_FP="${{ steps.previous.outputs.fingerprint }}"
+            if [ -n "$OLD_FP" ] && [ "$NEW_FP" = "$OLD_FP" ]; then
+              echo "market surface unchanged (fingerprint $NEW_FP); skipping commit to avoid timestamp churn"
+              git reset -q
+              # Self-heal the derived execution index. Restore the committed
+              # catalog exactly, rebuild the execution files FROM IT, and
+              # commit only if they differ from what is committed (first
+              # deploy, or a builder fix). Over an in-sync tree the rebuild
+              # is byte-identical, so this commits nothing and never churns.
+              git checkout -- data/live
+              git clean -fdq data/live
+              python3 scripts/build_cfb_execution_index.py --out-dir data/live
+              git add -A data/live
+              if ! git diff --cached --quiet; then
+                MSG="kalshi cfb execution index: resync with committed catalog (fingerprint ${NEW_FP:0:12})"
+              fi
+            else
+              GAMES=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['physical_games'])")
+              MARKETS=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['markets'])")
+              COMPLETE=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['capture_complete'])")
+              MSG="kalshi cfb catalog: ${GAMES} games / ${MARKETS} markets (complete=${COMPLETE})"
+            fi
+          fi
+
+          # Re-derive the packets' market files from the execution index now
+          # in the tree (also heals a main whose packets drifted earlier).
+          scripts/resync_packet_markets.sh
+          if git diff --cached --quiet; then
+            echo "catalog and research packet markets in sync; nothing to commit"
             exit 0
           fi
-
-          # Did anything but the clock move? Compare fingerprints, not bytes.
-          NEW_FP=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['content_fingerprint'])")
-          OLD_FP="${{ steps.previous.outputs.fingerprint }}"
-          if [ -n "$OLD_FP" ] && [ "$NEW_FP" = "$OLD_FP" ]; then
-            echo "market surface unchanged (fingerprint $NEW_FP); skipping commit to avoid timestamp churn"
-            git reset -q
-            # Self-heal the derived execution index. Restore the committed
-            # catalog exactly, rebuild the execution files FROM IT, and
-            # commit only if they differ from what is committed (first
-            # deploy, or a builder fix). Over an in-sync tree the rebuild
-            # is byte-identical, so this commits nothing and never churns.
-            git checkout -- data/live
-            git clean -fdq data/live
-            python3 scripts/build_cfb_execution_index.py --out-dir data/live
-            git add -A data/live
-            if git diff --cached --quiet; then
-              echo "execution index in sync with the committed catalog"
-              exit 0
-            fi
-            git commit -m "kalshi cfb execution index: resync with committed catalog (fingerprint ${NEW_FP:0:12})"
-            for attempt in 1 2 3 4; do
-              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
-                && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
-              echo "push attempt ${attempt} failed; backing off"
-              sleep $((attempt * 4))
-            done
-            exit 1
-          fi
-
-          GAMES=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['physical_games'])")
-          MARKETS=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['markets'])")
-          COMPLETE=$(python3 -c "import json;print(json.load(open('data/live/cfb_catalog_status.json'))['capture_complete'])")
-          git commit -m "kalshi cfb catalog: ${GAMES} games / ${MARKETS} markets (complete=${COMPLETE})"
+          git commit -m "${MSG:-cfb research packets: markets resync with committed execution index}"
 
           for attempt in 1 2 3 4; do
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
-              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            if git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || scripts/reapply_owned_path.sh data/live; then
+              scripts/resync_packet_markets.sh --amend \
+                && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            fi
             echo "push attempt ${attempt} failed; backing off"
             sleep $((attempt * 4))
           done
