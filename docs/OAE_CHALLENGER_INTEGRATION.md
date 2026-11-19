@@ -50,3 +50,16 @@ Unset the flag (or set it to anything but `1`). The next publish writes an artif
    dry run on real data, flag ON; never exercised in CI so far) logs `publish: ... oae_challenger` with games > 0 and no
    `error`; agreement that the block stays shadow (`bet_authority: false`) until a prospective scorecard exists.
    Pricing/trading use and the 2027 roll-over (rebuilt prior rows + pre-opener talent snapshot) are separate approvals.
+
+## Promotion to the operating CFB game forecast (step 3, separate approval)
+Activation (step 2) publishes the block as a labelled **shadow**; SIFT never serves it. Promotion is two keys, and either alone changes
+nothing SIFT serves:
+1. **Producer key** `CFB_OAE_OPERATING=1` (exact value, with `CFB_OAE_FORECASTS=1`): the block declares `status: activated`,
+   `activated: true`, `role: operating`, `operating_forecast: true`; `bet_authority` stays `false`; forecasts are byte-identical to the
+   shadow block and the artifact's own `model`/`games` never change (tested in `tests/test_oae.py`).
+2. **Consumer key** in sift-alpha `sift_feed/operating_models.json`: `CFB.promoted.model_version = "cfb-oae-1.0.0"`. The feed then serves
+   each FBS-vs-FBS game in the block (margin, `spread_home`, win probability, period means); every other game stays unavailable.
+
+Incumbent / fallback: CFB production publishes **no** model projections today, so the fallback is "no operating CFB forecast" (the
+feed's current `unavailable` status), not a different model. Rollback (immediate on the next publish): unset `CFB_OAE_OPERATING`, or revert
+the manifest entry.

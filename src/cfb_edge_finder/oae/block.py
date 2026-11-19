@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from datetime import datetime
 
-from . import ARTIFACT_KEY, AUTHORITY, FLAG, MODEL_VERSION, unavailable_block
+from . import ARTIFACT_KEY, FLAG, MODEL_VERSION, authority, unavailable_block
 from . import forecast as fc
 from . import frozen as fz
 from .ratings import PregameViolation, local_date, parse_utc, rate_date
@@ -95,9 +95,12 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
     prov = fz.provenance()
     season = int(schedule.get("season", 0))
     ev = {str(e["id"]): e for e in schedule.get("events", [])}
-    block = {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": True,
+    auth = authority()
+    block = {"model_version": MODEL_VERSION, **auth, "flag": FLAG, "available": True,
              "unavailable_reason": None,
-             "note": "Additive challenger block; never overrides any production field. Not approved for use.",
+             "note": ("Additive block; never overrides any production field. " +
+                      ("Owner-promoted operating CFB game forecast; forecast only, no bet authority."
+                       if auth["operating_forecast"] else "Not approved for use.")),
              "sign_convention": ("margin = home - away; spread_home = -expected_margin; "
                                  "ladder p = P(side wins by more than k)"),
              "settlement_basis": SETTLEMENT_BASIS, "period_winner_basis": PERIOD_WINNER_BASIS,

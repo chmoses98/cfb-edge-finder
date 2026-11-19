@@ -218,3 +218,29 @@ def test_forecast_at_kickoff_is_skipped_not_forecast():
     g = games[1]                                                              # an FBS-vs-FBS game
     blk = B.build_block([g], sched, rows, rt.parse_utc(g["start_utc"]), FBS)   # now == kickoff
     assert blk["games"] == [] and blk["skipped"] == [{"game_id": g["game_id"], "reason": "already started"}]
+
+
+@pytest.mark.parametrize("value", [None, "", "0", "true", "yes", " 2"])
+def test_operating_key_is_off_unless_exactly_one(monkeypatch, value):
+    if value is None:
+        monkeypatch.delenv(oae.OPERATING_FLAG, raising=False)
+    else:
+        monkeypatch.setenv(oae.OPERATING_FLAG, value)
+    sched, games, rows = _schedule_and_games()
+    blk = B.build_block(games, sched, rows, datetime(2026, 11, 20, 12, tzinfo=UTC), FBS)
+    assert {k: blk[k] for k in oae.AUTHORITY} == oae.AUTHORITY
+    assert oae.unavailable_block("x")["status"] == "not_activated"
+
+
+def test_operating_key_declares_the_operating_forecast_without_bet_authority(monkeypatch):
+    sched, games, rows = _schedule_and_games()
+    now = datetime(2026, 11, 20, 12, tzinfo=UTC)
+    shadow = B.build_block(copy.deepcopy(games), sched, rows, now, FBS)
+    monkeypatch.setenv(oae.OPERATING_FLAG, "1")
+    blk = B.build_block(copy.deepcopy(games), sched, rows, now, FBS)
+    assert blk["status"] == "activated" and blk["activated"] is True and blk["operating_forecast"] is True
+    assert blk["role"] == "operating" and blk["bet_authority"] is False
+    # the forecasts themselves are identical: only the declaration changes
+    assert blk["games"] == shadow["games"] and blk["model_version"] == shadow["model_version"] == oae.MODEL_VERSION
+    monkeypatch.delenv(oae.OPERATING_FLAG)  # rollback
+    assert B.build_block(copy.deepcopy(games), sched, rows, now, FBS)["status"] == "not_activated"

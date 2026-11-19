@@ -29,7 +29,28 @@ AUTHORITY = {"status": "not_activated", "activated": False, "authority": "resear
              "operating_forecast_ref": "top-level `model` / `games` of this artifact (unchanged by this block)"}
 
 
+# Promotion key (producer side). Only the exact value "1", and only with CFB_OAE_FORECASTS=1, makes the block
+# declare itself the operating CFB game forecast. SIFT's feed additionally requires its own reviewed manifest
+# (sift-alpha sift_feed/operating_models.json) to name MODEL_VERSION before it serves it; either key off = no operating
+# CFB forecast (the incumbent state: production publishes none). Bet authority stays false either way; the artifact's
+# `model` / `games` never change.
+OPERATING_FLAG = "CFB_OAE_OPERATING"
+OPERATING_AUTHORITY = {"status": "activated", "activated": True, "authority": "operating_forecast", "role": "operating",
+                       "bet_authority": False, "operating_forecast": True,
+                       "operating_forecast_ref": ("oae_challenger.games (owner-promoted with CFB_OAE_OPERATING=1); "
+                                                  "the top-level `model` / `games` of this artifact are unchanged")}
+
+
+def operating(env: Mapping[str, str] | None = None) -> bool:
+    """True only for the explicit value ``"1"``."""
+    return (os.environ if env is None else env).get(OPERATING_FLAG, "").strip() == "1"
+
+
+def authority(env: Mapping[str, str] | None = None) -> dict:
+    return dict(OPERATING_AUTHORITY if operating(env) else AUTHORITY)
+
+
 def unavailable_block(reason: str) -> dict:
     """Explicit stub published when the challenger block cannot be built (production fields untouched)."""
-    return {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": False,
+    return {"model_version": MODEL_VERSION, **authority(), "flag": FLAG, "available": False,
             "unavailable_reason": str(reason)[:500], "games": [], "skipped": []}
