@@ -481,6 +481,10 @@ def build_markets(
                 "verify the "
                 "code-to-team pairing here",
         },
+        # The exact reference class behind every `ref_freq`, in order, so a markets-only re-price (run in the catalog
+        # commit, see scripts/resync_packet_markets.sh) recomputes `ref_freq` for newly listed contracts from the same
+        # games the full build chose, without re-deriving the football side.
+        "ref_freq_reference_game_ids": [str(g["game_id"]) for g in reference_games],
         "families": guide,
         "thesis_groups": THESIS_GROUPS,
         "events": events,

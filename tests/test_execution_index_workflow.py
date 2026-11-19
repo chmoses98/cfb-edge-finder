@@ -114,25 +114,25 @@ def test_only_one_step_commits_and_it_stages_the_whole_live_tree(steps, commit_s
 def test_unchanged_fingerprint_branch_resyncs_the_execution_index(commit_step):
     text = _run(commit_step)
     branch_start = text.index('if [ -n "$OLD_FP" ] && [ "$NEW_FP" = "$OLD_FP" ]; then')
-    branch_end = text.index("\nfi\n", text.index("exit 1", branch_start))
+    branch_end = text.index("\nelse\n", branch_start)  # _run strips indentation
     branch = text[branch_start:branch_end]
 
     checkout = branch.index("git checkout -- data/live")
     rebuild = branch.index(REBUILD_CMD, checkout)
     add = branch.index("git add -A data/live", rebuild)
     diff = branch.index("git diff --cached --quiet", add)
-    commit = branch.index("git commit", diff)
-    assert checkout < rebuild < add < diff < commit
+    msg = branch.index('MSG="kalshi cfb execution index: resync', diff)
+    assert checkout < rebuild < add < diff < msg
 
     # the rebuild must be the BUILD form, not the read-only verification
     rebuild_line = branch[rebuild : branch.index("\n", rebuild)]
     assert "--verify-only" not in rebuild_line
 
-    # it commits only when the cached diff reports a difference
-    gate = branch[diff - len("if ") : diff + len("git diff --cached --quiet; then")]
-    assert gate == "if git diff --cached --quiet; then"
-    after_gate = branch[diff : commit]
-    assert "exit 0" in after_gate, "an in-sync tree must exit without committing"
+    # the resync message is chosen only when the cached diff reports a difference
+    gate = branch[diff - len("if ! ") : diff + len("git diff --cached --quiet; then")]
+    assert gate == "if ! git diff --cached --quiet; then"
+    # this branch never commits on its own: the step's single commit does, after the packet-market resync
+    assert "git commit" not in branch
 
     # the resync restores the committed tree exactly, including untracked leftovers
     assert "git clean -fdq data/live" in branch[checkout:rebuild]
@@ -140,20 +140,33 @@ def test_unchanged_fingerprint_branch_resyncs_the_execution_index(commit_step):
     assert "git reset -q" in branch[:checkout]
 
 
+def test_an_in_sync_tree_exits_without_committing(commit_step):
+    """Byte-identical catalog, in-sync execution index and in-sync packet markets: nothing is committed."""
+    text = _run(commit_step)
+    resync = text.index("scripts/resync_packet_markets.sh\n")
+    gate = text.index("if git diff --cached --quiet; then", resync)
+    commit = text.index("git commit", gate)
+    assert "exit 0" in text[gate:commit]
+    assert text.count("git commit") == 1, "one commit per run: catalog, index resync and packet markets together"
+
+
 def test_changed_surface_path_commits_via_the_same_diff_gate(commit_step):
     text = _run(commit_step)
     first_gate = text.index("git diff --cached --quiet")
     assert text.index("git add -A data/live") < first_gate
-    assert "catalog byte-identical; nothing to commit" in text[first_gate : first_gate + 200]
-    # the regular commit message path follows the unchanged branch
-    resync_commit = text.index('git commit -m "kalshi cfb execution index: resync')
-    assert text.index('git commit -m "kalshi cfb catalog:') > resync_commit
+    assert "catalog byte-identical" in text[first_gate : first_gate + 200]
+    # the regular catalog message is chosen after the unchanged branch, and both feed the single commit
+    resync_msg = text.index('MSG="kalshi cfb execution index: resync')
+    catalog_msg = text.index('MSG="kalshi cfb catalog:')
+    assert catalog_msg > resync_msg
+    assert text.index('git commit -m "${MSG') > catalog_msg
 
 
 def test_commit_step_still_pushes_with_retries(commit_step):
     text = _run(commit_step)
-    assert text.count("git push origin") == 2
-    assert text.count("git pull --rebase --autostash") == 2
+    assert text.count("git push origin") == 1
+    assert text.count("git pull --rebase --autostash") == 1
+    assert "for attempt in 1 2 3 4" in text
 
 
 def test_catalog_builder_calls_write_execution_artifacts():

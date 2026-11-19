@@ -88,9 +88,17 @@ jobs:
             exit 0
           fi
           git commit -m "cfb research packets: refresh ($(date -u +%Y-%m-%dT%H:%MZ))"
+          # The catalog commits data/live (and re-derives these packets' market files with it) on its own schedule.
+          # A catalog commit that landed while this run built would leave our packets priced off an older execution
+          # index, and a clean rebase would not notice. So after every rebase the market files are re-derived against
+          # the index now in the tree and verified strictly before the push (scripts/resync_packet_markets.sh); a
+          # conflict on a market file keeps OUR packets and upstream's data/live (scripts/reapply_owned_path.sh).
           for attempt in 1 2 3 4; do
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
-              && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            if git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+              || scripts/reapply_owned_path.sh data/research_packets; then
+              scripts/resync_packet_markets.sh --amend \
+                && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            fi
             echo "push attempt ${attempt} failed; backing off"
             sleep $((attempt * 4))
           done
