@@ -1,10 +1,11 @@
 """Build the additive ``oae_challenger`` block of the CFB projection artifact (never touches existing fields)."""
 from __future__ import annotations
 
+import json
 import math
 from datetime import datetime
 
-from . import ARTIFACT_KEY, FLAG, MODEL_VERSION, authority, unavailable_block
+from . import ARTIFACT_KEY, AUTHORITY, FLAG, MODEL_VERSION, OPERATING_AUTHORITY, enabled, operating, unavailable_block
 from . import forecast as fc
 from . import frozen as fz
 from .ratings import PregameViolation, local_date, parse_utc, rate_date
@@ -95,12 +96,8 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
     prov = fz.provenance()
     season = int(schedule.get("season", 0))
     ev = {str(e["id"]): e for e in schedule.get("events", [])}
-    auth = authority()
-    block = {"model_version": MODEL_VERSION, **auth, "flag": FLAG, "available": True,
-             "unavailable_reason": None,
-             "note": ("Additive block; never overrides any production field. " +
-                      ("Owner-promoted operating CFB game forecast; forecast only, no bet authority."
-                       if auth["operating_forecast"] else "Not approved for use.")),
+    block = {"model_version": MODEL_VERSION, **AUTHORITY, "flag": FLAG, "available": True,
+             "unavailable_reason": None, "note": NOTE_SHADOW,
              "sign_convention": ("margin = home - away; spread_home = -expected_margin; "
                                  "ladder p = P(side wins by more than k)"),
              "settlement_basis": SETTLEMENT_BASIS, "period_winner_basis": PERIOD_WINNER_BASIS,
@@ -112,7 +109,7 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
         block["available"], block["unavailable_reason"] = False, f"season {season} not covered by frozen inputs"
         block["skipped"] = [{"game_id": str(g["game_id"]), "reason": f"no frozen inputs for season {season}"}
                             for g in games]
-        return block
+        return finalize(block)
     rows = F.prior_rows + [r for r in log_rows if r["season"] == season]
     p = F.p307["params"]
     cache: dict = {}
@@ -144,7 +141,128 @@ def build_block(games: list[dict], schedule: dict, log_rows: list[dict], now_utc
         block["games"].append({"game_id": gid, "start_utc": g["start_utc"], "home_id": home, "away_id": away,
                                "neutral": bool(e.get("neutral_site")), "ratings_game_date": d,
                                "n_training_team_games": n_rows, **fcst})
-    return block
+    return finalize(block)
 
 
-__all__ = ["ARTIFACT_KEY", "build_block", "forecast_game", "unavailable_block"]
+# --------------------------------------------------------------------------- activation gate (fail closed)
+NOTE_SHADOW = "Additive block; never overrides any production field. Not approved for use."
+NOTE_OPERATING = ("Additive block; never overrides any production field. "
+                  "Owner-promoted operating CFB game forecast; forecast only, no bet authority.")
+_PROB_TOL = 2e-3
+
+
+def _non_finite_paths(x, path="$"):
+    if isinstance(x, bool) or x is None or isinstance(x, str):
+        return []
+    if isinstance(x, (int, float)):
+        return [] if math.isfinite(x) else [path]
+    if isinstance(x, dict):
+        return [p for k, v in x.items() for p in _non_finite_paths(v, f"{path}.{k}")]
+    if isinstance(x, (list, tuple)):
+        return [p for i, v in enumerate(x) for p in _non_finite_paths(v, f"{path}[{i}]")]
+    return [f"{path} (type {type(x).__name__})"]
+
+
+def _prob_paths_out_of_range(x, path="$"):
+    bad = []
+    if isinstance(x, dict):
+        for k, v in x.items():
+            p = f"{path}.{k}"
+            if k.startswith("p_") and not (isinstance(v, (int, float)) and not isinstance(v, bool)
+                                           and 0.0 <= v <= 1.0):
+                bad.append(p)
+            else:
+                bad.extend(_prob_paths_out_of_range(v, p))
+    elif isinstance(x, list):
+        for i, v in enumerate(x):
+            bad.extend(_prob_paths_out_of_range(v, f"{path}[{i}]"))
+    return bad
+
+
+def _game_problems(g) -> list[str]:
+    gid = g.get("game_id") if isinstance(g, dict) else None
+    if not isinstance(g, dict) or not isinstance(gid, str) or not gid:
+        return ["game entry without a game_id"]
+    fg = g.get("fg")
+    if not isinstance(fg, dict):
+        return [f"game {gid}: no full-game forecast"]
+    need = ("expected_margin", "spread_home", "sigma_margin", "p_home_win", "p_away_win")
+    miss = [k for k in need if not isinstance(fg.get(k), (int, float)) or isinstance(fg.get(k), bool)]
+    if miss:
+        return [f"game {gid}: fg missing {miss}"]
+    out = []
+    if not fg["sigma_margin"] > 0:
+        out.append(f"game {gid}: sigma_margin <= 0")
+    if abs(fg["p_home_win"] + fg["p_away_win"] - 1.0) > _PROB_TOL:
+        out.append(f"game {gid}: fg p_home_win + p_away_win != 1")
+    if abs(fg["spread_home"] + fg["expected_margin"]) > 1e-3:
+        out.append(f"game {gid}: spread_home != -expected_margin")
+    for seg, d in (g.get("periods") or {}).items():
+        if isinstance(d, dict) and "p_home_win" in d and d["p_home_win"] + d.get("p_away_win", 0) > 1.0 + _PROB_TOL:
+            out.append(f"game {gid}: {seg} winner probabilities exceed 1")
+    return out
+
+
+def operating_blockers(block) -> list[str]:
+    """Every reason this block may NOT be declared the operating forecast (empty list = eligible).
+
+    Checked independently of how the block was built: flags, identity, availability, season coverage, at least one
+    forecast game, frozen-asset hashes re-verified from disk, strict JSON, finite numbers and valid probabilities."""
+    if not isinstance(block, dict):
+        return ["block is not an object"]
+    why = []
+    if not enabled():
+        why.append(f"{FLAG} != 1")
+    if not operating():
+        why.append("CFB_OAE_OPERATING != 1")
+    if block.get("model_version") != MODEL_VERSION:
+        why.append(f"model_version {block.get('model_version')!r} != {MODEL_VERSION!r}")
+    if block.get("available") is not True or block.get("unavailable_reason") is not None:
+        why.append(f"forecast unavailable: {block.get('unavailable_reason')}")
+    games = block.get("games")
+    if not isinstance(games, list) or not games:
+        why.append("no forecast games")
+    try:
+        hashes = fz.verify_all()
+        prov = fz.provenance()
+        if (block.get("provenance") or {}).get("files") != hashes:
+            why.append("block provenance hashes differ from the verified frozen assets")
+        if (block.get("provenance") or {}).get("season") != prov.get("season"):
+            why.append("block provenance season differs from the frozen season")
+    except Exception as e:  # noqa: BLE001  any hash/IO failure withholds promotion
+        why.append(f"frozen assets failed verification: {e!r}"[:300])
+    bad = _non_finite_paths(block)
+    if bad:
+        why.append(f"non-finite values at {bad[:5]}")
+    else:
+        try:
+            json.dumps(block, allow_nan=False)
+        except (TypeError, ValueError) as e:
+            why.append(f"not strict JSON: {e!r}"[:300])
+    badp = _prob_paths_out_of_range(games if isinstance(games, list) else [])
+    if badp:
+        why.append(f"probabilities outside [0, 1] at {badp[:5]}")
+    for g in games if isinstance(games, list) else []:
+        why.extend(_game_problems(g))
+        if len(why) > 20:
+            break
+    return why
+
+
+def finalize(block: dict) -> dict:
+    """The ONLY place that grants operating authority. Returns a copy whose authority labels are recomputed from
+    scratch: OPERATING_AUTHORITY only if CFB_OAE_OPERATING=1 AND ``operating_blockers`` is empty; otherwise the
+    non-operating AUTHORITY (with ``promotion_withheld`` listing why, when promotion was requested). Idempotent."""
+    out = {k: v for k, v in block.items() if k not in OPERATING_AUTHORITY and k != "promotion_withheld"}
+    if operating():
+        why = operating_blockers(out)
+        if not why:
+            out.update(OPERATING_AUTHORITY, note=NOTE_OPERATING)
+            return out
+        out["promotion_withheld"] = why[:20]
+    out.update(AUTHORITY, note=NOTE_SHADOW)
+    return out
+
+
+__all__ = ["ARTIFACT_KEY", "build_block", "finalize", "forecast_game", "operating_blockers",
+           "unavailable_block"]
