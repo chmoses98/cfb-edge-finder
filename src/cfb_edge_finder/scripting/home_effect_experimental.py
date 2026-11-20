@@ -87,7 +87,12 @@ class HomeEffectConfig:
     adjust: AdjustConfig = DEFAULT_CONFIG
 
     def describe(self) -> dict[str, Any]:
-        return {"version": VERSION, "home_prior_games": self.home_prior_games, "carryover": self.carryover, **self.adjust.describe()}
+        return {
+            "version": VERSION,
+            "home_prior_games": self.home_prior_games,
+            "carryover": self.carryover,
+            **self.adjust.describe(),
+        }
 
 
 #: Frozen candidate (chosen on 2015-2023 only; see docs/HOME_EFFECT_INVESTIGATION.md). Not active anywhere.
@@ -110,7 +115,9 @@ def _require(enabled: bool) -> None:
         raise DisabledError("experimental home effect is disabled; research callers must pass enabled=True")
 
 
-def season_prior(prev_rows: list[TeamGame], target_season_start: datetime | str, config: AdjustConfig = DEFAULT_CONFIG) -> SeasonPrior:
+def season_prior(
+    prev_rows: list[TeamGame], target_season_start: datetime | str, config: AdjustConfig = DEFAULT_CONFIG
+) -> SeasonPrior:
     """The previous season's end-of-season incumbent fit. Every row must have kicked off before the target season."""
     start = parse_utc(target_season_start)
     if not prev_rows:
@@ -145,7 +152,9 @@ def fit_points(
     _require(enabled)
     metric = BY_ID[METRIC]
     history = before(rows, cutoff)
-    if prior is not None and parse_utc(prior.source_last_kickoff) >= min((r.kickoff() for r in history), default=parse_utc(cutoff)):
+    if prior is not None and parse_utc(prior.source_last_kickoff) >= min(
+        (r.kickoff() for r in history), default=parse_utc(cutoff)
+    ):
         raise ValueError("season prior overlaps the target season")
     divisions = _divisions(history)
     obs = observations(history, metric)
@@ -203,7 +212,13 @@ def fit_points(
 
 def scoring_margin(fit: PointsFit | None, home_id: str, away_id: str, neutral_site: bool) -> dict[str, float | None]:
     """Same formula and clamping as `matchup.scoring_baseline`, on the experimental fit."""
-    out: dict[str, float | None] = {"home_points": None, "away_points": None, "home_margin": None, "total_points": None, "home_effect_applied": None}
+    out: dict[str, float | None] = {
+        "home_points": None,
+        "away_points": None,
+        "home_margin": None,
+        "total_points": None,
+        "home_effect_applied": None,
+    }
     if fit is None:
         return out
     try:
@@ -216,5 +231,11 @@ def scoring_margin(fit: PointsFit | None, home_id: str, away_id: str, neutral_si
     away = max(ao + hd - fit.mu - fit.home_effect * x, 0.0)
     if math.isnan(home) or math.isnan(away):
         return out
-    out.update(home_points=home, away_points=away, home_margin=home - away, total_points=home + away, home_effect_applied=fit.home_effect * x)
+    out.update(
+        home_points=home,
+        away_points=away,
+        home_margin=home - away,
+        total_points=home + away,
+        home_effect_applied=fit.home_effect * x,
+    )
     return out

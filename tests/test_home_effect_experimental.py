@@ -75,7 +75,9 @@ def test_scoring_margin_matches_the_baseline_formula(season):
         base = scoring_baseline(league, ident)
         m = HE.scoring_margin(exp, "F00", "F01", neutral)
         assert m["home_margin"] == pytest.approx(base["home_margin"], abs=0.051)
-        assert m["home_effect_applied"] == pytest.approx(0.0 if neutral else league.fits["points_per_game"].home_effect, abs=1e-9)
+        assert m["home_effect_applied"] == pytest.approx(
+            0.0 if neutral else league.fits["points_per_game"].home_effect, abs=1e-9
+        )
 
 
 def test_future_games_cannot_move_a_fit(season):
@@ -105,7 +107,11 @@ def _confounded_week(true_h: float, seed: int = 3) -> tuple[list[TeamGame], dict
     def game(gid: str, kick: datetime, home: str, away: str, season_: int, h: float) -> list[TeamGame]:
         hp = 28 + strength[home] / 2 + h + rng.normal(0, 3)
         ap = 28 + strength[away] / 2 - h + rng.normal(0, 3)
-        mk = lambda t, o, site, pf, pa: TeamGame(gid, season_, 1, kick.strftime("%Y-%m-%dT%H:%M:%SZ"), t, t, o, o, "fbs", "fbs", site, pf, pa, {}, None)
+
+        def mk(t, o, site, pf, pa):
+            k = kick.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return TeamGame(gid, season_, 1, k, t, t, o, o, "fbs", "fbs", site, pf, pa, {}, None)
+
         return [mk(home, away, "home", hp, ap), mk(away, home, "away", ap, hp)]
 
     start = datetime(2026, 8, 29, 19, tzinfo=UTC)
