@@ -65,6 +65,7 @@ FOOTBALL_MODULES = (
     "baseline_eval",
     "calibration",
     "claims",
+    "home_effect_experimental",
 )
 
 #: Modules that run strictly AFTER the freeze and may read contracts and prices.
