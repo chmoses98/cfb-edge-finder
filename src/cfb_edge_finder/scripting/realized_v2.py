@@ -26,6 +26,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+from cfb_edge_finder.scripting.control_interactions import build_control_interaction_diagnostics
 from cfb_edge_finder.scripting.gamelog import TeamGame
 from cfb_edge_finder.scripting.realized import ONE_SCORE, realized_features
 
@@ -306,12 +307,13 @@ def build_report_v2(ledger_rows: list[dict[str, Any]], realized: list[dict[str, 
     ]
     final = {(r["game_key"]) for r in ledger_rows if r.get("kind") == "FINAL_PREGAME"}
     return {
-        "schema": "cfb_script_engine_v2_report/1.0.0",
+        "schema": "cfb_script_engine_v2_report/1.1.0",
         "methodology_version": METHODOLOGY,
         "final_pregame_games": len(final),
         "settled_games": len(rows),
         "unavailable_is_explicit": True,
         "control": dict(sorted(control.items())),
+        "control_interactions": build_control_interaction_diagnostics(rows),
         "closeness": {
             "n": len(close),
             "within_3": _rate(sum(c["within_3"] for c in close), len(close)),
@@ -378,4 +380,24 @@ def render_markdown_v2(report: dict[str, Any]) -> str:
     d = report["defensive_suppression"]
     lines.append(f"* DEFENSIVE SUPPRESSION: n = {d['n']}, realized label {d['realized_label']}")
     lines.append(f"* UNAVAILABLE (explicit): {report['unavailable_counts']}")
+    diagnostics = report["control_interactions"]
+    lines += [
+        "",
+        "## CONTROL interactions (descriptive only)",
+        "",
+        "Pregame V2 claim cohorts crossed with CONTROL side and strength. These are overlapping football-only "
+        "slices, NOT validated betting signals or incremental effects; NO ROI or value is inferred.",
+        "",
+        "| Dimension | Pregame state | CONTROL tier | n | Wins | Win rate | Sample |",
+        "|---|---|---|---:|---:|---:|---|",
+    ]
+    for dimension, states in diagnostics["moderators"].items():
+        for state, tiers in states.items():
+            for tier, stat in tiers.items():
+                lines.append(
+                    f"| {dimension} | {state} | {tier} | {stat['n']} | {stat['wins']} "
+                    f"| {stat['win_rate']} | {stat['sample']} |"
+                )
+    if not diagnostics["moderators"]:
+        lines.append("| — | — | — | 0 | — | — | — |")
     return "\n".join(lines) + "\n"
