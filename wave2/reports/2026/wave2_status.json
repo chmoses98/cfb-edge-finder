@@ -16,15 +16,15 @@
   "system_failures": 82
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-21T23:02:53Z",
+ "last_ledger_row_at": "2026-11-21T23:12:54Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
  "pros001_feature_distribution": {
-  "mean": 0.05735620437956205,
-  "n": 685,
-  "sd": 1.108015722257224,
-  "share_abs_z_ge_1": 0.18832116788321168,
+  "mean": 0.05993440233236152,
+  "n": 686,
+  "sd": 1.109263942216136,
+  "share_abs_z_ge_1": 0.18950437317784258,
   "wave1_mean": 0.13804024626610417,
   "wave1_sd": 1.4218539928759784
  },
@@ -32,7 +32,7 @@
  "season": 2026,
  "streams": {
   "CFB-PROS-001": {
-   "awaiting_entry": 4,
+   "awaiting_entry": 5,
    "entries": {
     "ELIGIBLE": 90,
     "MARKET_NOT_OFFERED": 35
@@ -42,7 +42,7 @@
    },
    "next_read": {
     "at_n": 100,
-    "remaining": 20,
+    "remaining": 18,
     "state": "INTERIM"
    },
    "observation_reasons": {
@@ -53,57 +53,57 @@
    },
    "observations": {
     "EXCLUDED_PROTOCOL": 685,
-    "PENDING": 129
+    "PENDING": 130
    },
-   "settlement_pending": 9,
+   "settlement_pending": 7,
    "summary": {
     "ats_like": {
      "losses": 40,
      "pushes": 1,
-     "rate": 0.4936708860759494,
+     "rate": 0.5061728395061729,
      "rate_ci95": [
-      0.38630272176150804,
-      0.6016260277530987
+      0.3995078470731793,
+      0.6122788432301242
      ],
-     "wins": 39
+     "wins": 41
     },
     "economics": {
-     "fee_adjusted_pnl": -1.92,
-     "hits": 40,
-     "mean_price": 0.5039999999999999,
-     "n": 80,
+     "fee_adjusted_pnl": -0.97,
+     "hits": 42,
+     "mean_price": 0.5040243902439024,
+     "n": 82,
      "roi_ci95_bootstrap": [
-      -0.24044623783527183,
-      0.1619703713486435
+      -0.23059436483311516,
+      0.1822180636331873
      ],
-     "roi_on_outlay": -0.04580152671755729,
+     "roi_on_outlay": -0.02257388875959976,
      "unavailable": 0
     },
     "home_away": {
      "away": 47,
-     "home": 33
+     "home": 35
     },
-    "n": 80,
-    "outright_win_rate": 0.6375,
+    "n": 82,
+    "outright_win_rate": 0.6341463414634146,
     "residual": {
      "ci95_bootstrap": [
-      -2.04577575,
-      4.9080864687500005
+      -1.9705941463414636,
+      4.937232164634147
      ],
-     "mean": 1.3815937499999997,
-     "median": -0.03125,
-     "positive_rate": 0.4875,
+     "mean": 1.4546036585365851,
+     "median": 0.2857,
+     "positive_rate": 0.5,
      "positive_rate_ci95": [
-      0.38107879540381073,
-      0.5950666578345774
+      0.3942282839199199,
+      0.6057717160800802
      ],
      "quantiles": {
-      "10": -18.15,
-      "25": -9.1302,
-      "75": 11.453125,
-      "90": 19.88389
+      "10": -17.82,
+      "25": -8.796875,
+      "75": 11.125,
+      "90": 19.66306000000001
      },
-     "sd": 16.130720221596704
+     "sd": 15.938568708239469
     },
     "verdict": "EARLY_READ"
    }
