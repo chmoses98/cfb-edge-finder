@@ -1,6 +1,6 @@
 {
  "capture_health": {
-  "expected_games": 118,
+  "expected_games": 117,
   "game_winner_markets_found": 116,
   "market_absent": 0,
   "not_tracked": 0,
@@ -9,17 +9,17 @@
   "price_1_00": 0,
   "primary_window_coverage": 1.0,
   "statuses": {
-   "CAPTURE_OK": 2,
+   "CAPTURE_OK": 1,
    "CAPTURE_PENDING": 116
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 2,
+  "valid_primary_captures": 1,
   "window": {
-   "from": "2026-11-21T01:00:00Z",
+   "from": "2026-11-21T02:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 2
+  "windows_closed": 1
  },
  "population": {
   "awaiting_kickoff": {},
@@ -2811,7 +2811,7 @@
  },
  "summary": {
   "H1": {
-   "break_even": 0.7397,
+   "break_even": 0.7468,
    "checkpoint": {
     "next": "PRIMARY_REVIEW",
     "next_at_n": 50,
@@ -2822,84 +2822,84 @@
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 35
+     "CAPTURE_OK": 37
     }
    },
-   "fee_adjusted_pnl": -1.89,
+   "fee_adjusted_pnl": -2.63,
    "football": {
-    "n": 35,
+    "n": 37,
     "wilson95": [
-     0.5202,
-     0.8145
+     0.5146,
+     0.8037
     ],
-    "win_rate": 0.6857,
-    "wins": 24
+    "win_rate": 0.6757,
+    "wins": 25
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
-   "losses": 11,
-   "mean_entry": 0.7211,
-   "n": 35,
-   "roi": -0.073,
+   "losses": 12,
+   "mean_entry": 0.7284,
+   "n": 37,
+   "roi": -0.0952,
    "roi_ci95": [
-    -0.2806,
-    0.1175
+    -0.2943,
+    0.0909
    ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
-     "break_even": 0.7007,
-     "fee_adjusted_pnl": -2.51,
+     "break_even": 0.7137,
+     "fee_adjusted_pnl": -2.42,
      "losses": 7,
-     "mean_entry": 0.6813,
-     "n": 15,
-     "roi": -0.2388,
+     "mean_entry": 0.695,
+     "n": 16,
+     "roi": -0.2119,
      "roi_ci95": [
-      -0.6143,
-      0.1259
+      -0.5606,
+      0.1215
      ],
-     "win_rate": 0.5333,
-     "wins": 8
+     "win_rate": 0.5625,
+     "wins": 9
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.769,
-     "fee_adjusted_pnl": 0.62,
-     "losses": 4,
-     "mean_entry": 0.751,
-     "n": 20,
-     "roi": 0.0403,
+     "break_even": 0.7719,
+     "fee_adjusted_pnl": -0.21,
+     "losses": 5,
+     "mean_entry": 0.7538,
+     "n": 21,
+     "roi": -0.013,
      "roi_ci95": [
-      -0.1864,
-      0.2227
+      -0.2458,
+      0.1905
      ],
-     "win_rate": 0.8,
+     "win_rate": 0.7619,
      "wins": 16
     }
    },
-   "weeks": 11,
-   "win_rate": 0.6857,
-   "wins": 24
+   "weeks": 12,
+   "win_rate": 0.6757,
+   "wins": 25
   },
   "H2": {
-   "break_even": 0.7582,
+   "break_even": 0.7617,
    "checkpoint": {
     "next": "INTERIM_RESEARCH_READ",
     "next_at_n": 20,
     "reached": "EARLY_READ_ONLY",
     "reached_at_n": 10
    },
-   "fee_adjusted_pnl": -2.34,
+   "fee_adjusted_pnl": -2.14,
    "id": "H2_STRONG_CONTROL_BELOW_85_UNDERPERFORMS",
    "losses": 5,
-   "mean_entry": 0.74,
-   "n": 11,
-   "realized_minus_break_even": -0.2127,
-   "roi": -0.2806,
+   "mean_entry": 0.7433,
+   "n": 12,
+   "realized_minus_break_even": -0.1784,
+   "roi": -0.2341,
    "roi_ci95": [
-    -0.6372,
-    0.0626
+    -0.5652,
+    0.0799
    ],
    "underperforming_so_far": true,
-   "win_rate": 0.5455,
-   "wins": 6
+   "win_rate": 0.5833,
+   "wins": 7
   },
   "moderate_status": {
    "capture_coverage_healthy": true,
@@ -2910,29 +2910,29 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 64,
+  "settled_rows": 69,
   "strong": {
-   "break_even": 0.8486,
-   "fee_adjusted_pnl": -4.76,
+   "break_even": 0.8516,
+   "fee_adjusted_pnl": -4.4,
    "football": {
-    "n": 29,
+    "n": 32,
     "wilson95": [
-     0.5077,
-     0.8272
+     0.5463,
+     0.8444
     ],
-    "win_rate": 0.6897,
-    "wins": 20
+    "win_rate": 0.7188,
+    "wins": 23
    },
    "losses": 9,
-   "mean_entry": 0.8354,
-   "n": 28,
-   "roi": -0.2003,
+   "mean_entry": 0.8384,
+   "n": 31,
+   "roi": -0.1667,
    "roi_ci95": [
-    -0.4055,
-    -0.018
+    -0.3536,
+    0.0048
    ],
-   "win_rate": 0.6786,
-   "wins": 19
+   "win_rate": 0.7097,
+   "wins": 22
   }
  }
 }
