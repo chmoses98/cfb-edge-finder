@@ -1,43 +1,48 @@
 {
  "capture_health": {
   "expected_games": 115,
-  "game_winner_markets_found": 95,
+  "game_winner_markets_found": 92,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 1,
-  "pending": 18,
+  "pending": 19,
   "price_1_00": 3,
-  "primary_window_coverage": 0.9894,
+  "primary_window_coverage": 0.9892,
   "statuses": {
-   "CAPTURE_OK": 93,
-   "CAPTURE_PENDING": 18,
+   "CAPTURE_OK": 92,
+   "CAPTURE_PENDING": 19,
    "ORIENTATION_FAILURE": 1,
    "PRICE_1_00": 3
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 93,
+  "valid_primary_captures": 92,
   "window": {
    "from": "2026-11-21T17:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 97
+  "windows_closed": 96
  },
  "population": {
-  "awaiting_kickoff": {},
+  "awaiting_kickoff": {
+   "AWAY_CONTROL_STRONG": 1,
+   "HOME_CONTROL_MODERATE": 1,
+   "HOME_CONTROL_STRONG": 1,
+   "NO_CONTROL": 11
+  },
   "by_strength": {
-   "MODERATE": 39,
-   "NO_CONTROL": 123,
-   "STRONG": 32
+   "MODERATE": 43,
+   "NO_CONTROL": 138,
+   "STRONG": 39
   },
   "by_tier": {
-   "AWAY_CONTROL_MODERATE": 17,
-   "AWAY_CONTROL_STRONG": 12,
-   "HOME_CONTROL_MODERATE": 22,
-   "HOME_CONTROL_STRONG": 20,
-   "NO_CONTROL": 123
+   "AWAY_CONTROL_MODERATE": 18,
+   "AWAY_CONTROL_STRONG": 15,
+   "HOME_CONTROL_MODERATE": 25,
+   "HOME_CONTROL_STRONG": 24,
+   "NO_CONTROL": 138
   },
-  "final_pregame_games": 194,
+  "final_pregame_games": 220,
   "missing_final_pregame": [
    {
     "event_id": "401856823",
@@ -2855,11 +2860,6 @@
     "kickoff_utc": "2026-11-21T17:00:00Z"
    },
    {
-    "event_id": "401856752",
-    "game_key": "26NOV21TXAMOKLA",
-    "kickoff_utc": "2026-11-21T17:00:00Z"
-   },
-   {
     "event_id": "401862835",
     "game_key": "26NOV21UNTTULN",
     "kickoff_utc": "2026-11-21T17:00:00Z"
@@ -3005,11 +3005,6 @@
     "kickoff_utc": "2026-11-21T19:00:00Z"
    },
    {
-    "event_id": "401891330",
-    "game_key": "26NOV21CHSSUU",
-    "kickoff_utc": "2026-11-21T19:00:00Z"
-   },
-   {
     "event_id": "401868059",
     "game_key": "26NOV21EKYAC",
     "kickoff_utc": "2026-11-21T19:00:00Z"
@@ -3123,61 +3118,6 @@
     "event_id": "401868208",
     "game_key": "26NOV21WIULINW",
     "kickoff_utc": "2026-11-21T20:00:00Z"
-   },
-   {
-    "event_id": "401856755",
-    "game_key": "26NOV21ARKTEX",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401868947",
-    "game_key": "26NOV21FAMUCOOK",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401858535",
-    "game_key": "26NOV21INDWASH",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401856754",
-    "game_key": "26NOV21LSUTENN",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401858304",
-    "game_key": "26NOV21NCSTFSU",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401861968",
-    "game_key": "26NOV21ODUCONN",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401858532",
-    "game_key": "26NOV21RUTGPSU",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401856747",
-    "game_key": "26NOV21SAMAUB",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401856871",
-    "game_key": "26NOV21TTUBAY",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401858528",
-    "game_key": "26NOV21UCLAMICH",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
-   },
-   {
-    "event_id": "401867844",
-    "game_key": "26NOV21YALEHARV",
-    "kickoff_utc": "2026-11-21T20:30:00Z"
    }
   ]
  },
