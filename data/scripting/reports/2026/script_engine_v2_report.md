@@ -1,23 +1,23 @@
 # CFB Script Engine V2 — prospective claim settlement
 
-Methodology `cfb-script-engine/2.0.0`. FINAL_PREGAME games: 236; settled: 131. Frozen claims only; nothing re-derived. Historical counts are frequencies of past games, never chances.
+Methodology `cfb-script-engine/2.0.0`. FINAL_PREGAME games: 239; settled: 142. Frozen claims only; nothing re-derived. Historical counts are frequencies of past games, never chances.
 
 ## CONTROL
 
 | Tier | n | Won | Central-50 coverage | Central-80 coverage |
 |---|---|---|---|---|
-| AWAY_CONTROL_MODERATE | 16 | 9 | 6/16 | 10/16 |
-| AWAY_CONTROL_STRONG | 12 | 8 | 8/12 | 9/12 |
-| HOME_CONTROL_MODERATE | 22 | 17 | 9/22 | 18/22 |
-| HOME_CONTROL_STRONG | 21 | 16 | 10/21 | 13/21 |
+| AWAY_CONTROL_MODERATE | 17 | 9 | 7/17 | 11/17 |
+| AWAY_CONTROL_STRONG | 14 | 9 | 8/14 | 10/14 |
+| HOME_CONTROL_MODERATE | 23 | 17 | 9/23 | 18/23 |
+| HOME_CONTROL_STRONG | 24 | 18 | 10/24 | 15/24 |
 
 ## CLOSENESS
 
-n = 27; |margin| <= 3: 0.3333; <= 7: 0.6667; <= 8: 0.7037
+n = 29; |margin| <= 3: 0.3103; <= 7: 0.6207; <= 8: 0.6552
 
 ## Environment
 
-* PACE HIGH: n = 14, direction held 0.7857
-* PACE LOW: n = 13, direction held 0.9231
-* DEFENSIVE SUPPRESSION: n = 6, realized label 0.5
+* PACE HIGH: n = 16, direction held 0.8125
+* PACE LOW: n = 16, direction held 0.875
+* DEFENSIVE SUPPRESSION: n = 7, realized label 0.4286
 * UNAVAILABLE (explicit): {'pace': 0, 'scoring_environment': 0, 'defensive_suppression': 0}
