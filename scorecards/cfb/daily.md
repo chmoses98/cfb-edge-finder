@@ -1,32 +1,32 @@
 ## CFB projection scorecard — last 7 days
 
-Generated 2026-11-21T23:36:34Z. Research only; nothing here is a betting signal.
+Generated 2026-11-22T19:33:14Z. Research only; nothing here is a betting signal.
 
-Archived pregame forecasts: 44327 across 312 games. Settled: 15702 (void/DNP 130, stat corrections 0).
+Archived pregame forecasts: 44327 across 312 games. Settled: 18946 (void/DNP 150, stat corrections 0).
 
 | Stat | Model | n (games) | MAE | Bias | CRPS | 80% range caught | vs incumbent (CRPS) |
 |---|---|---|---|---|---|---|---|
-| carries | pf-cfb (challenger) | 219 (28) | 4.252 | +0.191 | 2.954 | 74% | — |
-| game_total | pf-cfb (challenger) | 52 (52) | 12.664 | +0.868 | 8.399 | 87% | — |
-| game_total | script-engine-scoring-baseline (incumbent) | 49 (49) | 12.233 | +1.118 | — | — |  |
-| margin | pf-cfb (challenger) | 52 (52) | 12.567 | -0.826 | 9.001 | 79% | — |
-| margin | script-engine-scoring-baseline (incumbent) | 49 (49) | 13.110 | -0.829 | — | — |  |
-| passing_attempts | pf-cfb (challenger) | 52 (31) | 6.702 | +2.410 | 4.771 | 83% | — |
-| passing_yards | pf-cfb (challenger) | 54 (31) | 56.590 | +40.128 | 41.254 | 91% | — |
-| receiving_yards | pf-cfb (challenger) | 480 (31) | 17.235 | +4.463 | 11.137 | 82% | — |
-| receptions | pf-cfb (challenger) | 400 (31) | 1.254 | +0.211 | 0.828 | 83% | — |
-| rushing_yards | pf-cfb (challenger) | 243 (31) | 28.058 | -0.644 | 19.171 | 77% | — |
-| team_points | pf-cfb (challenger) | 104 (52) | 8.614 | +0.434 | 6.117 | 81% | — |
-| team_points | script-engine-scoring-baseline (incumbent) | 96 (49) | 9.044 | +0.333 | — | — |  |
+| carries | pf-cfb (challenger) | 535 (70) | 4.101 | +0.093 | 2.841 | 78% | — |
+| game_total | pf-cfb (challenger) | 70 (70) | 11.222 | +0.155 | 7.850 | 89% | — |
+| game_total | script-engine-scoring-baseline (incumbent) | 68 (68) | 11.638 | +0.044 | — | — |  |
+| margin | pf-cfb (challenger) | 70 (70) | 11.607 | +2.260 | 8.119 | 80% | — |
+| margin | script-engine-scoring-baseline (incumbent) | 68 (68) | 11.681 | +1.828 | — | — |  |
+| passing_attempts | pf-cfb (challenger) | 121 (69) | 6.038 | +1.039 | 4.622 | 88% | — |
+| passing_yards | pf-cfb (challenger) | 121 (69) | 60.185 | -0.790 | 43.433 | 89% | — |
+| receiving_yards | pf-cfb (challenger) | 1106 (70) | 18.271 | +0.062 | 12.377 | 82% | — |
+| receptions | pf-cfb (challenger) | 1106 (70) | 1.304 | +0.052 | 0.873 | 81% | — |
+| rushing_yards | pf-cfb (challenger) | 535 (70) | 26.088 | -0.104 | 17.853 | 80% | — |
+| team_points | pf-cfb (challenger) | 140 (70) | 7.981 | +0.077 | 5.654 | 83% | — |
+| team_points | script-engine-scoring-baseline (incumbent) | 136 (68) | 8.171 | +0.024 | — | — |  |
 
 **Drift checks**
 
 - carries: **OK** — within expectations
-- game_total: **INSUFFICIENT** — 52 settled forecasts (< 100)
-- margin: **INSUFFICIENT** — 52 settled forecasts (< 100)
-- passing_attempts: **INSUFFICIENT** — 52 settled forecasts (< 100)
-- passing_yards: **INSUFFICIENT** — 54 settled forecasts (< 100)
-- receiving_yards: **ALERT** — bias +4.463 (95% CI +2.819..+6.391) exceeds 5% of the mean
-- receptions: **ALERT** — bias +0.211 (95% CI +0.039..+0.352) exceeds 5% of the mean
-- rushing_yards: **WATCH** — CRPS 110% of historical holdout
+- game_total: **INSUFFICIENT** — 70 settled forecasts (< 100)
+- margin: **INSUFFICIENT** — 70 settled forecasts (< 100)
+- passing_attempts: **OK** — within expectations
+- passing_yards: **OK** — within expectations
+- receiving_yards: **OK** — within expectations
+- receptions: **OK** — within expectations
+- rushing_yards: **OK** — within expectations
 - team_points: **OK** — within expectations
