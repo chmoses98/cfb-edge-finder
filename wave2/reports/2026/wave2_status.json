@@ -4,19 +4,19 @@
  "capture_health": {
   "by_outcome": {
    "NO_MARKET": 490,
-   "OK": 3562
+   "OK": 3563
   },
   "in_window_by_outcome": {
    "NO_MARKET": 392,
-   "OK": 2855
+   "OK": 2856
   },
   "last_cycle_errors": [],
-  "spread_attempts": 4052,
-  "spread_attempts_in_window": 3247,
+  "spread_attempts": 4053,
+  "spread_attempts_in_window": 3248,
   "system_failures": 82
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-22T00:27:55Z",
+ "last_ledger_row_at": "2026-11-22T01:02:54Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -42,7 +42,7 @@
    },
    "next_read": {
     "at_n": 100,
-    "remaining": 16,
+    "remaining": 13,
     "state": "INTERIM"
    },
    "observation_reasons": {
@@ -55,55 +55,55 @@
     "EXCLUDED_PROTOCOL": 688,
     "PENDING": 130
    },
-   "settlement_pending": 10,
+   "settlement_pending": 7,
    "summary": {
     "ats_like": {
-     "losses": 40,
+     "losses": 43,
      "pushes": 1,
-     "rate": 0.5180722891566265,
+     "rate": 0.5,
      "rate_ci95": [
-      0.4121775709212428,
-      0.6223681407784449
+      0.3966097232742094,
+      0.6033902767257906
      ],
      "wins": 43
     },
     "economics": {
-     "fee_adjusted_pnl": -0.04,
+     "fee_adjusted_pnl": -1.62,
      "hits": 44,
-     "mean_price": 0.5042857142857142,
-     "n": 84,
+     "mean_price": 0.504367816091954,
+     "n": 87,
      "roi_ci95_bootstrap": [
-      -0.2072480181200453,
-      0.20045980025462068
+      -0.23497685715923428,
+      0.16049923363258156
      ],
-     "roi_on_outlay": -0.00090826521344236,
+     "roi_on_outlay": -0.0355107409031127,
      "unavailable": 0
     },
     "home_away": {
-     "away": 48,
-     "home": 36
+     "away": 49,
+     "home": 38
     },
-    "n": 84,
-    "outright_win_rate": 0.6428571428571429,
+    "n": 87,
+    "outright_win_rate": 0.6436781609195402,
     "residual": {
      "ci95_bootstrap": [
-      -1.560946279761905,
-      5.196428214285716
+      -2.0339981896551733,
+      4.645525287356323
      ],
-     "mean": 1.7911440476190472,
-     "median": 0.74405,
-     "positive_rate": 0.5119047619047619,
+     "mean": 1.2890873563218386,
+     "median": 0.0,
+     "positive_rate": 0.4942528735632184,
      "positive_rate_ci95": [
-      0.40685182889998844,
-      0.6159164632806147
+      0.3916827782936405,
+      0.5973090321310045
      ],
      "quantiles": {
-      "10": -17.459999999999997,
-      "25": -8.265625,
-      "75": 11.453125,
-      "90": 20.04463
+      "10": -18.6,
+      "25": -9.1979,
+      "75": 11.0625,
+      "90": 19.96426
      },
-     "sd": 15.940420134652701
+     "sd": 15.920687049477367
     },
     "verdict": "EARLY_READ"
    }
