@@ -1,6 +1,6 @@
 {
  "capture_health": {
-  "expected_games": 5,
+  "expected_games": 4,
   "game_winner_markets_found": 0,
   "market_absent": 0,
   "not_tracked": 0,
@@ -9,16 +9,16 @@
   "price_1_00": 0,
   "primary_window_coverage": 1.0,
   "statuses": {
-   "CAPTURE_OK": 5
+   "CAPTURE_OK": 4
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 5,
+  "valid_primary_captures": 4,
   "window": {
    "from": "2026-11-22T02:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 5
+  "windows_closed": 4
  },
  "population": {
   "awaiting_kickoff": {},
@@ -3095,7 +3095,7 @@
  },
  "summary": {
   "H1": {
-   "break_even": 0.7576,
+   "break_even": 0.757,
    "checkpoint": {
     "next": "PRIMARY_REVIEW",
     "next_at_n": 50,
@@ -3106,27 +3106,27 @@
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 46
+     "CAPTURE_OK": 47
     }
    },
-   "fee_adjusted_pnl": -2.85,
+   "fee_adjusted_pnl": -2.58,
    "football": {
-    "n": 46,
+    "n": 47,
     "wilson95": [
-     0.5519,
-     0.8092
+     0.5602,
+     0.8135
     ],
-    "win_rate": 0.6957,
-    "wins": 32
+    "win_rate": 0.7021,
+    "wins": 33
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
    "losses": 14,
-   "mean_entry": 0.7398,
-   "n": 46,
-   "roi": -0.0818,
+   "mean_entry": 0.7391,
+   "n": 47,
+   "roi": -0.0725,
    "roi_ci95": [
-    -0.253,
-    0.0829
+    -0.2415,
+    0.0842
    ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
@@ -3144,23 +3144,23 @@
      "wins": 11
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.7893,
-     "fee_adjusted_pnl": -0.31,
+     "break_even": 0.7871,
+     "fee_adjusted_pnl": -0.04,
      "losses": 6,
-     "mean_entry": 0.7722,
-     "n": 27,
-     "roi": -0.0145,
+     "mean_entry": 0.77,
+     "n": 28,
+     "roi": -0.0018,
      "roi_ci95": [
-      -0.2111,
-      0.1569
+      -0.197,
+      0.1633
      ],
-     "win_rate": 0.7778,
-     "wins": 21
+     "win_rate": 0.7857,
+     "wins": 22
     }
    },
    "weeks": 13,
-   "win_rate": 0.6957,
-   "wins": 32
+   "win_rate": 0.7021,
+   "wins": 33
   },
   "H2": {
    "break_even": 0.7493,
@@ -3194,7 +3194,7 @@
    "source": "AUTOMATIC_GATE",
    "status": "VALUE_WATCH"
   },
-  "settled_rows": 90,
+  "settled_rows": 91,
   "strong": {
    "break_even": 0.8552,
    "fee_adjusted_pnl": -6.92,
