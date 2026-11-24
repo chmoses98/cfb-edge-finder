@@ -1,8 +1,8 @@
 ## CFB projection scorecard — last 28 days
 
-Generated 2026-11-22T19:33:14Z. Research only; nothing here is a betting signal.
+Generated 2026-11-24T20:58:00Z. Research only; nothing here is a betting signal.
 
-Archived pregame forecasts: 44327 across 312 games. Settled: 18946 (void/DNP 150, stat corrections 0).
+Archived pregame forecasts: 48481 across 381 games. Settled: 18946 (void/DNP 150, stat corrections 0).
 
 | Stat | Model | n (games) | MAE | Bias | CRPS | 80% range caught | vs incumbent (CRPS) |
 |---|---|---|---|---|---|---|---|
