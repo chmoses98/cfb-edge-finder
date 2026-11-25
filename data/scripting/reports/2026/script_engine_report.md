@@ -1,12 +1,12 @@
 # CFB Script Engine — prospective report
 
-Publications: 926 game(s), 45858 ledger row(s). Settled: 457.
+Publications: 926 game(s), 45929 ledger row(s). Settled: 459.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.1597
-- PRIMARY or SECONDARY: 0.1882
-- Any published script: 0.2473
+- PRIMARY described the game: 0.159
+- PRIMARY or SECONDARY: 0.1874
+- Any published script: 0.2462
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
