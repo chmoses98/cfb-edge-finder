@@ -1,29 +1,29 @@
 ## CFB projection scorecard — last 28 days
 
-Generated 2026-11-24T20:58:00Z. Research only; nothing here is a betting signal.
+Generated 2026-11-26T01:14:34Z. Research only; nothing here is a betting signal.
 
-Archived pregame forecasts: 48481 across 381 games. Settled: 18946 (void/DNP 150, stat corrections 0).
+Archived pregame forecasts: 50132 across 381 games. Settled: 19060 (void/DNP 152, stat corrections 0).
 
 | Stat | Model | n (games) | MAE | Bias | CRPS | 80% range caught | vs incumbent (CRPS) |
 |---|---|---|---|---|---|---|---|
-| carries | pf-cfb (challenger) | 2018 (256) | 4.108 | +0.176 | 2.866 | 77% | — |
-| game_total | pf-cfb (challenger) | 256 (256) | 12.551 | +0.758 | 8.723 | 83% | — |
-| game_total | script-engine-scoring-baseline (incumbent) | 254 (254) | 12.777 | +0.980 | — | — |  |
-| margin | pf-cfb (challenger) | 256 (256) | 12.982 | +3.166 | 9.252 | 78% | — |
-| margin | script-engine-scoring-baseline (incumbent) | 254 (254) | 13.381 | +3.286 | — | — |  |
-| passing_attempts | pf-cfb (challenger) | 452 (251) | 7.136 | +0.712 | 5.090 | 84% | — |
-| passing_yards | pf-cfb (challenger) | 452 (251) | 61.885 | +9.384 | 44.156 | 87% | — |
-| receiving_yards | pf-cfb (challenger) | 4268 (256) | 18.157 | +0.921 | 12.097 | 82% | — |
-| receptions | pf-cfb (challenger) | 4268 (256) | 1.290 | +0.052 | 0.863 | 81% | — |
-| rushing_yards | pf-cfb (challenger) | 2018 (256) | 25.748 | +0.872 | 17.652 | 80% | — |
-| team_points | pf-cfb (challenger) | 512 (256) | 9.012 | +0.379 | 6.358 | 80% | — |
-| team_points | script-engine-scoring-baseline (incumbent) | 508 (254) | 9.163 | +0.489 | — | — |  |
+| carries | pf-cfb (challenger) | 2007 (254) | 4.117 | +0.203 | 2.869 | 77% | — |
+| game_total | pf-cfb (challenger) | 254 (254) | 12.454 | +0.682 | 8.649 | 84% | — |
+| game_total | script-engine-scoring-baseline (incumbent) | 252 (252) | 12.631 | +0.931 | — | — |  |
+| margin | pf-cfb (challenger) | 254 (254) | 12.820 | +3.081 | 9.153 | 78% | — |
+| margin | script-engine-scoring-baseline (incumbent) | 252 (252) | 13.225 | +3.197 | — | — |  |
+| passing_attempts | pf-cfb (challenger) | 448 (249) | 7.078 | +0.694 | 5.068 | 84% | — |
+| passing_yards | pf-cfb (challenger) | 448 (249) | 61.678 | +9.493 | 43.934 | 88% | — |
+| receiving_yards | pf-cfb (challenger) | 4225 (254) | 18.159 | +0.911 | 12.109 | 82% | — |
+| receptions | pf-cfb (challenger) | 4225 (254) | 1.287 | +0.052 | 0.862 | 82% | — |
+| rushing_yards | pf-cfb (challenger) | 2007 (254) | 25.778 | +1.021 | 17.633 | 80% | — |
+| team_points | pf-cfb (challenger) | 508 (254) | 8.955 | +0.341 | 6.305 | 81% | — |
+| team_points | script-engine-scoring-baseline (incumbent) | 504 (252) | 9.099 | +0.464 | — | — |  |
 
 **Drift checks**
 
 - carries: **OK** — within expectations
 - game_total: **OK** — within expectations
-- margin: **ALERT** — bias +3.166 (95% CI +1.160..+5.114) exceeds 5% of the mean
+- margin: **ALERT** — bias +3.081 (95% CI +1.351..+5.009) exceeds 5% of the mean
 - passing_attempts: **OK** — within expectations
 - passing_yards: **OK** — within expectations
 - receiving_yards: **OK** — within expectations
