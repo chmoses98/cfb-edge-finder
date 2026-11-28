@@ -1,12 +1,12 @@
 # CFB Script Engine — prospective report
 
-Publications: 936 game(s), 47181 ledger row(s). Settled: 472.
+Publications: 936 game(s), 47248 ledger row(s). Settled: 473.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.1631
-- PRIMARY or SECONDARY: 0.1928
-- Any published script: 0.25
+- PRIMARY described the game: 0.1628
+- PRIMARY or SECONDARY: 0.1945
+- Any published script: 0.2516
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Publications: 936 game(s), 47181 ledger row(s). Settled: 472.
 | COMPETITIVE_SHOOTOUT | 30 | 0.1667 | ok |
 | COMPETITIVE_TOSSUP | 46 | 0.5 | ok |
 | EXPLOSIVE_UPSET | 6 | 0.1667 | insufficient |
-| FAVORITE_PULLS_AWAY | 24 | 0.1667 | insufficient |
+| FAVORITE_PULLS_AWAY | 25 | 0.16 | insufficient |
 | HOME_CONTROL | 103 | 0.068 | ok |
 | PACE_DRIVEN_OVER | 9 | 0.2222 | insufficient |
 | TURNOVER_DISRUPTION | 16 | 0.25 | insufficient |
@@ -25,24 +25,24 @@ Publications: 936 game(s), 47181 ledger row(s). Settled: 472.
 
 | group | tier | n | win rate | P/L per contract |
 |---|---|---|---|---|
-| MULTI_SCRIPT | ALL | 1612 | 0.7717 | -0.0767 |
-| MULTI_SCRIPT | HIGH | 844 | 0.7393 | -0.107 |
+| MULTI_SCRIPT | ALL | 1623 | 0.7733 | -0.0758 |
+| MULTI_SCRIPT | HIGH | 855 | 0.7427 | -0.1049 |
 | MULTI_SCRIPT | MEDIUM | 39 | 0.9487 | 0.0566 |
 | MULTI_SCRIPT | LOW | 729 | 0.7997 | -0.0487 |
-| BEST_EXPRESSION | ALL | 434 | 0.7742 | -0.0618 |
-| BEST_EXPRESSION | HIGH | 242 | 0.7686 | -0.0662 |
+| BEST_EXPRESSION | ALL | 436 | 0.7752 | -0.0609 |
+| BEST_EXPRESSION | HIGH | 244 | 0.7705 | -0.0645 |
 | BEST_EXPRESSION | MEDIUM | 28 | 0.6786 | -0.1743 |
 | BEST_EXPRESSION | LOW | 164 | 0.7988 | -0.0361 |
-| SINGLE_SCRIPT | ALL | 2642 | 0.6896 | -0.0346 |
-| SINGLE_SCRIPT | HIGH | 1437 | 0.7126 | -0.0278 |
+| SINGLE_SCRIPT | ALL | 2655 | 0.6911 | -0.0332 |
+| SINGLE_SCRIPT | HIGH | 1450 | 0.7152 | -0.0253 |
 | SINGLE_SCRIPT | MEDIUM | 144 | 0.7222 | -0.044 |
 | SINGLE_SCRIPT | LOW | 1061 | 0.6541 | -0.0426 |
-| AGGRESSIVE | ALL | 4329 | 0.5713 | -0.044 |
-| AGGRESSIVE | HIGH | 2363 | 0.5641 | -0.044 |
+| AGGRESSIVE | ALL | 4351 | 0.5723 | -0.0431 |
+| AGGRESSIVE | HIGH | 2385 | 0.566 | -0.0423 |
 | AGGRESSIVE | MEDIUM | 190 | 0.6158 | 0.0259 |
 | AGGRESSIVE | LOW | 1776 | 0.576 | -0.0514 |
-| CONTRADICTED | ALL | 4083 | 0.2689 | -0.0435 |
-| CONTRADICTED | HIGH | 2233 | 0.2718 | -0.0433 |
+| CONTRADICTED | ALL | 4107 | 0.2673 | -0.0443 |
+| CONTRADICTED | HIGH | 2257 | 0.2689 | -0.0449 |
 | CONTRADICTED | MEDIUM | 185 | 0.227 | -0.101 |
 | CONTRADICTED | LOW | 1665 | 0.2697 | -0.0373 |
 
