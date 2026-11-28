@@ -1,46 +1,47 @@
 {
  "capture_health": {
-  "expected_games": 62,
+  "expected_games": 60,
   "game_winner_markets_found": 50,
   "market_absent": 0,
   "not_tracked": 0,
   "orientation_failures": 1,
   "pending": 13,
   "price_1_00": 0,
-  "primary_window_coverage": 0.9796,
+  "primary_window_coverage": 0.9787,
   "statuses": {
-   "CAPTURE_OK": 48,
+   "CAPTURE_OK": 46,
    "CAPTURE_PENDING": 13,
    "ORIENTATION_FAILURE": 1
   },
   "system_failures": 0,
   "unexecutable": 0,
-  "valid_primary_captures": 48,
+  "valid_primary_captures": 46,
   "window": {
    "from": "2026-11-28T17:00:00Z",
    "horizon_hours": 36.0
   },
-  "windows_closed": 49
+  "windows_closed": 47
  },
  "population": {
   "awaiting_kickoff": {
    "AWAY_CONTROL_MODERATE": 1,
-   "HOME_CONTROL_MODERATE": 1,
+   "AWAY_CONTROL_STRONG": 1,
+   "HOME_CONTROL_MODERATE": 2,
    "NO_CONTROL": 3
   },
   "by_strength": {
-   "MODERATE": 66,
+   "MODERATE": 67,
    "NO_CONTROL": 177,
-   "STRONG": 59
+   "STRONG": 60
   },
   "by_tier": {
    "AWAY_CONTROL_MODERATE": 29,
-   "AWAY_CONTROL_STRONG": 23,
-   "HOME_CONTROL_MODERATE": 37,
+   "AWAY_CONTROL_STRONG": 24,
+   "HOME_CONTROL_MODERATE": 38,
    "HOME_CONTROL_STRONG": 36,
    "NO_CONTROL": 177
   },
-  "final_pregame_games": 302,
+  "final_pregame_games": 304,
   "missing_final_pregame": [
    {
     "event_id": "401856823",
@@ -3103,11 +3104,6 @@
     "kickoff_utc": "2026-11-28T05:00:00Z"
    },
    {
-    "event_id": "401856877",
-    "game_key": "26NOV28KUOKST",
-    "kickoff_utc": "2026-11-28T05:00:00Z"
-   },
-   {
     "event_id": "401858315",
     "game_key": "26NOV28PITTCAL",
     "kickoff_utc": "2026-11-28T05:00:00Z"
@@ -3121,7 +3117,7 @@
  },
  "summary": {
   "H1": {
-   "break_even": 0.7421,
+   "break_even": 0.7411,
    "checkpoint": {
     "next": null,
     "next_at_n": null,
@@ -3132,27 +3128,27 @@
     "healthy": true,
     "pipeline_coverage": 1.0,
     "statuses": {
-     "CAPTURE_OK": 53
+     "CAPTURE_OK": 54
     }
    },
-   "fee_adjusted_pnl": -2.33,
+   "fee_adjusted_pnl": -2.02,
    "football": {
-    "n": 53,
+    "n": 54,
     "wilson95": [
-     0.5646,
-     0.8048
+     0.5717,
+     0.8086
     ],
-    "win_rate": 0.6981,
-    "wins": 37
+    "win_rate": 0.7037,
+    "wins": 38
    },
    "id": "H1_MODERATE_CONTROL_PRIMARY_ROI",
    "losses": 16,
-   "mean_entry": 0.7242,
-   "n": 53,
-   "roi": -0.0592,
+   "mean_entry": 0.7231,
+   "n": 54,
+   "roi": -0.0505,
    "roi_ci95": [
-    -0.2162,
-    0.0906
+    -0.2073,
+    0.0933
    ],
    "slices": {
     "AWAY_CONTROL_MODERATE": {
@@ -3170,23 +3166,23 @@
      "wins": 12
     },
     "HOME_CONTROL_MODERATE": {
-     "break_even": 0.7741,
-     "fee_adjusted_pnl": 0.23,
+     "break_even": 0.7715,
+     "fee_adjusted_pnl": 0.54,
      "losses": 7,
-     "mean_entry": 0.7569,
-     "n": 32,
-     "roi": 0.0093,
+     "mean_entry": 0.7542,
+     "n": 33,
+     "roi": 0.0212,
      "roi_ci95": [
-      -0.167,
-      0.1586
+      -0.1522,
+      0.1723
      ],
-     "win_rate": 0.7812,
-     "wins": 25
+     "win_rate": 0.7879,
+     "wins": 26
     }
    },
    "weeks": 15,
-   "win_rate": 0.6981,
-   "wins": 37
+   "win_rate": 0.7037,
+   "wins": 38
   },
   "H2": {
    "break_even": 0.7559,
@@ -3220,29 +3216,29 @@
    "source": "AUTOMATIC_GATE",
    "status": "REVIEW_REQUIRED"
   },
-  "settled_rows": 101,
+  "settled_rows": 103,
   "strong": {
-   "break_even": 0.8565,
-   "fee_adjusted_pnl": -7.4,
+   "break_even": 0.857,
+   "fee_adjusted_pnl": -7.28,
    "football": {
-    "n": 48,
+    "n": 49,
     "wilson95": [
-     0.5682,
-     0.8176
+     0.5759,
+     0.8215
     ],
-    "win_rate": 0.7083,
-    "wins": 34
+    "win_rate": 0.7143,
+    "wins": 35
    },
    "losses": 14,
-   "mean_entry": 0.8433,
-   "n": 46,
-   "roi": -0.1878,
+   "mean_entry": 0.8438,
+   "n": 47,
+   "roi": -0.1807,
    "roi_ci95": [
-    -0.3394,
-    -0.0435
+    -0.333,
+    -0.0429
    ],
-   "win_rate": 0.6957,
-   "wins": 32
+   "win_rate": 0.7021,
+   "wins": 33
   }
  }
 }
