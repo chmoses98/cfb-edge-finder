@@ -4,19 +4,21 @@
  "capture_health": {
   "by_outcome": {
    "NO_MARKET": 490,
-   "OK": 3751
+   "OK": 3761,
+   "REQUEST_FAILED": 1
   },
   "in_window_by_outcome": {
    "NO_MARKET": 392,
-   "OK": 3012
+   "OK": 3021,
+   "REQUEST_FAILED": 1
   },
   "last_cycle_errors": [],
-  "spread_attempts": 4241,
-  "spread_attempts_in_window": 3404,
+  "spread_attempts": 4252,
+  "spread_attempts_in_window": 3414,
   "system_failures": 82
  },
  "kind": "PROSPECTIVE research state only: no recommendation, no sizing, not read by SIFT.",
- "last_ledger_row_at": "2026-11-28T16:45:53Z",
+ "last_ledger_row_at": "2026-11-28T17:00:56Z",
  "never_emitted": [
   "EDGE_CONFIRMED"
  ],
@@ -55,7 +57,7 @@
     "EXCLUDED_PROTOCOL": 726,
     "PENDING": 140
    },
-   "settlement_pending": 1,
+   "settlement_pending": 4,
    "summary": {
     "ats_like": {
      "losses": 49,
@@ -109,7 +111,7 @@
    }
   },
   "CFB-PROS-002": {
-   "awaiting_entry": 0,
+   "awaiting_entry": 2,
    "entries": {
     "EXCLUDED_PROTOCOL": 30,
     "MARKET_NOT_OFFERED": 2
@@ -127,7 +129,7 @@
     "STRONG_CONTROL_WITHOUT_FINAL_PREGAME_BEFORE_WINDOW_CLOSE": 82
    },
    "observations": {
-    "PENDING": 32,
+    "PENDING": 34,
     "SYSTEM_FAILURE": 82
    },
    "settlement_pending": 0,
