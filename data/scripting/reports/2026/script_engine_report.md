@@ -1,22 +1,22 @@
 # CFB Script Engine — prospective report
 
-Publications: 935 game(s), 46989 ledger row(s). Settled: 466.
+Publications: 935 game(s), 47057 ledger row(s). Settled: 470.
 
 ## Script accuracy
 
-- PRIMARY described the game: 0.1609
-- PRIMARY or SECONDARY: 0.191
+- PRIMARY described the game: 0.1617
+- PRIMARY or SECONDARY: 0.1915
 - Any published script: 0.2489
 
 | PRIMARY archetype | games | described | sample |
 |---|---|---|---|
-| AWAY_CONTROL | 84 | 0.2024 | ok |
+| AWAY_CONTROL | 85 | 0.2 | ok |
 | COMPETITIVE_GRIND | 50 | 0.2 | ok |
 | COMPETITIVE_SHOOTOUT | 30 | 0.1667 | ok |
-| COMPETITIVE_TOSSUP | 45 | 0.5111 | ok |
+| COMPETITIVE_TOSSUP | 46 | 0.5 | ok |
 | EXPLOSIVE_UPSET | 6 | 0.1667 | insufficient |
 | FAVORITE_PULLS_AWAY | 24 | 0.1667 | insufficient |
-| HOME_CONTROL | 100 | 0.05 | ok |
+| HOME_CONTROL | 102 | 0.0588 | ok |
 | PACE_DRIVEN_OVER | 9 | 0.2222 | insufficient |
 | TURNOVER_DISRUPTION | 16 | 0.25 | insufficient |
 | UNDERDOG_HANGS_AROUND | 17 | 0.2353 | insufficient |
@@ -25,26 +25,26 @@ Publications: 935 game(s), 46989 ledger row(s). Settled: 466.
 
 | group | tier | n | win rate | P/L per contract |
 |---|---|---|---|---|
-| MULTI_SCRIPT | ALL | 1545 | 0.765 | -0.0829 |
-| MULTI_SCRIPT | HIGH | 817 | 0.7307 | -0.1155 |
+| MULTI_SCRIPT | ALL | 1584 | 0.7677 | -0.0802 |
+| MULTI_SCRIPT | HIGH | 836 | 0.7368 | -0.1084 |
 | MULTI_SCRIPT | MEDIUM | 39 | 0.9487 | 0.0566 |
-| MULTI_SCRIPT | LOW | 689 | 0.7954 | -0.0521 |
-| BEST_EXPRESSION | ALL | 422 | 0.7725 | -0.0637 |
-| BEST_EXPRESSION | HIGH | 236 | 0.7712 | -0.0647 |
+| MULTI_SCRIPT | LOW | 709 | 0.7941 | -0.0544 |
+| BEST_EXPRESSION | ALL | 430 | 0.7744 | -0.0618 |
+| BEST_EXPRESSION | HIGH | 240 | 0.7708 | -0.0638 |
 | BEST_EXPRESSION | MEDIUM | 28 | 0.6786 | -0.1743 |
-| BEST_EXPRESSION | LOW | 158 | 0.7911 | -0.0426 |
-| SINGLE_SCRIPT | ALL | 2556 | 0.6917 | -0.0344 |
-| SINGLE_SCRIPT | HIGH | 1390 | 0.7173 | -0.0238 |
+| BEST_EXPRESSION | LOW | 162 | 0.7963 | -0.0394 |
+| SINGLE_SCRIPT | ALL | 2611 | 0.6909 | -0.0338 |
+| SINGLE_SCRIPT | HIGH | 1415 | 0.7138 | -0.0268 |
 | SINGLE_SCRIPT | MEDIUM | 144 | 0.7222 | -0.044 |
-| SINGLE_SCRIPT | LOW | 1022 | 0.6526 | -0.0475 |
-| AGGRESSIVE | ALL | 4178 | 0.5735 | -0.0415 |
-| AGGRESSIVE | HIGH | 2291 | 0.5657 | -0.0432 |
+| SINGLE_SCRIPT | LOW | 1052 | 0.6559 | -0.0418 |
+| AGGRESSIVE | ALL | 4290 | 0.5713 | -0.0437 |
+| AGGRESSIVE | HIGH | 2340 | 0.5632 | -0.0438 |
 | AGGRESSIVE | MEDIUM | 190 | 0.6158 | 0.0259 |
-| AGGRESSIVE | LOW | 1697 | 0.5793 | -0.0467 |
-| CONTRADICTED | ALL | 3928 | 0.2681 | -0.0466 |
-| CONTRADICTED | HIGH | 2159 | 0.2719 | -0.045 |
+| AGGRESSIVE | LOW | 1760 | 0.5773 | -0.051 |
+| CONTRADICTED | ALL | 4024 | 0.2696 | -0.0436 |
+| CONTRADICTED | HIGH | 2203 | 0.2719 | -0.0442 |
 | CONTRADICTED | MEDIUM | 185 | 0.227 | -0.101 |
-| CONTRADICTED | LOW | 1584 | 0.2677 | -0.0424 |
+| CONTRADICTED | LOW | 1636 | 0.2714 | -0.0363 |
 
 Calibration ready: **False** (smallest archetype sample 6 of 30 required).
 
